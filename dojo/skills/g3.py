@@ -158,7 +158,11 @@ class FrozenGarmentProvider:
 
 # ``--skill-attr NAME=VALUE``: Skills switches a G3 run may set (each mirrors a ``RuntimeConfig`` field; first = default)
 SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
-               "ported_routes": ("off", "on"), "ported_swap": ("fixed", "reach")}
+               "ported_routes": ("off", "on"), "ported_swap": ("fixed", "reach"), "ported_drag": ("v1", "turn"),
+               "ported_pour": ("v1", "full"), "ported_pickup": ("v1", "library"),
+               "belt_container": ("off", "on"), "belt_container_tilts": ("25,40", "0,15,25", "40,50"),
+               "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on"),
+               "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured")}
 
 
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
@@ -779,7 +783,7 @@ def main(argv=None) -> None:
     r.add_argument("--routes", default="", help="planner routes off by default, comma-separated (dojo.skills.routes.NEW_ROUTES)")
     r.add_argument("--put-into", default="", help="library.put_into options, comma-separated: spot,patient,sequence (dev)")
     r.add_argument("--skill-attr", action="append", default=[],
-                   help="NAME=VALUE: a Skills switch (SKILL_ATTRS: place_surface=mesh, push_order=lookahead) (dev)")
+                   help="NAME=VALUE: a Skills switch (SKILL_ATTRS, e.g. place_surface=mesh, joint_limits=measured) (dev)")
     r.add_argument("--held-pose-request", action="store_true",
                    help="with --held-pose: read only at places that ask (plan_place held_read), as the runtime's "
                         "held_pose: request (dev)")

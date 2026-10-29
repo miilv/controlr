@@ -16,6 +16,10 @@ Ops (request dicts):
     {"op": "release_read", "frame": frame, "key", "pose7", "arm", "others": [[key, pose7]], "cfg"}
                                                                                    -> {"release_read": json}
         the 6-DoF pose of an object right after the release (``dojo.perception.release_read``): ok, pose7, ious, ...
+    {"op": "slot_read", "frame": frame, "task", "label", "objects": [{label, key, pos, quat}], "arm", "cfg"}
+                                                                                   -> {"slot_read": json}
+        an object pinned in a support slot (deposit_coin's coin in its stand) at its pick hover: base + child fitted
+        together from the wrist frame (``dojo.perception.slot_read``): applicable, ok, base_pose, child_pose, iou, ...
     {"op": "redetect", "frame": frame, "req": dojo.runtime.tick.build_request(...), "cfg"} -> {"redetect": json}
         A1's tick perception (``dojo.perception.redetect``): segmenter detections on all cameras, association with the
         belief, pose hypotheses for the active objects, corridor additions, lift identity (no writes: the runtime decides)
@@ -204,6 +208,14 @@ class PerceptionClient:
         req = {"op": "release_read", "frame": encode_frame(frame), "key": key, "pose7": [float(v) for v in pose7],
                "arm": arm, "others": [[k, [float(v) for v in p]] for k, p in others or ()], "cfg": cfg or {}}
         return json.loads(self._call(req)["release_read"])
+
+    def slot_read(self, frame: dict, task: str, label: str, objects: list[dict], arm: str,
+                  cfg: dict | None = None) -> dict:
+        """``label`` pinned in a support slot of another believed object, read at its pick hover from ``arm``'s wrist
+        (``dojo.perception.slot_read.slot_read_for``): {"applicable", "ok", "base_label", "base_pose", "child_pose", ...}."""
+        req = {"op": "slot_read", "frame": encode_frame(frame), "task": task, "label": label, "objects": objects,
+               "arm": arm, "cfg": cfg or {}}
+        return json.loads(self._call(req)["slot_read"])
 
     def redetect(self, frame: dict, req: dict, cfg: dict | None = None) -> dict:
         """A1's tick perception (``dojo.perception.redetect``): the twin segmenter on all cameras (``DOJO_SEG_ADDR``),
@@ -736,6 +748,7 @@ class _Perception:
             pose = np.asarray(r.get("pose"), float) if r.get("pose") is not None else None
             shift = None if pose is None else float(np.hypot(*(pose[:2] - np.asarray(o["pos"][:2], float))))
             ok = bool(r.get("ok")) and pose is not None and shift <= max_shift_m
+            glyph = self._glyph_view_read(f, o["key"], arm, pose if ok else np.r_[prior], fold)
             sug = r.get("suggest_xy")
             # perception >= #36: a not-ok refine returns the PRIOR as "pose" and the raw fit as "fit_pose"
             fit = np.asarray(r["fit_pose"], float) if r.get("fit_pose") is not None else (None if ok else pose)
@@ -756,8 +769,38 @@ class _Perception:
                                  "identity_margin": r.get("identity_margin"), "n_candidates": len(cands),
                                  # a round object's yaw (and xy) read from a cut in its top: insert_key's keyhole
                                  "yaw_source": r.get("yaw_source"), "yaw_read": r.get("yaw_read"),
-                                 "why": None if ok else ("perception not ok" if not r.get("ok") else "shift too large")}}
+                                 "why": None if ok else ("perception not ok" if not r.get("ok") else "shift too large"),
+                                 **({"glyph": glyph} if glyph is not None else {})}}
         return self._refine_local(frame, objects, fold, max_shift_m)
+
+    def _glyph_view_read(self, f: dict, key: str, arm: str, pose7, fold: int) -> dict | None:
+        """``EstimatorConfig.glyph_read`` on a ``GLYPH_ONLY`` object (a 3-D numeral): the crop classifier's read of its
+        silhouette at ``pose7`` in this wrist view (``glyph_read.classify_mask``), for the runtime to merge into the
+        belief's digit (``digits.merge_view_read``). None when off / not a numeral / no reader."""
+        from dojo.perception.digits import GLYPH_ONLY
+        if key.split("/")[1] not in GLYPH_ONLY or self.cfg(fold).glyph_read == "off":
+            return None
+        try:
+            from dojo.perception import glyph_read
+            from dojo.perception.cameras import cameras_from_state, pose_to_T
+            from dojo.perception.refine import _shape_for
+            classify = getattr(glyph_read, "classify_mask", None)
+            if classify is None:
+                return {"read": False, "why": "no classify_mask"}
+            cam = cameras_from_state(f["state"])[f"cam_{arm}_wrist"]
+            T = pose_to_T(np.asarray(pose7[:3], float), np.asarray(pose7[3:7], float))
+            m = _shape_for(key, T[:3, :3], None).sil(cam, T)
+            from dojo.perception.inverse_layout import _takes_robot
+            if _takes_robot(classify):           # S's reader v2: a tile half hidden by the gripper is refused
+                from dojo.perception.render import robot_mask
+                rob = robot_mask(cam, f["state"], closed_jaws=False) > 0
+                r = classify(f["images"][f"cam_{arm}_wrist"], m, view=f"cam_{arm}_wrist", robot=rob,
+                             category=key.split("/")[1])
+            else:
+                r = classify(f["images"][f"cam_{arm}_wrist"], m, view=f"cam_{arm}_wrist", category=key.split("/")[1])
+            return {k: r.get(k) for k in ("read", "name", "margin", "why")}
+        except Exception as e:  # noqa: BLE001 (a reader failure never takes the refine down)
+            return {"read": False, "why": f"error: {type(e).__name__}"}
 
     def _refine_local(self, frame: dict, objects: list[dict], fold: int, max_shift_m: float = 0.03) -> dict:
         """Re-fit each given object's (x, y, yaw) locally from its current pose on this frame's views (the wrist
@@ -925,6 +968,11 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                         rr = release_read(decode_frame(req["frame"]), req["key"], req["pose7"], req["arm"],
                                           others=[(k, p) for k, p in req.get("others") or ()], cfg=req.get("cfg"))
                         conn.send({"ok": True, "release_read": json.dumps(rr, default=_default)})
+                    elif op == "slot_read":
+                        from dojo.perception.slot_read import slot_read_for
+                        sr = slot_read_for(decode_frame(req["frame"]), req["task"], req["label"], req["objects"],
+                                           req["arm"], req.get("cfg"))
+                        conn.send({"ok": True, "slot_read": json.dumps(sr, default=_default)})
                     elif op == "redetect":
                         from dojo.perception import seg_twin
                         from dojo.perception.redetect import DetSource, RDConfig, redetect

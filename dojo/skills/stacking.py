@@ -55,7 +55,13 @@ def plan_stack(sk: Skills, labels: list[str], top_h: float, on_top: Callable, ya
         return [a for a in ARMS if sk.reach_down(a, (site_xy[0], site_xy[1], top_h), tilts=(0.0,))
                 and sk.can_pick(label, a, pick_method)]
 
-    reach = {(l, a): float(np.linalg.norm(w.obj(l).center_w[:2] - sk.kin.base(a)[:2, 3])) for l in labels for a in ARMS}
+    if getattr(sk, "stack_reach", "centre") == "grasp":
+        # stream H: how far the arm actually reaches for it, its planned grasp's TCP (a bowl's wall pinch sits at its
+        # rim, 55-80 mm nearer than its centre: stack_bowls G3 "no reachable stack site" with every bowl 0.53-0.63 m out
+        # by its centre but pickable); an arm with no grasp keeps the centre distance (``arms_for`` rules it out anyway)
+        reach = {(l, a): sk.pick_reach(l, a, pick_method) for l in labels for a in ARMS}
+    else:
+        reach = {(l, a): float(np.linalg.norm(w.obj(l).center_w[:2] - sk.kin.base(a)[:2, 3])) for l in labels for a in ARMS}
     chain = existing_chain(w, labels)
     if ordered and chain != labels[:len(chain)]:
         chain = []                                   # a stack in another order is not a start

@@ -264,6 +264,11 @@ class RuntimeConfig:
     # | drop (apply, and phantom neighbours / references leave the belief). Runs before the target's own refine
     wrist_check: str = "off"
     wrist_check_cfg: dict = field(default_factory=dict)  # CheckConfig overrides (e.g. {"embed_model": "dinov2_b"})
+    # a held_look "not held" resting on the jaw opening alone, for an object whose narrowest extent is below the opening's
+    # resolution (``j1_adapter.opening_resolution_gap``: 10.8 mm at a full close): off (today: it drops the grasp) | on
+    # (unknown: the object stays in the jaws; the place / post-place checks decide). 5.1 deposit_coin 100000 / 03: the
+    # 1.9 mm coin held at the handover pose read "closed on nothing", and the skill opened the jaws
+    held_thin: str = "off"
     held_drop_conf: float = 0.9         # a held_look "not held" at this confidence drops the grasp unless the head check sees
                                         # the object in the jaws (before: only when the head also saw it at the pick pose,
                                         # which kept 51 of 52 truly empty grasps on the proxy); > 1 = the old rule
@@ -292,12 +297,25 @@ class RuntimeConfig:
     place_surface: str = "bbox"
     # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
     push_order: str = "greedy"
+    # ``stacking.plan_stack``'s reach (``Skills.stack_reach``): centre (today) | grasp (to the planned grasp's TCP)
+    stack_reach: str = "centre"
+    # ``library.bowl_geometry``'s nest height (``Skills.nest_height``): bins (today) | measured (twin table, else profile)
+    nest_height: str = "bins"
     # planner routes that are off by default (stream N, ``dojo.skills.routes.NEW_ROUTES``): "equation" (an equation's
     # missing tile onto its empty pad), "largest_number" (digit tiles onto the pads, largest number left to right),
     # "align" (identical blocks slid into one aligned row), "row_by_size" (objects of one kind stood in a row by size),
     # "pour_order" (bottles into bowls in the instruction's order, stream P's ported pour); empty = today. Their names go into the provider's
     # ``notes["routes"]``, which ``planner.plan`` reads
     new_routes: list = field(default_factory=list)
+    # belt picks (``interactive.pick_from_belt`` / ``match_and_pick``, ``Skills.belt_wrist_veto``): off (today) | on (a
+    # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
+    # match: compute4 camera rows, every pick after such a look missed)
+    belt_wrist_veto: str = "off"
+    # the pick hover of an object the task config pins in a support slot (deposit_coin's coin in its stand,
+    # ``dojo.perception.slot_read``): off (today: the object's own wrist refine) | on (base + object fitted together
+    # from the wrist frame over the base's whole yaw period; when ok, both poses are written and the refine is skipped.
+    # 5.1 camera rows: a stand yaw read 48 deg off turned the coin with it, and its 2 mm disc never refines)
+    slot_read: str = "off"
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -305,6 +323,19 @@ class RuntimeConfig:
     # ... swap_poses' carry height: fixed (his 0.86 m) | reach (the highest of 0.86 / 0.84 / 0.82 / 0.80 at which each arm
     # reaches the other object's spot top-down; G3: at 0.86 the left arm cannot reach a T at x >= ~0.09)
     ported_swap: str = "fixed"
+    # the IK's joint range (``Skills.joint_limits``): wide (today) | measured (joint 5 inside the sim's +-pi/2 stop)
+    joint_limits: str = "wide"
+    # ... the drag onto a pad: v1 (Mikhail's planar_drag) | turn (planar_drag_p1: near a 180 deg turn both directions are
+    # planned and the feasible one driven; v1 takes the sign of the yaw difference, which perception noise flips there and
+    # then runs the wrist into j6's limit: camera push_T 100005, 4 legs of "no sane planar plan")
+    ported_drag: str = "v1"
+    # ... pouring balls: v1 (Mikhail's pour: stops when no ball is left in the cup) | full (pour_p1: the whole roll profile;
+    # camera mode sees no balls inside the cup, so v1 read "empty" at the first hold and stopped with the balls inside)
+    ported_pour: str = "v1"
+    # ... "pick up the X by N cm": v1 (Mikhail's pick_up: top-down mesh-cloud grasps) | library (our Skills.pick first, its
+    # grasp generator, then v1 on the same object when ours fails with >= 120 steps left; dojo/skills/pickup.py), the object
+    # grounded by its public description or its category words
+    ported_pickup: str = "v1"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -380,7 +411,12 @@ class RuntimePolicy:
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
-                or self.cfg.ported_swap not in ("fixed", "reach")):
+                or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
+                or self.cfg.held_thin not in ("off", "on")
+                or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
+                or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
+                or self.cfg.joint_limits not in ("wide", "measured")
+                or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
         self._assets = assets
         self._tc = twin_client
@@ -392,7 +428,10 @@ class RuntimePolicy:
         if supervisor is None and self.cfg.ported_routes:
             from dojo.skills.planner import plan as _plan
             supervisor = RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans,
-                                        planner=lambda instr, w: _plan(instr, w, ported={"swap": self.cfg.ported_swap}))
+                                        planner=lambda instr, w: _plan(instr, w, ported={"swap": self.cfg.ported_swap,
+                                                                                      "drag": self.cfg.ported_drag,
+                                                                                      "pour": self.cfg.ported_pour,
+                                                                                      "pickup": self.cfg.ported_pickup}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
         self.log_lines: list[str] = []
@@ -562,6 +601,7 @@ class RuntimePolicy:
         if cfg.mode == "perception" and cfg.held_look != "off":
             prov.held_checker = lambda obs, arm, lab: self._held_look(obs, arm, lab)
             prov.held_drop_conf = float(cfg.held_drop_conf)
+            prov.held_thin = cfg.held_thin
             prov.held_confirm = lambda obs, arm, lab: self._held_head_confirm(prov, obs, arm, lab)
         prov.confirm_wrists = bool(cfg.confirm_wrists)
         prov.fallen_check = bool(cfg.fallen_check)
@@ -635,8 +675,15 @@ class RuntimePolicy:
             sk_.put_into_opts = set(cfg.put_into_opts or ())
             sk_.place_surface = cfg.place_surface
             sk_.push_order = cfg.push_order
+            sk_.belt_wrist_veto = cfg.belt_wrist_veto
+            sk_.stack_reach = cfg.stack_reach
+            sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
             sk_.ported_swap = cfg.ported_swap
+            sk_.joint_limits = cfg.joint_limits
+            sk_.ported_drag = cfg.ported_drag
+            sk_.ported_pour = cfg.ported_pour
+            sk_.ported_pickup = cfg.ported_pickup
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)
             return sk_
@@ -843,6 +890,20 @@ class RuntimePolicy:
         return result
 
     # ------------------------------------------------------------------ helpers
+    def _merge_glyph(self, prov, label: str, g: dict) -> None:
+        """A wrist view's numeral read (perception ``refine``'s ``glyph``) merged into the belief's digit
+        (``digits.merge_view_read``: agree -> confirmed, first -> one view, disagree -> unknown). Event ``digit_read``."""
+        from dojo.perception.digits import as_digit, merge_view_read
+        o = prov.belief.objects.get(label) if prov.belief else None
+        if o is None:
+            return
+        d = as_digit(g.get("name")) if g.get("read") else None
+        before = (o.digit, o.digit_conf, o.digit_source)
+        o.digit, o.digit_conf, o.digit_source, why = merge_view_read(o.digit, o.digit_conf, o.digit_source, d)
+        self.report["events"].append({"kind": "digit_read", "label": label, "step": self.bridge.steps_used,
+                                      "read": d, "why": why or g.get("why"), "before": list(before),
+                                      "after": [o.digit, o.digit_conf, o.digit_source]})
+
     def _refine_hook(self, prov, sk, label: str, arm: str, kind: str) -> dict | None:
         """Pre-contact wrist refine (skills calls it at the hover, before planning the descent): observe, re-fit
         ``label`` locally on the new views (perception service ``refine``), write accepted poses into the belief.
@@ -890,6 +951,10 @@ class RuntimePolicy:
             others = [x for x in prov.belief.movable() if x.label not in (label, held_label)]
             objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos],
                      "quat": [float(v) for v in x.quat]} for x in [o] + others]
+        if self.cfg.slot_read == "on" and kind == "pick":
+            done = self._slot_read(prov, sk, label, arm, obs)
+            if done is not None:
+                return done
         idv = None
         if self.cfg.refine_identity and kind == "pick":
             # perception's instruction-ranked candidates for this label (general_pickup's target), else the
@@ -914,6 +979,8 @@ class RuntimePolicy:
             kw["empty_hand"] = True
         res = self.perception().refine(obs, objs, self.fold, max_shift, arm=arm, identity_vocabulary=idv, held=held, **kw)
         r = res.get(label) or {}
+        if r.get("glyph") is not None:
+            self._merge_glyph(prov, label, r["glyph"])
         if sk is not None:
             sk.last_refine = {**r, "label": label, "for": kind}  # the raw reading (skills read e.g. its yaw_source)
         ev = {"kind": "refine", "label": label, "arm": arm, "for": kind, "step": self.bridge.steps_used,
@@ -1068,6 +1135,37 @@ class RuntimePolicy:
         if r.get("yaw_source"):
             out["yaw_source"] = r["yaw_source"]
         return out
+
+    def _slot_read(self, prov, sk, label: str, arm: str, obs: dict) -> dict | None:
+        """``RuntimeConfig.slot_read``: ``label``, pinned in a support slot of another believed object and still in it,
+        read with its base from the pick hover's wrist frame (perception service ``slot_read``). An ok read writes both
+        poses and replaces the refine ({label: (pos, quat)}); otherwise None (the usual refine follows)."""
+        objs = [{"label": x.label, "key": x.asset.key, "pos": [float(v) for v in x.pos],
+                 "quat": [float(v) for v in x.quat]} for x in prov.belief.objects.values()]
+        try:
+            r = self.perception().slot_read(obs, prov.task, label, objs, arm)
+        except Exception as e:  # noqa: BLE001 (a failed read leaves the refine as today)
+            self.report["events"].append({"kind": "slot_read", "label": label, "step": self.bridge.steps_used,
+                                          "error": f"{type(e).__name__}: {e}"[:200]})
+            return None
+        if not r.get("applicable"):
+            return None
+        o, b = prov.belief.objects.get(label), prov.belief.objects.get(r.get("base_label"))
+        ev = {"kind": "slot_read", "label": label, "base": r.get("base_label"), "arm": arm, "step": self.bridge.steps_used,
+              **{k: r.get(k) for k in ("ok", "why", "iou", "yaw_margin", "visible_frac", "moved_mm", "turned_deg", "time_s")},
+              "prior7": None if o is None else [round(float(v), 4) for v in np.r_[o.pos, o.quat]]}
+        self.report["events"].append(ev)
+        if not r.get("ok") or o is None or b is None:
+            ev["applied"] = False
+            return None
+        cp, bp = r["child_pose"], r["base_pose"]
+        o.pos, o.quat = np.asarray(cp[:3], float), np.asarray(cp[3:], float)
+        b.pos, b.quat = np.asarray(bp[:3], float), np.asarray(bp[3:], float)
+        ev.update(applied=True, pose7=[round(float(v), 4) for v in cp])
+        prov.stats["slot_read"] = prov.stats.get("slot_read", 0) + 1
+        if sk is not None:
+            sk.last_refine = {"ok": True, "iou": r.get("iou"), "label": label, "for": "pick", "via": "slot_read"}
+        return {label: (o.pos.copy(), o.quat.copy())}
 
     def _wrist_check(self, prov, obs: dict, label: str, arm: str, kind: str, held, held_label) -> dict | None:
         """The grasp-time wrist check (``RuntimeConfig.wrist_check``) on this hover's frame: verdicts for ``label``
@@ -1848,14 +1946,19 @@ def _short(params: dict) -> dict:
     return {k: (v if isinstance(v, (str, int, float, bool, type(None))) else str(v)[:200]) for k, v in params.items()}
 
 
+# the per-object perception fields an episode report keeps: the digit read is among them, so a run shows whether the
+# numeral reader ran (2026-10-28: the first glyph rows looked unread because the report dropped these fields)
+_SLIM_PERCEPTION = ("confidence", "ambiguous", "occluded", "place_tag", "residual", "review",
+                    "digit", "digit_conf", "digit_source", "digit_unread", "glyph_read")
+
+
 def _slim(rec: dict) -> dict:
     """The record without bulky per-view diagnostics (kept in the episode report)."""
     out = {}
     for k, v in rec.items():
         if isinstance(v, dict) and k in ("Rigid", "Geometry", "Articulation", "Dynamic"):
             out[k] = {c: [{kk: (vv if kk != "_perception" else {x: y for x, y in vv.items()
-                                                               if x in ("confidence", "ambiguous", "occluded",
-                                                                        "place_tag", "residual", "review")})
+                                                               if x in _SLIM_PERCEPTION})
                            for kk, vv in r.items()} for r in lst] for c, lst in v.items()}
         elif k in ("_missing", "_not_found", "_perception"):
             out[k] = v

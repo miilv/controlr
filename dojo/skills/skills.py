@@ -290,17 +290,39 @@ class Skills:
         # ``library.put_into``'s options (stream H; empty = today): "spot" (a wider handover search, else a put-back),
         # "patient" (tries / rounds while the budget lasts), "sequence" (no two picks this close in one round)
         self.put_into_opts: set = set()
+        self._joint_limits = "wide"
         # ``library.on_targets``' support top (stream H): "bbox" (today: the support's bbox top) | "mesh" (the mesh's
         # surface under the object's whole footprint, flat poses only)
         self.place_surface = "bbox"
         # ``library.push_to``'s axis order (stream H): "greedy" (today: most left to go first) | "lookahead" (the other
         # axis first when its stroke would be blocked once the first is done)
         self.push_order = "greedy"
+        # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
+        # (to its planned grasp's TCP)
+        self.stack_reach = "centre"
+        # ``library.bowl_geometry``'s nest height (stream H): "bins" (today) | "measured" (the twin's rest height per
+        # asset, else the mesh's radial profile)
+        self.nest_height = "bins"
         self.consume_events: list = []
         self.last_verified: dict | None = None
         self.vstats = {"segments": 0, "first_ok": 0, "later_ok": 0, "none_ok": 0, "candidates": 0}
         # why the twin rejected candidates: {"rejects": {"<kind>: <criterion>": n}, "examples": [...]} (judges' ``why``)
         self.vreasons = {"rejects": {}, "examples": []}
+
+    @property
+    def joint_limits(self) -> str:
+        """The IK's joint range (``kinematics.JOINT_LIMIT_SETS``; stream H): "wide" (today) | "measured" (joint 5 inside
+        the sim's +-pi/2 stop). Setting it changes ``self.kin`` (shared with the motion planner) and drops its IK cache."""
+        return self._joint_limits
+
+    @joint_limits.setter
+    def joint_limits(self, mode: str) -> None:
+        from dojo.skills.kinematics import JOINT_LIMIT_SETS
+        if mode not in JOINT_LIMIT_SETS:
+            raise ValueError(f"joint_limits {mode!r}: one of {sorted(JOINT_LIMIT_SETS)}")
+        self.kin.limits = np.asarray(JOINT_LIMIT_SETS[mode], float).copy()
+        self.kin.__dict__.pop("_ik_cache", None)
+        self._joint_limits = mode
 
     # ------------------------------------------------------------------ consumer-tolerance events
     def _consume(self, skill: str, label: str | None, T_used, need: dict, purpose: str, arm: str | None = None,
@@ -2118,12 +2140,23 @@ class Skills:
 
     def can_pick(self, label: str, arm: str, method: str = "auto") -> bool:
         """Grasp feasibility from the arm's home pose (cached per world refresh)."""
+        return self._home_pick(label, arm, method) is not None
+
+    def _home_pick(self, label: str, arm: str, method: str = "auto") -> "PickPlan | None":
+        """The best pick of ``label`` by ``arm`` from its home pose, or None (cached per world refresh)."""
         key = (label, arm, method, self.world.step)
         cache = self.__dict__.setdefault("_can_pick", {})
         if key not in cache:
             pp = self.plan_pick(label, arm, method, q_start={arm: self.world.home_q[arm]}, keep=1)
-            cache[key] = isinstance(pp, PickPlan)
+            cache[key] = pp if isinstance(pp, PickPlan) else None
         return cache[key]
+
+    def pick_reach(self, label: str, arm: str, method: str = "auto") -> float:
+        """Horizontal distance (m) from ``arm``'s base to the TCP of its best pick of ``label`` from home; the object's
+        centre when it has none."""
+        pp = self._home_pick(label, arm, method)
+        p = pp.grasp.T[:2, 3] if pp is not None else self.world.obj(label).center_w[:2]
+        return float(np.linalg.norm(np.asarray(p, float) - self.kin.base(arm)[:2, 3]))
 
     def already_there(self, job: "Job") -> bool:
         """Does the job's object already rest at the job's target (within the job's tolerances)?"""

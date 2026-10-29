@@ -120,7 +120,8 @@ def test_estimator_flags_default_off():
 
     cfg = EstimatorConfig()
     assert cfg.sam_fg == "off" and cfg.sam_propose == "off"
-    assert cfg.series_count == "min"  # a bug fix, not an experiment axis: journal 2026-10-27-dojo-sam
+    assert cfg.series_count == "seg"  # "min" until 2026-10-28; "seg" = "min" without a segmenter server (journals
+                                      # 2026-10-27-dojo-sam, 2026-10-28-dojo-plan-none-perception)
 
 
 def test_sam_fg_hook(fake_server, monkeypatch):
@@ -281,6 +282,90 @@ def test_series_count_from_the_twin_segmenter_and_linked_counts(monkeypatch):
     out, info = il._series_count("t", groups, None, "", il.EstimatorConfig(series_count="seg"), dets=dets)
     assert len(out[0]["labels"]) == 5 and len(out[1]["labels"]) == 5
     out, info = il._series_count("t", groups, None, "", il.EstimatorConfig(series_count="seg"), dets=None)
-    assert len(out[0]["labels"]) == 4 and out[1]["labels"] == ["geometry0"] * 4    # no server: the minimum
+    assert len(out[0]["labels"]) == 4 and out[1]["labels"] == ["geometry0"]        # no server: exactly "min"
     out, _ = il._series_count("t", groups, None, "", il.EstimatorConfig(series_count="min"))
-    assert out[1]["labels"] == ["geometry0"]                                       # the default is unchanged
+    assert out[1]["labels"] == ["geometry0"]                                       # "min": no linked counts
+    assert il.EstimatorConfig().series_count == "seg"                              # the default since 2026-10-28
+
+
+def test_seg_propose_add_only_fills_a_short_group_and_never_touches_members(monkeypatch):
+    """seg_propose "add": an unexplained mask of the group's EXACT class fills a short group; members are never moved,
+    re-fitted or given a hint, and a mask of another asset of the same category adds nothing."""
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+    from dojo.perception import seg_twin
+
+    def det(r, key):
+        m = np.zeros((40, 40), np.uint8)
+        m[r:r + 8, 0:8] = 1
+        return SimpleNamespace(mask=m, key=key, score=0.9, alts=[])
+
+    dets = [det(0, "Rigid/mallet/00000"), det(20, "Rigid/mallet/00001")]
+    monkeypatch.setattr(seg_twin, "client", lambda: SimpleNamespace(detect=lambda img, conf=0.4: list(dets)))
+    head = SimpleNamespace(cam=None, known=np.ones((40, 40), np.uint8))
+    g = {"labels": ["mallet"], "candidates": ["Rigid/mallet/00000"], "placement": {}}
+    fitted = []
+
+    def fake_fit(mask, key, gi, g_, prior, shapes, views, others, cfg, groups):
+        hy = SimpleNamespace(label_group=gi, x=0.1, y=0.2, key=key, per_view={},
+                             sm=lambda: SimpleNamespace(sil=lambda cam, T: mask), T=lambda: np.eye(4))
+        fitted.append(key)
+        return (0.9, hy)
+
+    monkeypatch.setattr(il, "_seg_fit", fake_fit)
+    monkeypatch.setattr(il, "_union_masks", lambda *a, **k: {})
+    chosen: list = []
+    info = il._seg_propose(chosen, {"cam_head": head}, np.zeros((40, 40, 3), np.uint8),
+                           il.EstimatorConfig(seg_propose="add"), [g], [(0, g, None)], {0: {}})
+    assert fitted == ["Rigid/mallet/00000"] and len(chosen) == 1 and info["added"] and not info["moved"]
+    assert any(t.get("why") == "add: not the group's exact class" for t in info["trace"])
+
+
+def test_seg_add_move_weak_moves_only_a_weak_member_off_its_class(monkeypatch):
+    """seg_add_move_weak (with "add"): a full group's member with confidence < 0.5 and no exact-class mask under it
+    moves onto the unexplained exact-class mask; a confident member, or one over its own class's mask, stays."""
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+    from dojo.perception import seg_twin
+
+    def mask(r):
+        m = np.zeros((40, 40), np.uint8)
+        m[r:r + 8, 0:8] = 1
+        return m
+
+    dets = [SimpleNamespace(mask=mask(20), key="Rigid/mallet/00000", score=0.9, alts=[])]
+    monkeypatch.setattr(seg_twin, "client", lambda: SimpleNamespace(detect=lambda img, conf=0.4: list(dets)))
+    head = SimpleNamespace(cam=None, known=np.ones((40, 40), np.uint8))
+    g = {"labels": ["mallet"], "candidates": ["Rigid/mallet/00000"], "placement": {}}
+
+    def member(sil_loss):
+        return SimpleNamespace(label_group=0, x=0.0, y=0.0, key="Rigid/mallet/00000", loss=sil_loss,
+                               per_view={"sil_loss": sil_loss}, sm=lambda: SimpleNamespace(sil=lambda cam, T: mask(0)),
+                               T=lambda: np.eye(4))
+
+    def fake_fit(m, key, gi, g_, prior, shapes, views, others, cfg, groups):
+        return (0.9, SimpleNamespace(label_group=gi, x=0.3, y=0.4, key=key, per_view={},
+                                     sm=lambda: SimpleNamespace(sil=lambda cam, T: m), T=lambda: np.eye(4)))
+
+    monkeypatch.setattr(il, "_seg_fit", fake_fit)
+    monkeypatch.setattr(il, "_union_masks", lambda *a, **k: {})
+    assert il.EstimatorConfig().seg_add_move_weak is True                         # the default since 2026-10-28
+    for sil_loss, on, moves in ((0.68, True, True), (0.68, False, False), (0.2, True, False)):
+        chosen = [member(sil_loss)]
+        info = il._seg_propose(chosen, {"cam_head": head}, np.zeros((40, 40, 3), np.uint8),
+                               il.EstimatorConfig(seg_propose="add", seg_add_move_weak=on), [g], [(0, g, None)], {0: {}})
+        assert bool(info["moved"]) == moves and (chosen[0].x == 0.3) == moves
+
+
+def test_seg_add_refit_poor_is_on_by_default():
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from dojo.perception import inverse_layout as il
+    cfg = il.EstimatorConfig()
+    assert cfg.seg_add_refit_poor is True and cfg.seg_poor_iou == 0.5 and cfg.seg_poor_gain == 0.25

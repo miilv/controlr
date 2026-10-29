@@ -42,7 +42,7 @@ from scipy.spatial.transform import Rotation
 from .cameras import TABLE_Z, Camera, R_to_quat_wxyz, cameras_from_state, quat_wxyz_to_R
 from .identity_marks import identity_marks
 from .select_ties import assign_keys, tie_mode
-from .digits import glyph_evidence, record_fields as digit_fields
+from .digits import GLYPH_ONLY, glyph_evidence, record_fields as digit_fields
 from .render import TEXTURE_CRITICAL, Asset, catalog_root, crop_camera, gl, gl_roi, load_asset, silhouette, tex, tex_for, tex_roi
 from .segment import ViewMasks, load_backgrounds, segment_views, segment_virtual
 from .slots import settled as _settled, support_slot
@@ -865,6 +865,72 @@ def _glyph_read_slot(h: "Hypothesis", g: dict, placement: dict, tag: str | None,
         h.key, h.tag = r["key"], sm_k.tag
         h.per_view["identity"] = "read"
     return h
+
+
+def _takes_robot(fn) -> bool:
+    import inspect
+    try:
+        return "robot" in inspect.signature(fn).parameters
+    except (TypeError, ValueError):
+        return False
+
+
+NUMERAL_MIN_VIEWS = 2   # S's held-out test: one head read is wrong 1-5 % of the time; a digit is confirmed by 2 views
+
+
+def _glyph_read_numeral(h: "Hypothesis", views) -> None:
+    """``cfg.glyph_read`` on a ``GLYPH_ONLY`` object (RoboDojo's 3-D numerals): the crop classifier
+    (``glyph_read.classify_mask``) reads the object's silhouette at its fitted pose in every view, frame 0 and looks
+    alike. Reads that disagree leave the digit unknown. Agreeing reads in >= ``NUMERAL_MIN_VIEWS`` views set it with
+    confidence 1; a single view sets it with confidence 0.5 (a skill confirms it with a wrist look before committing).
+    The chosen asset follows the digit within its texture group (the checker reads idx % 10). No read: unknown;
+    B1's texture compare never sets it."""
+    from .digits import GLYPH_ONLY, NUMERAL_DIGIT, as_digit
+
+    cat = h.key.split("/")[1]
+    if cat not in GLYPH_ONLY or h.per_view.get("occluded"):
+        return
+    from . import glyph_read
+
+    classify = getattr(glyph_read, "classify_mask", None)
+    if classify is None:
+        h.per_view["glyph_read"] = {"read": False, "why": "no classify_mask"}
+        return
+    reads, whys = {}, {}
+    for name, v in sorted(views.items()):
+        try:
+            m = h.sm().sil(v.cam, h.T())
+            if getattr(v, "known", None) is not None:
+                m = m & (v.known > 0)
+            kind = "cam_head" if name.split("@")[0] == "cam_head" else "cam_left_wrist"
+            rob = getattr(v, "robot", None)
+            # the arm's pixels (S's reader v2 refuses a tile half hidden by the gripper: a cut 3 reads as a 9)
+            r = (classify(v.img, m, view=kind, robot=np.asarray(rob) > 0, category=cat)
+                 if rob is not None and _takes_robot(classify) else classify(v.img, m, view=kind, category=cat))
+        except Exception as e:  # a reader failure never takes perception down: the digit stays unknown
+            r = {"read": False, "why": f"error: {type(e).__name__}"}
+        d = as_digit(r.get("name")) if r.get("read") else None
+        if d is not None:
+            reads[name] = (d, float(r.get("margin") or 0.0))
+        else:
+            whys[name] = r.get("why") or ("not a digit" if r.get("read") else "no read")
+    digits_read = {d for d, _ in reads.values()}
+    out = {"views": {k: v[0] for k, v in reads.items()}, "unread": whys}
+    if len(digits_read) != 1:
+        out.update(read=False, why="disagree" if digits_read else (sorted(set(whys.values()))[0] if whys else "not visible"))
+        h.per_view["glyph_read"] = out
+        return
+    d = digits_read.pop()
+    out.update(read=True, name=str(d), conf=1.0 if len(reads) >= NUMERAL_MIN_VIEWS else 0.5, n_views=len(reads),
+               margin=round(max(m for _, m in reads.values()), 3))
+    cands = list(h.per_view.get("geom_group") or [h.key])
+    idxs = [int(k.split("/")[2]) for k in cands if k.split("/")[1] == cat]
+    grp = int(h.key.split("/")[2]) // 10
+    f = NUMERAL_DIGIT[cat]
+    same = [i for i in idxs if i // 10 == grp and f(i) == d] or [i for i in idxs if f(i) == d]
+    if same:
+        h.key = f"{h.key.split('/')[0]}/{cat}/{same[0]:05d}"
+    h.per_view["glyph_read"] = out
 
 
 @lru_cache(maxsize=4096)
@@ -1862,7 +1928,7 @@ def _free_search_slot_children(slot_groups, chosen, slot_recs, views, cfg, group
     return out
 
 
-def _place_support_slots(slot_groups, chosen, groups, views, task, record) -> list:
+def _place_support_slots(slot_groups, chosen, groups, views, task, record, thin_keep: bool = False) -> list:
     """Records for labels pinned in support slots (``support_slot``): pose from the chosen base, then a per-view check
     on the pixels only the object would explain (its silhouette minus the base's and every other object's). A slot
     that the views see empty (no view supports it, one refutes it) -> ``_not_found`` "support slot empty"."""
@@ -1922,7 +1988,7 @@ def _place_support_slots(slot_groups, chosen, groups, views, task, record) -> li
             refute += f < SLOT_EMPTY_FG
         hb0 = base_by_label[base]
         thin = (float(np.min(a_cache[key].extents)) <= THIN_CHILD_M
-                and bool(hb0.per_view.get("low_contrast") or hb0.per_view.get("rechosen_over")))
+                and (thin_keep or bool(hb0.per_view.get("low_contrast") or hb0.per_view.get("rechosen_over"))))
         if refute > 0 and support == 0 and not thin:
             record.setdefault("_not_found", []).append({"label": lab, "candidates": [key], "confidence": 0.0,
                                                         "reason": "support slot empty", "per_view_fg": fracs})
@@ -3058,7 +3124,7 @@ def _series_count(task: str, groups: list[dict], ms: list | None, instruction: s
         for pre in sel.get("label_prefix") or []:
             by_prefix[pre] = n
         g["labels"] = [g["labels"][0]] * n
-    if cfg.series_count == "seg":
+    if cfg.series_count == "seg" and dets is not None:     # no server: exactly "min"
         for g in out:
             pre = _linked_prefix(task, g)
             if pre is not None and by_prefix.get(pre, 1) > 1:
@@ -3212,10 +3278,18 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
         best = int(np.argmax(any_iou[i]))
         return any_iou[i][best] < 0.1 or chosen[i].label_group not in det_groups[best]
 
-    # 1. explained: identity hint + local re-fit inside the mask
-    for i, j in d_of.items():
+    add_only = cfg.seg_propose == "add"
+    # 1. explained: identity hint + local re-fit inside the mask ("add": members are never touched)
+    # ("add" + seg_add_refit_poor: only a member fitted poorly inside its own exact-class mask, below seg_poor_iou, is
+    # re-fitted there, and only for a large gain; no hints, flips or identity changes. play_Xylophone: the stand fitted
+    # at IoU 0.42 inside its own mask re-fits to 0.82-0.93, and the mallet the config rests on it follows)
+    poor_only = add_only and cfg.seg_add_refit_poor
+    for i, j in ([] if (add_only and not poor_only) else d_of.items()):
         h, d = chosen[i], dets[j]
-        if d.key in groups[h.label_group]["candidates"]:
+        if poor_only and (d.key != h.key or fixed(h)
+                          or _mask_iou(sils[i], _seg_views(views, d.mask)[1], _seg_views(views, d.mask)[2]) >= cfg.seg_poor_iou):
+            continue
+        if d.key in groups[h.label_group]["candidates"] and not poor_only:
             h.per_view["seg_key"] = (d.key, round(float(d.score), 3))
             info["hints"] += 1
         if fixed(h):
@@ -3236,7 +3310,7 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
         took_flip = False
         # the 180-degree flip of a near-symmetric outline (a car / shoe / brush read backwards): the mask cannot tell,
         # the texture decides, as in sam_propose
-        if cfg.seg_flip and not yaw_fixed and h.sm().yaw_period > 1.5 * np.pi:
+        if cfg.seg_flip and not poor_only and not yaw_fixed and h.sm().yaw_period > 1.5 * np.pi:
             fl = fit_at(h.yaw + np.pi)
             ft = {"label_group": h.label_group, "iou": [round(cand[0], 3), round(fl[0], 3)]}
             if fl[0] >= cand[0] - 0.03:
@@ -3247,7 +3321,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                     cand, took_flip = fl, True
             info.setdefault("flips", []).append(ft)
         sc, x, y, yaw = cand
-        if took_flip or (sc >= base + cfg.seg_refit_margin and np.hypot(x - h.x, y - h.y) <= float(np.max(h.sm().asset.extents))):
+        margin_ = cfg.seg_poor_gain if poor_only else cfg.seg_refit_margin
+        if took_flip or (sc >= base + margin_ and np.hypot(x - h.x, y - h.y) <= float(np.max(h.sm().asset.extents))):
             loss, per = multi_view_loss(h.sm(), h.sm().pose(x, y, yaw, z_off), views, others)
             info["refit"].append({"label_group": h.label_group, "from": [round(h.x, 4), round(h.y, 4), round(h.yaw, 3)],
                                   "to": [round(x, 4), round(y, 4), round(yaw, 3)], "iou": [round(base, 3), round(sc, 3)],
@@ -3259,7 +3334,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
             sils[i] = h.sm().sil(head.cam, h.T())
         # identity across geometries: the mask's class is another shape of the group (a garage figure variant, another
         # shoe) -> that shape fitted inside the mask; taken when its silhouette agrees at least as well (seg_identity_refit)
-        if cfg.seg_identity_refit and d.key != h.key and d.key in g["candidates"] and d.score >= cfg.seg_identity_min \
+        if (cfg.seg_identity_refit and not poor_only and d.key != h.key and d.key in g["candidates"]
+                and d.score >= cfg.seg_identity_min) \
                 and d.key not in h.per_view.get("geom_group", [h.key]):
             sm_new, gkeys = None, []
             for sms in shapes_by_group.get(h.label_group, {}).values():
@@ -3296,9 +3372,18 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                 tr["why"] = "group not pending"
                 continue
             g, prior = pend[gi]
+            if add_only and d.key not in g["candidates"]:
+                tr["why"] = "add: not the group's exact class"
+                continue
             members = [i for i, h in enumerate(chosen) if h.label_group == gi]
             short = len(members) < len(g["labels"])
-            movable = [i for i in members if unexplained(i)] if cfg.seg_move else []
+            movable = [i for i in members if unexplained(i)] if (cfg.seg_move and not add_only) else []
+            if add_only and cfg.seg_add_move_weak and not short:
+                # "add" + seg_add_move_weak: a weak member (confidence < seg_weak_conf) with no mask of its own exact
+                # class under it moves onto this unexplained exact-class mask (a slot child placed from a misread base)
+                movable = [i for i in members if not fixed(chosen[i]) and i not in d_of
+                           and 1.0 - float(chosen[i].per_view.get("sil_loss", chosen[i].loss)) < cfg.seg_weak_conf
+                           and not any(dd.key == chosen[i].key and any_iou[i][jj] >= 0.1 for jj, dd in enumerate(dets))]
             # members without head evidence first (occluded guesses), then the worst-fitting
             movable.sort(key=lambda i: (not chosen[i].per_view.get("occluded"),
                                         -chosen[i].per_view.get("sil_loss", chosen[i].loss)))
@@ -3461,6 +3546,11 @@ class EstimatorConfig:
     top_feature_yaw: bool = True  # the yaw of a round-outline object with a cut in its top (a keyhole) from that cut
     small_rechoose: bool = True  # a small unique object's loose fit gives way to a tighter one on another blob (pool)
     slot_free_search: bool = True  # a slot child whose slot looks empty is looked for loose on the table
+    # a thin slot child (``THIN_CHILD_M``: deposit_coin's 2 mm coin) is never refuted by its own few pixels, whatever the
+    # base's fit: placed from its base, flagged unverified (the pick hover's ``slot_read`` measures it). Off: only on a
+    # low-contrast / re-chosen base. 5.1 c4b_coin_off 100001: the stand 19 mm off on a tight fit (conf 0.63), the coin's
+    # pixels on the table, "support slot empty", and the episode had nothing to plan
+    thin_slot_keep: bool = False
     low_contrast_frac: float | None = 0.6  # still-unfound labels: re-segment at this x fg_thr in their region
     low_contrast_max_loss: float = 0.40  # ... and keep a find only at this silhouette loss or lower
     paired_tex_weight: float = 0.8
@@ -3603,7 +3693,8 @@ class EstimatorConfig:
     # 2026-10-27: 2 of 3 cubes never looked for), "min" = the config's minimum, "sam" = the distinct SAM 3.1 text masks
     # of its vocabulary within the range (needs a SAM server; "min" without one). Single-prefix series are reported
     # under the generator's labels (cube_0, cube_1, ...), which the checker looks up by prefix
-    series_count: str = "min"
+    series_count: str = "seg"     # 2026-10-28: "min" -> "seg" (journal 2026-10-28-dojo-plan-none-perception); without a
+                                   # segmenter server (DOJO_SEG_ADDR) "seg" is exactly "min"
     seg_count_min_score: float = 0.5   # series_count "seg": a detection counts an object at this score (the seed bar)
     # seg_propose: the twin-trained instance segmenter (dojo.perception.seg_twin, class = catalogue asset; a no-op without
     # its server at DOJO_SEG_ADDR). "on": after the joint refinement, the head view's masks of a label group's assets
@@ -3611,13 +3702,22 @@ class EstimatorConfig:
     # a group short of objects gains the fit; a member that no mask of its group explains (no mask under it, or a mask
     # of another category) moves there. Explained members are re-fitted inside their mask (local, by a margin) and keep
     # the mask's class as an identity hint for the appearance step. Default off
-    seg_propose: str = "off"
+    seg_propose: str = "add"         # off | on | add: "add" only fills a label group short of objects from an unexplained
+                                     # mask of the group's exact class; members are never moved, re-fitted or re-identified.
+                                     # "off" until 2026-10-28 (journal 2026-10-28-dojo-plan-none-perception); a no-op
+                                     # without a segmenter server (DOJO_SEG_ADDR)
     seg_min_score: float = 0.4     # detections below are ignored
     seg_accept_iou: float = 0.55   # a proposal's head silhouette vs its mask, to be added / moved there
     seg_match_iou: float = 0.3     # a chosen object's head silhouette explains a mask
     seg_refit_margin: float = 0.05  # a local re-fit inside the explained mask must gain this much IoU
     seg_move: bool = True          # move an unexplained member to an unexplained mask of its group
     seg_flip: bool = True          # an explained member's 180-degree flip inside its mask, taken when the texture agrees
+    seg_add_move_weak: bool = True   # "add" only: a weak member with no exact-class mask under it may move (see above);
+                                     # False until 2026-10-28 (journal 2026-10-28-dojo-plan-none-perception)
+    seg_weak_conf: float = 0.5       # ... below this confidence (1 - its silhouette loss)
+    seg_add_refit_poor: bool = True   # "add" only: a member below seg_poor_iou inside its own exact-class mask re-fits
+    seg_poor_iou: float = 0.5        # ... there, kept only with a gain of seg_poor_gain IoU (within its size)
+    seg_poor_gain: float = 0.25      # (seg_add_refit_poor: False until 2026-10-28, journal 2026-10-28-dojo-plan-none-perception)
     seg_dup_iou: float = 0.7       # class-agnostic de-duplication of the masks (one object, two classes); 0 = off
     seg_identity_w: float = 0.3    # identity cost bonus x score for the mask's class (0 = off)
     # an explained member whose mask names another SHAPE of its group is re-fitted as that shape inside the mask, kept when
@@ -3666,7 +3766,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         sam_info["text"]["s"] = round(time.time() - t_s, 3)
     series: dict = {}
     seg_dets = None
-    if cfg.series_count == "seg" and "cam_head" in images:
+    if (cfg.series_count == "seg" and "cam_head" in images
+            and any(instance_range(task, g) is not None or _linked_prefix(task, g) for g in groups)):
         from . import seg_twin
         c = seg_twin.client()
         if c is not None:
@@ -4137,6 +4238,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 chosen[i].per_view["glyph"] = glyph_evidence(chosen[i].key, TX[row][ci],  # score, its margin in its row
                                                              float(rest.min() - C[row, ci]) if rest.size else None,
                                                              cfg.glyph_min_margin, cfg.ambiguity_margin)
+    if cfg.glyph_read != "off":
+        for h in chosen:
+            _glyph_read_numeral(h, views)
     timings["identity_s"] = round(time.time() - t4, 3)
 
     # ---- yaw from a feature cut into the top (insert_key's round lock: its keyhole). Such an outline is the same at
@@ -4199,7 +4303,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     # ---- support-slot labels (see above): from the chosen base's pose
     slot_recs = []
     if slot_groups:
-        slot_recs = _place_support_slots(slot_groups, chosen, groups, views, task, record)
+        slot_recs = _place_support_slots(slot_groups, chosen, groups, views, task, record, thin_keep=cfg.thin_slot_keep)
         if cfg.slot_free_search:
             slot_recs += _free_search_slot_children(slot_groups, chosen, slot_recs, views, cfg, groups, record)
 
@@ -4254,7 +4358,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         near_home = h.tag != "fixed" and any(np.hypot(h.x - c[0], h.y - c[1]) < HOME_HIDE_RADIUS for c in HOME_HIDDEN_XY)
         fg_near = resid_near.get(id(h), 0.0)
         # a digit only from a glyph read (digits.record_fields); an unread one is also a reason to look again
-        dfields = digit_fields(cat, idx, h.per_view.get("glyph"), h.key, len(h.per_view.get("geom_group") or g["candidates"]))
+        dfields = digit_fields(cat, idx, h.per_view.get("glyph"), h.key, len(h.per_view.get("geom_group") or g["candidates"]),
+                               classifier=h.per_view.get("glyph_read"))
         ambiguous = (bool(alt is not None and alt["margin"] < cfg.ambiguity_margin) or bool(h.per_view.get("occluded"))
                      or bool(h.per_view.get("low_contrast")) or dfields.get("digit_source") == "unread"
                      or rival is not None or hidden > cfg.hidden_frac_flag or near_home or fg_near > cfg.fg_resid_flag)
@@ -4284,7 +4389,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                **({"on_base": h.per_view["on_base"]} if h.per_view.get("on_base") else {}),
                                **({"identity_swap": h.per_view["identity_swap"]} if h.per_view.get("identity_swap") else {}),
                                **({"twin": h.per_view["twin"]} if h.per_view.get("twin") else {}),
-                               **({"identity": h.per_view["identity"]} if h.per_view.get("identity") else {})}}
+                               **({"identity": h.per_view["identity"]} if h.per_view.get("identity") else {}),
+                               **({"glyph_read": h.per_view["glyph_read"]} if cat in GLYPH_ONLY and h.per_view.get("glyph_read") else {})}}
         if h.tag != "fixed" and len(g["labels"]) == 1:  # single-label groups (general_pickup's target): the
             # next-best places elsewhere, so a look can check them when this one is doubtful
             alts = []

@@ -3783,3 +3783,30 @@ def test_background_perception_sees_extra_observations(monkeypatch):
     assert any(c["held"] for c in pc.bg)                       # observations during a carry name the held block
     assert rep["bg_perception"]["calls"] == len(pc.bg) and rep["bg_perception"]["extra_obs"] > 0
     assert any(e.get("kind") == "bg_perception" for e in rep["events"])
+
+
+def test_catalog_gate_fails_loudly_on_a_gap_and_passes_when_complete(tmp_path):
+    """scripts/dojo/catalog_gate.sh: every candidate of every task needs geometry (2026-10-28: 143 assets of 15 cells
+    were missing on every box, those cells' camera rows perception-blind)."""
+    import json as _json
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    cat = tmp_path / "catalog"
+    k = "Rigid/cube/00003"
+    (cat / k).mkdir(parents=True)
+    (cat / k / "geom.npz").write_bytes(b"x")
+    (cat / k / "info.json").write_text("{}")
+    (cat / "index.json").write_text(_json.dumps({k: {}}))
+    (cat / "tasks.json").write_text(_json.dumps({"swap_blocks": {"labels": {"a": {"candidates": [k]}}},
+                                                 "hang_mugs": {"labels": {"m": {"candidates": ["Rigid/mug/00000"]}}}}))
+    gate = Path(__file__).resolve().parents[2] / "scripts" / "dojo" / "catalog_gate.sh"
+    env = {**os.environ, "PY": sys.executable}
+    r = subprocess.run(["bash", str(gate), str(cat)], capture_output=True, text=True, env=env)
+    assert r.returncode == 1 and "CATALOG GATE FAILED" in r.stderr and "catalog_md5" in r.stdout
+    from dojo.runtime.supervisor import VOCABULARIES
+    (cat / "tasks.json").write_text(_json.dumps({v.name: {"labels": {"a": {"candidates": [k]}}} for v in VOCABULARIES}))
+    r = subprocess.run(["bash", str(gate), str(cat)], capture_output=True, text=True, env=env)
+    assert r.returncode == 0 and "catalog gate OK" in r.stdout, r.stdout + r.stderr

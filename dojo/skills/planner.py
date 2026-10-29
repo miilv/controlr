@@ -268,7 +268,7 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
     # pour from one container into another: balls (a cup into a vase) or a liquid (a bottle into a cup)
     if re.search(r"\bpour\b", text):
         if re.search(r"\bballs?\b", text):
-            return run("pour")
+            return run("pour_p1" if (opts or {}).get("pour") == "full" else "pour")
         if re.search(r"\bliquid\b|\bwater\b|\bwine\b", text) and not re.search(r"\bfirst\b.*\bsecond\b", text):
             return run("pour_bottle")
     # pick one named object up by a height. The object: the one whose PUBLIC asset description is the instruction's
@@ -279,6 +279,16 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
         phrase = m.group(1).strip()
         hits = [o for o in world.objects.values() if o.obj_type == "Rigid" and getattr(o, "identity_known", True)
                 and phrase in asset_descriptions(o.asset.key)]                 # clutter too: never assume the role
+        if (opts or {}).get("pickup") == "library":                           # our Skills.pick (dojo/skills/pickup.py)
+            if len(hits) != 1:
+                words = {_singular(w_) for w_ in re.findall(r"[a-z]+", phrase)}
+                hits = [o for o in world.objects.values() if o.obj_type == "Rigid" and getattr(o, "identity_known", True)
+                        and all(_singular(t) in words for t in o.category.lower().split("_") if t)]
+            if len(hits) == 1:
+                mby = re.search(r"\bby\s+(\d+(?:\.\d+)?)\s*(cm|mm|m)\b", text)
+                by = float(mby.group(1)) * {"cm": 0.01, "mm": 0.001, "m": 1.0}[mby.group(2)] if mby else 0.10
+                return Plan("lift_up", {"obj": hits[0].label, "by": by, "fallback": True},
+                            f"lift {hits[0].label} by {by:.2f} m (library, then the ported pick_up)")
         return run("pick_up", obj="@" + hits[0].label) if len(hits) == 1 else run("pick_up")
     # sort objects into containers by category: free ("sort ... by category into the baskets") or a fixed map ("put X
     # objects into the left basket, ...", which the skill parses)
@@ -294,7 +304,8 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
         pairs = [(r, p) for r in rigid for p in pads if r.category.lower() in p.category.lower().split("_")
                  and r.category.lower() != p.category.lower()]
         if len(pairs) == 1:
-            return run("planar_drag", obj="@" + pairs[0][0].label, target="@" + pairs[0][1].label)
+            skill = "planar_drag_p1" if (opts or {}).get("drag") == "turn" else "planar_drag"
+            return run(skill, obj="@" + pairs[0][0].label, target="@" + pairs[0][1].label)
     return None
 
 
@@ -660,7 +671,8 @@ def solve(sk) -> dict:
     """The fixed procedure: plan from the instruction and the world, run the skill, finish."""
     w = sk.refresh()
     p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on"
-             and {"swap": getattr(sk, "ported_swap", "fixed")})
+             and {"swap": getattr(sk, "ported_swap", "fixed"), "drag": getattr(sk, "ported_drag", "v1"),
+                  "pour": getattr(sk, "ported_pour", "v1"), "pickup": getattr(sk, "ported_pickup", "v1")})
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")
     if p.skill == "none":

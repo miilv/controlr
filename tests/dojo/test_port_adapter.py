@@ -384,3 +384,119 @@ def test_free_sort_instruction_routes_to_classify():
     assert planner.plan(instr, w).skill == "none"
     p = planner.plan(instr, w, ported=True)
     assert p.skill == "ported" and p.args["skill"] == "classify_into_bins_v3b"
+
+
+def _push_rows(t_yaw, pad_yaw):
+    """Camera push_T 100005's belief on compute4: the T and its pad 179.5 deg apart (perception within 0.3 deg)."""
+    def q(yaw):
+        return [math.cos(math.radians(yaw) / 2), 0, 0, math.sin(math.radians(yaw) / 2)]
+    rows = rows_push()
+    rows[0]["pos"], rows[0]["quat"] = [-0.0289, -0.1813, Z + 0.0075], q(t_yaw)
+    rows[1]["pos"], rows[1]["quat"] = [-0.3602, -0.2072, Z + 0.001], q(pad_yaw)
+    return rows
+
+
+@pytest.mark.parametrize("pad_yaw", [-66.9, -67.9])
+def test_drag_turn_direction_by_feasibility(pad_yaw):
+    """v1 drags 179.5 deg the way the yaw difference's sign says; at -66.9 that runs the wrist into j6's limit (four legs
+    of 'no sane planar plan', as on compute4), at -67.9 it works. planar_drag_p1 plans both and drives the feasible one."""
+    instr = SCENES["planar_drag"][1]
+    env, sk = gt_skills(_push_rows(112.6, pad_yaw), instr, step_lim=600)
+    p = planner.plan(instr, sk.refresh(), ported={"drag": "turn"})
+    assert p.args["skill"] == "planar_drag_p1"
+    assert ported(sk, **p.args)["verified"] is True
+    env, sk = gt_skills(_push_rows(112.6, pad_yaw), instr, step_lim=600)
+    v1 = ported(sk, "planar_drag", {"obj": "@t", "target": "@target_t"})["verified"]
+    assert v1 is (pad_yaw == -67.9)
+
+
+def test_ported_drag_defaults_v1():
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert RuntimeConfig().ported_drag == "v1" and SKILL_ATTRS["ported_drag"][0] == "v1"
+    env, sk = gt_skills(rows_push(), SCENES["planar_drag"][1])
+    assert planner.plan(SCENES["planar_drag"][1], sk.refresh(), ported=True).args["skill"] == "planar_drag"
+
+
+def test_camera_close_waits_while_the_official_reading_moves():
+    """Camera mode reads the fingers from the official gripper value; while it still changes after a close the adapter
+    waits (at most SETTLE_MAX steps), and the report carries the reading."""
+    from dojo.skills.ported.harness_robot import SETTLE_MAX
+    env0, sk = belief_skills(rows_push(), rows_push(), SCENES["planar_drag"][1])
+    orig = env0.proprio
+    seq = iter([0.6, 0.4, 0.25, 0.18, 0.163] + [0.163] * 50)
+    state = {"v": 1.0}
+
+    def prop():
+        st = orig()
+        for a in ARMS:
+            st[f"{a}_ee_joint_state_official"] = np.array([state["v"] if a == "left" else 1.0])
+        return st
+    env0.proprio = prop
+    orig_step = env0.step
+
+    def step(action):
+        if float(np.ravel(action["left_ee_joint_state"])[0]) < 0.5:
+            state["v"] = next(seq)
+        return orig_step(action)
+    env0.step = step
+    sk.env._env = env0
+    robot = HarnessRobot(sk)
+    g = robot.gripper(arm="left", action="close")              # 4 ramp + 3 wait steps; the reading still moves
+    assert 7 < g["steps"] <= 7 + SETTLE_MAX and g["official"] == pytest.approx(0.163) and g["grasp_detected"]
+
+
+def test_pour_full_runs_the_whole_profile_when_the_belief_has_no_balls():
+    """Camera mode: the balls inside the cup are never in the belief. v1 then reads "cup empty" at its first hold and
+    stops; pour_p1 (ported_pour="full") runs the whole roll profile."""
+    import json as _json
+    instr = SCENES["pour"][1]
+    record = [r for r in rows_pour() if not r["label"].startswith("sphere")]
+    stops = {}
+    for skill in ("pour", "pour_p1"):
+        env0, sk = belief_skills(record, rows_pour(), instr, step_lim=600)
+        p = planner.plan(instr, sk.refresh(), ported={"pour": "full" if skill == "pour_p1" else "v1"})
+        assert p.args["skill"] == skill
+        ported(sk, **p.args)
+        stops[skill] = _json.loads(sk.ported_runs[-1]["details"])["pour_stop"]
+    assert stops["pour"] == "cup empty" and stops["pour_p1"] == "profile end"
+
+
+def test_ported_pour_defaults_v1():
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert RuntimeConfig().ported_pour == "v1" and SKILL_ATTRS["ported_pour"][0] == "v1"
+
+
+def test_library_pickup_route_and_lift():
+    from dojo.skills import library as L
+    instr = "Pick up the toy car by 10 cm."
+    env, sk = gt_skills(rows_pickup(), instr, step_lim=200)
+    w = sk.refresh()
+    p = planner.plan(instr, w, ported={"pickup": "library"})
+    assert p.skill == "lift_up" and p.args == {"obj": "target", "by": 0.10, "fallback": True}
+    assert planner.plan(instr, w, ported=True).args == {"skill": "pick_up", "args": {}}       # default: unchanged
+    lifted = []
+    sk.ex.on_step = lambda ex: lifted.append(env.objects[0]["pos"][2])
+    res = L.skill_fn(p.skill)(sk, **p.args)
+    assert res["ok"] and max(lifted) > Z + 0.02 + 0.10
+
+
+def test_ported_pickup_defaults_v1():
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert RuntimeConfig().ported_pickup == "v1" and SKILL_ATTRS["ported_pickup"][0] == "v1"
+
+
+def test_library_pickup_falls_back_to_the_ported_pick_up(monkeypatch):
+    from dojo.skills import pickup
+    calls = []
+    monkeypatch.setattr(pickup, "_lift_up", lambda sk, obj, by, tries, min_left: {"ok": False, "stage": "pick"})
+    import dojo.skills.ported as P
+    monkeypatch.setattr(P, "ported", lambda sk, skill, args: calls.append((skill, args)) or {"ok": True, "verified": True})
+    env, sk = gt_skills(rows_pickup(), "Pick up the toy car by 10 cm.", step_lim=200)
+    r = pickup.lift_up(sk, "target", 0.10, fallback=True)
+    assert calls == [("pick_up", {"obj": "@target", "by": 0.10})] and r["stage"] == "fallback" and r["ok"]
+    calls.clear()
+    pickup.lift_up(sk, "target", 0.10, fallback=False)
+    assert calls == []

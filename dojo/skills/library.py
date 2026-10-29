@@ -16,6 +16,7 @@ Every skill returns {"ok", "stage", ...}; failures carry the SkillResult (status
 from __future__ import annotations
 
 import itertools
+import json
 import math
 import re
 import time
@@ -35,8 +36,68 @@ from dojo.skills.world import TABLE_X, TABLE_Y
 
 # ============================================================================ stack_objects
 
-def bowl_geometry(o) -> dict:
-    """Rim wall (inner / outer radius at the top) and the nesting offset of two copies (m), from the mesh."""
+_BOWL_NEST: dict | None = None
+_NEST_PROFILE: dict = {}
+
+
+def bowl_nest_measured(key: str) -> float | None:
+    """Where an identical copy rests nested in this bowl asset (origin to origin, m), measured in G3's twin
+    (``data/bowl_nest.json``, ``scripts/skills/h95_nest_probe.py``); None when not measured."""
+    global _BOWL_NEST
+    if _BOWL_NEST is None:
+        from pathlib import Path
+        f = Path(__file__).with_name("data") / "bowl_nest.json"
+        _BOWL_NEST = json.loads(f.read_text()) if f.exists() else {}
+    rec = _BOWL_NEST.get(key)
+    return float(rec["rest_dz"]) if rec and "rest_dz" in rec else None
+
+
+def nest_profile_dz(asset) -> float | None:
+    """The rest height of an identical copy nested in this bowl from the mesh's radial profile: the smallest lift at
+    which the copy's outer wall clears this one's inner wall at every height (1 mm height bins over seeded surface
+    samples). Within 2-4 mm of the twin's rest on the 10 measured assets. Cached per asset."""
+    if asset.mesh is None:
+        return None
+    if asset.key in _NEST_PROFILE:
+        return _NEST_PROFILE[asset.key]
+    V, F = np.asarray(asset.mesh[0], float), np.asarray(asset.mesh[1], int)
+    tri = V[F]
+    ar = np.linalg.norm(np.cross(tri[:, 1] - tri[:, 0], tri[:, 2] - tri[:, 0]), axis=1) / 2
+    rng = np.random.default_rng(0)
+    n = 120000
+    idx = rng.choice(len(F), n, p=ar / max(float(ar.sum()), 1e-12))
+    u = rng.random((n, 2))
+    m = u.sum(1) > 1
+    u[m] = 1 - u[m]
+    P = tri[idx, 0] + u[:, :1] * (tri[idx, 1] - tri[idx, 0]) + u[:, 1:] * (tri[idx, 2] - tri[idx, 0])
+    c = (V[:, :2].max(0) + V[:, :2].min(0)) / 2
+    r = np.hypot(P[:, 0] - c[0], P[:, 1] - c[1])
+    z = P[:, 2] - P[:, 2].min()
+    nb = int(np.floor(float(z.max()) / 0.001)) + 1
+    b = np.minimum((z / 0.001).astype(int), nb - 1)
+    r_out = np.full(nb, np.nan)
+    r_in = np.full(nb, np.nan)
+    for i in range(nb):
+        mm = b == i
+        if mm.any():
+            r_out[i], r_in[i] = float(r[mm].max()), float(r[mm].min())
+    out = None
+    for s in range(nb):                       # lift in mm
+        lo, hi = r_out[: nb - s], r_in[s:]
+        ok = ~(np.isnan(lo) | np.isnan(hi))
+        if not np.any(lo[ok] > hi[ok] + 1e-4):
+            out = s * 0.001
+            break
+    _NEST_PROFILE[asset.key] = out
+    return out
+
+
+def bowl_geometry(o, nest: str = "bins") -> dict:
+    """Rim wall (inner / outer radius at the top) and the nesting offset of two copies (m), from the mesh.
+    ``nest`` (``Skills.nest_height``, stream H): "bins" (today: the vertical extent of the mesh near its floor) |
+    "measured" (the twin's rest height for the asset, ``bowl_nest_measured``, else the radial profile
+    ``nest_profile_dz``). G3: "bins" put bowl1 / bowl2 copies 11 mm too deep (12 vs 23 mm), so the held bowl was
+    pushed into the one below and both tipped 20-30 deg."""
     if o.asset.mesh is None:
         ext = o.asset.extents
         r = float(min(ext[0], ext[1])) / 2
@@ -53,13 +114,15 @@ def bowl_geometry(o) -> dict:
             continue
         m = bins == b
         dz = max(dz, float(V[m, 2].max() - V[m, 2].min()))
+    if nest == "measured":
+        dz = next((x for x in (bowl_nest_measured(o.asset.key), nest_profile_dz(o.asset)) if x is not None), dz)
     return {"r_out": r_out, "r_in": r_in, "nest_dz": dz, "wall": r_out - r_in}
 
 
 def _nested_in(below: str, label: str, clearance: float = 0.004):
     def f(sk: Skills) -> np.ndarray:
         b = sk.world.obj(below)
-        geo = bowl_geometry(sk.world.obj(label))
+        geo = bowl_geometry(sk.world.obj(label), nest=getattr(sk, "nest_height", "bins"))
         R = level_R(current_R(sk, label))
         p = b.pos + b.R @ np.array([0.0, 0.0, geo["nest_dz"] + clearance])
         return T_from(p, R)
@@ -93,7 +156,7 @@ def stack_objects(sk: Skills, objects: list[str], nest: bool = False, ordered: b
             return {"ok": True, "stage": "stacked", "note": "goal already holds (world geometry)"}
     o0 = w.obj(objects[0])
     if nest:
-        geo = bowl_geometry(o0)
+        geo = bowl_geometry(o0, nest=getattr(sk, "nest_height", "bins"))
         h = float(o0.asset.extents[2])
         top_h = TABLE_Z + h + 2 * (geo["nest_dz"] + 0.004) + 0.06
         jobs = plan_stack(sk, objects, top_h, _nested_in, yaw_sym=8, tol_xy=0.03, pick_method="wall", ordered=ordered)
@@ -3116,6 +3179,9 @@ SKILLS.update(_ROW_SKILLS)
 from dojo.skills.ported import SKILLS as _PORTED_SKILLS  # noqa: E402
 
 ROUTE_ONLY = dict(_PORTED_SKILLS)
+from dojo.skills.pickup import SKILLS as _PICKUP_SKILLS  # noqa: E402
+
+ROUTE_ONLY.update(_PICKUP_SKILLS)
 
 # bottles poured into bowls in the instruction's order through the ported pour (stream N; route "pour_order", off by
 # default)

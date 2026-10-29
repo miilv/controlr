@@ -72,6 +72,15 @@
   rendered genuine 5.1 (compute2, bbc9b3a): c4b_laptop_obr_100000 and c4b_laptop_risky_100000 end at step 24/800,
   not_home 0.0, "[hang] no plan for ['headset'] on hooks [0]: ... 0 grasp-place pairs". The laptop on_base_refit
   arm was stopped for this (G3 hang plan blocker).
+- [ ] **dojo infra (landmine): a box's perception catalogue can silently miss assets.** `task_map()` drops every
+  label whose candidates have no `geom.npz` (one warning in `perception_service.log`), so camera rows of that task
+  run perception-blind and end `perception_gross` in seconds. compute4's `~/dojo-perception-data/catalog` lacked W's
+  overlay (`manifests/w_plan_none_117.md5`, 117 assets) until 28 Oct 21:5xZ: solve_equation, arrange_largest_number
+  x2, classify x2 (baskets), sort_nesting_dolls x2, pour_by_language, pour_liquid x2 had no geometry there. Fixed by
+  relaying the overlay from compute3 (md5-checked; index md5 371abdc7…). Gaps left on every box: fold_clothes_random,
+  hang_mugs_random, make_toast_random, store_laptop_random, sweep_blocks_random rigid2 (sweep_blocks' two brooms are
+  `KNOWN_UNSHIPPED`, not a gap). Before a rendered round on a box: compare `index.json` md5 with compute3's and
+  list the gap labels (stream W is adding a per-box coverage check). Journal 2026-10-28-dojo-integ-c4-round2.
 - [ ] **dojo infra (landmine): store_laptop 100000 freezes Isaac 5.1's Kit on compute2.** No env step after step
   ~20, then Kit's zenity "cannot open display" every 2 min until the integ_eval watchdog kills the scope
   (infra_failure). It happened in 4 of 4 runs of the default-perception arms on compute2 (bbc9b3a,
@@ -144,6 +153,18 @@
   category-level wrong-object lifts (store_tools: a wrench / pliers rose for the hammer). v2b rarely classifies a held
   object in the wrist view as anything else. Recall needs a better held-object wrist detector (v3 post-contact data)
   before a camera A/B.
+- [ ] **dojo perception: fuse_tags (parked, branch feat/dojo-fuse-tags)** (stream W). On a look, an ambiguous base
+  with more than one place frame tries each frame within its config yaw region, then re-places its relative_plane
+  children. On held-out play_Xylophone proxy frames (8 layouts, 2-3 arm-pose looks) it made 0 harmful accepts but did
+  not fix 100000: the 'up' frame scored better (loss 0.72 -> 0.59), yet a hidden stand never fits below the 0.35 look
+  bar a frame switch needs. The frame-0 fix was the v2b masks (`seg_propose`: mallet 5/8 -> 7/8 found). The branch
+  also has `child_unexplained_flag`, a matching unexplained blob near a base's child. Revisit with targeted looks at
+  the base.
+- [ ] **dojo perception: play_Xylophone frame 0, 2 of 8 held-out layouts left** (stream W). With add + move_weak +
+  refit_poor (all default), the stand and the mallet the config rests on it are right in 6 / 8. Still wrong:
+  - 100000: v2b detects no mallet at all; the stand is in the wrong place frame ('up_side' vs 'up');
+  - 100001: the stand's own exact-class mask lies under the misplaced stand, so the weak-member move does not fire.
+  Candidates: a mallet class in v3 post-contact data, or a frame-switch look at the base (fuse_tags, parked).
 - [ ] **dojo runtime: grip_check's width check** (stream H). A held official reading also measures the pad gap
   (`belief.official_width`). It disagrees with the belief's planned width by > 8 mm in 24 % of M's held-pose-bad places,
   vs 4 % of clean ones (plug, broom), so it is too weak to act on alone. It could gate a held read, or catch the
@@ -213,6 +234,10 @@
   pre-grasp opening for a narrow object (`gap_to_grip`, Memory's conveyor approach at 0.444) is not a grip: at a 15 cm
   hover the box hid 197k of 307k wrist pixels. `refine(empty_hand=True)` / the service's `empty_hand` opt out; B1's wrist
   frames, looks and `held_look` still mask it. A caller that knows the hand is empty should say so.
+- [ ] **dojo deposit_coin: camera A/B of `slot_read` + `held_thin`** (stream C, journal/2026-10-28-dojo-coin-slot-read.md).
+  On c4b_coin_off, (a) the stand's yaw / offset at the pick (2 of 5) and (b) a false "dropped" of the 1.9 mm coin at
+  the handover (2 of 5) are fixed offline behind the two flags. The rendered A/B on the candidate decides. Left: (c)
+  the coin never found at frame 0 (100001; the stereo arm also loses 100002 / 04).
 - [ ] **dojo perception: deposit_coin's coin + stand read at a phantom near a home gripper** (5.1 coinmain, 6 of 10 layouts, at frame 0 or in the scan read). The real assembly is ~10 px in the head view; B1 fits the stand onto the piggy bank or gripper area instead. #153 makes the agent's correction stand the coin up; the B1 miss is the root. Also: coin not found when the stand fit is 19-115 mm off (the slot check refutes it).
   Candidate fix, off by default: the stereo height check at the scan pose rejects 11/11 phantom stands and flags 0 of 6 right ones
   (`DOJO_PERCEPTION_CFG='{"stereo_check": true, "stereo_reject": "slot_bases"}'`; experiments/2026-10-27-stereo-height);
@@ -614,6 +639,11 @@
 - [x] ~~**dojo bridge: twin requests carried numpy-2 objects into RoboDojo's numpy 1.26**~~: they failed to unpickle (`numpy._core`) and the service died. `TwinClient` sends plain lists and numbers now (`twin_service.plain`).
 - [x] ~~**dojo bridge: `bridge_episode.sh` orphaned the perception service**~~: it killed only the subshell's bash. The orphan held fd 9, the session lock, and the next episode waited on it. The service is now exec'd, with fd 9 closed.
 - [ ] **dojo runtime: no perception vocabulary for make_toast, make_toast_random, store_laptop_and_headphones, hang_mugs** (`supervisor.VOCABULARIES`), so they cannot run in mode perception, i.e. not on the strict official path at all. With no rule skill, push_T and cover_blocks end at once under RuntimePolicy (`no skill for`); they need the agent.
+- [ ] **dojo skills: stack_bowls_random** (stream H, journal 2026-10-28-dojo-h95-bowls). `stack_reach` "grasp" +
+  `nest_height` "measured" lift stack_bowls 0.015 -> 0.33 on 10 v1 draws but leave _random at 0.13. Its failures:
+  clutter on the fixed shared sites (a held bowl's descent hits a key / clip / coffee bag), approach collisions, and 2
+  layouts with no site at all. A "clear sites" variant (more sites, only clutter-free ones), checked on CPU only, did
+  not help.
 - [ ] **dojo twin: stack_bowls verify fails in the twin service**: `Pickling of "pxr.Usd.Stage" instances is not enabled` (isr-lab, ilbr-rt-bowls-s0L9-1). Probably a deepcopy of something holding the env during load / verify. It never showed in the proxy, where stack_bowls ran with verify off.
 - [ ] **dojo perception: swap_blocks' target cube (Rigid/cube/00003) has geometry only in the catalogue** (no `visual_lo.glb` / silhouettes), so B1 finds no foreground and the episode ends at frame 0 (strict s0L9: "estimate lacks target0, target1").
 - [x] ~~**dojo perception: held_look / post-place false negatives on genuine 5.1 frames**~~: 12 of 17 "not held" verdicts in the dev eval had the block in the jaws, and false post-place failures hit correct stacks; the runtime then undid the progress. Fixed by main #41-#46 (jaw opening + absence cap, head-confirmed release, never undo, post-place z-only adoption). Measured on the same genuine-5.1 layouts: stack 6/10 -> 9/10 (journal 2026-10-26-bridge-isr A5-A6).
@@ -653,6 +683,25 @@
   top-down grasp keeps the finger's root block (38 x 56 mm) out of the wall. `nudge_from_wall` pushes one off when its
   fingertip path fits the gap on the wall side (some do not). Eggs on the table under the basket's flared rim have no
   grasp at all. Next: a push along the wall to a freer spot, tilted grasps from the basket's middle.
+- [ ] **dojo skills: fill_egg_holder picks an egg before its drop plans** (stream H, journal 2026-10-28-dojo-h95-fill;
+  G3 mode gt, current main, 5 settled dev layouts: 0/5, 0.22). 6 eggs were picked and then had no drop plan: "joint
+  move hits egg_basket; via failed: lift ik_fail", or "target unreachable". `fill_holes` plans the drop only after the
+  pick. Pairing them (`egg_pair`, branch `feat/dojo-h95-egg-pair`) cut those picks 5 -> 1 on 8 v1 draws but scored the
+  same (0.163 vs 0.163) at x3.3 planning time: the eggs it refuses still fail. What binds is the wall's foot (no pick)
+  and the reach to the holes.
+- [ ] **dojo skills: fill_pen with the joint-5 stop respected** (`joint_limits` "measured"; journal
+  2026-10-28-dojo-h95-fill). Many drops now hover 22-24 mm over the rim, because the 6 mm hover needs |q5| > 1.56, and
+  some pens still bounce out. pen0, which lies rolled 26 deg on its clip, slips in several grasp families (excluding
+  the failed grasp's family did not help).
+  Parked (stream H, 2026-10-28): the slips are pen0 only (158 x 16 x 20 mm, lying rolled 26 deg on its clip). Its "box
+  close 2/1" families rise 0-6 mm; they close level (0-8 deg), so a tilted closing axis is not the cause. A
+  fill_container run on 100033 whose own grasp source was restricted to one family still picked "top axis 1 tilt 0"
+  through the relay leg (ok, 0.3 mm drift), and the pen still did not end inside. So the top grasp may hold and the
+  miss may be in the relay / drop. Next: thread the family through the relay, then screen pen0 on 3 layouts
+  (`h95_family_screen2.py`, kept off main: compute3 `~/controlr-h95n/scripts/skills/`).
+- [ ] **dojo skills: IK under `joint_limits` "measured" plans slower** (G3 plan_s: insert_tubes x2, fill_pen x1.6).
+  A failing IK costs ~2.4x a succeeding one (55-60 vs 23-25 ms), and "measured" fails more targets (53 vs 13 of 300
+  random ones). Cap the failing path, e.g. stop the remaining seeds once one stalls against the joint-5 stop.
 - [ ] **dojo skills: fill_egg_holder, an egg can land lying across a hole** (its centre 2-5 mm over the plate, the
   checker wants it in). Two presses from above did not free it; ordering the drops so the far end rests on the outer
   rim (not on the wall between two holes) did not help (G3, 11 layouts). `slide_in` pushes it along its axis until

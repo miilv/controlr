@@ -22,13 +22,15 @@ import numpy as np
 
 from dojo.skills.kinematics import ARMS, TABLE_Z
 
-GAP = 0.022               # m: clear space between neighbours in the row (the open pads of the next place fit in it)
+GAP = 0.03                # m: clear space between neighbours in the row (the open pads of the next place fit in it)
 MIN_STEP = 0.042          # m: the checker wants > 30 mm between neighbours' centres along x
 THERE = 0.015             # m: an object this close to its slot (and upright) is done
 OCCUPIED = 0.01           # m: another object's footprint this close to a slot's footprint blocks it
 ROW_YS = (-0.13, -0.17, -0.09, -0.21, -0.05)
 ROW_XS = (0.0, -0.04, 0.04, -0.08, 0.08)
 MAX_X = 0.30              # m: |x| of a slot (both arms reach a standing object there)
+WIDE_MOVE = 0.4           # m of travel: what moving the widest object costs on top of its distance
+CENTRE_COST = 1.5         # m of travel per m the row's middle lies off (0, ROW_YS[0])
 YAW_DEG = tuple(range(0, 360, 30))   # target headings: a doll is round, any heading stands
 
 
@@ -71,8 +73,12 @@ def route(text: str, world, routes) -> tuple | None:
 
 
 def row_slots(world, labels: list, ascending: bool = True) -> list[dict]:
-    """Candidate rows, cheapest first: {"order": labels left to right, "xy": {label: slot xy}, "cost"}; slots clear
-    every other object (not one of ``labels``) by ``OCCUPIED``, within ``MAX_X``."""
+    """Candidate rows, cheapest first: {"order": labels left to right, "xy": {label: slot xy}, "cost", "y", "xc",
+    "anchor"}; slots clear every other object (not one of ``labels``) by ``OCCUPIED``, within ``MAX_X`` (an anchor
+    may stay where it is beyond it). Two families: the row on a fixed line (``ROW_YS`` x ``ROW_XS``), and the row
+    built around one object that stays where it is (its line and its place in the order). A row that moves the
+    widest object costs ``WIDE_MOVE`` more: it fits the open gripper worst (G3 1911fbc: 4 of 5 dolls placed in both
+    episodes, the last one had no grasp)."""
     objs = {k: world.obj(k) for k in labels}
     order = sorted(labels, key=lambda k: size_key(objs[k]), reverse=not ascending)
     ws = [width(objs[k]) for k in order]
@@ -81,26 +87,35 @@ def row_slots(world, labels: list, ascending: bool = True) -> list[dict]:
     offs -= (offs[0] + offs[-1]) / 2
     others = [o for o in world.objects.values() if o.label not in labels and o.obj_type != "Garment"
               and o.label != "camera_stand" and not (o.obj_type == "Geometry" and float(o.top_z) < TABLE_Z + 0.004)]
+    widest = max(order, key=lambda k: width(objs[k]))
+    cands = [(y, xc + offs, None, xc) for y in ROW_YS for xc in ROW_XS]
+    for i, k in enumerate(order):                       # rows around one object that stays put
+        c = objs[k].center_w[:2]
+        cands.append((float(c[1]), float(c[0]) + offs - offs[i], k, float(c[0]) - offs[i]))
     out = []
-    for y in ROW_YS:
-        for xc in ROW_XS:
-            xs = xc + offs
-            if float(np.abs(xs).max()) > MAX_X:
-                continue
-            ok = True
-            for x, w in zip(xs, ws):
-                for o in others:
-                    r = width(o) / 2 if o.obj_type != "Geometry" else float(np.linalg.norm(o.asset.extents[:2])) / 2
-                    if float(np.linalg.norm(o.center_w[:2] - np.array([x, y]))) < w / 2 + r + OCCUPIED:
-                        ok = False
-                        break
-                if not ok:
+    for y, xs, anchor, xc in cands:
+        if any(abs(x) > MAX_X for x, k in zip(xs, order) if k != anchor):
+            continue
+        if not (min(ROW_YS) - 0.02 <= y <= max(ROW_YS) + 0.02):
+            continue
+        ok = True
+        for x, w in zip(xs, ws):
+            for o in others:
+                r = width(o) / 2 if o.obj_type != "Geometry" else float(np.linalg.norm(o.asset.extents[:2])) / 2
+                if float(np.linalg.norm(o.center_w[:2] - np.array([x, y]))) < w / 2 + r + OCCUPIED:
+                    ok = False
                     break
             if not ok:
-                continue
-            xy = {k: np.array([x, y]) for k, x in zip(order, xs)}
-            cost = sum(float(np.linalg.norm(objs[k].center_w[:2] - xy[k])) for k in order)
-            out.append({"order": order, "xy": xy, "cost": cost, "y": y, "xc": xc})
+                break
+        if not ok:
+            continue
+        xy = {k: np.array([x, y]) for k, x in zip(order, xs)}
+        moves = {k: float(np.linalg.norm(objs[k].center_w[:2] - xy[k])) for k in order}
+        # a row in the middle of both arms' reach costs less (G3 976bdf2-: rows at x centre 0.08 / y -0.21 put the end
+        # slots where only one arm reaches them, with no grasp-place pair after a slip)
+        cost = (sum(moves.values()) + (WIDE_MOVE if moves[widest] > THERE else 0.0)
+                + CENTRE_COST * (abs(float(np.mean(xs))) + abs(y - ROW_YS[0])))
+        out.append({"order": order, "xy": xy, "cost": cost, "y": y, "xc": float(xc), "anchor": anchor})
     return sorted(out, key=lambda r: r["cost"])
 
 
@@ -124,6 +139,8 @@ def upright_targets(sk, label: str, xy) -> list:
 # 40-deg slice grasp of its head toppled when set down (100040): grasps through the axis, at most 30 deg off vertical
 AXIS_OFF = 0.008
 MAX_PICK_TILT = 30.0
+# and never an in-air handover: its grasps skip these filters (G3 11b18ab 100032: a doll held 53 mm off its axis in a
+# handover slid out; another toppled)
 
 
 def _transfer_kw(sk, label: str) -> dict:
@@ -145,7 +162,8 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
     if not rows:
         return {"ok": False, "stage": "plan", "note": "no free row for the slots"}
     row = rows[0]
-    sk.log(f"[rows] order {row['order']} at y {row['y']:.2f}, x centre {row['xc']:.2f}, travel {row['cost']:.2f} m")
+    sk.log(f"[rows] order {row['order']} at y {row['y']:.2f}, x centre {row['xc']:.2f}, anchor {row['anchor']}, "
+           f"cost {row['cost']:.2f}")
     w.notes["rows"] = {"order": row["order"], "xy": {k: v.tolist() for k, v in row["xy"].items()}}
     pairs = [(k, row["xy"][k]) for k in row["order"]]
     done, failed, tries, aside = [], [], {k: 0 for k in objects}, 0
@@ -176,10 +194,16 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
             break
         free = [(k, xy) for k, xy in pairs if not blockers(k, xy)]
         if free:
-            k, xy = min(free, key=lambda p: arm_dist(p[0]))
+            # fill outward from the object that stays, else from the widest one's slot (it goes first, while its
+            # neighbours' slots are empty): the next one always has a free side, never a gap between two placed
+            # neighbours (G3 e7626c8 100030: the last doll's approach hit a neighbour; 1ed92d3 100034: the widest, placed
+            # last at the row's end, had no plan beside its neighbour)
+            widest = max(row["order"], key=lambda k_: width(sk.world.obj(k_)))
+            seed = row["xy"][row.get("anchor") or widest][0]
+            k, xy = min(free, key=lambda p: (abs(float(p[1][0]) - seed), arm_dist(p[0])))
             tries[k] += 1
             r = place_oriented(sk, k, upright_targets(sk, k, xy), yaw_sym=1, tol_xy=0.015, tol_tilt=10.0, tol_z=0.03,
-                               transfer_kw=_transfer_kw(sk, k))
+                               transfer_kw=_transfer_kw(sk, k), air_handover=False)
             sk.log(f"[rows] {k} -> {np.round(xy, 3).tolist()}: {r.status} {r.note[:120]}")
         else:
             k, xy = pairs[0]
@@ -194,7 +218,7 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
                 continue
             aside += 1
             r = place_oriented(sk, b, [table_rest(sk, b, s) for s in spots[:4]], yaw_sym=4, tol_xy=0.03, tol_tilt=10.0,
-                               transfer_kw=_transfer_kw(sk, b))
+                               transfer_kw=_transfer_kw(sk, b), air_handover=False)
             sk.log(f"[rows] {b} aside (blocks {k}'s slot): {r.status} {r.note[:120]}")
         for a in ARMS:
             if sk.held[a] is not None:
