@@ -59,17 +59,22 @@ def test_lean_cuts_the_steps_and_still_runs_the_whole_profile():
     assert r["steps"] <= r0["steps"] - 70                                  # kinematic env: 380 -> 301
 
 
+@pytest.mark.parametrize("aim, back", [(None, None), ("b10", 0.010)])
+def test_a_single_pour_keeps_v1s_pace(aim, back):
+    w = _world()
+    for pace in (None, "v1", "lean"):
+        opts = {k: v for k, v in (("pour_aim", aim), ("pour_pace", pace)) if v is not None}
+        p = planner.ported_plan(w.instruction, w, opts=opts)
+        assert p.args["skill"] == "pour_bottle" and p.args["args"] == ({} if back is None else {"spout_back": back})
+
+
 @pytest.mark.parametrize("aim, pace, skill, back", [(None, None, "pour_bottle", None), ("b10", "v1", "pour_bottle", 0.010),
                                                     ("b10", "lean", "pour_bottle_lean", 0.010),
                                                     ("v1", "lean", "pour_bottle_lean", None)])
-def test_planner_passes_the_pace(aim, pace, skill, back):
-    w = _world()
-    opts = {k: v for k, v in (("pour_aim", aim), ("pour_pace", pace)) if v is not None}
-    p = planner.ported_plan(w.instruction, w, opts=opts)
-    assert p.args["skill"] == skill and skill in TIER_A
-    assert p.args["args"].get("spout_back") == back
-    lean = planner.POUR_PACE.get(pace or "v1")
-    assert {k: v for k, v in p.args["args"].items() if k != "spout_back"} == (lean or {})
+def test_the_call_for_a_pace(aim, pace, skill, back):
+    s, args = planner.pour_bottle_call(aim, pace)
+    assert s == skill and s in TIER_A and args.get("spout_back") == back
+    assert {k: v for k, v in args.items() if k != "spout_back"} == (planner.POUR_PACE.get(pace or "v1") or {})
 
 
 def test_pour_order_pours_with_the_pace(monkeypatch):

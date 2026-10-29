@@ -164,7 +164,7 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "belt_container": ("off", "on"), "belt_container_tilts": ("25,40", "0,15,25", "40,50"),
                "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on"),
                "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured"),
-               "ported_pour_pace": ("v1", "lean", "lean2")}
+               "ported_pour_pace": ("v1", "lean")}
 
 
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,
