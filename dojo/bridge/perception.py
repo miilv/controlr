@@ -8,9 +8,12 @@ The runtime (``RuntimePolicy``) calls ``estimate / look_plan / look_poses / refi
   same code path as the proxy runs, every op available.
 * ``server``: ``ServerPerception``: estimates from the J1 server's ``perceive`` verb (our B1 adapter
   ``dojo.perception.j1_adapter`` running inside robot-harness's server, inputs and outputs logged there), converted
-  to a layout record by ``record_from_perceived``; ``look_plan`` from the call's ``needs_look``; the local-only ops
-  (refine, check, look_poses, search_regions) go to a local client when one is given, else they are no-ops (the
-  runtime then keeps its prior: no refine correction, no divergence, no extra look poses, no search).
+  to a layout record by ``record_from_perceived``; ``look_plan`` from the call's ``needs_look``; every other op
+  (refine, check, look_poses, search_regions, and the ones only our service has: scan_looks, agentic_estimate,
+  needs_agent, held_look, watch, ...) goes to a local client when one is given. Without one, refine / look_poses /
+  search_regions are no-ops (the runtime keeps its prior), ``check`` says ``_unavailable`` (resync logs the check as
+  unverified, never as "no divergence"), and any other op raises; the driver refuses ``--perception server`` with no
+  local client when the config enables a feature that needs one (``LOCAL_ONLY``).
 
 Either way the twin is loaded from what perception returned (``estimate_to_layout`` of the provider's checkpoint)
 plus the measured proprio, inside our verifier (``dojo.runtime.verifier.BundleVerifier``).
@@ -19,6 +22,15 @@ plus the measured proprio, inside our verifier (``dojo.runtime.verifier.BundleVe
 from __future__ import annotations
 
 ARM_OF_CAM = {"cam_left_wrist": "left", "cam_right_wrist": "right"}
+# RuntimeConfig fields (value when off) whose feature calls a perception op only our local service has
+LOCAL_ONLY = {"scan": "off", "agentic": "off", "held_look": "off", "watch": False, "wrist_check": "off",
+              "held_pose": "off", "slot_read": "off", "bg_perception": "off"}
+UNAVAILABLE = "_unavailable"        # check()'s key when nothing can check (no local client)
+
+
+def local_only_features(cfg) -> list[str]:
+    """The config's features that need a local perception client (``LOCAL_ONLY`` fields not at their off value)."""
+    return sorted(k for k, off in LOCAL_ONLY.items() if hasattr(cfg, k) and getattr(cfg, k) != off)
 # categories whose pose is their position alone (a sphere looks and grasps the same at every turn): only these may
 # take the identity orientation when the server's object has no quat
 ROTATION_FREE_CATEGORIES = frozenset({"ball"})
@@ -131,10 +143,21 @@ class ServerPerception:
                                  held=held)
 
     def check(self, frame, objects, fold) -> dict:
-        return self.local.check(frame, objects, fold) if self.local is not None else {}
+        if self.local is None:
+            return {UNAVAILABLE: "server perception: no local checker"}
+        return self.local.check(frame, objects, fold)
 
     def search_regions(self, frame, record, vocabulary) -> list[dict]:
         return self.local.search_regions(frame, record, vocabulary) if self.local is not None else []
 
+    def __getattr__(self, name):
+        """Ops only the local service has (scan_looks, agentic_estimate, needs_agent, held_look, watch, ...)."""
+        if name.startswith("_") or name in ("backend", "local", "want", "last", "calls"):
+            raise AttributeError(name)
+        if self.local is None:
+            raise AttributeError(f"server perception has no `{name}` and no local client to forward it to "
+                                 "(run with --perception local, or set DOJO_PERCEPTION_PORT/AUTHKEY)")
+        return getattr(self.local, name)
 
-__all__ = ["record_from_perceived", "ServerPerception"]
+
+__all__ = ["record_from_perceived", "ServerPerception", "LOCAL_ONLY", "UNAVAILABLE", "local_only_features"]

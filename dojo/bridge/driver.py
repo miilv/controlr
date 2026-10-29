@@ -56,6 +56,17 @@ def env_notes(environ=None) -> dict:
     return {k: fingerprint(e[k]) if k in HASHED_NOTES else e[k] for k in ENV_NOTES if k in e}
 
 
+def build_config(preset: str | None, config: str | dict = "{}", verify: str = "bundle", twin: str = "spawn"):
+    """The RuntimeConfig this driver runs: the preset, ``--config`` over it, mode perception (refused otherwise), and
+    ``--verify`` (off when ``--twin off``)."""
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.runtime.presets import resolve
+    cfg_d = resolve(preset, json.loads(config) if isinstance(config, str) else dict(config))
+    if cfg_d.get("mode", "perception") != "perception":
+        raise SystemExit("behind a robot server the runtime runs in mode perception only (no GT on this path)")
+    return RuntimeConfig(**{**cfg_d, "mode": "perception", "verify": verify if twin != "off" else "off"})
+
+
 def load_policy(spec: str | None):
     if not spec:
         from dojo.runtime.policy import RuntimePolicy
@@ -162,20 +173,27 @@ def main(argv=None) -> None:
     ap.add_argument("--wait-episode", type=float, default=900.0)
     ap.add_argument("--close", action="store_true", help="close the server after the episode (RoboDojo writes its result)")
     ap.add_argument("--allow-non-strict", action="store_true", help="dev only: accept a non-strict server")
+    ap.add_argument("--print-config", action="store_true", help="print the resolved policy + RuntimeConfig and exit")
     a = ap.parse_args(argv)
     # a TERM (a wall-time cap: timeout(1), the launcher's cleanup) unwinds through the finally below, so the twin
     # group this driver started is stopped instead of orphaned on the GPU
     signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(128 + signum))
 
-    from dojo.runtime.policy import RuntimeConfig
-    from dojo.runtime.presets import check_env, resolve
+    from dojo.runtime.presets import check_env
     if a.preset and check_env(a.preset):
         raise SystemExit(f"preset {a.preset}: this environment contradicts it: {check_env(a.preset)}")
-    cfg_d = resolve(a.preset, json.loads(a.config))
-    if cfg_d.get("mode", "perception") != "perception":
-        raise SystemExit("behind a robot server the runtime runs in mode perception only (no GT on this path)")
-    verify = a.verify if a.twin != "off" else "off"
-    cfg = RuntimeConfig(**{**cfg_d, "mode": "perception", "verify": verify})
+    cfg = build_config(a.preset, a.config, a.verify, a.twin)
+    verify = cfg.verify
+    if a.print_config:                  # what this driver would run, nothing else (candidate_parity.py, freeze manifest)
+        print(json.dumps({"policy": a.policy or "dojo.runtime.policy:RuntimePolicy", "config": cfg.__dict__},
+                         sort_keys=True, default=str))
+        return
+    if a.perception == "server":
+        from .perception import local_only_features
+        need = local_only_features(cfg)
+        if need and not os.environ.get("DOJO_PERCEPTION_PORT"):   # would fail mid-episode or silently degrade
+            raise SystemExit(f"--perception server without a local perception client, but the config enables {need}: "
+                             "they need our perception service (DOJO_PERCEPTION_PORT/AUTHKEY) or --perception local")
     out_dir = Path(a.out) / a.server_id
     out_dir.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("DOJO_AGENT_LOG", str(out_dir / "agent"))      # AgentPolicy's transcript / calls / cells

@@ -197,8 +197,9 @@ until [ -f $BENCH/run/$ID/launch_done.json ]; do sleep 2; done; kill $PERC
 Variants (one flag each):
 - `--policy dojo.runtime.policy:RuntimePolicy`: the rule supervisor instead of the agent, 0 LLM calls.
 - `--perception server`: estimates from the server's `perceive` verb, i.e. our B1 adapter inside Mikhail's server,
-  logged in `run/<id>/perceive.jsonl`. Refine / check / search then come from the local service if one runs, else they
-  are off. The adapter (`j1_adapter.task_for`) routes by the six J1 patterns, then by the runtime's
+  logged in `run/<id>/perceive.jsonl`. Every other op (refine, check, search, scan, agentic, held_look, watch, ...)
+  then comes from the local service if one runs. Without it, refine / search are off and the resync check is logged
+  `unverified`; the driver refuses a config that enables a local-only feature (`perception.LOCAL_ONLY`). The adapter (`j1_adapter.task_for`) routes by the six J1 patterns, then by the runtime's
   `perception_vocabulary`, and uses the scene backgrounds under `DOJO_BG/scene/` (the conveyor belt).
 - `--verify off`: no twin.
 
@@ -216,6 +217,33 @@ scripts/dojo/official_eval.sh --task press_by_number --layouts "100000 100001 10
     [--policy dojo.agent.policy:AgentPolicy] [--preset submit_v1] [--config JSON]
 python -m dojo.bridge.official compare --official ~/dojo-data/official/runs/<id> --integ <integ_eval out dir> --md pair.md
 ```
+
+**The candidate on this path (D-C19).** `--candidate ~/dojo-integ-c4-state/CANDIDATE.txt` takes Integration's file
+verbatim:
+- preset, `--config`, and `--setenv` (for our processes only);
+- the `--seg` / `--glyph` / `--glyph-kong` side servers, started as lane2.sh starts them. One that does not come up
+  ends the call before robot-harness's server starts;
+- RuntimePolicy.
+
+Before a scored run:
+
+```bash
+scripts/dojo/official_eval.sh --candidate CANDIDATE.txt --dry-run             # the resolved call, nothing started
+python scripts/dojo/candidate_parity.py --candidate CANDIDATE.txt             # integ_eval vs official: zero diff = go
+python scripts/dojo/freeze_manifest.py --candidate CANDIDATE.txt --rd-python <RoboDojo python> --out manifest.json
+```
+
+The manifest records:
+- the sha, the candidate text, and the resolved launcher line with its full RuntimeConfig;
+- the md5 / sha256 of every side-server weight;
+- the parity diff;
+- model routes by name;
+- python, Isaac, RoboDojo and robot-harness versions;
+- that the strict v2 server supplies `ee_joint_state_official`.
+
+Run it from a clean checkout at the frozen sha. The parity check also compares the perception data. Integration's
+lane2.sh runs `DOJO_BG_FOLDS=~/dojo-data/bg_folds_51_ilia` (the 5.1 set with the scene backgrounds), so on compute4 export
+the same before official_eval.sh, or parity fails.
 
 | piece | whose | how |
 |---|---|---|

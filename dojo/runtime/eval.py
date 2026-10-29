@@ -503,6 +503,18 @@ def summarize(rows: list[dict], task: str, cfg: RuntimeConfig) -> dict:
             "failed": [r["layout_id"] for r in ok if not r["success"]], "config": cfg.__dict__}
 
 
+def build_config(preset: str | None, config: str | dict = "{}", mode: str | None = None,
+                 verify: str | None = None) -> RuntimeConfig:
+    """The RuntimeConfig this harness runs (integ_eval / proxy_eval): the preset, ``--config`` over it, explicit
+    ``--mode`` / ``--verify``; without them gt and verification off. ``scripts/dojo/candidate_parity.py`` compares it
+    with the bridge driver's (``dojo.bridge.driver.build_config``)."""
+    from .presets import resolve
+    d = resolve(preset, json.loads(config) if isinstance(config, str) else dict(config), mode, verify)
+    d.setdefault("mode", "gt")
+    d.setdefault("verify", "off")
+    return RuntimeConfig(**d)
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True)
@@ -519,13 +531,10 @@ def main(argv=None) -> None:
     ap.add_argument("--renderer", choices=("isaac60", "isaac51"), default="isaac60",
                     help="isaac60: the proxy (6.0 render service); isaac51: one 5.1 EvalEnv with RTX (isr-lab)")
     a = ap.parse_args(argv)
-    from .presets import check_env, resolve
+    from .presets import check_env
     if a.preset and check_env(a.preset):
         raise SystemExit(f"preset {a.preset}: this environment contradicts it: {check_env(a.preset)}")
-    d = resolve(a.preset, json.loads(a.config), a.mode, a.verify)
-    d.setdefault("mode", "gt")
-    d.setdefault("verify", "off")
-    cfg = RuntimeConfig(**d)
+    cfg = build_config(a.preset, a.config, a.mode, a.verify)
     run(a.task, a.layouts, cfg, Path(a.out), a.max_minutes, policy_factory=load_policy_factory(a.policy),
         episode_max_minutes=a.episode_max_minutes or None,
         renderer=a.renderer)

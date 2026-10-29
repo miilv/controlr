@@ -221,3 +221,85 @@ def test_unstable_episodes_are_not_samples_on_either_path(tmp_path):
     (out / "rows.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rs))
     ps = {p["layout_id"]: p for p in O.pair(O.load_official([str(out)]), O.load_integ([str(integ)]))}
     assert ps[100002]["agree"] and ps[100003]["agree"]
+
+
+CAND = """# Integration: the candidate
+--preset submit_v3 --setenv DOJO_GRIP_SOURCE=v2 --seg v2b --glyph digit_v2 --glyph-kong kong_v1b
+--setenv DOJO_PERCEPTION_CFG={"series_count":"seg","glyph_read":"on"}
+--config {"grip_check":"on","ported_classify":"p2","kong_draw_read":"place"}
+"""
+
+
+def _models(tmp_path):
+    m = tmp_path / "models"
+    for d, files in (("v2b", ("best.pt", "classes.json")), ("digit_v2", ("model.pt",)), ("kong_v1b", ("model.pt",))):
+        (m / d).mkdir(parents=True)
+        for f in files:
+            (m / d / f).write_text(d + f)
+    return m
+
+
+def test_official_eval_takes_the_candidate_file_verbatim(tmp_path):
+    """D-C19: the official path runs the SAME system as integ_eval: CANDIDATE.txt verbatim (preset, setenv, side
+    servers, config), RuntimePolicy by default with a candidate; --dry-run resolves it without starting anything."""
+    (tmp_path / "CANDIDATE.txt").write_text(CAND)
+    env = {**{k: v for k, v in os.environ.items() if not k.startswith("OMNIROUTE_")}, "DOJO_SEG_MODELS": str(_models(tmp_path))}
+    r = subprocess.run(["bash", str(ROOT / "scripts/dojo/official_eval.sh"), "--candidate", str(tmp_path / "CANDIDATE.txt"),
+                        "--dry-run"], capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    d = json.loads(r.stdout.strip().splitlines()[-1])
+    assert d["policy"] == "dojo.runtime.policy:RuntimePolicy" and d["preset"] == "submit_v3"
+    assert d["setenv"] == {"DOJO_GRIP_SOURCE": "v2", "DOJO_PERCEPTION_CFG": '{"series_count":"seg","glyph_read":"on"}'}
+    assert {k: v["env"] for k, v in d["side_servers"].items()} == {
+        "seg": ["DOJO_SEG_ADDR"], "glyph": ["DOJO_GLYPH_ADDR", "DOJO_GLYPH_ADDR_DIGIT"], "glyphk": ["DOJO_GLYPH_ADDR_KONG"]}
+    assert all(f["md5"] for v in d["side_servers"].values() for f in v["files"].values())
+    rc = d["runtime_config"]
+    assert rc["mode"] == "perception" and rc["verify"] == "bundle" and rc["ported_classify"] == "p2"
+    r = subprocess.run(["bash", str(ROOT / "scripts/dojo/official_eval.sh"), "--inner", "--setenv", "OMNIROUTE_API_KEY=x",
+                        "--dry-run"], capture_output=True, text=True, env=env)
+    assert r.returncode == 2 and "credentials never travel" in r.stderr
+
+
+def test_candidate_parity_is_zero_and_catches_a_difference(tmp_path, monkeypatch):
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts" / "dojo"))
+    import candidate_parity as CP
+
+    (tmp_path / "CANDIDATE.txt").write_text(CAND)
+    models = _models(tmp_path)
+    for k in ("LANE_BG_FOLDS", "DOJO_BG_FOLDS", "DOJO_COLOR_CALIB", "DOJO_CALIB_SET"):
+        monkeypatch.delenv(k, raising=False)
+    integ = CP.integ_side(CP.candidate_tokens(CAND), models)
+    official = CP.official_side(tmp_path / "CANDIDATE.txt", models, ROOT / "scripts/dojo/official_eval.sh")
+    assert set(CP.diff(integ, official)) == {"perception_env"}       # lane2.sh runs bg_folds_51_ilia, official the default
+    monkeypatch.setenv("DOJO_BG_FOLDS", integ["perception_env"]["DOJO_BG_FOLDS"])
+    official = CP.official_side(tmp_path / "CANDIDATE.txt", models, ROOT / "scripts/dojo/official_eval.sh")
+    assert CP.diff(integ, official) == {}
+    assert integ["policy"] == official["policy"] == "dojo.runtime.policy:RuntimePolicy"
+    bad = json.loads(json.dumps(official))
+    bad["runtime_config"]["kong_draw_read"] = "off"
+    del bad["side_servers"]["glyphk"]
+    bad["setenv"].pop("DOJO_PERCEPTION_CFG")
+    d = CP.diff(integ, bad)
+    assert set(d) == {"runtime_config", "side_servers", "setenv"} and d["runtime_config"] == {"kong_draw_read": ["place", "off"]}
+
+
+def test_freeze_manifest_records_names_and_md5s_never_keys(tmp_path, monkeypatch):
+    import sys
+    sys.path.insert(0, str(ROOT / "scripts" / "dojo"))
+    import freeze_manifest as FM
+
+    (tmp_path / "CANDIDATE.txt").write_text(CAND)
+    for k in [k for k in os.environ if k.startswith("OMNIROUTE_")] + ["LANE_BG_FOLDS", "DOJO_CALIB_SET", "DOJO_COLOR_CALIB"]:
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("DOJO_BG_FOLDS", str(Path.home() / "dojo-data/bg_folds_51_ilia"))
+    monkeypatch.setenv("AGENTIC_API_KEY_FAKE", "sk-SYNTHETIC-never-recorded")
+    out = tmp_path / "m.json"
+    rc = FM.main(["--candidate", str(tmp_path / "CANDIDATE.txt"), "--models", str(_models(tmp_path)), "--allow-mismatch",
+                  "--out", str(out)])
+    text = out.read_text()
+    m = json.loads(text)
+    assert rc == 0 and m["parity"]["zero_diff"] and m["candidate"]["text"] == CAND
+    assert m["launcher"]["policy"] == "dojo.runtime.policy:RuntimePolicy" and m["side_servers"]["seg"]["files"]["best.pt"]["sha256"]
+    assert m["routes"]["agentic_model"] and "ee_joint_state_official" in m["grip"]
+    assert "SYNTHETIC" not in text

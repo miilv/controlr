@@ -287,7 +287,8 @@ def test_record_from_perceived_and_look_plan():
     plan = sp.look_plan({}, rec)
     assert plan == [{"arm": "left", "purpose": "occluded", "label": "block_0", "target": [0.1, -0.1, 0.78],
                      "flange_pose": [0, 0, 1, 1, 0, 0, 0]}]
-    assert sp.refine({}, [], 0) == {} and sp.check({}, [], 0) == {} and sp.search_regions({}, {}, "x") == []
+    assert sp.refine({}, [], 0) == {} and sp.search_regions({}, {}, "x") == []
+    assert sp.check({}, [], 0) == {"_unavailable": "server perception: no local checker"}   # G5 #6: never a silent {}
 
 
 def test_twin_scene_follows_the_instruction():

@@ -193,6 +193,10 @@ class RuntimeConfig:
     search_max_regions: int = 4
     search_min_conf: float = 0.3        # a full-fuse search find below this confidence stays missing: on breadth / long
                                         # runs the 9 finds at 0.06-0.28 were all 44-710 mm off, the 4 right ones 0.34-0.48
+    # a search find's asset when several of the label's candidates fit its geometry (Misha's G5 review #7): "first" =
+    # the first such candidate in list order (its identity counts as known); "unknown" = that candidate as a placeholder
+    # whose identity is unread (``_perception.identity`` "unknown": identity-gated skills do not trust its index)
+    search_identity: str = "first"
     search_lost: bool = False           # a pick refine with iou < lost_iou and no usable suggestion -> search around it
     lost_iou: float = 0.2
     lost_fuse_max_m: float = 0.10       # a lost object's search accepts a full-fuse find only this close to its belief
@@ -527,7 +531,7 @@ class RuntimePolicy:
                 or self.cfg.imitate_look not in ("off", "ambiguous")
                 or self.cfg.series_labels not in ("keep", "numbered") or self.cfg.place_verdict not in ("belief", "measured")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
-                or self.cfg.nest_verify not in ("target", "support")
+                or self.cfg.nest_verify not in ("target", "support") or self.cfg.search_identity not in ("first", "unknown")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
@@ -2175,10 +2179,14 @@ class RuntimePolicy:
                                                    - np.sort(ext_ref)).max() < 0.003]
                 key = same[0] if same else cands[0]
                 z = float(r_ref["default_pos"][2])
+                fits = same or cands
             else:
                 key = cands[0]
                 info = self.assets().get(*key.split("/")[:2], int(key.split("/")[2]))
                 z = 0.765 - float(info.bbox_min[2])
+                fits = cands
+            # the refine below is pose-only: with several candidates of the found geometry, the order picked the asset
+            ambiguous = len(set(fits)) > 1
             typ, cat, idx = key.split("/")
             prior = {"label": lab, "key": key, "pos": [float(reg["target"][0]), float(reg["target"][1]), z],
                      "quat": [1.0, 0.0, 0.0, 0.0]}
@@ -2198,6 +2206,9 @@ class RuntimePolicy:
                      "default_ori": res["quat"], "scale": [1.0, 1.0, 1.0],
                      "_perception": {"confidence": float(res.get("iou") or 0.6), "found_by_search": True,
                                      "place_tag": None}}
+            if ambiguous and self.cfg.search_identity == "unknown":
+                entry["_perception"].update(identity="unknown", identity_candidates=sorted(set(fits)))
+                ev["identity"] = "unknown"
             rec = _copy.deepcopy(rec)
             rec.setdefault(typ, {}).setdefault(cat, []).append(entry)
             rec["_not_found"] = [x for x in rec.get("_not_found") or [] if x.get("label") != lab]
