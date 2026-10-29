@@ -310,6 +310,9 @@ class Skills:
         # the same asset, else category) | "one_to_one" (one assignment of all the demonstrator's objects to ours at the
         # least total cost, same asset 0 / same category 0.5 / else 1: one misread on each side still pairs right)
         self.imitate_pairing = "greedy"
+        # ``interactive.wait_demo_done`` (stream W): "still" (today: a wait_actors_still timeout proceeds) | "origin" (a
+        # timeout keeps holding until the demonstrator's arm is at rest, the copy's steps kept back)
+        self.imitate_wait = "still"
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"
