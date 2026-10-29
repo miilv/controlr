@@ -219,6 +219,13 @@ class RuntimeConfig:
     # (trigger "risk"). "off": B1 only
     agentic: str = "off"
     agentic_max: int = 2
+    # ... whether the agent's held looks (report["agentic"] entries tagged "held") count against agentic_max: True
+    # (today: one estimate plus two held looks spend a budget of 3) | False (only the scene estimates count; G5 #13)
+    agentic_count_held: bool = True
+    # mode perception: the place self-verdict (``Skills.verify_place``, G5 #4): belief (today: the believed pose, the
+    # release prediction when nothing measured it) | measured (an object no measurement saw since its release is
+    # "unverified", not placed; the head check then skips only measured labels). Needs post_place
+    place_verdict: str = "belief"
     # mode perception: when the instruction is ambiguous (table and catalogue fallback disagree, or the fallback's
     # runner-up is close), estimate frame 0 with each candidate set and keep the one that explains the scene best
     vocab_explain: bool = True
@@ -508,7 +515,7 @@ class RuntimePolicy:
                 or self.cfg.imitate_pairing not in ("greedy", "one_to_one")
                 or self.cfg.imitate_wait not in ("still", "origin")
                 or self.cfg.imitate_look not in ("off", "ambiguous")
-                or self.cfg.series_labels not in ("keep", "numbered")
+                or self.cfg.series_labels not in ("keep", "numbered") or self.cfg.place_verdict not in ("belief", "measured")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
@@ -707,6 +714,7 @@ class RuntimePolicy:
         if checker is not None and cfg.agentic == "budget":
             checker.agentic_hook = lambda obs, rec: self._agentic_gate(obs, scene, rec, "risk")
         prov.unique_labels = cfg.series_labels == "numbered"
+        prov.place_measured = bool(cfg.mode == "perception" and cfg.place_verdict == "measured")
         prov.track_expire = cfg.track_expire
         prov.tracker_on = bool(cfg.mode == "perception" and (cfg.tracker == "on" or (cfg.tracker == "auto"
                                                                                       and cfg.agentic == "budget")))
@@ -941,8 +949,17 @@ class RuntimePolicy:
         ctx.perception = self.perception if cfg.mode == "perception" else None
         ctx.fold, ctx.cfg, ctx.library, ctx.obs0 = self.fold, cfg, library, obs0
         ctx.refine = lambda label, arm, kind="pick": self._refine_hook(prov, live["sk"], label, arm, kind)
-        ctx.search = lambda record=None: self._search(live["sk"], obs0, record or self._last_record, scene, kin)
+        ctx.search = lambda record=None: self._late_search(live["sk"], obs0, record or self._last_record, scene, kin)
         return ctx
+
+    def _late_search(self, sk, obs0: dict, rec: dict, scene: str, kin) -> dict | None:
+        """A program's search after the setup (the agent layer's ``search``): ``_search``'s record, or None when it
+        found nothing (visited no region, or none had a missing object). Before, the unchanged record came back and the
+        caller re-initialised the belief from it (G5 #3)."""
+        n0 = len(self.report.get("search", []))
+        out = self._search(sk, obs0, rec, scene, kin)
+        found = [f for x in self.report.get("search", [])[n0:] for f in (x.get("found") or [])]
+        return out if (out is not None and found) else None
 
     def _episode(self):
         from dojo.skills.executor import EpisodeEnded
@@ -1659,7 +1676,9 @@ class RuntimePolicy:
         """perception's ``needs_agent(rec)`` while the episode's budget lasts (``agentic_max`` estimates, frame 0
         included): agentic estimate of this frame with ``rec`` as the B1 hint, else ``rec`` itself. ``trigger``:
         after_looks (once, after the looks / search) or risk (a re-estimate at a confirmed divergence)."""
-        if len(self.report["agentic"]) >= self.cfg.agentic_max:
+        spent = [a for a in self.report["agentic"]
+                 if self.cfg.agentic_count_held or (a or {}).get("tag") != "held"]
+        if len(spent) >= self.cfg.agentic_max:
             self.report["events"].append({"kind": "agentic_gate", "trigger": trigger, "needs": None, "why": "budget spent",
                                           "step": self.bridge.steps_used})
             return rec
@@ -2173,7 +2192,12 @@ class RuntimePolicy:
         self.report["look_steps"] = self.report.get("look_steps", 0) + (b.steps_used - n0)
         self._keep_frame("frame0", obs0)
         self._keep_frame("look", obs1)
-        rec1 = self.perception().estimate([obs0, obs1], scene, self.fold, prior_record=rec0)
+        try:
+            rec1 = self.perception().estimate([obs0, obs1], scene, self.fold, prior_record=rec0)
+        except Exception as e:  # noqa: BLE001 (as _scan: keep the frame-0 record; the buffered home runs with the first
+            # skill instead of being dropped with the episode, G5 #9)
+            self.report["looks"].append({"fuse_error": f"{type(e).__name__}: {str(e)[:200]}"})
+            return None
         if cfg.look_merge == "flagged":
             from .estimate import merge_looked
             return merge_looked(rec0, rec1, [f["label"] for f in fl if f.get("label")])

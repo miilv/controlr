@@ -68,10 +68,16 @@ class _AgentCtx:
             lg(msg)
 
     def _search(self):
+        """A late search (G5 #3): only the newly found objects go into the live belief; what the robot holds, what it
+        released and every current pose stay (``init_from_record`` reset moved objects to their frame-0 poses and
+        forgot the held one). None when nothing new was found."""
         rec = self.c.search()
-        if rec is not None:
-            self.c.prov.init_from_record(rec)
-            self.c.make_skills(self.c.sk)
+        if rec is None:
+            return None
+        added = self.c.prov.merge_found(rec)
+        if not added:
+            return None
+        self.c.sk.refresh()
         return rec
 
 
