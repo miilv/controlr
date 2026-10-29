@@ -307,6 +307,9 @@ class RuntimeConfig:
     # "pour_order" (bottles into bowls in the instruction's order, stream P's ported pour); empty = today. Their names go into the provider's
     # ``notes["routes"]``, which ``planner.plan`` reads
     new_routes: list = field(default_factory=list)
+    # ``align.align_in_row`` in mode perception (``Skills.align_measure``): seq (today) | parallel (both movers' hovers
+    # and refines at once, both slides in the same steps when their paths keep apart: ~65-80 steps instead of ~128)
+    align_measure: str = "seq"
     # belt picks (``interactive.pick_from_belt`` / ``match_and_pick``, ``Skills.belt_wrist_veto``): off (today) | on (a
     # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
     # match: compute4 camera rows, every pick after such a look missed)
@@ -414,6 +417,7 @@ class RuntimePolicy:
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
+                or self.cfg.align_measure not in ("seq", "parallel")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
@@ -680,6 +684,7 @@ class RuntimePolicy:
             sk_.put_into_opts = set(cfg.put_into_opts or ())
             sk_.place_surface = cfg.place_surface
             sk_.push_order = cfg.push_order
+            sk_.align_measure = cfg.align_measure
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height
