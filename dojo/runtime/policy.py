@@ -303,6 +303,12 @@ class RuntimeConfig:
     place_surface: str = "bbox"
     # ``library.push_to``'s axis order (``Skills.push_order``): greedy (today) | lookahead
     push_order: str = "greedy"
+    # ``library.arrange``'s place order (``Skills.arrange_order``): near (today: nearest the arms first) | big_first (the
+    # largest object first, while the table is emptiest) | push_big_first (the pushes first, then big_first)
+    arrange_order: str = "near"
+    # ``library.push_to``'s strokes (``Skills.push_stroke``): face (today) | press (when no face stroke plans on either
+    # axis, a drag with the closed fingertips pressed on the object's top)
+    push_stroke: str = "face"
     # ``stacking.plan_stack``'s reach (``Skills.stack_reach``): centre (today) | grasp (to the planned grasp's TCP)
     stack_reach: str = "centre"
     # ``library.bowl_geometry``'s nest height (``Skills.nest_height``): bins (today) | measured (twin table, else profile)
@@ -326,6 +332,14 @@ class RuntimeConfig:
     # ``copy_demonstration``'s twins (``Skills.imitate_pairing``): greedy (today) | one_to_one (a least-cost assignment of
     # the demonstrator's objects to ours; the instruction pairs them one-to-one, by appearance: D-C17 ruling 28 Oct)
     imitate_pairing: str = "greedy"
+    # ``copy_demonstration``'s wait for the demonstrator (``Skills.imitate_wait``): still (today) | origin (a wait timeout
+    # never starts the copy: hold until its arm is at rest, the copy's steps kept back; camera 100007 / 100009 ended on
+    # RoboDojo's "our arm left its origin while the support arm is away" query)
+    imitate_wait: str = "still"
+    # ``copy_demonstration`` with one_to_one twins (``Skills.imitate_look``): off (today) | ambiguous (a wrist look at our
+    # objects in pairs whose believed assets differ, then the assignment again; camera: frame-0 category misreads on
+    # both sides in 6 of 6 runs)
+    imitate_look: str = "off"
     # the belief's labels for a series perception keeps under one config label (classify_objects' ``rigid0`` x 6, its
     # per-category prefixes not observable): keep (today: keyed by that label, one object stands for all; the classify
     # route saw one item and planned nothing) | numbered (``<label>_<k>``, k by x then y: ``estimate.series_names``)
@@ -475,10 +489,13 @@ class RuntimePolicy:
                 or self.cfg.drop_verdict not in ("belief", "release")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence", "unblock", "gentle"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
+                or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.align_measure not in ("seq", "parallel")
                 or self.cfg.tile_grasp not in ("any", "flat", "prefer")
                 or self.cfg.imitate_pairing not in ("greedy", "one_to_one")
+                or self.cfg.imitate_wait not in ("still", "origin")
+                or self.cfg.imitate_look not in ("off", "ambiguous")
                 or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3")
@@ -756,10 +773,14 @@ class RuntimePolicy:
             sk_.put_into_opts = set(cfg.put_into_opts or ())
             sk_.place_surface = cfg.place_surface
             sk_.push_order = cfg.push_order
+            sk_.arrange_order = cfg.arrange_order
+            sk_.push_stroke = cfg.push_stroke
             sk_.align_measure = cfg.align_measure
             sk_.tile_grasp = cfg.tile_grasp
             sk_.tile_recover = bool(cfg.tile_recover)
             sk_.imitate_pairing = cfg.imitate_pairing
+            sk_.imitate_wait = cfg.imitate_wait
+            sk_.imitate_look = cfg.imitate_look
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.belt_confirm_zone = cfg.belt_confirm_zone

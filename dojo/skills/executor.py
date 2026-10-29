@@ -107,6 +107,15 @@ class ExecLog:
     segments: list[dict] = field(default_factory=list)
 
 
+def steps_left_of(ex) -> int | None:
+    """Steps left in the episode for any executor: ``Executor.steps_left`` is a property (an int); a callable is
+    accepted too (test doubles). None when the executor does not say. Skills read it through this, never by calling
+    ``ex.steps_left()`` (the 2026-10-29 imitate D / E rendered rows crashed on that)."""
+    v = getattr(ex, "steps_left", None)
+    v = v() if callable(v) else v
+    return None if v is None else int(v)
+
+
 class Executor:
     def __init__(self, env, reserve: int = 0, record: bool = True):
         self.env = env

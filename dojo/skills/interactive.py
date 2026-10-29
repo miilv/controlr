@@ -178,6 +178,36 @@ def wait_actors_still(sk: Skills, still_steps: int = 12, max_steps: int = 160, f
     return f"still after {n}"
 
 
+def _steps_left(sk) -> int | None:
+    from dojo.skills.executor import steps_left_of
+    return steps_left_of(sk.ex)
+
+
+COPY_STEPS_PER_OBJECT = 120   # imitate_wait "origin": steps kept back per object still to copy (put_in_open + bank)
+
+
+def wait_demo_done(sk: Skills, after_last: int, n_copy: int) -> str:
+    """The demonstrator's arm done before our arms move (RoboDojo's imitate query ends the episode when ours leave their
+    origin while the support arm is away from its own). ``Skills.imitate_wait``: "still" (today: one
+    ``wait_actors_still``, a "timeout" proceeds) | "origin": a timeout means its arm is still moving (on its way back
+    to its origin), so keep holding, round after round, until it reads at rest, while one copy's
+    ``COPY_STEPS_PER_OBJECT`` still fit (camera 100007 / 100009: the copy started on a timeout at step 830 / 699 while
+    the speed-1.5 demo was still running, and the episode ended). ``n_copy``: logged only."""
+    r = wait_actors_still(sk, fallback=after_last)
+    if getattr(sk, "imitate_wait", "still") != "origin":
+        return r
+    rounds = 1
+    while r == "timeout":
+        left = _steps_left(sk)
+        # moving while that arm is away ends the episode at once, so waiting is never worse: hold while one copy (the
+        # first transition's credit) still fits after another round
+        if left is not None and left - 160 < COPY_STEPS_PER_OBJECT:
+            return f"timeout x{rounds}, budget kept for one copy"
+        r = wait_actors_still(sk, fallback=after_last)
+        rounds += 1
+    return r if rounds == 1 else f"{r} (after {rounds - 1} timeouts)"
+
+
 def _still(prev: dict, w, labels, tol: float = 5e-4) -> bool:
     return all(float(np.linalg.norm(w.obj(l).pos - prev[l])) < tol for l in labels if l in prev and l in w.objects)
 
@@ -539,6 +569,40 @@ def twin_assignment(w, demo: list[str], ours: list[str]) -> dict[str, str]:
     return {demo[int(i)]: ours[int(j)] for i, j in pairs}
 
 
+MAX_TWIN_LOOKS = 3   # imitate_look "ambiguous": wrist looks before the copy (each ~30-60 steps; the copy needs ~120 per object)
+
+
+def look_twins(sk: Skills, twins: dict) -> list[str]:
+    """``Skills.imitate_look`` "ambiguous": a wrist look (``regrasp._look_over``, the refine hook of kind "look", which
+    re-reads the identity) at each of our objects whose assigned demonstrator twin has another believed asset, up to
+    ``MAX_TWIN_LOOKS`` while the budget keeps one copy per pair. Returns the labels looked at."""
+    from dojo.skills.regrasp import _look_over
+    w = sk.refresh()
+    looked = []
+    for d, o in twins.items():
+        if len(looked) >= MAX_TWIN_LOOKS:
+            break
+        if d not in w.objects or o not in w.objects or w.obj(d).asset.key == w.obj(o).asset.key:
+            continue
+        left = _steps_left(sk)
+        if left is not None and left < COPY_STEPS_PER_OBJECT * (len(twins) + 1):
+            break
+        ob = w.obj(o)
+        arm = min(("left", "right"), key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - ob.center_w[:2])))
+        try:
+            _look_over(sk, arm, o, np.eye(4))
+        except Exception as e:  # noqa: BLE001 (a look that cannot run leaves the identity as it was)
+            sk.log(f"[imitate] look at {o} failed: {type(e).__name__}: {e}")
+        looked.append(o)
+        w = sk.refresh()
+    if looked:
+        try:
+            sk.home(gripper=OPEN)
+        except Exception:  # noqa: BLE001
+            pass
+    return looked
+
+
 def copy_demonstration(sk: Skills, container: str, demo_container: str, objects: list[str], quiet: int = 4,
                        every: int = 5, after_last: int = 110, max_wait: int = 1400, tries: int = 3,
                        gone_quiet: int = 260) -> dict:
@@ -592,7 +656,7 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
                 st["order"] = list(st["gone"])
                 quiet_long = st["gone"] and sk.ex.steps_used - last_new > gone_quiet
                 if len(st["gone"]) >= len(demo_side) or quiet_long:
-                    r = wait_actors_still(sk, fallback=after_last)
+                    r = wait_demo_done(sk, after_last, len(st["gone"]))
                     sk.log(f"[imitate] {len(st['gone'])} of {len(demo_side)} left; demonstrator's arm: {r} (step {sk.ex.steps_used})")
                     break
                 if sk.ex.steps_used - t0 > max_wait:
@@ -609,7 +673,7 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
             prior = read
             st["order"] = res["order"]
             if res["done"] and stable >= 1:
-                r = wait_actors_still(sk, fallback=after_last)
+                r = wait_demo_done(sk, after_last, len(res["order"]))
                 sk.log(f"[imitate] demonstrator's arm: {r} (step {sk.ex.steps_used})")
                 break
             if sk.ex.steps_used - t0 > max_wait:
@@ -619,8 +683,17 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
     if st["gone"]:
         expect = len(st["gone"])
     if getattr(sk, "imitate_pairing", "greedy") == "one_to_one" and "twins" not in st:
-        st["twins"] = twin_assignment(w, demo_side, [m for m in movers if m not in demo_side])
+        ours = [m for m in movers if m not in demo_side]
+        st["twins"] = twin_assignment(w, demo_side, ours)
         sk.log(f"[imitate] one-to-one twins {st['twins']}")
+        if getattr(sk, "imitate_look", "off") == "ambiguous":
+            # a wrist look at each of OUR objects in a pair whose believed assets differ (a misread on either side),
+            # then the assignment again: with our side read right, one misread demonstrator object pairs by elimination
+            looked = look_twins(sk, st["twins"])
+            if looked:
+                w = sk.refresh()
+                st["twins"] = twin_assignment(w, demo_side, ours)
+                sk.log(f"[imitate] looked at {looked}; one-to-one twins {st['twins']}")
     for i, key in enumerate(st["order"]):
         if i < len(st["done"]):
             continue
