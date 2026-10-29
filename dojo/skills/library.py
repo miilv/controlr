@@ -1893,7 +1893,9 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
     picker = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - cen)))
     st = w.notes.setdefault("fill", {"inside": []})
     if c.obj_type == "Rigid" and float(np.linalg.norm(sk.kin.base(picker)[:2, 3] - c.center_w[:2])) > comfy \
-            and not st.get("moved"):
+            and not st.get("moved") and getattr(sk, "fill_holder", "move") == "move":
+        # ``Skills.fill_holder`` "stay" skips this carry (v15 dev layouts, G3 mode A: the holder ended on its side in 5
+        # of the 12 episodes that carried it, each scored 0; staying: 5 scores up, 1 down over those 12)
         near = (0.5 * float(cen[0]), -0.27)
         spots = sorted(free_spots(sk, container, near_xy=near, clearance=0.04),
                        key=lambda xy: float(np.linalg.norm(np.subtract(xy, near))))

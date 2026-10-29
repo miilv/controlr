@@ -204,3 +204,12 @@ def test_insert_key_switches_are_validated_and_off_by_default():
     RuntimePolicy(RuntimeConfig(key_handover="v2", key_lean="on"))
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(key_lean="maybe"))
+
+
+def test_fill_holder_switch_is_validated_and_moves_by_default():
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert RuntimeConfig().fill_holder == "move" and SKILL_ATTRS["fill_holder"] == ("move", "stay")
+    RuntimePolicy(RuntimeConfig(fill_holder="stay"))
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(fill_holder="carry"))

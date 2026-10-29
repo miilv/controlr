@@ -381,6 +381,9 @@ class RuntimeConfig:
     ported_swap: str = "fixed"
     # the IK's joint range (``Skills.joint_limits``): wide (today) | measured (joint 5 inside the sim's +-pi/2 stop)
     joint_limits: str = "wide"
+    # fill_container's holder (``Skills.fill_holder``): move (today: carried within comfortable reach of the picking arm
+    # first) | stay (left where it stands; each pen's own transfer reaches it, or relays)
+    fill_holder: str = "move"
     # ... the drag onto a pad: v1 (Mikhail's planar_drag) | turn (planar_drag_p1: near a 180 deg turn both directions are
     # planned and the feasible one driven; v1 takes the sign of the yaw difference, which perception noise flips there and
     # then runs the wrist into j6's limit: camera push_T 100005, 4 legs of "no sane planar plan")
@@ -486,6 +489,7 @@ class RuntimePolicy:
                 or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3")
+                or self.cfg.fill_holder not in ("move", "stay")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
@@ -777,6 +781,7 @@ class RuntimePolicy:
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
             sk_.ported_swap = cfg.ported_swap
             sk_.joint_limits = cfg.joint_limits
+            sk_.fill_holder = cfg.fill_holder
             sk_.ported_drag = cfg.ported_drag
             sk_.ported_pour_aim = cfg.ported_pour_aim
             sk_.ported_classify = cfg.ported_classify
