@@ -1043,7 +1043,7 @@ class Skills:
                         self.held[pp.arm] = hg
                     else:
                         T_g[2, 3] += float((pp.tail_kw or {}).get("blind_up") or 0.0)
-                    g = self._guarded_tail(pp.arm, T_g, hg, pp.tail_kw)
+                    g = self._guarded_tail(pp.arm, T_g, hg, pp.tail_kw, pp=pp)
                     self.held[pp.arm] = None
                     v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
                     v.note = (v.note + ("; held read adopted" if measured is not None else "")
@@ -1084,7 +1084,7 @@ class Skills:
                     # an insertion whose final waypoints the collision model refuses (an in-hand pose predicted, not
                     # measured, in mode B: "palm at table" at the plug's last waypoint): go down slowly, unchecked, and
                     # stop where the arm meets resistance, then let go (the arm's own lag is the contact sensor)
-                    g = self._guarded_tail(pp.arm, pp.T_obj_target, h2, pp.tail_kw)
+                    g = self._guarded_tail(pp.arm, pp.T_obj_target, h2, pp.tail_kw, pp=pp)
                     self.held[pp.arm] = None
                     v = self.verify_place(pp, tol_xy, tol_tilt, tol_yaw, tol_z)
                     v.note = (v.note + f"; descent refused ({tail[:80]}), guarded: {g}").strip("; ")
@@ -1164,11 +1164,13 @@ class Skills:
         return n, lag, bool(mv.ok)
 
     def _guarded_tail(self, arm: str, T_obj, h: "Held", kw: dict, lag_stop: float = GUARD_LAG, rate: float = 0.02,
-                      step_m: float = 0.003, radii=PROBE_RADII, n_dir: int = 8, min_left: int = 25) -> str:
+                      step_m: float = 0.003, radii=PROBE_RADII, n_dir: int = 8, min_left: int = 25, pp=None) -> str:
         """Insertion tail without object measurement (proprio only): ``_guarded_descent`` to ``T_obj`` (the held
         object's target), then let go and back off upwards (``release`` False in ``kw``: hold on, a key turned next).
         Returns a note."""
         note, _, _ = self._guarded_descent(arm, T_obj, h, kw, lag_stop, rate, step_m, radii, n_dir, min_left)
+        if pp is not None:
+            note += self._seat_check(pp, T_obj)
         if kw.get("release", True):
             self._guarded_release(arm, kw)
         return note
@@ -1651,6 +1653,56 @@ class Skills:
         o2.pos, o2.quat = np.asarray(p7[:3], float), np.asarray(p7[3:], float)
         return o2
 
+    def _seat_check(self, pp: PlacePlan, T_obj, seat_tol: float = 0.004, tilt_tol: float = 7.0, tries: int = 2,
+                    min_left: int = 20) -> str:
+        """``Skills.key_seat`` "on", mode B, at the bottom of an insertion before the release / the turn: the in-hand
+        transform read again (``_held_read``; the jaws do not move). Its object above ``T_obj`` by more than ``seat_tol`` or
+        tilted more than ``tilt_tol`` = not seated: up by the excess + 5 mm, over the target on the re-read transform,
+        down onto it, read again (at most ``tries``). The insertion's own estimate keeps the transform read at the hover:
+        a key whose tip met the lock's top slid up and pivoted in the pads unseen and was let go (or turned) 25-30 mm
+        high (G3 mode B, v15 dev layouts: 6 / 20 "turned" keys lay beside the lock). Returns a note ("" when off)."""
+        if getattr(self, "key_seat", "off") != "on" or self.remeasure:
+            return ""
+        from dojo.skills.geometry import angle_between_R
+        arm, label = pp.arm, pp.label
+        T_obj = np.asarray(T_obj, float)
+        notes = []
+        for k in range(tries + 1):
+            h = self.held.get(arm)
+            w = self.refresh()
+            if h is None or label not in w.objects:
+                break
+            o = w.obj(label)
+            r = Skills._held_call(self.provider, pp, h, o, "hover")
+            if not r or not r.get("ok") or r.get("T_tcp_obj") is None:
+                notes.append("seat read failed")
+                break
+            T_rel = np.asarray(r["T_tcp_obj"], float)
+            self.held[arm] = Held(h.label, T_rel, held_box(o, T_rel), h.grasp)
+            T_now = self.kin.tcp(arm, w.arms[arm].q) @ T_rel
+            dz = float(T_now[2, 3] - T_obj[2, 3])
+            dxy = float(np.linalg.norm(T_now[:2, 3] - T_obj[:2, 3]))
+            tilt = math.degrees(angle_between_R(np.eye(3), T_now[:3, :3].T @ T_obj[:3, :3]))
+            if dz <= seat_tol and tilt <= tilt_tol:
+                notes.append(f"seated ({dz*1000:+.1f} mm, {tilt:.0f} deg)")
+                break
+            if k == tries or self.ex.steps_left - self.ex.reserve <= min_left:
+                notes.append(f"not seated ({dz*1000:+.1f} mm, {dxy*1000:.1f} mm off, {tilt:.0f} deg)")
+                break
+            T_up = T_obj.copy()
+            T_up[2, 3] += max(dz, 0.0) + 0.005
+            m_up = self.motion.line(arm, self.ex.q[arm], T_up @ inv_T(T_rel), MEDIUM, "reseat_up", gripper=CLOSED,
+                                    check=False, max_step_deg=4.0, max_step_m=0.01)
+            m_dn = self.motion.line(arm, m_up.q_end, T_obj @ inv_T(T_rel), 0.02, "reseat_in", gripper=CLOSED,
+                                    check=False, max_step_deg=4.0, max_step_m=0.01) if m_up.ok else m_up
+            if not m_up.ok or not m_dn.ok:
+                notes.append(f"not seated ({dz*1000:+.1f} mm), re-seat does not plan")
+                break
+            self.ex.run({arm: ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).move(m_up, "reseat_up").move(m_dn, "reseat_in")
+                         .hold(2, "settle")}, name=f"re-seat {label}")
+            notes.append(f"re-seat {k + 1}: was {dz*1000:+.1f} mm, {dxy*1000:.1f} mm off, {tilt:.0f} deg")
+        return "; seat check: " + ", ".join(notes) if notes else ""
+
     def _servo_tail(self, pp: PlacePlan, seat_tol: float = 0.004, radii=(0.0007, 0.0015, 0.003), n_dir: int = 6,
                     probe_lift: float = 0.006, min_left: int = 25) -> str:
         """Insertion tail, closed loop on the measured object (``tail_kw["servo"]``): from the pre-place, descend
@@ -1728,8 +1780,11 @@ class Skills:
             if dz > 0:
                 kw = {**kw, "probe": False}
         ob = go(T_obj, min(rate, 0.02), "servo_insert", settle=3)
+        note_seat = self._seat_check(pp, T_obj, seat_tol)
+        if note_seat:
+            ob = self._servo_obj(arm, label, self.refresh())
         err = float(ob.pos[2] - T_obj[2, 3])
-        note = note_th + f"servo: hover {hover*1000:.0f} mm, after the descent {err*1000:+.1f} mm"
+        note = note_th + f"servo: hover {hover*1000:.0f} mm, after the descent {err*1000:+.1f} mm" + note_seat
         w_ = self.refresh()
         lag = float(np.linalg.norm(self.kin.tcp(arm, w_.arms[arm].q)[:3, 3] - self.kin.tcp(arm, self.ex.q[arm])[:3, 3]))
         if lag > 0.02 and err > seat_tol:
