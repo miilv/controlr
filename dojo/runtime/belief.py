@@ -455,6 +455,11 @@ class RuntimeProvider:
         self.track_max_speed = 0.006            # m / step: the fastest rider we expect (belts: 4 mm / step)
         self.track_outlier_m = 0.015            # a read this far off its track's line is dropped from the fit
         self.track_lost_reads = 6               # an unmatched track is dropped after this many reads (arms still)
+        self.track_expire = "off"               # RuntimeConfig.track_expire: "on" = a track no read matched for
+                                                # ``track_window`` steps expires whatever the arms do, is not
+                                                # extrapolated past that, and a same-asset ghost near a newcomer retires
+        self.track_ghost_m = 0.15               # ... "near": the ghost's prediction this close to the newcomer's read
+        self._last_match: dict = {}             # label -> the step of its latest matched read
         self._missed: dict = {}                 # label -> reads in a row without a match
         self._q_last = None                     # arm joints at the last read (is the robot still?)
         self.track_vel_reads = 4                # a track's velocity counts toward the belt's after this many reads
@@ -855,6 +860,7 @@ class RuntimeProvider:
         for i, j in pairs:
             o, e = bl[i], el[j]
             self._tracks.setdefault(o.label, []).append((step, e.pos[:2].copy()))
+            self._last_match[o.label] = step
             self._vote(o.label, e)
         # a belief object no re-read ever confirmed is a phantom of the episode-start estimates (the scan estimate
         # fuses frame 0 as if nothing moved, and fills a label from frame 0's reading of a rider that had moved on: a
@@ -864,11 +870,18 @@ class RuntimeProvider:
         # re-acquired self is a newcomer by then): dropped, or it would be a ghost "next one" of its identity
         idle = self._q_last is not None and all(float(np.abs(self.belief.q[a] - self._q_last[a]).max()) < 0.01 for a in ARMS)
         self._q_last = {a: self.belief.q[a].copy() for a in ARMS}
+        expire = self.track_expire == "on"
         for o in bl:
             if o.label in matched:
                 self._missed.pop(o.label, None)
             elif o.label in self._tracks:
                 n = self._missed[o.label] = self._missed.get(o.label, 0) + 1
+                if expire and step - self._last_match.get(o.label, self._last_seen(o)) > self.track_window:
+                    # Misha's G5 review (robot-harness G5-VERIFICATION 2026-10-29 #8): with the arms moving the idle
+                    # rule below never fired, and the track was extrapolated on for good: the jaws closed on air at a
+                    # stale track (5 of the 7 camera failures of match_and_pick, c4b_matchbelt2)
+                    self._retire(o, step, "track_expired", n)
+                    continue
                 if idle and n >= self.track_lost_reads and not self.belief.attached:
                     del self.belief.objects[o.label]
                     self._tracks.pop(o.label, None)
@@ -905,8 +918,16 @@ class RuntimeProvider:
                 lab = f"{e.category}_t{self._n_new}"
                 e = copy.deepcopy(e)
                 e.label = lab
+            if expire and e.asset is not None:
+                # a newcomer is often a rider we lost, read again: a ghost of the same asset that no read matched this
+                # time, predicted near it, is that rider's stale track (it would be a second "next one" of its identity)
+                for g in [x for x in self.belief.movable() if x.label in self._tracks and x.label not in matched
+                          and x.label not in held and x.asset is not None and x.asset.key == e.asset.key]:
+                    if float(np.linalg.norm(self._predicted_xy(g, step) - e.pos[:2])) < self.track_ghost_m:
+                        self._retire(g, step, "track_ghost_retired", self._missed.get(g.label, 0))
             self.belief.objects[lab] = e
             self._tracks[lab] = [(s0, p0.copy()), (step, e.pos[:2].copy())]
+            self._last_match[lab] = step
             self._vote(lab, e0)
             self._vote(lab, e)
             self.events.append({"kind": "track_new", "label": lab, "asset": e.asset.key if e.asset else None,
@@ -926,6 +947,14 @@ class RuntimeProvider:
                 self._fit[lab] = (float(t[-1]), coef[1])
         self._predict(step)
         self.stats["track_reads"] = self.stats.get("track_reads", 0) + 1
+
+    def _retire(self, o, step: int, kind: str, reads: int) -> None:
+        """A track leaves the belief (``track_expire``): its object, track, fit and votes."""
+        self.belief.objects.pop(o.label, None)
+        for d in (self._tracks, self.velocity, self._fit, self._missed, self._last_match, self._id_votes, self._pose_votes):
+            d.pop(o.label, None)
+        self.events.append({"kind": kind, "label": o.label, "step": step, "reads": reads,
+                            "pos": [round(float(v), 3) for v in o.pos[:2]]})
 
     def _last_seen(self, o) -> int:
         tr = self._tracks.get(o.label)
@@ -1004,6 +1033,8 @@ class RuntimeProvider:
             v = self._rider_velocity(lab, vb)
             if o is None or lab in held or v is None or float(np.linalg.norm(v)) <= self.track_min_speed:
                 continue
+            if self.track_expire == "on" and lab in self._last_match and step - self._last_match[lab] > self.track_window:
+                continue                                    # never extrapolated past the window (it expires at the next read)
             o.pos = np.r_[self._predicted_xy(o, step, vb), o.pos[2]]
             o.source = "tracked"
             riders.add(lab)

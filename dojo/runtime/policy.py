@@ -370,6 +370,11 @@ class RuntimeConfig:
     # taker inserts the coin with its planned in-hand pose) | on (the taker's insertion asks for the in-hand read at the
     # pre-insert hover; with held_pose "request" that is the only place that reads). 5.1 rb 100006: 11 mm off, jammed
     disc_handover_read: str = "off"
+    # belt tracking (``RuntimeProvider._track``): off (today: an unmatched track is dropped only after 6 reads with the
+    # arms still, else extrapolated on) | on (a track no read matched for ``track_window`` steps expires whatever the
+    # arms do, is never extrapolated past that, and a same-asset ghost predicted near a newcomer retires). Misha's G5
+    # review #8; match_and_pick camera rows: 5 of 7 failures closed the jaws on a stale / phantom track
+    track_expire: str = "off"
     # the pick hover of an object the task config pins in a support slot (deposit_coin's coin in its stand,
     # ``dojo.perception.slot_read``): off (today: the object's own wrist refine) | on (base + object fitted together
     # from the wrist frame over the base's whole yaw period; when ok, both poses are written and the refine is skipped.
@@ -509,7 +514,7 @@ class RuntimePolicy:
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
-                or self.cfg.disc_handover_read not in ("off", "on")
+                or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
@@ -700,6 +705,7 @@ class RuntimePolicy:
         if checker is not None and cfg.agentic == "budget":
             checker.agentic_hook = lambda obs, rec: self._agentic_gate(obs, scene, rec, "risk")
         prov.unique_labels = cfg.series_labels == "numbered"
+        prov.track_expire = cfg.track_expire
         prov.tracker_on = bool(cfg.mode == "perception" and (cfg.tracker == "on" or (cfg.tracker == "auto"
                                                                                       and cfg.agentic == "budget")))
         if cfg.mode == "perception" and cfg.held_look != "off":
