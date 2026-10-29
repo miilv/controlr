@@ -42,14 +42,14 @@ def test_a_wait_timeout_keeps_holding_only_with_imitate_wait_origin(monkeypatch)
         return "timeout" if len(calls) < 3 else "still after 5"
 
     monkeypatch.setattr(ia, "wait_actors_still", fake_wait)
-    ex = SimpleNamespace(steps_left=lambda: 900)
+    ex = SimpleNamespace(steps_left=900)                                   # a property on Executor
     sk = SimpleNamespace(imitate_wait="origin", ex=ex)
     assert ia.wait_demo_done(sk, 110, 5) == "still after 5 (after 2 timeouts)" and len(calls) == 3
     calls.clear()
     sk.imitate_wait = "still"
     assert ia.wait_demo_done(sk, 110, 5) == "timeout" and len(calls) == 1
     calls.clear()
-    sk = SimpleNamespace(imitate_wait="origin", ex=SimpleNamespace(steps_left=lambda: 250))   # 250 - 160 < one copy
+    sk = SimpleNamespace(imitate_wait="origin", ex=SimpleNamespace(steps_left=250))   # 250 - 160 < one copy
     assert ia.wait_demo_done(sk, 110, 5).startswith("timeout x1, budget kept") and len(calls) == 1
 
 
@@ -68,9 +68,38 @@ def test_looks_go_to_our_objects_in_pairs_whose_assets_differ(monkeypatch):
     looked = []
     monkeypatch.setattr(regrasp, "_look_over", lambda sk, arm, lab, T: looked.append(lab) or (T, None))
     w = _w(objs)
-    sk = SimpleNamespace(refresh=lambda: w, ex=SimpleNamespace(steps_left=lambda: 900), log=lambda *a: None,
+    sk = SimpleNamespace(refresh=lambda: w, ex=SimpleNamespace(steps_left=900), log=lambda *a: None,
                          kin=SimpleNamespace(base=lambda a: np.eye(4)), home=lambda **k: None)
     assert ia.look_twins(sk, {"aim0": "t0", "aim1": "t1"}) == ["t0"] and looked == ["t0"]
-    sk.ex = SimpleNamespace(steps_left=lambda: 200)                                  # no budget for a look
+    sk.ex = SimpleNamespace(steps_left=200)                                  # no budget for a look
     looked.clear()
     assert ia.look_twins(sk, {"aim0": "t0"}) == [] and looked == []
+
+
+def test_the_wait_and_the_looks_run_on_the_real_executor_interface(monkeypatch):
+    """the runtime's / G3's ``Executor.steps_left`` is a property (an int): the D / E rendered rows crashed calling it.
+    wait_demo_done and look_twins against a real Executor on a fake env."""
+    import numpy as np
+
+    from dojo.skills import interactive as ia
+    from dojo.skills import regrasp
+    from dojo.skills.executor import Executor, steps_left_of
+
+    st = {f"{a}_arm_joint_state": np.zeros(6) for a in ("left", "right")}
+    st.update({f"{a}_ee_joint_state": np.ones(1) for a in ("left", "right")})
+    env = SimpleNamespace(proprio=lambda: st, steps_used=830, step_lim=1600)
+    ex = Executor(env)
+    assert isinstance(Executor.__dict__["steps_left"], property) and steps_left_of(ex) == 770
+    assert steps_left_of(SimpleNamespace(steps_left=lambda: 5)) == 5 and steps_left_of(SimpleNamespace()) is None
+    calls = []
+    monkeypatch.setattr(ia, "wait_actors_still", lambda sk, fallback=70: calls.append(1) or ("timeout" if len(calls) < 2 else "still after 3"))
+    sk = SimpleNamespace(imitate_wait="origin", ex=ex)
+    assert ia.wait_demo_done(sk, 110, 5) == "still after 3 (after 1 timeouts)"
+    objs = {"aim0": _o("Rigid/garage/00014"), "t0": _o("Rigid/action_camera/00000")}
+    for o in objs.values():
+        o.center_w = np.zeros(3)
+    monkeypatch.setattr(regrasp, "_look_over", lambda sk, arm, lab, T: (T, None))
+    w = _w(objs)
+    sk = SimpleNamespace(refresh=lambda: w, ex=ex, log=lambda *a: None, kin=SimpleNamespace(base=lambda a: np.eye(4)),
+                         home=lambda **k: None)
+    assert ia.look_twins(sk, {"aim0": "t0"}) == ["t0"]
