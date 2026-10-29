@@ -2366,7 +2366,8 @@ def arrange(sk: Skills, steps: list) -> dict:
             continue
         sk.refresh()
         if verb == "push":
-            r = push_to(sk, obj, sk.world.obj(sup).center_w[:2], support=sup)
+            r = push_to(sk, obj, sk.world.obj(sup).center_w[:2],
+                        **({"support": sup} if getattr(sk, "push_goal", "centre") == "cover" else {}))
         else:
             container_obstacle(sk, sup)
             tall = sk.world.obj(sup).top_z > TABLE_Z + 0.05
