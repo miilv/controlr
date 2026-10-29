@@ -3568,6 +3568,11 @@ from dojo.skills.pack import SKILLS as _PACK  # noqa: E402
 
 ROUTE_ONLY.update(_PACK)
 
+# hang the headphones, close the laptop, stand it in its rack (stream N; route "store_laptop", off by default)
+from dojo.skills.store import ROUTE_SKILLS as _STORE  # noqa: E402
+
+ROUTE_ONLY.update(_STORE)
+
 
 def skill_fn(name: str):
     """A planned skill's function: the library's, else a route-only one (``ROUTE_ONLY``)."""
