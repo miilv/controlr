@@ -1,7 +1,9 @@
 # Stream H (2026-10-29): robot-harness a21dd6f skills/pour_bottle/skill_robodojo.py (Mikhail's side; vendored unchanged in
 # ../pour_bottle) with step-lean pacing, every change marked "H:". New arguments, whose defaults are the vendored skill's
 # behaviour: `rush_to` (deg: the profile's first move goes straight from the lift to this roll, at normal speed, and the
-# profile angles below it are skipped; G3 pour probes: no liquid leaves these bottles below a 107 deg tilt),
+# profile angles below it are skipped; G3 pour probes: no liquid leaves these bottles below a 107 deg tilt) with
+# `rush_speed` / `rush_ramp` (its speed and its trapezoid's ramp steps) and `rush_carry` (carry to the first angle
+# over the cup first, as v1 does, then rush),
 # `flow_speed` (speed of the profile moves after the first), `untilt_speed`, `lift_speed`. Why: pour_by_language needs
 # three pours (and a home after each) in 800 steps, and one vendored pour takes ~355 (G3 2026-10-29: 0/8, every
 # episode out of steps in the third pour); its slow tilt-up, untilt and drain are most of that.
@@ -132,7 +134,8 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
         yaws=(0, 15, -15, 30, -30), sides="auto", phis=(0, 40, 70, 90, 105, 120, 135, 150), drain_from=120,
         hold_steps=3, drain_steps=24, untilt_phis=(90, 60, 0), lip_clear=0.012, body_clear=0.012, spout_back=0.0, mouth_r=0.015,
         shoulder_frac=0.55, slip_deg=14.0, slip_m=0.012, set_dz=0.004, min_return_steps=60, home=True,
-        rush_to=None, flow_speed="slow", untilt_speed="slow", lift_speed="slow"):   # H: pacing
+        rush_to=None, rush_carry=False, rush_speed="normal", rush_ramp=2,
+        flow_speed="slow", untilt_speed="slow", lift_speed="slow"):  # H
     P = load_pour()
     Bottle = bottle_class(P)
     log = []
@@ -160,7 +163,9 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
     # ------------------------------------------------------------ plan (free IK): pre, grasp, lift, whole profile
     arms = [arm] if arm in ("left", "right") else (["right", "left"] if c0[0] >= 0 else ["left", "right"])
     # H: the profile actually run: the rush angle first (from the lift, normal speed), then the angles above it
+    # (rush_carry: the carry to the first angle over the cup first, as v1, then the rush)
     prof = list(phis) if rush_to is None else [float(rush_to)] + [p_ for p_ in phis if p_ > float(rush_to)]
+    prof = [phis[0]] + prof if rush_to is not None and rush_carry else prof
     plan_phis = list(phis) if rush_to is None else sorted(set(phis) | set(prof))
     best, tried = None, 0
     for a_ in arms:
@@ -249,8 +254,11 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
         Rf = P.rotm(e["quat"])
         cup.r_hc, cup.R_hc = Rf.T @ (np.asarray(cp["pos"]) - np.asarray(e["pos"])), Rf.T @ P.rotm(cp["quat"])
         tcp, Qn, tilt = P._pour_pose(cup, Qg, sd, ph, sxy, top_z + lip_clear, top_z, body_clear, "tool", head_h)
-        mv = robot.move_to(arm=A, pos=P.r4(tcp), quat=P.r4(Qn, 6), speed=("normal" if i == 0 else flow_speed),   # H
-                           max_dev=0.03, max_steps=80)
+        i_rush = 1 if rush_carry else 0                                                              # H
+        pace = ({"speed": "normal"} if i == 0 and (rush_to is None or rush_carry)
+                else {"speed": rush_speed, "ramp": int(rush_ramp)} if rush_to is not None and i == i_rush
+                else {"speed": flow_speed})
+        mv = robot.move_to(arm=A, pos=P.r4(tcp), quat=P.r4(Qn, 6), max_dev=0.03, max_steps=80, **pace)
         if ph >= drain_from and mv.get("moved"):
             robot.hold(steps=int(hold_steps))
         o = P._obs(robot, [ci])
