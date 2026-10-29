@@ -20,3 +20,12 @@ def test_box_rim_z_ignores_a_handle_above_the_rim():
     body = np.vstack([np.c_[xs.ravel(), ys.ravel(), np.full(xs.size, z)] for z in (-0.11, 0.0, 0.03)])
     handle = np.c_[np.zeros(31), np.linspace(-0.07, 0.07, 31), np.full(31, 0.11)]
     assert abs(box_rim_z(np.vstack([body, handle])) - 0.03) < 0.003
+
+
+def test_belt_confirm_zone_default_off_and_validated():
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert RuntimeConfig().belt_confirm_zone == "off"
+    assert SKILL_ATTRS["belt_confirm_zone"] == ("off", "on", "uncertain")
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(belt_confirm_zone="maybe"))

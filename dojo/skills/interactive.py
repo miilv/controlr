@@ -1052,13 +1052,31 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     return {"ok": False, "stage": "pick", "note": f"every match was absent at its track: {sorted(absent)}"}
 
 
+ZONE_MARGIN = 0.10   # belt_confirm_zone: a match counts this far past the downstream arm's home hand along the belt
+ZONE_SURE = 0.9      # ... ("uncertain") unless the tracker's identity share for it is at least this
+
+
 def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyor, max_wait, confirm, id_share,
                  first_seen):
     """One wait-for-a-match-and-pick round of ``match_and_pick``; None when the pick found nothing at the match's track
     (``belt_wrist_veto``: wait for the next match), else the skill's result."""
-    same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key and l not in absent]
+    zmode = getattr(sk, "belt_confirm_zone", "off")
+    zone = zmode in ("on", "uncertain")
+    down = max(ARMS, key=lambda a: float(sk.kin.base(a)[:2, 3] @ u)) if zone else None
+    # belt_confirm_zone: a match counts only once it has ridden past the downstream arm's home hand (+ZONE_MARGIN), where
+    # the head view sees riders whole (identity 100 % right at x 0.4-0.7 against 5-53 % at the entry and around the home
+    # grippers: compute4 camera rows, physics-only GT replays); the downstream arm then picks it
+    s_zone = (float(sk.kin.tcp(down, sk.world.home_q[down])[:2, 3] @ u) + ZONE_MARGIN) if zone else None
+    def in_zone(lab):
+        # "uncertain": only a match the tracker is not sure of waits for the zone (G3 / sure reads keep today's pick)
+        if not zone or (zmode == "uncertain" and float(w.obj(lab).confidence) >= ZONE_SURE):
+            return True
+        return float(w.obj(lab).pos[:2] @ u) >= s_zone
+
+    same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key and l not in absent
+            and in_zone(l)]
     t0 = w.step
-    seen = confirm if same else 0
+    seen = confirm if same and not zone else 0
     while not same or seen < confirm:
         # not in view yet (at eval the far end of the belt may be out of the head camera): keep looking. A rider that
         # came into view is read again before it counts: its first readings are at the edge of the view, and the
@@ -1083,7 +1101,7 @@ def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyo
         fp = None if fa is None else np.asarray(fa[0], float) + v * (w.step - fa[1])
         behind = (lambda l: float((w.obj(l).pos[:2] - fp) @ u) < -0.08) if fp is not None else (lambda l: True)
         same = [l for l in labs if l != first and w.obj(l).asset.key == key and float(w.obj(l).confidence) >= id_share
-                and behind(l) and l not in absent]
+                and behind(l) and l not in absent and in_zone(l)]
         seen = seen + 1 if same else 0
     sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")
     target = min(same, key=lambda l: -float(w.obj(l).pos[:2] @ u))          # the next to come
@@ -1091,7 +1109,8 @@ def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyo
     skip: set = set()
     for attempt in range(2):
         sk.notes_belt_method = None
-        r = pick_from_belt(sk, target, v, lift=lift, ignore=ign, skip_methods=tuple(skip))
+        late = zone and float(w.obj(target).pos[:2] @ u) >= s_zone
+        r = pick_from_belt(sk, target, v, lift=lift, ignore=ign, skip_methods=tuple(skip), arms=[down] if late else None)
         if r.ok or r.status == "ended":
             return {"ok": True, "stage": "picked", "note": r.note}
         if r.status == "absent":
