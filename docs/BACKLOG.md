@@ -70,15 +70,18 @@
 - [ ] **dojo perception: store_laptop headset identity 00002 vs 00004** (5.1 c4 frames; B1 picks 00002 with the alternative
   00004 at +0.03..+0.08, so `identity_margin_swap` never fires): try the embedding path (`embed_b1`) on these frames.
   The laptop flip: `on_base_refit` (off) fixes 7 of 17 estimates; A/B after the root-vs-mesh offset is resolved.
-- [ ] **dojo skills: store_laptop's headset hang never plans: G3 mode A 0/10 stops before the laptop.** The planner
-  picks `hang_on_hooks` for the headset (its `headband_bridge` on `stand`'s `support_cradle`) first, and finds
-  "0 grasp-place pairs" on all of 100000-09. 8-99 of the 96-405 headset grasps are reachable per arm, but none pairs
-  with a reachable hang. The episode then finishes with the laptop untouched (`not_home`, 0.0). Identical on main
-  22f6339 and with #198's frame fix (journal 2026-10-27-dojo-integ-c4 §5; runs compute4
-  `~/dojo-data/integ-c4/g3/laptop_A_{main,pr}`). The laptop stage runs only once this plans. It is the same on
-  rendered genuine 5.1 (compute2, bbc9b3a): c4b_laptop_obr_100000 and c4b_laptop_risky_100000 end at step 24/800,
-  not_home 0.0, "[hang] no plan for ['headset'] on hooks [0]: ... 0 grasp-place pairs". The laptop on_base_refit
-  arm was stopped for this (G3 hang plan blocker).
+- [ ] **dojo skills: store_laptop: the headset hang plans now; its hold and the laptop's pick do not** (journal
+  2026-10-29-dojo-newskill-hang, store_laptop sections).
+  - Done: `hang_cradle` "straddle" (#345) lets the held headset straddle the stand's top, so the hang plans in 16 of
+    20 dev rows. G3: 1-2 of 10 rows reach the 0.2 tier.
+  - Still open, the headset: the 24-26 mm band pinches slip; 37-43 mm antipodal pinches hold but the headset slides off
+    the cradle after the release.
+  - Still open, the laptop stage (80 %), on `wip/store-laptop` (route "store_laptop", off):
+    - the checker frames (`artgeom.checker_point`: a base-link functional frame on its link);
+    - posed geometry (`Skills.artic_geom` "measured": the lid turned shut);
+    - a lid re-push: shut in 19/20.
+  - The pick is the blocker: the shut laptop's edge pinch across its 9 mm slab, approached horizontally, plans but slips
+    in every G3 attempt (rises 0 mm or falls off the stand). Next idea: slide it to overhang the stand, then pinch.
 - [ ] **dojo infra (landmine): a box's perception catalogue can silently miss assets.** `task_map()` drops every
   label whose candidates have no `geom.npz` (one warning in `perception_service.log`), so camera rows of that task
   run perception-blind and end `perception_gross` in seconds. compute4's `~/dojo-perception-data/catalog` lacked W's

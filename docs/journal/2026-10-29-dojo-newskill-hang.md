@@ -56,3 +56,29 @@ What the rows show now:
   CPU replay the laptop transfer has 0 pairs.
 
 **Next.** Rank the wide (≥ 35 mm) headset grasps first (`pair_rank`), then build the laptop stage.
+
+## store_laptop: the laptop stage (WIP, `wip/store-laptop` @ 6eb9e16c, route "store_laptop" off)
+
+Milestones, all default off and unit-tested (`tests/dojo/test_store_laptop.py`):
+- **M1, the checker's frames** (`artgeom.checker_point`, `root_axis`). RoboDojo puts a functional frame that names a
+  `base_link` on that link's pose. The laptop's root link sits at (0, -77.1, +3.5) mm in our asset frame, so its
+  "bottom" is the body's front edge, not the body's middle. `store.upright_targets` meets the rack-bbox and root-y-up
+  conditions.
+- **M2, posed geometry** (`Skills.artic_geom` "measured", `artgeom.posed_asset`). An articulated object with a measured
+  joint gets that position's links and box, generically. The open 121 mm laptop becomes a 9 mm slab.
+- **M3, reach.** With the shut geometry no top-down pinch exists (126-180 mm spans). Horizontal edge pinches reach: CPU
+  replay gives 36-40 pairs (right arm), and no pull-closer was needed to plan.
+- **Composite route:** hang, then `swing_closed`, then re-push the lid while it measures short, then the transfer with
+  edge pinches restricted to within 10 mm of an edge's middle, with a squeeze.
+
+G3, dev v1 100030-39, std + random (e240ce6d, then 6eb9e16c):
+
+| stage | result |
+|---|---|
+| lid shut ≥ 0.85 | 12/20, then 19/20 with the re-push |
+| laptop transfer plans | 13/20 with any edge pinch, 11/20 with centred pinches |
+| laptop pick holds | 0 of every attempt: rises 0 mm, or falls off the stand |
+| score | headset tier only: 1-2/10 per cell |
+
+The edge pinch across the slab does not hold the laptop in physics. Next: slide it to overhang the stand, then pinch
+the overhang.
