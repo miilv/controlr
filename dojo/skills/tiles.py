@@ -298,6 +298,7 @@ ATTEMPTS = ({"allow_top": False, "air_handover": False}, {"allow_top": True, "ai
 # before the skill commits to it (stream W / S: frame 0 reads one view for most numerals; a look that agrees makes
 # it 1.0, one that disagrees makes it unread)
 CONFIRM_BELOW = 1.0
+LOOKS_PER_TILE = 2        # wrist looks at one unread tile at most (then the next; a placeholder never reads)
 
 
 def _confirm(sk, labels, looks: int, max_looks: int) -> int:
@@ -313,7 +314,7 @@ def _confirm(sk, labels, looks: int, max_looks: int) -> int:
     return looks
 
 
-def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, attempt: int = 0):
+def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, attempt: int = 0, ignore=()):
     """``place_oriented`` onto the pad, with ``ATTEMPTS[attempt]``. No in-air handover before the last attempt: its
     grasps skip this module's grasp filters, and the frictionless number tiles / thin discs slipped out of 6 of 6
     handovers (G3 v1 100030-49)."""
@@ -322,7 +323,7 @@ def _place_tile(sk, label: str, pad: str, yaw_sym: int = 1, attempt: int = 0):
     tg = tile_targets(sk, label, pad)
     if yaw_sym == 2:
         tg += tile_targets(sk, label, pad, yaws_deg=tuple(y + 180.0 for y in YAWS_DEG))
-    return place_oriented(sk, label, tg, yaw_sym=1, tol_xy=0.012, tol_tilt=10.0, tol_z=0.02, ignore=(pad,),
+    return place_oriented(sk, label, tg, yaw_sym=1, tol_xy=0.012, tol_tilt=10.0, tol_z=0.02, ignore=(pad,) + tuple(ignore),
                           air_handover=a["air_handover"], relay_near=RELAY_NEAR, max_spots=5, place_kw=dict(PLACE_KW),
                           transfer_kw={**TRANSFER_KW, "max_pick_tilt": MAX_PICK_TILT,
                                        "pair_ok": centred_grasp(sk.world.obj(label), allow_top=a["allow_top"])})
@@ -334,14 +335,30 @@ def complete_equation(sk, max_looks: int = 6, max_tries: int = 5) -> dict:
     from dojo.skills.skills import SkillResult
     w = sk.refresh()
     eq = read_equation(w)
-    looks = 0
-    while eq["error"] is None and eq["unknown"] and looks < max_looks:
-        _look_value(sk, eq["unknown"][0])
+    looks, looked = 0, {}
+    while eq["error"] is None and looks < max_looks:
+        todo = [t for t in eq["unknown"] if looked.get(t, 0) < LOOKS_PER_TILE]
+        if not todo:
+            break
+        _look_value(sk, todo[0])
+        looked[todo[0]] = looked.get(todo[0], 0) + 1
         looks += 1
         eq = read_equation(sk.world)
+    phantom = None
+    if eq["error"] is None and not eq["empty"] and len(eq["unknown"]) == 1:
+        # perception's inverse layout puts a tile on EVERY pad of the row, the empty one included (a placeholder with
+        # no identity); after the looks, the one tile that still reads nothing is that placeholder: its pad is the
+        # empty slot (stream W, 15 of 15 held-out layouts)
+        phantom = eq["unknown"][0]
+        k = eq["tiles"].index(phantom)
+        eq["empty"], eq["unknown"], eq["vals"][k], eq["phantom"] = [k], [], None, phantom
     if eq["error"] is None:
-        looks = _confirm(sk, [t for t in eq["tiles"] if t], looks, max_looks)
-        eq = read_equation(sk.world)
+        looks = _confirm(sk, [t for t in eq["tiles"] if t and t != phantom], looks, max_looks)
+        eq2 = read_equation(sk.world)
+        if phantom is not None and not eq2["empty"] and eq2["unknown"] == [phantom]:
+            eq["vals"] = [None if t == phantom else v for t, v in zip(eq2["tiles"], eq2["vals"])]
+        else:
+            eq = eq2
     sk.log(f"[tiles] equation {eq}")
     if eq["error"] is not None:
         return {"ok": False, "stage": "read", "note": eq["error"]}
@@ -387,7 +404,7 @@ def complete_equation(sk, max_looks: int = 6, max_tries: int = 5) -> dict:
     # each candidate twice (a second place_oriented re-plans from where the first left it, relays included), then the next
     # each candidate through the attempt ladder, then the next candidate
     for o, k in [(c, k) for c in cands for k in range(len(ATTEMPTS))][:max_tries]:
-        r = _place_tile(sk, o.label, pad, attempt=k)
+        r = _place_tile(sk, o.label, pad, attempt=k, ignore=(phantom,) if phantom else ())
         sk.log(f"[tiles] {o.label} -> {pad}: {r.status} {r.note[:120]}")
         if r.ok or r.status in ("step_budget", "ended"):
             break

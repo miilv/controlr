@@ -283,3 +283,37 @@ def test_one_view_reads_are_confirmed_with_a_wrist_look(monkeypatch):
     r = tiles.complete_equation(Sk())
     # the equation's one-view tile, then the tile about to be placed (2); never num_5, which nobody needs
     assert r["ok"] and looked == ["t0", "num_2"]
+
+
+def test_the_unreadable_placeholder_on_the_empty_pad_is_the_empty_slot(monkeypatch):
+    """Perception puts a placeholder tile (no identity, no digit) on the empty pad too: after its looks it is the empty
+    slot, the tile goes there and the placeholder is no obstacle."""
+    objs = _equation_objs({0: ("number", 9), 1: ("minus", 0), 2: ("number", 0), 4: ("number", 17)})   # 9 - _ = 7
+    for o in objs:
+        if o.category == "number":
+            o.source, o.digit, o.digit_source, o.digit_conf = "perception", o.idx % 10, "glyph", 1.0
+    ph = next(o for o in objs if o.label == "t2")
+    ph.digit, ph.digit_source, ph.identity_known = None, "unread", False
+    w = _world(objs, routes=["equation"])
+    assert tiles.route(EQUATION.lower(), w, ["equation"])[0] == "complete_equation"
+    looked, placed = [], []
+
+    class Sk:
+        world = w
+        held = {"left": None, "right": None}
+
+        def refresh(self):
+            return w
+
+        def log(self, m):
+            pass
+
+        def bank(self):
+            pass
+
+    monkeypatch.setattr(tiles, "_look_value", lambda sk, label: looked.append(label))
+    monkeypatch.setattr(tiles, "_place_tile", lambda sk, label, pad, **kw: placed.append((label, pad, kw.get("ignore")))
+                        or type("R", (), {"ok": True, "status": "ok", "note": ""})())
+    r = tiles.complete_equation(Sk())
+    assert r["ok"] and looked == ["t2", "t2"]
+    assert placed == [("num_2", "mat2", ("t2",))]
