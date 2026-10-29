@@ -72,3 +72,28 @@ Method: G3 mode gt (physics-only twin, GT world, 0 LLM, traced) on the v1 draws 
 
 Spend: 0 LLM calls. G3 on compute3: 14 pour_by_language jobs of 5 episodes (~15 min each), including the runs before
 each fix; one at a time.
+## Camera A/B and the park (lead, 2026-10-29)
+
+Rendered A/B (Integration, compute4, measurement ids 100005-09 + 100020-24, 10 pairs, 53f10437): A = the candidate
+(aim b10 + pour_order); B = A + `ported_pour_pace` "overlap".
+- Score +4.0 on average, but 0 extra successes. The candidate is 0/10 and overlap is 0/10 too: every episode is bound
+  by the step budget.
+- Earlier, lean on the compute1 rows: 0/4 (2 out of steps, 2 "plan" endings with 5 of 12 pours slipped).
+
+| pace | G3 (v1 draws 100030-39) | camera |
+|---|---|---|
+| v1 | 0/8 | 0/5 (out of steps at 776-799) |
+| lean | 3/10, 5/30 slips | 0/4, 5/12 slips |
+| overlap 0.8 | 5/10, 1/30 slips | 0/10 |
+
+The arithmetic that binds:
+- a v1-speed pour is ~320 steps from grasp to set-down, and ~214 from carry to the upright edge;
+- three pours do not fit 800 even with every grasp overlapped (~804);
+- camera mode adds 42-46 look steps before the first pour;
+- in G3 the overlap's successes ended at 682-747, which camera turns into 726-791 plus whatever its pours lose to
+  perception;
+- the only motion fast enough to fit (lean's normal-speed rush and untilt) slips in camera.
+
+**pour_by_language is parked** (the lead's ruling). Both switches stay default off. Unparking needs one of:
+- a pour that is reliably faster without in-hand slip;
+- a step-lean perception, which would be a generic all-task change with its own A/B, not a per-task look budget.
