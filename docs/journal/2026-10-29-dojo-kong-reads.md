@@ -52,6 +52,20 @@ default off. Work in two PRs: #309 (the discard), then the draw. 0 LLM calls.
 | standing | head | 97 % | 0.98 |
 | standing | wrist | 85 % | 0.97 |
 
+**Rendered A/B v1 (kongon, b131264e era): two failure classes besides misreads, fixed**
+- **The discard was unread and no look pose planned** (3/8: 100005 / 06 / 22).
+  - The fallen discard lies past the standing discards (y >= 0.1). The head crop at its believed pose gave "back"
+    (most likely a standing neighbour's back), and a straight-down wrist look there is out of reach for both arms.
+  - Fix: an oblique look from the robot side (60-70 deg up, ~20 cm) when no down look plans, with a pose refine from
+    that view before the read.
+  - G3 100000-09 with the look forced (`kong_read_look=always`): the oblique look planned for the left arm in every
+    episode, and success held (463-475 steps).
+- **The hand "pair" was ambiguous** (2/8: 100008, 100021).
+  - The rule needed exactly one glyph read twice among the unmatched hand tiles. A triple with one misread or unread
+    tile also leaves its glyph twice.
+  - Fix: keep the draw iff its read glyph equals the read glyph of ANY unmatched hand tile. The other wall top is drawn
+    unique by the config and matches none; the decision uses image reads only (lead, 29 Oct).
+
 **Next**
 - The rendered A/B on the same sha (Integration).
 - If the draw's head reads stay the weak spot: kong crops of standing tiles on the read spot (training draws
