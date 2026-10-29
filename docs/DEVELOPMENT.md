@@ -337,6 +337,12 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   / low-margin crop, the tile stays unread ("unknown"). The margins (per view kind) live in the checkpoint and were
   chosen on 100030-49 validation draws; never pick them on the held-out ids. One server serves one model (kong tiles
   or digits / operators); a second reader takes its own socket (`GlyphClient(addr)` as `client_`).
+- **A set side-server address fails loudly.** With `DOJO_SEG_ADDR` / `DOJO_GLYPH_ADDR*` unset the flags are no-ops;
+  with one SET but unreachable, gone mid-run or answering an error, the clients raise `sam_masks.SideServerDown`
+  (never a silent run without the server). Callers re-raise it past their "a failure never takes perception down"
+  handlers; the perception service writes `side_server_down` next to `DOJO_PERCEPTION_READY` and exits; eval marks the
+  row `infra_failure` and `integ_eval.sh` exits 4 (the runner re-queues once). One `sam_masks.serve` server may serve
+  several lanes: the model runs one request at a time (`model_lock`), the image cache sits under its own lock.
 - **`classify_mask` needs the arm mask.** The digit / operator margins were calibrated without the crops it refuses:
   masks cut by the image border (`edge`) and masks whose 3-px ring is >= 30 % arm (`robot`, only when `robot=` is
   passed: `~known` of a B1 view or `render.robot_mask`). Without `robot=`, a tile half hidden by the gripper is read

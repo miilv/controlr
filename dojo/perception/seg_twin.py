@@ -247,7 +247,7 @@ class SegClient:
     def __init__(self, addr: str):
         from .sam_masks import SamClient
 
-        self._c = SamClient(addr)
+        self._c = SamClient(addr, loud=True)     # unreachable / gone / erroring -> SideServerDown
 
     def detect(self, img: np.ndarray, conf: float = 0.25, max_det: int = 100) -> list[Det]:
         from .sam_masks import unpack
@@ -263,21 +263,16 @@ _CLIENT: dict = {}
 
 
 def client() -> SegClient | None:
-    """The process's client, or None (``DOJO_SEG_ADDR`` unset, or no server: callers run without the detector)."""
+    """The process's client; None only when ``DOJO_SEG_ADDR`` is unset (callers run without the detector). A SET address
+    that does not answer raises ``SideServerDown`` (an infra failure of the job, never a silent run without seg)."""
     addr = os.environ.get(ENV_ADDR, "")
     if not addr:
         return None
     c = _CLIENT.get(addr)
     if c is None:
-        try:
-            c = SegClient(addr)
-        except Exception as e:  # pragma: no cover - depends on a live server
-            import warnings
-
-            warnings.warn(f"segmenter server at {addr} unreachable ({e}); seg flags ignored")
-            c = False
+        c = SegClient(addr)          # raises SideServerDown (SamClient loud)
         _CLIENT[addr] = c
-    return c or None
+    return c
 
 
 def main(argv=None):

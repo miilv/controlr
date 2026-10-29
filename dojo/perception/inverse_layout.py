@@ -36,6 +36,8 @@ from functools import lru_cache
 
 import cv2
 import numpy as np
+
+from .sam_masks import SideServerDown
 from scipy.optimize import minimize
 from scipy.spatial.transform import Rotation
 
@@ -899,6 +901,8 @@ def _glyph_views(sil_of, views, cat: str) -> dict:
             # the arm's pixels (S's reader v2 refuses a tile half hidden by the gripper: a cut 3 reads as a 9)
             r = (classify(v.img, m, view=kind, robot=np.asarray(rob) > 0, category=cat)
                  if rob is not None and _takes_robot(classify) else classify(v.img, m, view=kind, category=cat))
+        except SideServerDown:  # the reader's server is gone: an infra failure, never a silent "unknown"
+            raise
         except Exception as e:  # a reader failure never takes perception down: the identity stays unknown
             r = {"read": False, "why": f"error: {type(e).__name__}"}
         if r.get("read") and r.get("name"):
@@ -3386,6 +3390,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
     head = views["cam_head"]
     try:
         dets = [d for d in c.detect(img, conf=cfg.seg_min_score) if int(d.mask.sum()) >= MIN_BLOB_PX.get("cam_head", 25)]
+    except SideServerDown:  # the segmenter's server is gone: an infra failure, not a run without seg
+        raise
     except Exception as e:  # a detector failure never takes perception down
         info["error"] = f"{type(e).__name__}: {e}"
         return info
@@ -3923,6 +3929,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             try:
                 seg_dets = [d for d in c.detect(images["cam_head"], conf=cfg.seg_min_score)
                             if int(d.mask.sum()) >= MIN_BLOB_PX.get("cam_head", 25)]
+            except SideServerDown:  # the segmenter's server is gone: an infra failure, not the config's minimum
+                raise
             except Exception as e:  # a detector failure never takes perception down: the config's minimum
                 sam_info["series_seg_error"] = f"{type(e).__name__}: {e}"
     if cfg.series_count != "one":
