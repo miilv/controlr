@@ -61,7 +61,8 @@ if [[ "${1:-}" != --inner ]]; then
     [[ "$i" -eq 30 ]] && { echo "[official] MemAvailable $(avail) GB too low: refusing to start" >&2; exit 75; }
     echo "[official] MemAvailable $(avail) GB, waiting..." >&2; sleep 20
   done
-  LOCK="${_lock:-${DOJO_GPU_LOCK:-$HOME/dojo-gpu.lock}}"; exec 9>>"$LOCK"
+  # our own heavy lock (never compute4's ~/dojo-gpu.lock = ~/coord/gpu.lock: Mikhail's alone)
+  LOCK="${_lock:-${DOJO_GPU_LOCK:-$HOME/dojo-ours-gpu.lock}}"; exec 9>>"$LOCK"
   echo "[official] waiting for $LOCK: $(head -c 160 "$LOCK" | tr '\n' ' ')" >&2
   flock -w "${OFFICIAL_LOCK_WAIT_S:-10800}" 9 || { echo "[official] gave up waiting for $LOCK" >&2; exit 75; }
   printf 'pid=%s stream=official start=%s cmd=official_eval %s\n' "$$" "$(date -u +%FT%TZ)" "$*" > "$LOCK"

@@ -248,6 +248,15 @@ def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str
     no in-air handovers (a ring handed over in the air fell 2/2). A piece left tilted on a peg is tried once more."""
     w = sk.refresh()
     b = w.obj(base)
+    sk.peg_base = base          # the runtime's peg_base_refine knows this place refine is the pegs' base (default off)
+    try:
+        return _stack_on_pegs(sk, w, b, groups, base, pegs, drop, thread, seat)
+    finally:
+        sk.peg_base = None
+
+
+def _stack_on_pegs(sk: Skills, w, b, groups, base: str, pegs: list[str], drop: float, thread: float, seat: bool) -> dict:
+    reread = getattr(sk, "peg_base_refine", "off") != "off"     # the base may be re-measured mid-skill: re-read the pegs
     sk.coll.include.add(base)
     if b.asset.mesh is not None:
         # the base as small boxes (plate and pegs): its box is mostly air between the pegs, and a hand let go of a seated
@@ -265,6 +274,9 @@ def stack_on_pegs(sk: Skills, groups: list[list[str]], base: str, pegs: list[str
             if lab not in sk.world.objects:
                 continue
             sk.refresh()
+            if reread:                  # the axes from the base as believed now (its one local refine, if taken)
+                b = sk.world.obj(base)
+                peg = geo[tag] = peg_geometry(b, tag)
             if on_peg(sk, lab, peg):
                 done.append(lab)
                 on_this.append(lab)
