@@ -84,3 +84,17 @@ measured on this path, also matters. Re-picking a stuck piece never works on cam
 **Candidate lever (not built in this box):** for a stuck piece, a short sideways nudge towards the peg axis at
 mid-ring height (`Skills.push` with a ~1.5 mm tolerance) instead of the re-pick. Check it first in G3 mode B with a
 camera-like base offset (compute3:~/dojo-data/s-pst/g3_modeB_off2: does the chain reproduce there?).
+
+**G3 check (compute3, physics-only, mode B, base believed 1.6 / 1.5 mm off, dev 100000-04): 4/5, mean 0.92.** There
+were no stuck pieces and no slipped re-picks. The twin does not reproduce the camera's chain with the base error alone,
+so the chain needs the camera's own post-place reads.
+
+The leading hypothesis for the next owner (not tested):
+1. A noisy post-place read (2-8 mm off, or tilted) makes `stuck()` judge a piece that actually slid down the peg as
+   "resting tilted".
+2. The re-pick then closes where the belief says, on air: all 7 re-picks found empty jaws.
+3. The piece's belief is left blocking the pole, and the remaining pieces get 0 grasp-place pairs.
+
+Candidate levers:
+- re-pick only on a stuck judgment that a second read confirms;
+- after an empty-jaws re-pick, re-read the piece instead of keeping the dropped belief.
