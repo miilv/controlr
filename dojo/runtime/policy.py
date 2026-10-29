@@ -384,7 +384,7 @@ class RuntimeConfig:
     # the instruction's three, or more groups than baskets, fails grounding and nothing is sorted) | p1
     # (classify_into_bins_p1: sorts the named / largest groups, leaves the rest on the table)
     ported_classify: str = "v3b"
-    # ... and the pacing of pour_order's pours (pour_by_language; stream H): v1 (the vendored pour_bottle) | lean
+    # ... the pacing of pour_order's pours (pour_by_language; stream H): v1 (the vendored pour_bottle) | lean
     # (pour_bottle_lean: the tilt-up to 90 deg and the untilt at normal speed, a 12-step drain, no home between pours):
     # ``planner.POUR_PACE``. A single pour (pour_liquid) keeps v1's pace either way
     ported_pour_pace: str = "v1"
