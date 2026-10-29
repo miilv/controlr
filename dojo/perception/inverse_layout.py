@@ -3346,6 +3346,21 @@ def _seg_views(views: dict, mask: np.ndarray) -> tuple[dict, np.ndarray, np.ndar
     return vws, M, kn
 
 
+def _seg_category(key: str) -> str:
+    """The catalogue category of an asset key (``Rigid/watch/00004`` -> ``watch``)."""
+    return key.split("/")[1] if key.count("/") >= 2 else key
+
+
+def _seg_shapes(shapes: dict, key: str, cfg) -> dict:
+    """The geometry groups ``_seg_fit`` tries inside a mask of class ``key``: the one holding that asset; else, with
+    ``cfg.seg_add_category``, those of the mask's category (a watch mask fits watches, not the group's cars); else all."""
+    mine = {gk: sms for gk, sms in shapes.items() if any(s_.key == key for s_ in sms)}
+    if not mine and getattr(cfg, "seg_add_category", False):
+        cat = _seg_category(key)
+        mine = {gk: sms for gk, sms in shapes.items() if any(_seg_category(s_.key) == cat for s_ in sms)}
+    return mine or shapes
+
+
 def _seg_fit(mask: np.ndarray, key: str, gi: int, g: dict, prior: dict, shapes: dict, views: dict, others, cfg,
              groups) -> tuple | None:
     """B1's fit of label group ``gi`` inside one segmenter mask: the yaw-grid coarse fit at the mask's ray-plane centre,
@@ -3356,7 +3371,7 @@ def _seg_fit(mask: np.ndarray, key: str, gi: int, g: dict, prior: dict, shapes: 
     b = _seg_blob(M, kn)
     if b is None:
         return None
-    mine = {gk: sms for gk, sms in shapes.items() if any(s_.key == key for s_ in sms)} or shapes
+    mine = _seg_shapes(shapes, key, cfg)
     yaw_fixed = prior["yaw_fixed"]
     best = None
     for sms in mine.values():
@@ -3551,7 +3566,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                 tr["why"] = "group not pending"
                 continue
             g, prior = pend[gi]
-            if add_only and d.key not in g["candidates"]:
+            if add_only and d.key not in g["candidates"] and not (
+                    cfg.seg_add_category and _seg_category(d.key) in {_seg_category(k) for k in g["candidates"]}):
                 tr["why"] = "add: not the group's exact class"
                 continue
             members = [i for i, h in enumerate(chosen) if h.label_group == gi]
@@ -3917,6 +3933,10 @@ class EstimatorConfig:
     seg_add_move_weak: bool = True   # "add" only: a weak member with no exact-class mask under it may move (see above);
                                      # False until 2026-10-28 (journal 2026-10-28-dojo-plan-none-perception)
     seg_weak_conf: float = 0.5       # ... below this confidence (1 - its silhouette loss)
+    # "add" only: an unexplained mask of the group's CATEGORY (not only its exact class) may add / move a member, fitted
+    # with that category's shapes only. v2b has no class for most by_language assets (watch 4-7, car 10-15, pepper) but
+    # names their category (watch/00000 on a watch 4-7); default off (journal 2026-10-29-dojo-bylang-watch-trace)
+    seg_add_category: bool = False
     seg_add_refit_poor: bool = True   # "add" only: a member below seg_poor_iou inside its own exact-class mask re-fits
     seg_poor_iou: float = 0.5        # ... there, kept only with a gain of seg_poor_gain IoU (within its size)
     seg_poor_gain: float = 0.25      # (seg_add_refit_poor: False until 2026-10-28, journal 2026-10-28-dojo-plan-none-perception)

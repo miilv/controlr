@@ -458,6 +458,47 @@ def test_seg_add_move_weak_moves_only_a_weak_member_off_its_class(monkeypatch):
         assert bool(info["moved"]) == moves and (chosen[0].x == 0.3) == moves
 
 
+def test_seg_add_category_takes_a_mask_of_the_groups_category(monkeypatch):
+    """seg_add_category (default off): an unexplained mask of another asset of the group's category fills a short group
+    (fitted with that category's shapes only); a mask of a category the group does not have still adds nothing."""
+    pytest.importorskip("scipy")
+    pytest.importorskip("cv2")
+    from types import SimpleNamespace
+
+    from dojo.perception import inverse_layout as il
+    from dojo.perception import seg_twin
+
+    def det(r, key):
+        m = np.zeros((40, 40), np.uint8)
+        m[r:r + 8, 0:8] = 1
+        return SimpleNamespace(mask=m, key=key, score=0.9, alts=[])
+
+    dets = [det(0, "Rigid/watch/00000"), det(20, "Rigid/book/00004")]
+    monkeypatch.setattr(seg_twin, "client", lambda: SimpleNamespace(detect=lambda img, conf=0.4: list(dets)))
+    head = SimpleNamespace(cam=None, known=np.ones((40, 40), np.uint8))
+    g = {"labels": ["rigid0"] * 2, "candidates": ["Rigid/watch/00004", "Rigid/car/00010"], "placement": {}}
+    fitted = []
+
+    def fake_fit(mask, key, gi, g_, prior, shapes, views, others, cfg, groups):
+        fitted.append(key)
+        return (0.9, SimpleNamespace(label_group=gi, x=0.1, y=0.2, key="Rigid/watch/00004", per_view={},
+                                     sm=lambda: SimpleNamespace(sil=lambda cam, T: mask), T=lambda: np.eye(4)))
+
+    monkeypatch.setattr(il, "_seg_fit", fake_fit)
+    monkeypatch.setattr(il, "_union_masks", lambda *a, **k: {})
+    assert il.EstimatorConfig().seg_add_category is False
+    for on in (False, True):
+        fitted.clear()
+        chosen: list = []
+        info = il._seg_propose(chosen, {"cam_head": head}, np.zeros((40, 40, 3), np.uint8),
+                               il.EstimatorConfig(seg_propose="add", seg_add_category=on), [g], [(0, g, None)], {0: {}})
+        assert fitted == (["Rigid/watch/00000"] if on else []) and len(chosen) == int(on)
+    shapes = {"w": [SimpleNamespace(key="Rigid/watch/00004")], "c": [SimpleNamespace(key="Rigid/car/00010")]}
+    assert list(il._seg_shapes(shapes, "Rigid/watch/00000", il.EstimatorConfig(seg_add_category=True))) == ["w"]
+    assert list(il._seg_shapes(shapes, "Rigid/watch/00000", il.EstimatorConfig())) == ["w", "c"]       # off: as before
+    assert list(il._seg_shapes(shapes, "Rigid/car/00010", il.EstimatorConfig())) == ["c"]
+
+
 def test_seg_add_refit_poor_is_on_by_default():
     pytest.importorskip("scipy")
     pytest.importorskip("cv2")
