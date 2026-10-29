@@ -336,6 +336,9 @@ class RuntimeConfig:
     # grasp generator, then v1 on the same object when ours fails with >= 120 steps left; dojo/skills/pickup.py), the object
     # grounded by its public description or its category words
     ported_pickup: str = "v1"
+    # ... pouring a liquid (pour_bottle, also pour_order's pours): v1 (the stream aimed at the cup's centre) | b10 / b20
+    # (aimed 10 / 20 mm back against the pour direction: ``planner.POUR_AIM``)
+    ported_pour_aim: str = "v1"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -415,6 +418,7 @@ class RuntimePolicy:
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
+                or self.cfg.ported_pour_aim not in ("v1", "b10", "b20")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
@@ -431,7 +435,8 @@ class RuntimePolicy:
                                         planner=lambda instr, w: _plan(instr, w, ported={"swap": self.cfg.ported_swap,
                                                                                       "drag": self.cfg.ported_drag,
                                                                                       "pour": self.cfg.ported_pour,
-                                                                                      "pickup": self.cfg.ported_pickup}))
+                                                                                      "pickup": self.cfg.ported_pickup,
+                                                                                      "pour_aim": self.cfg.ported_pour_aim}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
         self.log_lines: list[str] = []
@@ -682,6 +687,7 @@ class RuntimePolicy:
             sk_.ported_swap = cfg.ported_swap
             sk_.joint_limits = cfg.joint_limits
             sk_.ported_drag = cfg.ported_drag
+            sk_.ported_pour_aim = cfg.ported_pour_aim
             sk_.ported_pour = cfg.ported_pour
             sk_.ported_pickup = cfg.ported_pickup
             if verifier is not None and cfg.verify_select == "risky":
