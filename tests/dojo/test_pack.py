@@ -128,4 +128,5 @@ def test_pack_box_uses_the_box_height_map_and_no_grip_only(monkeypatch):
     r = pack.pack_box(sk, [k for k in w.objects if k != "box"], "box", "left", tries=2)
     assert seen == ["box"] and not r["ok"]
     assert kws and all("grip_only" not in kw["place_kw"] and "box" not in kw["ignore"] for kw in kws)
-    assert len(kws) == len([k for k in w.objects if k != "box"])      # a planning failure that moved nothing: one try
+    assert len(kws) == 2 * len([k for k in w.objects if k != "box"])  # two tries each
+    assert sorted(r["note"].split("failed ")[1].split("]")[0].strip("[").replace("'", "").split(", ")) == ["car", "shoe"]

@@ -32,7 +32,6 @@ WALL_MARGIN = 0.004       # m: inside the box's floor polygon
 YAWS_DEG = (0.0, 15.0, -15.0, 30.0, -30.0)   # around the ideal heading (front within 45 / 60 deg)
 RELEASE_UP = 0.008       # m: a packed object is let go this far over the box's floor (or what is inside)
 MAX_SPOTS = 2            # relay spots ``place_oriented`` may try for one object (planning time)
-RIM_CLEAR = 0.02         # m: the held object's bottom over the box's rim at the pre-place
 SIDES = {"left": np.array([-1.0, 0.0]), "right": np.array([1.0, 0.0])}
 
 
@@ -227,13 +226,9 @@ def pack_box(sk, objects: list[str], box: str, facing: str = "left", tries: int 
             # height map (``container_obstacle``): its open inside is free. The box's bbox as a grip_only obstacle left
             # no grasp-place pair at all (the gripper inside a solid box: G3 v1 100030, 0 of ~2000 pairs)
             tg = pack_targets(sk, k, slots[k], (floor_z if not slots[k]["top"] else top - 0.01) + RELEASE_UP)
-            # the pre-place with the object's bottom RIM_CLEAR over the rim: from 4 cm over the floor the approach swept the
-            # held object through the walls ("approach: joint move ... hits box", G3 100031 / 100032)
-            base_z = (floor_z if not slots[k]["top"] else top - 0.01) + RELEASE_UP
-            rim_z = float((b.T @ np.r_[0.0, 0.0, g["rim"], 1.0])[2])
             r = place_oriented(sk, k, tg, yaw_sym=1, tol_xy=0.06, tol_tilt=45.0, tol_z=0.25, ignore=tuple(inside),
-                               place_kw={"pre_h": max(0.04, rim_z + RIM_CLEAR - base_z), "release_gap": 0.0,
-                                         "settle": 1}, air_handover=False, max_spots=MAX_SPOTS)
+                               place_kw={"pre_h": 0.04, "release_gap": 0.0, "settle": 1}, air_handover=False,
+                               max_spots=MAX_SPOTS)
             sk.log(f"[pack] {k} -> {np.round(slots[k]['xy'], 3).tolist()} (try {t + 1}): {r.status} {r.note[:120]}")
             for a in ARMS:
                 if sk.held[a] is not None:
@@ -245,9 +240,6 @@ def pack_box(sk, objects: list[str], box: str, facing: str = "left", tries: int 
                 break
             if r.status in ("step_budget", "ended"):
                 return {"ok": False, "stage": "pack", "note": f"inside {st['inside']}, budget"}
-            if not r.steps and r.status in ("ik_fail", "collision"):
-                failed.append(k)            # nothing moved: the same world plans the same again (planning time)
-                break
         else:
             failed.append(k)
     failed = sorted(set(failed) - set(st["inside"]))
