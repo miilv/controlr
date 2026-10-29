@@ -189,6 +189,11 @@
   run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
   dev layouts + `build` into every box's `bg_folds_51/fold{0,1}/scene/Dynamic_conveyor_00001/` (journal
   2026-10-28-dojo-conveyor-belt-blind §5; waits for compute2).
+- [ ] **dojo skills: pick_from_conveyor_by_image, the basket lifted level with the target in it** (stream C, parked;
+  journal/2026-10-29-dojo-conveyor-deposit.md). The checker wants the target on the basket's bottom 8 cm above its
+  start. A rim pinch holds the basket 40 deg tilted. `belt_deposit` (default off) stops it on the belt, drags it toward
+  the robot, drops the target in and lifts it by its handle: G3 1 / 10 on v15 variants. Blockers: the handle bar slides
+  out of the pads (0 / 2), the drag works 5 / 10, target picks slip 3 / 10.
 - [ ] **dojo runtime / perception: pick_from_conveyor_by_image has no skill route and an empty frame-0 record.**
   The instruction "Lift the basket more than 8 cm, identify the target object on the conveyor according to the image on
   the board, pick it up, and place it into the basket." routes to no skill (decision `finish`, "no skill for: ...").

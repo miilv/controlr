@@ -325,6 +325,12 @@ class RuntimeConfig:
     # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
     # match: compute4 camera rows, every pick after such a look missed)
     belt_wrist_veto: str = "off"
+    # pick_from_conveyor_by_image (``interactive.pick_into_held``; ``Skills.belt_container`` / ``Skills.belt_deposit``):
+    # belt_container off (today) | on (a rectangular container by its real rim, ``grasps.box_rim_grasps``);
+    # belt_deposit off | on (with belt_container on: the container by its handle, held up toward the robot's middle,
+    # the depicted object dropped into it from whatever hand pose reaches)
+    belt_container: str = "off"
+    belt_deposit: str = "off"
     # the pick hover of an object the task config pins in a support slot (deposit_coin's coin in its stand,
     # ``dojo.perception.slot_read``): off (today: the object's own wrist refine) | on (base + object fitted together
     # from the wrist frame over the base's whole yaw period; when ok, both poses are written and the refine is skipped.
@@ -432,6 +438,7 @@ class RuntimePolicy:
                 or self.cfg.tile_grasp not in ("any", "flat", "prefer")
                 or self.cfg.series_labels not in ("keep", "numbered")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
+                or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
@@ -704,6 +711,7 @@ class RuntimePolicy:
             sk_.tile_grasp = cfg.tile_grasp
             sk_.tile_recover = bool(cfg.tile_recover)
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
+            sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
