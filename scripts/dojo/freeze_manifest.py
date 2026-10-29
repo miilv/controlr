@@ -87,13 +87,21 @@ def main(argv=None) -> int:
     import candidate_parity as CP
 
     cand, models = Path(a.candidate).expanduser(), Path(a.models).expanduser()
-    head = sh("git", "rev-parse", "HEAD", cwd=ROOT)
-    sha = sh("git", "rev-parse", "--verify", f"{a.sha or 'HEAD'}^{{commit}}", cwd=ROOT)
-    dirty = bool(sh("git", "status", "--porcelain", "--untracked-files=no", cwd=ROOT))
     problems = []
+    if (ROOT / ".git").exists():
+        head = sh("git", "rev-parse", "HEAD", cwd=ROOT)
+        sha = sh("git", "rev-parse", "--verify", f"{a.sha or 'HEAD'}^{{commit}}", cwd=ROOT)
+        dirty = bool(sh("git", "status", "--porcelain", "--untracked-files=no", cwd=ROOT))
+    else:                               # a deploy dir (git archive + .deployed.json, as the boxes run it)
+        dep = json.loads((ROOT / ".deployed.json").read_text()) if (ROOT / ".deployed.json").exists() else {}
+        head = dep.get("head")
+        sha = a.sha or head
+        dirty = bool(dep.get("dirty", True))
+        if head and sha and not (sha.startswith(head) or head.startswith(sha)):
+            problems.append(f"this deploy is {head}, not the frozen {sha}")
     if sha is None:
         problems.append(f"sha {a.sha} is not a commit here")
-    elif head != sha:
+    elif head and not (head.startswith(sha) or sha.startswith(head)):
         problems.append(f"this checkout is at {head}, not the frozen {sha}")
     if dirty:
         problems.append("the checkout has uncommitted changes")
