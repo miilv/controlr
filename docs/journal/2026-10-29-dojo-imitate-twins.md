@@ -24,3 +24,25 @@ observed appearance, and reads no config relation.
 
 The camera check comes with the gcon rows. The failures there get classified (frame-0 identity / departure order /
 twins / put) with `imit_cls.py`, a dev scorer that uses our own demo index.
+
+## Camera classification (c4b_imitatesg gcon / o2o / o2otwin, 100006-09, 8 runs, all 0)
+
+- **Frame-0 category misreads, every run.**
+  - Demonstrator side, 5 of 6 classified: the first-demonstrated object each time. 100007's garage was read as an action
+    camera at confidence 0.25-0.31.
+  - Our side, 4 of 6: e.g. 100006's t3 became a phantom toy car.
+  - These aren't near-identical twins.
+  - The departure ORDER is physically right in 5 of 6: the departure read follows the misread object.
+- **one_to_one works.** In o2o 100007 it paired all five twins right, absorbing the misread garage.
+- **But the copy started on a wait_actors_still timeout** while the speed-1.5 demo was still running: steps 830 (o2o /
+  o2otwin 100007) and 699 (gcon 100009). RoboDojo's query ("our arm left its origin while the support arm is away")
+  ended those episodes. Fixed by `imitate_wait` "origin" (#322).
+- **Wrong-twin picks.** In 100006 the misread first demonstrator object paired to a phantom or misread object of ours,
+  and the pick slipped 3×.
+- **Later: a separate skill-side class.** The post-place query ("not moved / grippers open" per stage) ended o2o 100008
+  and gcon 100006.
+
+**`imitate_look` "ambiguous"** (default off, with one_to_one). Before the copy, a wrist look (`regrasp._look_over` → the
+runtime's identity refine) at each of OUR objects whose assigned partner has another believed asset. At most 3 looks,
+with the budget kept for the copy. Then the assignment runs again: with our side read right, one misread demonstrator
+object pairs by elimination. G3 can't exercise it (GT identities), so it needs a rendered arm.

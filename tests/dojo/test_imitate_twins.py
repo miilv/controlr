@@ -51,3 +51,26 @@ def test_a_wait_timeout_keeps_holding_only_with_imitate_wait_origin(monkeypatch)
     calls.clear()
     sk = SimpleNamespace(imitate_wait="origin", ex=SimpleNamespace(steps_left=lambda: 250))   # 250 - 160 < one copy
     assert ia.wait_demo_done(sk, 110, 5).startswith("timeout x1, budget kept") and len(calls) == 1
+
+
+def test_looks_go_to_our_objects_in_pairs_whose_assets_differ(monkeypatch):
+    """imitate_look "ambiguous": a wrist look at OUR object of every pair whose believed assets differ (at most
+    MAX_TWIN_LOOKS, budget kept for the copy); pairs with the same asset are not looked at."""
+    import numpy as np
+
+    from dojo.skills import interactive as ia
+    from dojo.skills import regrasp
+
+    objs = {"aim0": _o("Rigid/garage/00014"), "aim1": _o("Rigid/watch/00000"),
+            "t0": _o("Rigid/action_camera/00000"), "t1": _o("Rigid/watch/00000")}
+    for o in objs.values():
+        o.center_w = np.zeros(3)
+    looked = []
+    monkeypatch.setattr(regrasp, "_look_over", lambda sk, arm, lab, T: looked.append(lab) or (T, None))
+    w = _w(objs)
+    sk = SimpleNamespace(refresh=lambda: w, ex=SimpleNamespace(steps_left=lambda: 900), log=lambda *a: None,
+                         kin=SimpleNamespace(base=lambda a: np.eye(4)), home=lambda **k: None)
+    assert ia.look_twins(sk, {"aim0": "t0", "aim1": "t1"}) == ["t0"] and looked == ["t0"]
+    sk.ex = SimpleNamespace(steps_left=lambda: 200)                                  # no budget for a look
+    looked.clear()
+    assert ia.look_twins(sk, {"aim0": "t0"}) == [] and looked == []
