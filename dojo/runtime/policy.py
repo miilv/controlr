@@ -343,6 +343,10 @@ class RuntimeConfig:
     # picks it) | uncertain (only a match whose tracker identity share is under 0.9 waits for that). G3 v15: on 13 / 20
     # vs 18 / 20 (far-reach slips); camera rows: identity right 5 / 5 from zone reads vs 1 / 5 before it
     belt_confirm_zone: str = "off"
+    # deposit_coin's in-air handover (``precision.run_disc_handover``, ``Skills.disc_handover_read``): off (today: the
+    # taker inserts the coin with its planned in-hand pose) | on (the taker's insertion asks for the in-hand read at the
+    # pre-insert hover; with held_pose "request" that is the only place that reads). 5.1 rb 100006: 11 mm off, jammed
+    disc_handover_read: str = "off"
     # the pick hover of an object the task config pins in a support slot (deposit_coin's coin in its stand,
     # ``dojo.perception.slot_read``): off (today: the object's own wrist refine) | on (base + object fitted together
     # from the wrist frame over the base's whole yaw period; when ok, both poses are written and the refine is skipped.
@@ -457,6 +461,7 @@ class RuntimePolicy:
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
+                or self.cfg.disc_handover_read not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
@@ -733,6 +738,7 @@ class RuntimePolicy:
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
+            sk_.disc_handover_read = cfg.disc_handover_read
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"

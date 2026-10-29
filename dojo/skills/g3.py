@@ -164,7 +164,7 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "ported_pour": ("v1", "full"), "ported_pour_aim": ("v1", "b10", "b20"), "ported_pickup": ("v1", "library"),
                "ported_classify": ("v3b", "p1"),
                "belt_container": ("off", "on"), "belt_container_tilts": ("25,40", "0,15,25", "40,50"),
-               "belt_deposit": ("off", "on"), "belt_confirm_zone": ("off", "on", "uncertain"),
+               "belt_deposit": ("off", "on"), "belt_confirm_zone": ("off", "on", "uncertain"), "disc_handover_read": ("off", "on"),
                "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on"),
                "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured")}
 
