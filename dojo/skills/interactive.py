@@ -178,6 +178,11 @@ def wait_actors_still(sk: Skills, still_steps: int = 12, max_steps: int = 160, f
     return f"still after {n}"
 
 
+def _steps_left(sk) -> int | None:
+    from dojo.skills.executor import steps_left_of
+    return steps_left_of(sk.ex)
+
+
 COPY_STEPS_PER_OBJECT = 120   # imitate_wait "origin": steps kept back per object still to copy (put_in_open + bank)
 
 
@@ -193,7 +198,7 @@ def wait_demo_done(sk: Skills, after_last: int, n_copy: int) -> str:
         return r
     rounds = 1
     while r == "timeout":
-        left = sk.ex.steps_left() if hasattr(sk.ex, "steps_left") else None
+        left = _steps_left(sk)
         # moving while that arm is away ends the episode at once, so waiting is never worse: hold while one copy (the
         # first transition's credit) still fits after another round
         if left is not None and left - 160 < COPY_STEPS_PER_OBJECT:
@@ -579,7 +584,7 @@ def look_twins(sk: Skills, twins: dict) -> list[str]:
             break
         if d not in w.objects or o not in w.objects or w.obj(d).asset.key == w.obj(o).asset.key:
             continue
-        left = sk.ex.steps_left() if hasattr(sk.ex, "steps_left") else None
+        left = _steps_left(sk)
         if left is not None and left < COPY_STEPS_PER_OBJECT * (len(twins) + 1):
             break
         ob = w.obj(o)
