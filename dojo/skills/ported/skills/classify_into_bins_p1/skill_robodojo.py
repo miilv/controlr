@@ -382,6 +382,11 @@ def run(robot, map="auto", pairs=None, noun="basket", lift=0.08, max_picks=2, re
                 o, ob = truth()
             rec.update(held=r.get("held"), in_container=r.get("in_container"), why=r.get("why") or r.get("error"),
                        truth_in=in_bin(ob, k, c), step=o.get("step"), steps_left=o.get("steps_left"))
+            # N: what refused the motion (v3's transit records: the blocking obstacle, the via heights tried)
+            ref = [t for t in (r.get("transits") or []) if t.get("refused")]
+            if ref:
+                rec["refused"] = [{"to": t.get("to"), "block": t.get("direct_block"), "tried": (t.get("tried") or [])[:8]}
+                                  for t in ref[-2:]]
             log.append(rec)
             if r.get("ended") or o.get("ended"):
                 break
