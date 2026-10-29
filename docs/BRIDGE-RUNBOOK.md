@@ -218,6 +218,31 @@ scripts/dojo/official_eval.sh --task press_by_number --layouts "100000 100001 10
 python -m dojo.bridge.official compare --official ~/dojo-data/official/runs/<id> --integ <integ_eval out dir> --md pair.md
 ```
 
+**The candidate on this path (D-C19).** `--candidate ~/dojo-integ-c4-state/CANDIDATE.txt` takes Integration's file
+verbatim:
+- preset, `--config`, and `--setenv` (for our processes only);
+- the `--seg` / `--glyph` / `--glyph-kong` side servers, started as lane2.sh starts them. One that does not come up
+  ends the call before robot-harness's server starts;
+- RuntimePolicy.
+
+Before a scored run:
+
+```bash
+scripts/dojo/official_eval.sh --candidate CANDIDATE.txt --dry-run             # the resolved call, nothing started
+python scripts/dojo/candidate_parity.py --candidate CANDIDATE.txt             # integ_eval vs official: zero diff = go
+python scripts/dojo/freeze_manifest.py --candidate CANDIDATE.txt --rd-python <RoboDojo python> --out manifest.json
+```
+
+The manifest records:
+- the sha, the candidate text, and the resolved launcher line with its full RuntimeConfig;
+- the md5 / sha256 of every side-server weight;
+- the parity diff;
+- model routes by name;
+- python, Isaac, RoboDojo and robot-harness versions;
+- that the strict v2 server supplies `ee_joint_state_official`.
+
+Run it from a clean checkout at the frozen sha.
+
 | piece | whose | how |
 |---|---|---|
 | eval client | RoboDojo's `main.py`, unchanged | `scripts/simlab/dev_eval.sh` (`dojo/simlab/dev_eval.py`: SeedManager reads `OUT/layouts/<task>/<id>.settled.json`, ids ascending) |

@@ -17,6 +17,15 @@
 #   scripts/dojo/official_eval.sh --task T --layouts "100000 100001 ..." [--policy dojo.agent.policy:AgentPolicy]
 #       (rendered measurement uses 100000-09; 100030-49 are the training block and >= 100100 reserved: both refused)
 #       [--preset submit_v2] [--config JSON] [--twin-envs 8] [--id NAME] [--out DIR] [--episode-max-min 25]
+#       [--candidate CANDIDATE.txt] [--setenv K=V]... [--seg V] [--glyph M] [--glyph-kong M] [--dry-run]
+#   --candidate: Integration's CANDIDATE.txt verbatim (its non-comment lines are this script's arguments, split on
+#   whitespace exactly as lane2.sh splits a queue line); with it the policy defaults to RuntimePolicy (integ_eval's).
+#   --seg / --glyph / --glyph-kong: side servers started the way lane2.sh starts them (model dirs under
+#   DOJO_SEG_MODELS, default ~/dojo-data/segtrain/models; this deploy's .venv); one that does not come up stops the call
+#   BEFORE robot-harness's server or the eval client starts (fail loud: a scored run never degrades silently).
+#   --setenv K=V: set for OUR processes only (perception service, side servers' clients, drivers), never for robot-
+#   harness's. --dry-run: print the resolved policy / RuntimeConfig / env / side-server weights (md5) as JSON and exit
+#   (no lock, nothing started; scripts/dojo/candidate_parity.py, scripts/dojo/freeze_manifest.py).
 #
 # Env (defaults for a dojo GPU box, ~/dojo-env.sh): RD_SRC (the box's RoboDojo install, read-only; default $RD_HOME),
 #   OFFICIAL_RDHOME (our farm over it, scripts/dojo/rd_farm.sh; default ~/dojo-official-rdhome), BENCH (a robot-harness
@@ -34,6 +43,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 [[ -z "${OMNIROUTE_BASE_URL:-}${OMNIROUTE_API_KEY:-}" ]] || {   # values never printed
   echo "[official] OMNIROUTE_* is set and this script names the key file (AGENTIC_ENV_FILE / DOJO_AGENT_DOTENV): unset OMNIROUTE_BASE_URL" \
     "OMNIROUTE_API_KEY (one source per process: docs/ENVIRONMENT.md)" >&2; exit 2; }
+for _a in "$@"; do [[ "$_a" == --dry-run && "${1:-}" != --inner ]] && exec bash "$HERE/scripts/dojo/official_eval.sh" --inner "$@"; done
 if [[ "${1:-}" != --inner ]]; then
   # outer: the memory gate, the heavy lock, then this script again inside a systemd user scope
   export DOJO_DATA="${DOJO_DATA:-$HOME/dojo-data}"
@@ -60,17 +70,61 @@ fi
 shift   # --inner
 
 TASK="" LAYOUT_IDS="" POLICY="dojo.agent.policy:AgentPolicy" PRESET="submit_v2" CONFIG='{}' TWIN_ENVS=8 NAME="" OUT=""
-EP_MAX_MIN=25
+EP_MAX_MIN=25 CANDIDATE="" POLICY_SET="" DRY="" SEG="" GLYPH="" GLYPHK="" SETENV=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --task) TASK="$2"; shift 2 ;;        --layouts) LAYOUT_IDS="$2"; shift 2 ;;
-    --policy) POLICY="$2"; shift 2 ;;    --preset) PRESET="$2"; shift 2 ;;
+    --policy) POLICY="$2"; POLICY_SET=1; shift 2 ;;    --preset) PRESET="$2"; shift 2 ;;
     --config) CONFIG="$2"; shift 2 ;;    --twin-envs) TWIN_ENVS="$2"; shift 2 ;;
     --id) NAME="$2"; shift 2 ;;          --out) OUT="$2"; shift 2 ;;
     --episode-max-min) EP_MAX_MIN="$2"; shift 2 ;;
+    --candidate)                         # its non-comment lines, split on whitespace like lane2.sh's queue line
+      [[ -z "$CANDIDATE" && -f "$2" ]] || { echo "[official] --candidate: one readable file (got $2)" >&2; exit 2; }
+      CANDIDATE="$2"; read -ra _ct <<< "$(grep -v '^[[:space:]]*#' "$2" | tr '\n' ' ')"; shift 2; set -- "${_ct[@]}" "$@" ;;
+    --setenv)
+      [[ "$2" =~ ^[A-Z_][A-Z0-9_]*= ]] || { echo "[official] --setenv K=V (got $2)" >&2; exit 2; }
+      [[ "$2" =~ ^(OMNIROUTE_|ANTHROPIC_|OPENAI_|OPENROUTER_)|(KEY|TOKEN|SECRET|PASSWORD)[A-Z0-9_]*= ]] && {
+        echo "[official] --setenv ${2%%=*}: credentials never travel as arguments (docs/ENVIRONMENT.md)" >&2; exit 2; }
+      SETENV+=("$2"); shift 2 ;;
+    --seg) SEG="$2"; shift 2 ;;          --glyph) GLYPH="$2"; shift 2 ;;
+    --glyph-kong) GLYPHK="$2"; shift 2 ;;
+    --dry-run) DRY=1; shift ;;
     *) echo "[official] unknown option $1" >&2; exit 2 ;;
   esac
 done
+[[ -n "$CANDIDATE" && -z "$POLICY_SET" ]] && POLICY="dojo.runtime.policy:RuntimePolicy"   # integ_eval's policy
+MODELS="${DOJO_SEG_MODELS:-$HOME/dojo-data/segtrain/models}"
+SIDE=()                                  # "kind|model|ENVVAR..." of the side servers this call starts
+[[ -n "$SEG" ]] && SIDE+=("seg|$SEG|DOJO_SEG_ADDR")
+[[ -n "$GLYPH" ]] && SIDE+=("glyph|$GLYPH|DOJO_GLYPH_ADDR DOJO_GLYPH_ADDR_DIGIT")
+[[ -n "$GLYPHK" ]] && SIDE+=("glyphk|$GLYPHK|DOJO_GLYPH_ADDR_KONG")
+if [[ -n "$DRY" ]]; then                 # the resolved call as JSON, nothing started
+  ( cd "$HERE" && "$HERE/.venv/bin/python" - "$POLICY" "$PRESET" "$CONFIG" "$MODELS" "$CANDIDATE" "$TWIN_ENVS" \
+      "${#SIDE[@]}" "${SIDE[@]}" "${SETENV[@]}" <<'PY'
+import hashlib, json, sys
+from pathlib import Path
+from dojo.bridge.driver import build_config
+policy, preset, config, models, cand, twin_envs, n_side = sys.argv[1:8]
+side, setenv = sys.argv[8:8 + int(n_side)], sys.argv[8 + int(n_side):]
+md5 = lambda p: hashlib.md5(Path(p).read_bytes()).hexdigest() if Path(p).is_file() else None
+FILES = {"seg": ("best.pt", "classes.json"), "glyph": ("model.pt",), "glyphk": ("model.pt",)}
+servers = {}
+for s in side:
+    kind, model, envs = s.split("|")
+    servers[kind] = {"model": model, "env": envs.split(), "files": {f: {"path": str(Path(models) / model / f),
+                     "md5": md5(Path(models) / model / f)} for f in FILES[kind]}}
+cfg = build_config(preset, config, "bundle", "spawn")
+print(json.dumps({"launcher": "official_eval.sh", "candidate": cand or None,
+                  "candidate_md5": md5(cand) if cand else None, "policy": policy, "preset": preset,
+                  "config_arg": json.loads(config), "runtime_config": cfg.__dict__,
+                  "setenv": dict(kv.split("=", 1) for kv in setenv), "side_servers": servers,
+                  "driver_args": {"perception": "local", "verify": "bundle", "twin": "spawn", "twin_envs": int(twin_envs)},
+                  "grip": "strict v2 server: eef.<arm>.ee_joint_state_official (D-C11), no DOJO_GRIP_SOURCE needed"},
+                 sort_keys=True, default=str))
+PY
+  ) || exit 2
+  exit 0
+fi
 [[ -n "$TASK" && -n "$LAYOUT_IDS" ]] || { echo "[official] --task and --layouts are required" >&2; exit 2; }
 export DOJO_DATA="${DOJO_DATA:-$HOME/dojo-data}"
 RD_SRC="${RD_SRC:-${RD_HOME:-$HOME/dojo-robodojo}}"
@@ -120,6 +174,29 @@ m = load_manifest(sys.argv[1]); bad = [i for i in sys.argv[2:] if overlap(m, i)]
 sys.exit("[official] calibration set built from layouts %s: refusing to evaluate them" % bad if bad else 0)' \
   "$DOJO_BG_FOLDS/$DOJO_CALIB_SET" "${IDS[@]}" ) || exit 2
 
+# 0b. the candidate's side servers (lane2.sh's commands), BEFORE anything of robot-harness's starts: one that does not
+#     come up ends the call here (no episode booked, no silent degrade); their addresses reach only our processes (step 4)
+SIDE_ENV=()
+for s in "${SIDE[@]}"; do
+  IFS='|' read -r kind model envs <<< "$s"
+  sock="${XDG_RUNTIME_DIR:-/tmp}/dojo-off-$$-$kind.sock"; rm -f "$sock"
+  if [[ "$kind" == seg ]]; then
+    [[ -f "$MODELS/$model/best.pt" && -f "$MODELS/$model/classes.json" ]] || { log "seg model $MODELS/$model missing"; exit 2; }
+    ( cd "$HERE" && YOLO_CONFIG_DIR="${YOLO_CONFIG_DIR:-$MODELS/ultra_cfg}" exec setsid nice "$PY" -u -m dojo.perception.seg_twin serve \
+        --sock "$sock" --weights "$MODELS/$model/best.pt" --classes "$MODELS/$model/classes.json" --conf 0.25 \
+        --max-hours "${OFFICIAL_SIDE_MAX_HOURS:-2}" 9>&- ) > "$OUT/$kind.log" 2>&1 < /dev/null &
+  else
+    [[ -f "$MODELS/$model/model.pt" ]] || { log "$kind model $MODELS/$model/model.pt missing"; exit 2; }
+    ( cd "$HERE" && PYTHONPATH="$HERE" exec setsid nice "$PY" -u -m dojo.perception.glyph_read serve --sock "$sock" \
+        --model "$MODELS/$model/model.pt" --max-hours "${OFFICIAL_SIDE_MAX_HOURS:-2}" 9>&- ) > "$OUT/$kind.log" 2>&1 < /dev/null &
+  fi
+  PIDS+=($!)
+  for _ in $(seq 60); do [[ -S "$sock" ]] && break; kill -0 "${PIDS[-1]}" 2>/dev/null || break; sleep 2; done
+  [[ -S "$sock" ]] || { log "$kind server ($model) did not come up: $(tail -3 "$OUT/$kind.log" | tr '\n' ' ')"; exit 1; }
+  for v in $envs; do SIDE_ENV+=("$v=$sock"); done
+  log "$kind server up ($model)"
+done
+
 # 1. our RoboDojo farm + robot-harness's shim in it (his launcher's own md5 checks, constants read from his launcher)
 bash "$HERE/scripts/dojo/rd_farm.sh" "$RD_SRC" "$FARM" >> "$LOG" 2>&1 || { log "rd_farm failed"; exit 1; }
 L2="$BENCH/harness/robodojo_launch_j2.sh"
@@ -133,16 +210,21 @@ cp "$BENCH/harness/rd_shim_strict_v2/"{__init__.py,deploy.py,model.py,deploy.yml
 cp "$BENCH/harness/rd_shim_strict/deploy.py" "$POL/strict_deploy.py"
 cp "$BENCH/harness/rd_shim/deploy.py" "$POL/base_deploy.py"
 SPY="$FARM/policy_venv/bin/python"
-"$PY" - "$OUT/provenance.json" "$BENCH" "$HERE" "$POL" <<'PY'
+"$PY" - "$OUT/provenance.json" "$BENCH" "$HERE" "$POL" "$CANDIDATE" "$MODELS" "${SIDE[@]}" <<'PY'
 import hashlib, json, sys
 from pathlib import Path
-out, bench, here, pol = sys.argv[1:5]
+out, bench, here, pol, cand, models = sys.argv[1:7]
 md5 = lambda p: hashlib.md5(Path(p).read_bytes()).hexdigest()
+FILES = {"seg": ("best.pt", "classes.json"), "glyph": ("model.pt",), "glyphk": ("model.pt",)}
 d = {"robot_harness_commit": (Path(bench) / "COMMIT").read_text().strip() if (Path(bench) / "COMMIT").exists() else None,
      "controlr": json.loads((Path(here) / ".deployed.json").read_text()) if (Path(here) / ".deployed.json").exists() else None,
      "shim_md5": {p.name: md5(p) for p in sorted(Path(pol).glob("*.py"))},
      "server_md5": {n: md5(Path(bench) / "harness" / n) for n in ("robodojo_server_j2.py", "robodojo_server_j1.py",
-                                                                   "robodojo_server_strict.py", "robodojo_server.py")}}
+                                                                   "robodojo_server_strict.py", "robodojo_server.py")},
+     "candidate": {"path": cand, "md5": md5(cand), "text": Path(cand).read_text()} if cand else None,
+     "side_servers": {s.split("|")[0]: {"model": s.split("|")[1], "md5": {f: md5(Path(models) / s.split("|")[1] / f)
+                                                                          for f in FILES[s.split("|")[0]]}}
+                      for s in sys.argv[7:]}}
 Path(out).write_text(json.dumps(d, indent=1))
 PY
 
@@ -179,6 +261,9 @@ export AGENTIC_ENV_FILE="${AGENTIC_ENV_FILE:-$HOME/controlr/.env}" DOJO_AGENT_DO
 export DOJO_AGENTIC_LOG="${DOJO_AGENTIC_LOG:-$OUT/agentic}"
 key() { python3 -c 'import secrets; print(secrets.token_hex(16))'; }
 port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1])'; }
+# the candidate's environment and side-server addresses: from here on, i.e. for our perception service and drivers only
+for kv in "${SETENV[@]}" "${SIDE_ENV[@]}"; do export "$kv"; done
+[[ ${#SETENV[@]} -gt 0 || ${#SIDE_ENV[@]} -gt 0 ]] && log "env for our processes: $(for kv in "${SETENV[@]}" "${SIDE_ENV[@]}"; do printf '%s ' "${kv%%=*}"; done)"
 export DOJO_PERCEPTION_AUTHKEY="$(key)" DOJO_PERCEPTION_PORT="$(port)" DOJO_PERCEPTION_READY="$OUT/perception.ready"
 ( cd "$HERE" && DOJO_ILIA=1 PYOPENGL_PLATFORM=egl exec setsid nice "$PY" -u -m dojo.runtime.perception_service 9>&- ) \
   > "$OUT/perception_service.log" 2>&1 &
