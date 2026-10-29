@@ -191,7 +191,12 @@
   out right 1 of 12 on the dev ids 100000-04 with any segmenter (v2b, v3ep6, v2cn). The other 11 have no prediction
   closer than 77 mm, though v2b's YOLO fires a watch on the head frame (0.97 on 100000). The loss is in the bake's
   proposal / count / fit of thin flat objects, not in the vocabulary (journal 2026-10-29-dojo-seg-v2c). Develop on
-  dev / training ids only.
+  dev / training ids only. Classes (journal 2026-10-29-dojo-bylang-watch-trace; Misha's cell since 29 Oct):
+  - the series count stays at the range minimum (6 of [6, 9]);
+  - basket-shadow phantoms take 8 of 30 member slots;
+  - thin rings break into 21-104 px fragments (7 of 11 misses);
+  - v2b's watch masks are refused by the "add" exact-class rule. `seg_add_category` (default off) addresses only this
+    last class.
 - [ ] **dojo perception: no genuine-5.1 belt background for pick_from_conveyor_by_image** (`Dynamic/conveyor/00001`).
   Only 6.0-proxy leave-one-out folds exist (`compute3:~/dojo-data/pbake-identity/bg_byimg{A,B}`), so every genuine-5.1
   run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
