@@ -1033,6 +1033,74 @@ def restrict_by_instruction(groups: list[dict], instruction: str) -> list[dict]:
     return out
 
 
+def _named_in(name: str, text: str) -> bool:
+    t = text.lower()
+    return any(re.search(r"(?<![a-z0-9_])" + re.escape(n) + r"(?![a-z0-9_])", t) for n in {name, name.replace("_", " ")})
+
+
+def restrict_categories_by_instruction(groups: list[dict], instruction: str) -> tuple[list[dict], dict]:
+    """``cfg.instruction_categories``: a numbered series drawing exactly k of its categories (``select_category_nums``
+    [k, k]) whose instruction names exactly k of them keeps only those k (candidates and categories). The instruction is
+    the task's own observation; classify_objects_by_language names its three ("Put watch objects into the left basket,
+    chocolate_bar objects into the middle basket, ..."); classify_objects' "Sort the objects by category" names none
+    and is left as it is. Returns (groups, {label: named categories})."""
+    import copy
+
+    out, info = copy.deepcopy(groups), {}
+    for g in out:
+        sel = g.get("select_mode") or {}
+        cn = list(sel.get("select_category_nums") or [])
+        if sel.get("mode") != "hierarchical" or len(cn) != 2 or cn[0] != cn[1]:
+            continue
+        names = sorted({c["name"] for c in g.get("categories") or []})
+        if len(names) <= int(cn[0]):
+            continue
+        named = [n for n in names if _named_in(n, instruction)]
+        if len(named) != int(cn[0]):
+            continue
+        keep = [k for k in g["candidates"] if k.split("/")[1] in named]
+        if keep:
+            g["candidates"] = keep
+            g["categories"] = [c for c in g["categories"] if c["name"] in named]
+            info[g["labels"][0]] = named
+    return out, info
+
+
+WALLED_CONTAINERS = CONTAINER_CATEGORIES - {"plate", "tray"}   # an object may rest ON a plate / tray at frame 0
+
+
+def _off_containers(hyps: list, walled: list, views) -> tuple[list, int]:
+    """``cfg.container_free_drop``: chosen free objects whose centre lies inside a pinned walled container's footprint
+    (the convex hull of its posed mesh in xy) and whose head silhouette is mostly (>= half) inside the container's are
+    the container's rim / interior (dropped after selection: the others' selection is untouched). 5.1 classify(_by_language) 100007 / 100008: items at confidence <= 0.07, residual
+    0.85-0.9, at y -0.01..-0.03 inside the baskets' footprints (y >= -0.034), the extra categories the skill saw.
+    Returns (kept, number dropped)."""
+    if not walled:
+        return list(hyps), 0
+    head = views["cam_head"]
+    boxes = []
+    for c in walled:
+        T = c.T()
+        W = (np.asarray(c.sm().asset.V) @ T[:3, :3].T + T[:3, 3])[:, :2]
+        hull = cv2.convexHull(W.astype(np.float32))
+        boxes.append((hull, c.sm().sil(head.cam, T) > 0))
+    out, n = [], 0
+    for h in hyps:
+        drop = False
+        for hull, sil_c in boxes:
+            if cv2.pointPolygonTest(hull, (float(h.x), float(h.y)), False) < 0:
+                continue
+            s_h = h.sm().sil(head.cam, h.T()) > 0
+            if s_h.sum() and (s_h & sil_c).sum() >= 0.5 * s_h.sum():
+                drop = True
+                break
+        if drop:
+            n += 1
+        else:
+            out.append(h)
+    return out, n
+
+
 def label_groups(task: str) -> list[dict]:
     """Labels grouped by identical candidate sets (interchangeable labels)."""
     labels = task_map()[task]["labels"]
@@ -3363,6 +3431,29 @@ def _seg_dedup(dets: list, iou_thr: float) -> tuple[list, int]:
     return kept, len(dets) - len(kept)
 
 
+def _agnostic_groups(d, pending, head) -> list[int]:
+    """``seg_add_agnostic``: the pending series groups (marked ``g["agnostic"]`` in a clutter-free task) an unexplained
+    mask can be an item of: a Rigid class no task label lists, or another asset of the group's own category, with the
+    mask's centre inside the group's region."""
+    if not d.key.startswith("Rigid/") or not any(g.get("agnostic") for _gi, g, _p in pending):
+        return []
+    ys, xs = np.nonzero(np.asarray(d.mask) > 0)
+    if not len(xs):
+        return []
+    X = head.cam.ray_plane(np.array([[xs.mean() + 0.5, ys.mean() + 0.5]]), TABLE_Z + 0.02)[0]
+    if not np.isfinite(X).all():
+        return []
+    out = []
+    for gi, g, _p in pending:
+        a = g.get("agnostic")
+        if not a:
+            continue
+        cats = {k.split("/")[1] for k in g["candidates"]}
+        if (d.key not in a["known"] or d.key.split("/")[1] in cats) and region_ok(g, X[0], X[1], extra=0.02):
+            out.append(gi)
+    return out
+
+
 def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[dict], pending, shapes_by_group) -> dict:
     """The twin-trained segmenter as a proposer for B1 (``cfg.seg_propose``): its head-view instance masks, each with a
     catalogue-asset class, against the chosen objects' head silhouettes. Per label group:
@@ -3398,6 +3489,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
     sils = [h.sm().sil(head.cam, h.T()) for h in chosen]
     pend = {gi: (g, p) for gi, g, p in pending}
     det_groups = [_seg_groups(d.key, pending) for d in dets]
+    agn = [_agnostic_groups(d, pending, head) for d in dets]
+    det_groups = [dg or ag for dg, ag in zip(det_groups, agn)]
     # explained: one-to-one within each group by IoU
     pairs = []
     for i, h in enumerate(chosen):
@@ -3519,11 +3612,18 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                 tr["why"] = "group not pending"
                 continue
             g, prior = pend[gi]
-            if add_only and d.key not in g["candidates"]:
+            agnostic = gi in agn[j]
+            if add_only and d.key not in g["candidates"] and not agnostic:
                 tr["why"] = "add: not the group's exact class"
                 continue
             members = [i for i, h in enumerate(chosen) if h.label_group == gi]
             short = len(members) < len(g["labels"])
+            grow = agnostic and not short and len(g["labels"]) < int(g["agnostic"]["max"])
+            if agnostic and not short and not grow:
+                tr["why"] = f"group {gi} at its config maximum"
+                continue
+            if agnostic:
+                short = True
             movable = [i for i in members if unexplained(i)] if (cfg.seg_move and not add_only) else []
             if add_only and cfg.seg_add_move_weak and not short:
                 # "add" + seg_add_move_weak: a weak member (confidence < seg_weak_conf) with no mask of its own exact
@@ -3548,6 +3648,9 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
             if d.key in g["candidates"]:
                 hy.per_view["seg_key"] = (d.key, round(float(d.score), 3))
             if short:
+                if grow:
+                    g["labels"].append(g["labels"][0])
+                    tr["grew"] = len(g["labels"])
                 chosen.append(hy)
                 d_of[len(chosen) - 1] = j
                 any_iou.append([_mask_iou(hy.sm().sil(head.cam, hy.T()), dd.mask, head.known) for dd in dets])
@@ -3715,6 +3818,18 @@ class EstimatorConfig:
     # the pinned (slot) objects' head-view pixels are explained before blob proposals: a piece touching a pinned base
     # board merged into its blob (> 3x its own silhouette) and was never proposed (build_tower)
     slot_blob_cut: bool = True
+    # a free hypothesis whose centre lies inside a pinned walled container's footprint (classify's baskets) and whose
+    # head silhouette the container's mostly covers is that container's rim / interior: dropped before selection (at
+    # frame 0 nothing free starts inside a pinned container; the config's contained labels are handled apart)
+    container_free_drop: bool = False
+    # a numbered series that draws exactly k of its categories (select_category_nums [k, k]) and whose instruction names
+    # exactly k of them (classify_objects_by_language: "Put watch objects into the left basket, ...") keeps only those k
+    instruction_categories: bool = False
+    # with seg_propose "add", in a task without clutter (config "random" false): an unexplained Rigid mask of a class no
+    # task label lists (or another asset of the series' category) inside a numbered series' region is one of its items
+    # the segmenter does not know (classify_objects_by_language's watches read as tape_measure / book / card): fitted
+    # with the series' own shapes and added at seg_accept_iou, the series growing up to its config maximum
+    seg_add_agnostic: bool = False
     # a row of pinned pads (>= 3 Geometry labels <p>0..<p>n at one pitch) whose last pad carries a stacked label with its
     # index (solve_equation: mat4 / t4) may continue one pitch further (RoboDojo's solve_equation adds mat5 + t5 for a
     # two-digit answer: tasks/solve_equation.py has_mat5): placed only when a twin-segmenter mask of the pad's class
@@ -4015,6 +4130,9 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     groups = label_groups(task)
     if instruction:
         groups = restrict_by_instruction(groups, instruction)
+    named_info: dict = {}
+    if instruction and cfg.instruction_categories:
+        groups, named_info = restrict_categories_by_instruction(groups, instruction)
     sam_info: dict = {}
     sam_text = None
     if (cfg.sam_fg != "off" or cfg.series_count == "sam") and "cam_head" in images:
@@ -4356,6 +4474,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                 chosen.append(h)
                 need[h.label_group] -= 1
     timings["propose_assign_s"] = round(time.time() - t1, 3)
+    # free objects inside a pinned walled container's footprint at frame 0 are its rim / interior (after selection, so
+    # the other objects' selection is untouched; the label goes to _not_found)
+    walled = [h for _, h, _ in slot_placed if h.key.split("/")[1] in WALLED_CONTAINERS] if cfg.container_free_drop else []
+    chosen, dropped_in = _off_containers(chosen, walled, views)
 
     # ---- polish: identity among the label group's shapes + 180-degree flips, per chosen object
     # single-target groups (general_pickup: one asset among clutter) with a poor or no head-based fit: also
@@ -4429,6 +4551,12 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         sam_info["propose"]["s"] = round(time.time() - t_s, 3)
     if cfg.seg_propose != "off" and "cam_head" in images:
         t_s = time.time()
+        if cfg.seg_add_agnostic and not task_map()[task].get("random"):
+            known = {k for d_ in task_map()[task]["labels"].values() for k in d_.get("candidates") or []}
+            for _gi, g_, _p in pending:
+                rng = instance_range(task, {"labels": g_["labels"][:1]})
+                if rng is not None:
+                    g_["agnostic"] = {"max": rng[1], "known": known}
         sam_info["seg"] = _seg_propose(chosen, views, images["cam_head"], cfg, groups, pending, shapes_by_group)
         sam_info["seg"]["s"] = round(time.time() - t_s, 3)
 
@@ -4674,6 +4802,10 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     if ranking:  # instruction -> candidate ranking (general_pickup): the agent can look among the top ones
         record["_perception"]["target_ranking"] = ranking
     identity_marks(record, task)  # unread slot identities stay "unknown": no config tie fills them
+    if named_info:
+        record["_perception"]["named_categories"] = named_info
+    if dropped_in:
+        record["_perception"]["container_dropped"] = dropped_in
     if series:
         record["_perception"]["series"] = series
         _series_labels_out(record, task, series)
