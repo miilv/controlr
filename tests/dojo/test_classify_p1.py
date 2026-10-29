@@ -126,3 +126,26 @@ def test_a_refused_carry_is_tried_again_from_higher_up():
     assert seen[0]["clear"] is None and seen[1]["obj"] == seen[0]["obj"]
     assert seen[1]["clear"] == m.HIGH_CLEAR and seen[1]["margin"] == m.HIGH_MARGIN
     assert rep["verified"]
+
+
+def test_an_object_still_held_after_the_retry_is_put_back():
+    """Every carry of a held object refused (v3's own clearance model, patched to refuse): the retry fails with the object
+    in the hand, and p1 sets it down (v3's put_back) and homes the arm instead of leaving it in a parked hand."""
+    from dojo.skills.ported.harness_robot import HarnessRobot
+    m = _p1()
+    real = m.load_v3()
+    orig = real.plan_legs
+
+    def refuse_held(robot, arm, pos, quat, exclude=(), o=None):
+        if real._held_flange_pts(robot, arm)[0] is not None:
+            return None, {"direct_block": {"what": "wall:test"}}
+        return orig(robot, arm, pos, quat, exclude=exclude, o=o)
+
+    real.plan_legs = refuse_held
+    m.load_v3 = lambda: real
+    env, sk = gt_skills(rows_classify(), INSTR, step_lim=1100)
+    rep = m.run(HarnessRobot(sk, reserve=20), rounds=1)
+    recs = [x for x in rep["details"]["log"] if x.get("high_retry")]
+    hr = recs[0]["high_retry"]
+    assert hr["held"] is True and hr["in"] is False and hr["put_back"] is True
+    assert "fallback" in recs[0]                 # back on the table, v3b's own last try (its old tier-A drop) runs

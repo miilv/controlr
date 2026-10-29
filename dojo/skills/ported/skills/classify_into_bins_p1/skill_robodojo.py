@@ -6,7 +6,8 @@
 #     found no permutation and raised;
 #   * a left item is still an obstacle for v3's motions (it is passed with the objects, never assigned).
 #   * a carry v3 refuses ("carry: no clear path") gets one more try from higher up and further inside the basket (G3 v1
-#     100030-39: 6 of 9 refused carries into the basket were the gripper over the rim at v3's own drop pose);
+#     100030-39: 6 of 9 refused carries into the basket were the gripper over the rim at v3's own drop pose); an object
+#     still in the hand after that is set down where it was picked and the arm goes home (v3b kept it in the hand);
 # The loop, the stages and the fallback are v3b's.
 """classify_into_bins_v3b (RoboDojo, tier A; night K4, 27 Oct 2026): classify_into_bins_v3a with true-size placed
 footprints, spread drops, and the old tier-A drop as a fallback.
@@ -314,6 +315,15 @@ def run(robot, map="auto", pairs=None, noun="basket", lift=0.08, max_picks=2, re
         kw = dict(obj=k, container=c, arm=arm, avoid=avoid_for(ob2, c), clear=HIGH_CLEAR, margin=HIGH_MARGIN)
         r2, _ = stage("drop_held", ob2, **kw) if held else stage("direct", ob2, final=last, **kw)
         rec["high_retry"] = {"held": held, "in": r2.get("in_container"), "why": r2.get("why") or r2.get("error")}
+        # N: still in the hand: set it down where it was picked (v3's put_back, its pick in the stage logs) and home the
+        # arm. v3b carried on with the object in the hand, the arm parked mid-air, and the other arm's carries met it
+        # ("other_arm", G3 v1 100030)
+        if not r2.get("in_container") and A.held_look(arm=arm).get("held"):
+            lg = [t for t in list(r.get("log") or []) + list(r2.get("log") or []) if isinstance(t, dict)]
+            try:
+                rec["high_retry"]["put_back"] = bool(V3.put_back(A, arm, lg))
+            except Exception as ex:  # noqa: BLE001
+                rec["high_retry"]["put_back"] = f"{type(ex).__name__}: {ex}"[:160]
         return r2
 
     def stage(name, ob, **kw):
