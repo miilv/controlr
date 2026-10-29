@@ -2186,36 +2186,41 @@ def _push_stroke(sk: Skills, o, label: str, u, step: float, centre=None):
 
 
 PRESS_DEPTH = 0.003      # m: the fingertips' press below the top of a dragged object (``_press_stroke``)
+PRESS_PITCHES = (90.0, 65.0, 50.0)   # deg from horizontal (90 = straight down): the press hand's tilts, in order
 
 
 def _press_stroke(sk: Skills, o, label: str, u, step: float):
     """``Skills.push_stroke`` "press": drag ``o`` along world unit ``u`` by ``step`` with the closed fingertips pressed
     ``PRESS_DEPTH`` into its top at its centre (no face to reach: organize_table's keyboard, whose sideways face stroke
-    starts 0.24 m out from its centre, by the drawer or the garage, "no push stroke along axis 0" in 13/14 G3 rows). An
-    ``ArmPlan`` or None."""
-    from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R
+    starts 0.24 m out from its centre, by the drawer or the garage, "no push stroke along axis 0" in 13/14 G3 rows). The
+    hand straight down, else tilted towards its heading (``PRESS_PITCHES``: pushed towards the frame, the keyboard's
+    centre lay 0.48 m from both bases, where no straight-down pose has an IK). An ``ArmPlan`` or None."""
+    from dojo.skills.kinematics import TIP_BEYOND_TCP, tilted_R
     c = o.center_w[:2]
-    z = float(o.top_z) - PRESS_DEPTH + TIP_BEYOND_TCP
-    z_ab = float(o.top_z) + 0.03 + TIP_BEYOND_TCP
     yaw = math.atan2(u[1], u[0]) + math.pi / 2
     end = c + np.asarray(u, float) * step
+    tip_z, ab_z = float(o.top_z) - PRESS_DEPTH, float(o.top_z) + 0.03
     arms = sorted(ARMS, key=lambda x: float(np.linalg.norm(sk.kin.base(x)[:2, 3] - c)))
     for arm in arms:
-        for yw in (yaw, yaw + math.pi):
-            T_ab = T_from([c[0], c[1], z_ab], down_R(yw))
-            T_s = T_from([c[0], c[1], z], down_R(yw))
-            T_e = T_from([end[0], end[1], z], down_R(yw))
-            T_up = T_from([end[0], end[1], z_ab], down_R(yw))
-            m1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_ab, FAST, "press_above", gripper=CLOSED, ignore=(label,))
-            if not m1.ok:
-                continue
-            m2 = sk.motion.line(arm, m1.q_end, T_s, SLOW, "press_down", gripper=CLOSED, ignore=(label,))
-            m3 = sk.motion.line(arm, m2.q_end if m2.ok else m1.q_end, T_e, 0.04, "press_drag", gripper=CLOSED,
-                                ignore=(label,), max_step_m=0.01)
-            if not (m2.ok and m3.ok):
-                continue
-            m4 = sk.motion.line(arm, m3.q_end, T_up, MEDIUM, "press_up", gripper=CLOSED, check=False)
-            return ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(CLOSED, 0).move(m1).move(m2).move(m3).move(m4)
+        b = sk.kin.base(arm)[:2, 3]
+        heading = math.atan2(c[1] - b[1], c[0] - b[0])
+        for pitch in PRESS_PITCHES:
+            for yw in (yaw, yaw + math.pi):
+                R = tilted_R(yw, pitch, heading)
+
+                def tcp(xy, z, R=R):
+                    return T_from(np.array([xy[0], xy[1], z]) - R[:, 0] * TIP_BEYOND_TCP, R)
+                m1 = sk.motion.to_pose(arm, sk.ex.q[arm], tcp(c, ab_z), FAST, "press_above", gripper=CLOSED,
+                                       ignore=(label,))
+                if not m1.ok:
+                    continue
+                m2 = sk.motion.line(arm, m1.q_end, tcp(c, tip_z), SLOW, "press_down", gripper=CLOSED, ignore=(label,))
+                m3 = sk.motion.line(arm, m2.q_end if m2.ok else m1.q_end, tcp(end, tip_z), 0.04, "press_drag",
+                                    gripper=CLOSED, ignore=(label,), max_step_m=0.01)
+                if not (m2.ok and m3.ok):
+                    continue
+                m4 = sk.motion.line(arm, m3.q_end, tcp(end, ab_z), MEDIUM, "press_up", gripper=CLOSED, check=False)
+                return ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(CLOSED, 0).move(m1).move(m2).move(m3).move(m4)
     return None
 
 
