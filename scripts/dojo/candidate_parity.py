@@ -4,7 +4,8 @@ path (scripts/dojo/official_eval.sh --candidate). Zero diff is the gate before a
     python scripts/dojo/candidate_parity.py --candidate ~/dojo-integ-c4-state/CANDIDATE.txt [--models DIR] [--json OUT]
 
 Compared: the effective RuntimeConfig (``dojo.runtime.eval.build_config`` vs ``dojo.bridge.driver.build_config``), the
-policy class, the candidate's environment (``--setenv``: DOJO_PERCEPTION_CFG, ...), which side-server addresses each
+policy class, the perception data (DOJO_BG_FOLDS: lane2.sh runs ~/dojo-data/bg_folds_51_ilia; colour map, catalogue,
+calibration set), the candidate's environment (``--setenv``: DOJO_PERCEPTION_CFG, ...), which side-server addresses each
 path exports (DOJO_SEG_ADDR, DOJO_GLYPH_ADDR[_DIGIT|_KONG]) and the side servers' model files (md5). The integ side
 mirrors lane2.sh's queue-line rules (Integration's script, read here, never run: tokens split on whitespace;
 ``--seg V`` / ``--glyph M`` / ``--glyph-kong M`` start servers on ``models/<V>``; ``--setenv K=V`` enters the job's
@@ -40,6 +41,18 @@ def candidate_tokens(text: str) -> list[str]:
     return " ".join(ln for ln in text.splitlines() if not ln.lstrip().startswith("#")).split()
 
 
+def lane2_perception_env(environ=None) -> dict:
+    """The perception data an integ_eval job of lane2.sh runs with: lane2.sh exports DOJO_BG_FOLDS (LANE_BG_FOLDS, else
+    ~/dojo-data/bg_folds_51_ilia: the 5.1 set with the scene backgrounds); integ_eval.sh fills the rest (isaac51)."""
+    e = os.environ if environ is None else environ
+    home = str(Path.home())
+    pd = e.get("DOJO_PERCEPTION_DATA", f"{home}/dojo-perception-data")
+    return {"DOJO_CATALOG": e.get("DOJO_CATALOG", f"{pd}/catalog"), "DOJO_X5_DIR": e.get("DOJO_X5_DIR", f"{pd}/catalog/robot/x5"),
+            "DOJO_BG_FOLDS": e.get("LANE_BG_FOLDS", f"{home}/dojo-data/bg_folds_51_ilia"),
+            "DOJO_COLOR_CALIB": e.get("DOJO_COLOR_CALIB", f"{pd}/catalog/color_calib_51.json"),
+            "DOJO_CALIB_SET": e.get("DOJO_CALIB_SET", "frozen_d0_100040_49")}
+
+
 def integ_side(tokens: list[str], models: Path) -> dict:
     from dojo.runtime import eval as EV
     args, setenv, servers = [], {}, {}
@@ -64,7 +77,7 @@ def integ_side(tokens: list[str], models: Path) -> dict:
     cfg = EV.build_config(opt.get("--preset"), opt.get("--config", "{}"), opt.get("--mode"), opt.get("--verify"))
     pol = EV.load_policy_factory(opt.get("--policy"))
     return {"policy": f"{pol.__module__}:{pol.__name__}", "runtime_config": cfg.__dict__, "setenv": setenv,
-            "side_servers": servers}
+            "side_servers": servers, "perception_env": lane2_perception_env()}
 
 
 def official_side(cand: Path, models: Path, script: Path) -> dict:
@@ -91,6 +104,10 @@ def diff(a: dict, b: dict) -> dict:
     for k in sorted(set(ea) | set(eb)):
         if ea.get(k) != eb.get(k):
             out.setdefault("setenv", {})[k] = [ea.get(k), eb.get(k)]
+    pa, pb = a.get("perception_env") or {}, b.get("perception_env") or {}
+    for k in sorted(set(pa) | set(pb)):          # the perception data (backgrounds, colour map, calibration set)
+        if pa.get(k) != pb.get(k):
+            out.setdefault("perception_env", {})[k] = [pa.get(k), pb.get(k)]
     for kind in sorted(set(a["side_servers"]) | set(b["side_servers"])):
         sa, sb = a["side_servers"].get(kind), b["side_servers"].get(kind)
         if sa != sb:

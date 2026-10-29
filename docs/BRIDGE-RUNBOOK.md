@@ -241,7 +241,9 @@ The manifest records:
 - python, Isaac, RoboDojo and robot-harness versions;
 - that the strict v2 server supplies `ee_joint_state_official`.
 
-Run it from a clean checkout at the frozen sha.
+Run it from a clean checkout at the frozen sha. The parity check also compares the perception data. Integration's
+lane2.sh runs `DOJO_BG_FOLDS=~/dojo-data/bg_folds_51_ilia` (the 5.1 set with the scene backgrounds), so on compute4 export
+the same before official_eval.sh, or parity fails.
 
 | piece | whose | how |
 |---|---|---|

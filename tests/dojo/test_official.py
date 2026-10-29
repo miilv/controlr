@@ -260,14 +260,19 @@ def test_official_eval_takes_the_candidate_file_verbatim(tmp_path):
     assert r.returncode == 2 and "credentials never travel" in r.stderr
 
 
-def test_candidate_parity_is_zero_and_catches_a_difference(tmp_path):
+def test_candidate_parity_is_zero_and_catches_a_difference(tmp_path, monkeypatch):
     import sys
     sys.path.insert(0, str(ROOT / "scripts" / "dojo"))
     import candidate_parity as CP
 
     (tmp_path / "CANDIDATE.txt").write_text(CAND)
     models = _models(tmp_path)
+    for k in ("LANE_BG_FOLDS", "DOJO_BG_FOLDS", "DOJO_COLOR_CALIB", "DOJO_CALIB_SET"):
+        monkeypatch.delenv(k, raising=False)
     integ = CP.integ_side(CP.candidate_tokens(CAND), models)
+    official = CP.official_side(tmp_path / "CANDIDATE.txt", models, ROOT / "scripts/dojo/official_eval.sh")
+    assert set(CP.diff(integ, official)) == {"perception_env"}       # lane2.sh runs bg_folds_51_ilia, official the default
+    monkeypatch.setenv("DOJO_BG_FOLDS", integ["perception_env"]["DOJO_BG_FOLDS"])
     official = CP.official_side(tmp_path / "CANDIDATE.txt", models, ROOT / "scripts/dojo/official_eval.sh")
     assert CP.diff(integ, official) == {}
     assert integ["policy"] == official["policy"] == "dojo.runtime.policy:RuntimePolicy"
@@ -285,8 +290,9 @@ def test_freeze_manifest_records_names_and_md5s_never_keys(tmp_path, monkeypatch
     import freeze_manifest as FM
 
     (tmp_path / "CANDIDATE.txt").write_text(CAND)
-    for k in [k for k in os.environ if k.startswith("OMNIROUTE_")]:
-        monkeypatch.delenv(k)
+    for k in [k for k in os.environ if k.startswith("OMNIROUTE_")] + ["LANE_BG_FOLDS", "DOJO_CALIB_SET", "DOJO_COLOR_CALIB"]:
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("DOJO_BG_FOLDS", str(Path.home() / "dojo-data/bg_folds_51_ilia"))
     monkeypatch.setenv("AGENTIC_API_KEY_FAKE", "sk-SYNTHETIC-never-recorded")
     out = tmp_path / "m.json"
     rc = FM.main(["--candidate", str(tmp_path / "CANDIDATE.txt"), "--models", str(_models(tmp_path)), "--allow-mismatch",

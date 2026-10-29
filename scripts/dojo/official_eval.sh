@@ -99,9 +99,13 @@ SIDE=()                                  # "kind|model|ENVVAR..." of the side se
 [[ -n "$GLYPH" ]] && SIDE+=("glyph|$GLYPH|DOJO_GLYPH_ADDR DOJO_GLYPH_ADDR_DIGIT")
 [[ -n "$GLYPHK" ]] && SIDE+=("glyphk|$GLYPHK|DOJO_GLYPH_ADDR_KONG")
 if [[ -n "$DRY" ]]; then                 # the resolved call as JSON, nothing started
+  _pd="${DOJO_PERCEPTION_DATA:-$HOME/dojo-perception-data}"      # step 0's perception data, as it will resolve
+  export DRY_PERCEPTION_ENV="$(printf '{"DOJO_CATALOG": "%s", "DOJO_X5_DIR": "%s", "DOJO_BG_FOLDS": "%s", "DOJO_COLOR_CALIB": "%s", "DOJO_CALIB_SET": "%s"}' \
+    "${DOJO_CATALOG:-$_pd/catalog}" "${DOJO_X5_DIR:-$_pd/catalog/robot/x5}" "${DOJO_BG_FOLDS:-$_pd/bg_folds_51}" \
+    "${DOJO_COLOR_CALIB:-$_pd/catalog/color_calib_51.json}" "${DOJO_CALIB_SET:-frozen_d0_100040_49}")"
   ( cd "$HERE" && "$HERE/.venv/bin/python" - "$POLICY" "$PRESET" "$CONFIG" "$MODELS" "$CANDIDATE" "$TWIN_ENVS" \
       "${#SIDE[@]}" "${SIDE[@]}" "${SETENV[@]}" <<'PY'
-import hashlib, json, sys
+import hashlib, json, os, sys
 from pathlib import Path
 from dojo.bridge.driver import build_config
 policy, preset, config, models, cand, twin_envs, n_side = sys.argv[1:8]
@@ -118,6 +122,7 @@ print(json.dumps({"launcher": "official_eval.sh", "candidate": cand or None,
                   "candidate_md5": md5(cand) if cand else None, "policy": policy, "preset": preset,
                   "config_arg": json.loads(config), "runtime_config": cfg.__dict__,
                   "setenv": dict(kv.split("=", 1) for kv in setenv), "side_servers": servers,
+                  "perception_env": json.loads(os.environ["DRY_PERCEPTION_ENV"]),
                   "driver_args": {"perception": "local", "verify": "bundle", "twin": "spawn", "twin_envs": int(twin_envs)},
                   "grip": "strict v2 server: eef.<arm>.ee_joint_state_official (D-C11), no DOJO_GRIP_SOURCE needed"},
                  sort_keys=True, default=str))
