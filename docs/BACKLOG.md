@@ -922,6 +922,7 @@
 
 - [x] ~~**Slow VPN on compute3**~~ — Happ/AmneziaVPN/OpenVPN removed, machine-wide `controlr-vpn` (sing-box tun, router direct: 740 KB in 0.43–0.48 s) (journal/2026-10-04-compute3-network.md). Remaining: ethernet on `eno1` (Ilia).
 - [ ] The meta package `linux-modules-nvidia-595-open-generic-hwe-24.04` lags the kernel → the next kernel update will drop the GPU again ([incident](incidents/2026-10-02-compute3-nvidia-driver.md)). Upgrade it together with the kernel (agree with the machine's owner).
+- [x] ~~**bgperc `sam_track_eval.py` left its frame copies in /tmp**~~ (`tempfile.mkdtemp`, never removed: 13 `bgperc_sam_*` dirs, 138 MB on compute3) — removed at exit (`atexit`).
 - [ ] Delete the old `~/controlr-dev-isaac`, `~/controlr-dev-loopcli` (≈100 MB; their `.env` copies are already deleted).
 - [ ] **dojo runtime: wire `provider.show_pose`** (skills-9's held-pose protocol, `Skills._held_protocol` / `_pre_look`).
   The skills call `provider.show_pose(arm, T_tcp_obj, asset_key, cfg_)` and expect perception's `show_pose.propose`
