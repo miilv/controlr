@@ -1704,18 +1704,14 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
         kw = dict(yaw_sym=1, tol_xy=0.02, tol_tilt=10.0, tol_z=0.03, ignore=(container, *done),
                   place_kw={"pre_h": 0.04, "release_gap": 0.004, "drop_ok": True})
         r = None
-        if level:
-            # heavy flat objects swing in the pads on brisk moves (twin: a 0.5 kg hammer at its centre of mass held 4 mm
-            # through a 0.05 rad/step lift and carry, 11-14 mm loose after the planner's usual 0.10 / 0.09): slow
-            lkw = {**kw, "place_kw": {**kw["place_kw"], "approach_rad": LEVEL_CARRY}}
-            r = place_oriented(sk, lab, level, air_handover=False,
-                               transfer_kw={"grasps": _level_grasps(sk, lab), "max_pick_tilt": LEVEL_GRASP_DEG,
-                                            "pick_kw": {"lift_rad": LEVEL_CARRY}}, **lkw)
-            if not r.ok and r.status in ("ik_fail", "collision") and not r.steps:
-                sk.log(f"[slots] {lab}: no level carry ({r.note[:100]}), re-orienting transfer")
-                r = None
-        if r is None:
-            r = place_oriented(sk, lab, tg, **kw)
+        # "regrasp" (``Skills.slot_loose``): a loose pick is put down and the leg re-planned instead of carried (G3
+        # store_tools v15 draws: 7 of 11 lost tools moved 45-394 mm in the hand during the carry, most after a loose
+        # pick, and were dropped off their slots)
+        sk._loose_regrasp = getattr(sk, "slot_loose", "carry") == "regrasp"
+        try:
+            r = _slot_place(sk, lab, level, tg, kw)
+        finally:
+            sk._loose_regrasp = False
         (done if r.ok else failed).append(lab)
         if r.status in ("step_budget", "ended"):
             break
@@ -1727,6 +1723,25 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
     if failed or len(done) < len(todo):
         return {"ok": False, "stage": "slots", "note": f"in: {done}, failed: {failed}"}
     return {"ok": True, "stage": "all in slots"}
+
+
+def _slot_place(sk: Skills, lab: str, level: list, tg: list, kw: dict) -> SkillResult:
+    """One object into its slot (``place_in_slots``): a level carry when a slot pose is within SLOT_LEVEL_DEG of how
+    it lies, else the re-orienting transfer."""
+    r = None
+    if level:
+        # heavy flat objects swing in the pads on brisk moves (twin: a 0.5 kg hammer at its centre of mass held 4 mm
+        # through a 0.05 rad/step lift and carry, 11-14 mm loose after the planner's usual 0.10 / 0.09): slow
+        lkw = {**kw, "place_kw": {**kw["place_kw"], "approach_rad": LEVEL_CARRY}}
+        r = place_oriented(sk, lab, level, air_handover=False,
+                           transfer_kw={"grasps": _level_grasps(sk, lab), "max_pick_tilt": LEVEL_GRASP_DEG,
+                                        "pick_kw": {"lift_rad": LEVEL_CARRY}}, **lkw)
+        if not r.ok and r.status in ("ik_fail", "collision") and not r.steps:
+            sk.log(f"[slots] {lab}: no level carry ({r.note[:100]}), re-orienting transfer")
+            r = None
+    if r is None:
+        r = place_oriented(sk, lab, tg, **kw)
+    return r
 
 
 def _inside_opening(sk: Skills, label: str, container: str, depth: float = 0.02) -> bool:

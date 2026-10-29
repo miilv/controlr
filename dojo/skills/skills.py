@@ -290,6 +290,10 @@ class Skills:
         # ``library.put_into``'s options (stream H; empty = today): "spot" (a wider handover search, else a put-back),
         # "patient" (tries / rounds while the budget lasts), "sequence" (no two picks this close in one round)
         self.put_into_opts: set = set()
+        # ``place_in_slots``' loose picks (stream H; ``RuntimeConfig.slot_loose``): "carry" (today: a loose grasp on its
+        # 2 cm slot tolerance goes on) | "regrasp" (put it down and re-plan the leg, as tighter places do)
+        self.slot_loose: str = "carry"
+        self._loose_regrasp = False
         self._joint_limits = "wide"
         # ``library.on_targets``' support top (stream H): "bbox" (today: the support's bbox top) | "mesh" (the mesh's
         # surface under the object's whole footprint, flat poses only)
@@ -2051,7 +2055,7 @@ class Skills:
             return r
         if r.status == "ok" and self.refine is not None:
             r = self._held_review(pp, r)
-        if r.status == "loose" and (tol_xy < LOOSE_OK_TOL or "in-hand view" in r.note):
+        if r.status == "loose" and (tol_xy < LOOSE_OK_TOL or "in-hand view" in r.note or self._loose_regrasp):
             # turned / slid in the pads: put it down, the caller re-plans
             self._record(self.regrasp(pp.arm))
             return SkillResult(False, "transfer", "loose", r.steps, pp.arm, note=r.note)
