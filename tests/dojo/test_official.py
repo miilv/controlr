@@ -303,3 +303,24 @@ def test_freeze_manifest_records_names_and_md5s_never_keys(tmp_path, monkeypatch
     assert m["launcher"]["policy"] == "dojo.runtime.policy:RuntimePolicy" and m["side_servers"]["seg"]["files"]["best.pt"]["sha256"]
     assert m["routes"]["agentic_model"] and "ee_joint_state_official" in m["grip"]
     assert "SYNTHETIC" not in text
+
+
+def test_raw_ok_is_off_by_default_and_never_mixes(tmp_path):
+    """--raw-ok (dev only): a dev id with only a raw record runs from it; without the flag it is refused as before."""
+    d = tmp_path / "data" / "simlab" / "layouts" / "make_toast"
+    d.mkdir(parents=True)
+    (d / "100000.json").write_text("{}")
+    env = {**{k: v for k, v in os.environ.items() if not k.startswith("OMNIROUTE_")}, "DOJO_DATA": str(tmp_path / "data"),
+           "DOJO_PERCEPTION_DATA": str(tmp_path / "pd")}
+    sh = str(ROOT / "scripts" / "dojo" / "official_eval.sh")
+    r = subprocess.run(["bash", sh, "--inner", "--task", "make_toast", "--layouts", "100000", "--id", "t1"],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 2 and "no settled dev layout" in r.stderr
+    r = subprocess.run(["bash", sh, "--inner", "--task", "make_toast", "--layouts", "100000", "--id", "t2", "--raw-ok"],
+                       capture_output=True, text=True, env=env)
+    assert "--raw-ok: raw dev records" in r.stderr                       # staged raw (it stops later: no calibration set)
+    assert (tmp_path / "data" / "official" / "runs" / "t2" / "layouts" / "make_toast" / "100000.json").is_file()
+    (d / "100001.settled.json").write_text("{}")
+    r = subprocess.run(["bash", sh, "--inner", "--task", "make_toast", "--layouts", "100000 100001", "--id", "t3",
+                        "--raw-ok"], capture_output=True, text=True, env=env)
+    assert r.returncode == 2 and "all settled or all raw" in r.stderr

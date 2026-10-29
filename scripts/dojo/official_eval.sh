@@ -26,6 +26,8 @@
 #   --setenv K=V: set for OUR processes only (perception service, side servers' clients, drivers), never for robot-
 #   harness's. --dry-run: print the resolved policy / RuntimeConfig / env / side-server weights (md5) as JSON and exit
 #   (no lock, nothing started; scripts/dojo/candidate_parity.py, scripts/dojo/freeze_manifest.py).
+#   --raw-ok (dev only, default off): a dev id with no <id>.settled.json runs from its raw <id>.json (make_toast and the
+#   conveyors have raw dev records only, as their measurement sets); one call is all settled or all raw.
 #   --sealed-block DIR --manifest FILE --lock LOCKFILE: a sealed joint block (robot-harness D-C19; dojo.simlab.sealed):
 #   only the ids the manifest lists for the task (all >= 100100), each md5-verified before it is staged into this run's
 #   layout dir (nowhere else; logs name id + md5 + pass / fail only); raw records where the manifest says
@@ -80,6 +82,7 @@ shift   # --inner
 
 TASK="" LAYOUT_IDS="" POLICY="dojo.agent.policy:AgentPolicy" PRESET="submit_v2" CONFIG='{}' TWIN_ENVS=8 NAME="" OUT=""
 EP_MAX_MIN=25 CANDIDATE="" POLICY_SET="" DRY="" SEG="" GLYPH="" GLYPHK="" SETENV=() SEALED_DIR="" MANIFEST="" LOCK_ARG=""
+RAW_OK=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --task) TASK="$2"; shift 2 ;;        --layouts) LAYOUT_IDS="$2"; shift 2 ;;
@@ -98,6 +101,7 @@ while [[ $# -gt 0 ]]; do
     --seg) SEG="$2"; shift 2 ;;          --glyph) GLYPH="$2"; shift 2 ;;
     --glyph-kong) GLYPHK="$2"; shift 2 ;;
     --dry-run) DRY=1; shift ;;
+    --raw-ok) RAW_OK=1; shift ;;
     --sealed-block) SEALED_DIR="$2"; shift 2 ;;    --manifest) MANIFEST="$2"; shift 2 ;;
     --lock) LOCK_ARG="$2"; shift 2 ;;              # taken by the outer part
     *) echo "[official] unknown option $1" >&2; exit 2 ;;
@@ -188,10 +192,20 @@ for lid in $(tr ' ,' '\n\n' <<< "$LAYOUT_IDS" | grep -v '^$' | sort -n); do
     log "layout id $lid: training / priors / calibration block (D-C10c: 100030-49, never evaluated)"; exit 2
   fi
   f="$LAYOUTS_SRC/$lid.settled.json"
+  if [[ ! -f "$f" && -n "$RAW_OK" && -f "$LAYOUTS_SRC/$lid.json" ]]; then
+    f="$LAYOUTS_SRC/$lid.json"; HAVE_RAW=1          # --raw-ok: this task's dev records are raw (make_toast, conveyors)
+  else
+    HAVE_SETTLED=1
+  fi
   [[ -f "$f" && "$f" != *Eval_Layout* ]] || { log "no settled dev layout $f"; exit 2; }
   cp "$f" "$OUT/layouts/$TASK/"
   IDS+=("$lid")
 done
+if [[ -n "${HAVE_RAW:-}" ]]; then
+  [[ -z "${HAVE_SETTLED:-}" ]] || { log "--raw-ok: one call is all settled or all raw records"; exit 2; }
+  SUFFIX=""
+  log "--raw-ok: raw dev records (no settled ones for $TASK)"
+fi
 N=${#IDS[@]}
 log "task $TASK, $N layouts: ${IDS[*]}; policy $POLICY preset $PRESET config $CONFIG; out $OUT"
 # perception data (genuine 5.1 calibration), checked before anything starts
