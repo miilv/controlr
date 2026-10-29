@@ -91,3 +91,27 @@ def test_measured_joint_poses_the_world_object(monkeypatch):
         sk.artic_geom = mode
         out = sk.refresh().obj("laptop")
         assert bool(out.asset.extents[2] > 0.1) is tall
+
+
+def test_route_off_by_default_and_on():
+    from dojo.skills import planner
+    instr = "Hang the headphones on the headphone stand, close the laptop, then place it into the vertical laptop stand."
+    stand = ObjectState("stand", "Geometry", "headset_stand", 0, np.array([-0.3, 0.04, Z + 0.14]), np.array([1.0, 0, 0, 0]),
+                        AssetInfo(key="Geometry/headset_stand/00000", bbox_min=np.array([-0.09, -0.05, -0.14]),
+                                  bbox_max=np.array([0.09, 0.05, 0.14]),
+                                  functional={"support_cradle": {"frame": [[0.0, 0.0, 0.12, 1, 0, 0, 0]]}}))
+    hs = ObjectState("headset", "Rigid", "headset", 0, np.array([0.0, -0.2, Z + 0.04]), np.array([1.0, 0, 0, 0]),
+                     AssetInfo(key="Rigid/headset/00000", bbox_min=np.full(3, -0.05), bbox_max=np.full(3, 0.05),
+                               active_functional={"headband_bridge": {"frame": [[0.0, 0.0, 0.09, 1, 0, 0, 0]]}}))
+    lap_stand = ObjectState("laptop_stand", "Geometry", "laptop_stand", 0, np.array([0.05, 0.02, Z + 0.02]),
+                            np.array([1.0, 0, 0, 0]), AssetInfo(key="Geometry/laptop_stand/00001",
+                                                                bbox_min=np.array([-0.1, -0.1, -0.02]),
+                                                                bbox_max=np.array([0.1, 0.1, 0.02])))
+    objs = {o.label: o for o in (_laptop(), _rack(), stand, hs, lap_stand)}
+    w_off = WorldState("", instr, objs, {}, {})
+    assert planner.plan(instr.lower(), w_off).skill != "store_laptop"
+    w_on = WorldState("", instr, objs, {}, {}, notes={"routes": ["store_laptop"]})
+    p = planner.plan(instr.lower(), w_on)
+    assert p.skill == "store_laptop" and p.args["laptop"] == "laptop" and p.args["rack"] == "rack"
+    assert p.args["hang"]["rack"] == "stand" and p.args["hang"]["objects"] == ["headset"]
+    assert p.args["hinge_tag"] == "laptop_hinge"
