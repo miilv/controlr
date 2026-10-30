@@ -82,3 +82,10 @@ def test_wrist_identity_rejects_a_refit_that_moves_onto_another_object(monkeypat
     monkeypatch.setattr(IL, "coarse_fit", lambda sm, b, views, step: [(0.15, -0.2, 0.0, 0.2)])   # 50 mm away
     out, info = IL._wrist_identity([h], views, cfg, [], [(0, {}, {})])
     assert out[0] is h and info["changed"] == [] and "beat" in h.per_view["wrist_identity"]["why"]
+
+
+def test_wrist_identity_stops_checking_after_its_time_budget(monkeypatch):
+    IL, views, h, cfg, calls = _setup(monkeypatch, {AC: 0.41, WATCH: 0.66})
+    cfg.wrist_id_budget_s = -1.0                                   # spent before the first object
+    out, info = IL._wrist_identity([h], views, cfg, [], [(0, {}, {})])
+    assert out[0] is h and calls == [] and info["budget_hit"] and info["checked"] == 0

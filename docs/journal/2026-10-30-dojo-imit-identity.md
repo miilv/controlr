@@ -78,3 +78,15 @@ Next: dev camera rows (100000-04, `_dev_` family) on the bundle-B config plus `w
 `imitate_repair`), against bundle B. The held-out measure is the frame-0 confusion of those rows and the copy score.
 
 Tests: `tests/dojo/test_wrist_identity.py`.
+
+**Held-out dev rows and a time budget (same day)**
+- Runtime frame 0 at 693f32ec vs dev_home at ae4eaca4:
+  - 100002: 2 misreads (watch -> action_camera, ours and demo) -> 0. wrist_identity changed exactly those two.
+  - 100003: 0 category misreads; one change, garage -> watch at our watch.
+  - No wrong changes.
+- 100001 + wrist_identity froze 4 / 4 on compute4. The cause is the runner's watchdog: no env step for 300 s while frame 0's estimate had not returned.
+  - Kit's zenity "not responding" dialogs also appear in the successful rows, during any long perception wait.
+  - On compute4 the frame-0 estimate took 88-99 s with the step (100002 / 03) against 53 s without (dev_home 100001).
+  - On compute3 the service's own estimate on 100001's runtime frame takes 74 s with the step and 56 s without, with no hang. So what makes 100001 exceed 300 s on compute4 is not known.
+- `wrist_id_budget_s` (45 s): no further object is checked once the step has run this long.
+- The step prints `[wrist_identity] checked n changed m in t s` to the service log, so a frozen row shows whether frame 0 got past it.
