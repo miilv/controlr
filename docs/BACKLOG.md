@@ -211,6 +211,11 @@
   New classes on top of v2b failed the 0-loser frame-0 gate twice (journal 2026-10-29-dojo-seg-v2c). In v3ep6 the
   car classes took classify's toy_cars. The narrow v2cn (12 classes) had 3 small losers and left the watches unchanged.
   Landmine: a new class next to a look-alike in another category (car vs toy_car) costs that category.
+  v2d (30 `_random` task assets) failed too and is parked (journal 2026-10-30-dojo-seg-v2d). It names 13 of 43 new
+  instances on genuine dev frame-0 (v2b: 0), but it repeats v2cn's organize_table garage error and arrange detection
+  loss to the object, with no new class in common: the incremental recipe on v2b looks like the cause.
+  Landmine: the frame-0 bake sets (d0_51, d0_ext, series, w51, p60) mix 35 measurement ids with 29 dev ids. Re-cut
+  them to dev / training ids only (100000-04, 100030-49) before the next segmenter gate.
 - [ ] **dojo perception: classify_objects_by_language drops the watches after the segmenter.** On p60, watch 4-7 come
   out right 1 of 12 on the dev ids 100000-04 with any segmenter (v2b, v3ep6, v2cn). The other 11 have no prediction
   closer than 77 mm, though v2b's YOLO fires a watch on the head frame (0.97 on 100000). The loss is in the bake's
