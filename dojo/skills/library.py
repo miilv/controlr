@@ -3025,6 +3025,7 @@ def joint_stroke(o, J: dict, ratio: float) -> float:
     return lo + ratio * (hi - lo) - pos
 
 
+PRESS_REPEAT_SHIFT = 0.004    # m: ``Skills.press_repeat`` "cross": the extra strokes this far around the first one
 PRESS_TILTS = (25.0, 35.0, 15.0, 0.0)   # deg from vertical, leaning away from the body the part sticks out of
 
 
@@ -3121,10 +3122,39 @@ def press_joint(sk: Skills, label: str, tag: str, ratio: float = 0.95, over: flo
                     return sk._record(SkillResult(False, "press_joint", "step_budget", 0, a, note=str(e)))
                 except EpisodeEnded as e:
                     return sk._record(SkillResult(False, "press_joint", "ended", pl.steps, a, note=str(e)))
+                steps = int(r["steps"])
+                extra = ""
+                if getattr(sk, "press_repeat", "off") == "cross":
+                    # ``Skills.press_repeat`` "cross" (stream H; default "off"): the same stroke again at the press
+                    # point moved ``PRESS_REPEAT_SHIFT`` each way along the object's horizontal axes (no joint
+                    # reading on camera: G3 make_toast, the lever reaches 40.5 of the 40.4 mm the check needs, and a
+                    # toaster believed 4 mm off leaves it at 39)
+                    n_ok = 0
+                    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        sh = o.R @ np.array([dx * PRESS_REPEAT_SHIFT, dy * PRESS_REPEAT_SHIFT, 0.0])
+                        q_a = sk.ex.q[a]
+                        T_u = T_from(p_tip + sh + [0, 0, clearance] - x * TIP_BEYOND_TCP, Rg)
+                        T_d = T_from(p_tip + sh - [0, 0, depth] - x * TIP_BEYOND_TCP, Rg)
+                        m_u = sk.motion.line(a, q_a, T_u, MEDIUM, "press_lower", gripper=CLOSED, ignore=(label,))
+                        if not m_u.ok:
+                            continue
+                        m_d = sk.motion.line(a, m_u.q_end, T_d, 0.03, "press_down", gripper=CLOSED, check=False)
+                        m_b = sk.motion.line(a, m_d.q_end if m_d.ok else m_u.q_end, T_u, MEDIUM, "press_up",
+                                             gripper=CLOSED, check=False)
+                        if not (m_d.ok and m_b.ok):
+                            continue
+                        pl2 = ArmPlan(a, np.asarray(q_a, float), sk.ex.g[a]).move(m_u, "press_lower")
+                        pl2.move(m_d, "press_down").hold(2, "press_hold").move(m_b, "press_up")
+                        try:
+                            steps += int(sk.ex.run({a: pl2}, name=f"press {label}/{tag} again")["steps"])
+                        except (BudgetExceeded, EpisodeEnded):
+                            break
+                        n_ok += 1
+                    extra = f", {n_ok} more strokes {PRESS_REPEAT_SHIFT * 1000:.0f} mm around"
                 o2 = sk.refresh().obj(label)
                 js = "" if o2.joints is None else f", joints {np.round(o2.joints, 4).tolist()}"
-                return sk._record(SkillResult(True, "press_joint", "ok", r["steps"], a,
-                                              note=f"{tag}: {depth*1000:.0f} mm down, tilt {tilt:.0f}{js}"))
+                return sk._record(SkillResult(True, "press_joint", "ok", steps, a,
+                                              note=f"{tag}: {depth*1000:.0f} mm down, tilt {tilt:.0f}{extra}{js}"))
     return sk._record(SkillResult(False, "press_joint", "ik_fail", 0, None, note="; ".join(notes[:6])))
 
 
