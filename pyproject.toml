@@ -51,3 +51,8 @@ markers = [
   "live: calls the live LLM endpoint (run with CONTROLR_LIVE=1)",
   "isaac: needs the Isaac Sim server on compute3 (run with CONTROLR_ISAAC=1)",
 ]
+
+[tool.uv]
+# pyrender pins PyOpenGL 3.1.0, whose array handlers fail on numpy 2 in textured renders (press_by_number:
+# ctypes.ArgumentError in glGenTextures / "No array-type handler"). Every venv built from this lock gets 3.1.9.
+override-dependencies = ["pyopengl==3.1.9"]
