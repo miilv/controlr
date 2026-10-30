@@ -6,6 +6,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import pytest
 
 from dojo.skills import planner, rows
 from dojo.skills.env import KinematicEnv
@@ -100,3 +101,171 @@ def test_row_around_the_widest_object_that_stays():
     assert r["anchor"] == "doll0" and np.allclose(r["xy"]["doll0"], [0.20, -0.15])
     xs = [r["xy"][k][0] for k in r["order"]]
     assert all(xs[i + 1] - xs[i] > 0.03 for i in range(4)) and max(abs(x) for x in xs[:-1]) <= rows.MAX_X
+
+
+# ``Skills.row_size_read`` (default off): wrist looks at the dolls of a shared believed size class before the order
+
+
+def test_row_size_read_default_off():
+    from dojo.runtime.policy import RuntimeConfig
+    assert RuntimeConfig().row_size_read == "off"
+    assert rows.MAX_SIZE_LOOKS >= 2
+
+
+def test_height_ranks_mixed_sets_where_volume_does_not():
+    """A doll believed from the wide set (70 mm tall, wider than the std 90 mm one) ranks by its height."""
+    objs = _dolls()
+    objs[2].asset = AssetInfo(key="Rigid/matryoshka_dolls/00013", bbox_min=-np.array([0.026, 0.0335, 0.035]),
+                              bbox_max=np.array([0.026, 0.0335, 0.035]))          # 52 x 67 x 70 mm: 244 cm3
+    objs[3].asset = AssetInfo(key="Rigid/matryoshka_dolls/00002", bbox_min=-np.array([0.0255, 0.025, 0.045]),
+                              bbox_max=np.array([0.0255, 0.025, 0.045]))          # 51 x 50 x 90 mm: 230 cm3
+    w = _world(objs)
+    labs = [f"doll{i}" for i in range(5)]
+    assert rows.row_slots(w, labs)[0]["order"][1:3] == ["doll3", "doll2"]               # by volume: 90 mm left of 70
+    assert rows.row_slots(w, labs, by="height")[0]["order"][1:3] == ["doll2", "doll3"]
+
+
+class _Ex:
+    def __init__(self, left=1000):
+        self.q = {"left": np.zeros(6), "right": np.zeros(6)}
+        self.g = {"left": 1.0, "right": 1.0}
+        self.steps_left, self.runs = left, []
+
+    def run(self, plans, name=""):
+        self.runs.append(name)
+
+
+class _Plan:
+    def __init__(self, arm, q, g):
+        pass
+
+    def move(self, mv, name=""):
+        return self
+
+    def hold(self, n, name=""):
+        return self
+
+
+def _size_sk(w, fix: dict, left=1000):
+    from dojo.skills.kinematics import X5Kin
+
+    class Sk:
+        world, kin, ex = w, X5Kin(), _Ex(left)
+        refine = True
+        row_size_read = "look"
+        reads, homes = [], []
+
+        def refresh(self):
+            return w
+
+        def log(self, m):
+            pass
+
+        def home(self, gripper=None):
+            self.homes.append(gripper)
+
+        def _refine(self, label, arm, kind):
+            self.reads.append((label, kind))
+            if label in fix:                              # the look reads the doll's true size
+                w.obj(label).asset = fix[label]
+    return Sk()
+
+
+def test_size_reads_look_at_shared_classes_until_none_is_shared(monkeypatch):
+    from dojo.skills import executor, regrasp
+    monkeypatch.setattr(regrasp, "_look_move", lambda sk, arm, xy, z: object())
+    monkeypatch.setattr(executor, "ArmPlan", _Plan)
+    objs = _dolls()
+    true2 = objs[2].asset
+    objs[2].asset = objs[1].asset                         # doll2 (90 mm) believed as the 110 mm doll1
+    w = _world(objs)
+    labs = [f"doll{i}" for i in range(5)]
+    assert rows.shared_class(w, labs) == ["doll1", "doll2"]
+    sk = _size_sk(w, {"doll2": true2})
+    reads = rows.size_reads(sk, labs)
+    assert [r["label"] for r in reads][-1] == "doll2" and reads[-1]["to"] == true2.key
+    assert all(k == "size" for _, k in sk.reads) and 1 <= len(sk.reads) <= 2 and len(sk.homes) == 1
+    assert rows.shared_class(w, labs) == []
+    assert rows.row_slots(w, labs, by="height")[0]["order"] == ["doll4", "doll3", "doll2", "doll1", "doll0"]
+
+
+def test_size_reads_stop_at_the_cap_and_the_step_reserve(monkeypatch):
+    from dojo.skills import executor, regrasp
+    monkeypatch.setattr(regrasp, "_look_move", lambda sk, arm, xy, z: object())
+    monkeypatch.setattr(executor, "ArmPlan", _Plan)
+    objs = _dolls()
+    for o in objs[1:]:
+        o.asset = objs[0].asset                           # every doll believed the largest; no look changes it
+    w = _world(objs)
+    labs = [f"doll{i}" for i in range(5)]
+    sk = _size_sk(w, {})
+    assert len(rows.size_reads(sk, labs)) == rows.MAX_SIZE_LOOKS and len(sk.reads) == rows.MAX_SIZE_LOOKS
+    sk2 = _size_sk(w, {}, left=rows.SIZE_LOOK_RESERVE * 5)  # too few steps for the row after a look
+    r2 = rows.size_reads(sk2, labs)
+    assert sk2.reads == [] and len(r2) == 1 and "steps left" in r2[0]["skipped"] and sk2.homes == []
+
+
+def test_row_by_size_reads_only_when_on(monkeypatch):
+    calls = []
+    monkeypatch.setattr(rows, "size_reads", lambda sk, labels: calls.append(list(labels)) or [])
+    objs = _dolls()
+    env = KinematicEnv(_rows_of(objs), step_lim=1050, instruction=DOLLS)
+    prov = GTProvider(env, None, instruction=DOLLS)
+    sk = Skills(env, prov)
+    sk.refine = lambda *a: None
+    assert sk.row_size_read == "off"
+    rows.row_by_size(sk, [f"doll{i}" for i in range(5)])
+    assert calls == []
+    env2 = KinematicEnv(_rows_of(_dolls()), step_lim=1050, instruction=DOLLS)
+    sk2 = Skills(env2, GTProvider(env2, None, instruction=DOLLS))
+    sk2.refine, sk2.row_size_read = (lambda *a: None), "look"
+    res = rows.row_by_size(sk2, [f"doll{i}" for i in range(5)])
+    assert calls == [[f"doll{i}" for i in range(5)]] and res["ok"], res
+
+
+class _DollAssets:
+    def get(self, typ, cat, idx, clutter=False, mesh=False):
+        h = {0: 0.065, 1: 0.055, 2: 0.045, 3: 0.035, 4: 0.025}[int(idx) % 5]
+        return AssetInfo(key=f"{typ}/{cat}/{int(idx):05d}", bbox_min=-np.array([0.6 * h, 0.6 * h, h]),
+                         bbox_max=np.array([0.6 * h, 0.6 * h, h]))
+
+
+class _IdRefine:
+    def __init__(self, to):
+        self.to, self.vocab = to, []
+
+    def refine(self, frame, objects, fold, max_shift_m=0.03, arm=None, identity_vocabulary=None, held=None, **kw):
+        o = objects[0]
+        self.vocab.append(identity_vocabulary)
+        return {o["label"]: {"ok": True, "pos": o["pos"], "quat": o["quat"], "shift_mm": 0.5, "iou": 0.9,
+                             "visible_frac": 0.95, "turned_deg": 0.5, "obj_id": self.to, "identity_ok": True,
+                             "identity_margin": 0.1}}
+
+
+@pytest.mark.parametrize("mode,kind,twin", [("look", "size", False), ("look_union", "size", True),
+                                            ("look_union", "pick", False)])
+def test_refine_hook_kind_size_reads_identity(monkeypatch, mode, kind, twin):
+    """The hook of kind "size" re-reads the identity as a pick hover does; "look_union" adds the twin config's keys."""
+    from dojo.runtime import policy as P
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.runtime.estimate import objects_from_gt_rows
+    own = [f"Rigid/matryoshka_dolls/{i:05d}" for i in range(15)]
+    tw = [f"Rigid/matryoshka_dolls/{i:05d}" for i in range(15, 25)]
+    monkeypatch.setattr(P, "label_candidates", lambda v, lab: {"sort_nesting_dolls_by_size": own,
+                                                               "sort_nesting_dolls_by_size_random": tw}.get(v, []))
+    objs = _dolls()
+    env = KinematicEnv(_rows_of(objs), step_lim=1050, instruction=DOLLS)
+    pc = _IdRefine("Rigid/matryoshka_dolls/00002")
+    pol = P.RuntimePolicy(P.RuntimeConfig(mode="perception", refine=True, row_size_read=mode), assets=_DollAssets(),
+                          perception_client=pc)
+    pol.reset({"task": "x", "instruction": DOLLS, "step_lim": 1050, "layout_id": 1})
+    b = pol.bridge
+    img = np.zeros((48, 64, 3), np.uint8)
+    b.obs, b.fresh = {"images": {c: img for c in ("cam_head", "cam_left_wrist", "cam_right_wrist")},
+                      "state": env.proprio(), "instruction": DOLLS, "steps_used": 0, "step_lim": 1050}, True
+    prov = RuntimeProvider(b, "sort_nesting_dolls_by_size", DOLLS, "perception", _DollAssets())
+    prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
+    pol._refine_hook(prov, None, "doll1", "left", kind)
+    assert pc.vocab == [own + tw if twin else own]
+    assert prov.belief.objects["doll1"].asset.key == "Rigid/matryoshka_dolls/00002"
+    assert P.twin_vocabulary("sort_nesting_dolls_by_size_random") == "sort_nesting_dolls_by_size"

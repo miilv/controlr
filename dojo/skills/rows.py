@@ -46,6 +46,18 @@ def size_key(o) -> float:
     return float(e[0] * e[1] * e[2])
 
 
+def height(o) -> float:
+    """Standing height (its asset's z extent). sort_nesting_dolls' size classes are heights: 50 / 70 / 90 / 110 / 130 mm
+    in every texture set of both variants' public configs, while the sets' widths differ (a _random doll is wider than
+    the std doll of its height). A height ranks dolls whose believed assets come from different sets; a volume does not
+    (std 13 is 70 mm tall and 243 cm3, std 2 90 mm and 232 cm3)."""
+    return float(np.asarray(o.asset.extents, float)[2])
+
+
+def _rank_key(o, by: str):
+    return size_key(o) if by == "volume" else (round(height(o) * 1000 / SIZE_CLASS_MM), size_key(o))
+
+
 def route(text: str, world, routes) -> tuple | None:
     """("row_by_size", {...}) for "arrange the N <things> in a row ... from smallest to largest" when the route is on:
     the named category's rigid, non-clutter objects (>= 3)."""
@@ -72,15 +84,16 @@ def route(text: str, world, routes) -> tuple | None:
             f"{len(labels)} objects in a row by size, {'smallest' if ascending else 'largest'} on the left")
 
 
-def row_slots(world, labels: list, ascending: bool = True) -> list[dict]:
+def row_slots(world, labels: list, ascending: bool = True, by: str = "volume") -> list[dict]:
     """Candidate rows, cheapest first: {"order": labels left to right, "xy": {label: slot xy}, "cost", "y", "xc",
     "anchor"}; slots clear every other object (not one of ``labels``) by ``OCCUPIED``, within ``MAX_X`` (an anchor
     may stay where it is beyond it). Two families: the row on a fixed line (``ROW_YS`` x ``ROW_XS``), and the row
     built around one object that stays where it is (its line and its place in the order). A row that moves the
     widest object costs ``WIDE_MOVE`` more: it fits the open gripper worst (G3 1911fbc: 4 of 5 dolls placed in both
-    episodes, the last one had no grasp)."""
+    episodes, the last one had no grasp). ``by``: the size the order ranks, "volume" (``size_key``) or "height"
+    (``height`` in SIZE_CLASS_MM classes, then the volume)."""
     objs = {k: world.obj(k) for k in labels}
-    order = sorted(labels, key=lambda k: size_key(objs[k]), reverse=not ascending)
+    order = sorted(labels, key=lambda k: _rank_key(objs[k], by), reverse=not ascending)
     ws = [width(objs[k]) for k in order]
     steps = [max(MIN_STEP, (ws[i] + ws[i + 1]) / 2 + GAP) for i in range(len(order) - 1)]
     offs = np.concatenate([[0.0], np.cumsum(steps)])
@@ -117,6 +130,77 @@ def row_slots(world, labels: list, ascending: bool = True) -> list[dict]:
                 + CENTRE_COST * (abs(float(np.mean(xs))) + abs(y - ROW_YS[0])))
         out.append({"order": order, "xy": xy, "cost": cost, "y": y, "xc": float(xc), "anchor": anchor})
     return sorted(out, key=lambda r: r["cost"])
+
+
+# ``Skills.row_size_read`` (default off = today: the order from the frame-0 belief). On, before the order is decided, a
+# wrist look straight down at each object whose believed size class another one shares (the refine hook of kind "size"
+# re-reads its identity over its config group's shapes; "look_union" also over the std / _random twin config's), and
+# the order ranks by height. Why: the dolls config draws one texture set and every one of its five sizes once
+# ("hierarchical", "unique"), so two dolls of one believed class mean a misread. Dev camera rows 100000-04 (std and
+# _random, 57dd7f36): the size order at the row decision was wrong in 5 of 10, and 7 of 10 had a shared class; the
+# pick-hover identity read changed 5 dolls' sizes, 4 of them to the truth, all after the order was fixed
+SIZE_CLASS_MM = 8.0       # mm: believed heights this close are one size class (the classes are 20 mm apart)
+MAX_SIZE_LOOKS = 4        # wrist looks before the row (each ~30-50 steps)
+SIZE_LOOK_RESERVE = 80    # steps kept back per object for the row itself
+SIZE_LOOK_HEIGHTS = (0.18, 0.14, 0.11)   # m over the object's top (lower when out of reach)
+
+
+def shared_class(world, labels: list) -> list[str]:
+    """``labels`` whose believed height class another of them shares."""
+    hs = {k: height(world.obj(k)) for k in labels if k in world.objects}
+    return [k for k in labels if k in hs and any(j != k and abs(hs[j] - hs[k]) * 1000 < SIZE_CLASS_MM for j in hs)]
+
+
+def size_reads(sk, labels: list, max_looks: int = MAX_SIZE_LOOKS) -> list[dict]:
+    """``Skills.row_size_read``: wrist looks at the objects of shared size classes, nearest an arm first, until no class
+    is shared, every such object was looked at once, ``max_looks`` or the step reserve. Both arms go home after.
+    Returns [{"label", "arm", "from", "to"} | {"label", "skipped"}]: the believed asset key before and after each look."""
+    from dojo.skills.executor import ArmPlan, BudgetExceeded, EpisodeEnded, steps_left_of
+    from dojo.skills.regrasp import _look_move
+    from dojo.skills.skills import OPEN
+    out, looked = [], set()
+    while len(looked) < max_looks:
+        w = sk.refresh()
+        todo = [k for k in shared_class(w, labels) if k not in looked]
+        if not todo:
+            break
+        left = steps_left_of(sk.ex)
+        if left is not None and left < SIZE_LOOK_RESERVE * (len(labels) + 1):
+            out.append({"label": todo[0], "skipped": f"{left} steps left"})
+            break
+
+        def near(k):
+            return min((float(np.linalg.norm(sk.kin.base(a)[:2, 3] - w.obj(k).center_w[:2])), a) for a in ARMS)
+        k = min(todo, key=lambda k_: near(k_)[0])
+        looked.add(k)
+        o = w.obj(k)
+        before, mv, arm = o.asset.key, None, near(k)[1]
+        for arm_ in (arm, "left" if arm == "right" else "right"):
+            for hgt in SIZE_LOOK_HEIGHTS:
+                mv = _look_move(sk, arm_, o.center_w[:2], float(o.top_z) + hgt)
+                if mv is not None:
+                    break
+            if mv is not None:
+                arm = arm_
+                break
+        if mv is None:
+            out.append({"label": k, "skipped": "no look pose"})
+            continue
+        try:
+            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"size look {k}")
+            sk._refine(k, arm, "size")
+        except (BudgetExceeded, EpisodeEnded):
+            break
+        w = sk.refresh()
+        after = w.obj(k).asset.key if k in w.objects else None
+        out.append({"label": k, "arm": arm, "from": before, "to": after})
+        sk.log(f"[rows] size look {k} ({arm}): {before} -> {after}")
+    if any("arm" in r for r in out):
+        try:
+            sk.home(gripper=OPEN)
+        except Exception:  # noqa: BLE001 (the row plans from wherever the arms are)
+            pass
+    return out
 
 
 def upright_targets(sk, label: str, xy) -> list:
@@ -157,14 +241,18 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
     """Stand ``objects`` upright in one row along x ordered by size (smallest on the left when ``ascending``)."""
     from dojo.skills.library import free_spots, place_oriented
     from dojo.skills.targets import table_rest
+    read = getattr(sk, "row_size_read", "off") != "off"
+    reads = size_reads(sk, objects) if read and getattr(sk, "refine", None) is not None else []
     w = sk.refresh()
-    rows = row_slots(w, objects, ascending)
+    rows = row_slots(w, objects, ascending, by="height" if read else "volume")
     if not rows:
         return {"ok": False, "stage": "plan", "note": "no free row for the slots"}
     row = rows[0]
     sk.log(f"[rows] order {row['order']} at y {row['y']:.2f}, x centre {row['xc']:.2f}, anchor {row['anchor']}, "
            f"cost {row['cost']:.2f}")
     w.notes["rows"] = {"order": row["order"], "xy": {k: v.tolist() for k, v in row["xy"].items()}}
+    if reads:
+        w.notes["rows"]["size_reads"] = reads
     pairs = [(k, row["xy"][k]) for k in row["order"]]
     done, failed, tries, aside = [], [], {k: 0 for k in objects}, 0
 

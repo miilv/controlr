@@ -78,6 +78,12 @@ def label_candidates(vocabulary: str, label: str) -> list[str]:
     return list(lab.get("candidates") or [])
 
 
+def twin_vocabulary(vocabulary: str | None) -> str:
+    """The other variant's name of a std / ``_random`` pair (the two share one instruction); "" for none."""
+    v = vocabulary or ""
+    return v[: -len("_random")] if v.endswith("_random") else (v + "_random" if v else "")
+
+
 def _png(im) -> bytes:
     """An RGB image as PNG bytes."""
     import cv2
@@ -383,6 +389,12 @@ class RuntimeConfig:
     # objects in pairs whose believed assets differ, then the assignment again; camera: frame-0 category misreads on
     # both sides in 6 of 6 runs)
     imitate_look: str = "off"
+    # ``rows.row_by_size`` (``Skills.row_size_read``): off (today: the size order from the frame-0 belief) | look (first a
+    # wrist look at each doll whose believed size class another shares, the refine hook of kind "size" re-reading its
+    # identity over its config group; then the order by height) | look_union (the read also over the std / _random twin
+    # config's candidates: one instruction, both pools). Dev camera rows 100000-04, std + _random: the order was wrong at
+    # the row decision in 5 of 10, a shared class in 7 of 10; pick-hover identity reads fixed 4 sizes, all too late
+    row_size_read: str = "off"
     # ``copy_demonstration`` re-entered after a re-plan (``Skills.imitate_keep_sides``): False (today: the demonstrator's
     # half is the far half of the objects as they stand now; two of ours already in basket0 moved that line and our toy
     # car counted as the demonstrator's: "no free object like" at 2/5, dev 100001) | True (the episode start's halves)
@@ -569,6 +581,7 @@ class RuntimePolicy:
                 or self.cfg.imitate_pairing not in ("greedy", "one_to_one")
                 or self.cfg.imitate_wait not in ("still", "origin", "home")
                 or self.cfg.imitate_look not in ("off", "ambiguous")
+                or self.cfg.row_size_read not in ("off", "look", "look_union")
                 or self.cfg.series_labels not in ("keep", "numbered") or self.cfg.place_verdict not in ("belief", "measured")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.nest_verify not in ("target", "support") or self.cfg.search_identity not in ("first", "unknown")
@@ -870,6 +883,7 @@ class RuntimePolicy:
             sk_.imitate_pairing = cfg.imitate_pairing
             sk_.imitate_wait = cfg.imitate_wait
             sk_.imitate_look = cfg.imitate_look
+            sk_.row_size_read = cfg.row_size_read
             sk_.imitate_keep_sides = bool(cfg.imitate_keep_sides)
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
@@ -1283,7 +1297,7 @@ class RuntimePolicy:
             if done is not None:
                 return done
         idv = None
-        if self.cfg.refine_identity and kind == "pick":
+        if self.cfg.refine_identity and kind in ("pick", "size"):
             # perception's instruction-ranked candidates for this label (general_pickup's target), else the
             # vocabulary's distinct shapes (85 classes for a target-category vocabulary: slow and noisy)
             rank = (((getattr(self, "_last_record", None) or {}).get("_perception") or {}).get("target_ranking")
@@ -1291,6 +1305,9 @@ class RuntimePolicy:
             # else the label's OWN config group (its candidate keys), never the whole vocabulary: a pillar must not be
             # re-identified as a prism (5.1 tower: iou 0.67, turned 91 deg, the tower tilted while we believed "built")
             idv = [k for _, k in rank[:IDENTITY_TOPK]] if rank else label_candidates(prov.task, label)
+            if kind == "size" and self.cfg.row_size_read == "look_union" and not rank:
+                # the std / _random twin shares the instruction: its config's candidates for the label too
+                idv = list(dict.fromkeys(idv + label_candidates(twin_vocabulary(prov.task), label)))
         prior_pose = (o.pos.copy(), o.quat.copy())
         kw, max_shift = {}, self.cfg.refine_max_shift_m
         if self.cfg.refine_search_radius > 0:   # the prior may be this far off (B1 / agentic read, a place target)
