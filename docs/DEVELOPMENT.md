@@ -407,7 +407,9 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   piece "improves" its error to the nearest GT of its group while making two events wrong. Seeds from unexplained masks
   need the object's exact asset class, and associated objects refit only locally (`redetect`).
 - **`pyrender` pins PyOpenGL 3.1.0**, whose array handlers fail on numpy 2 in textured renders (every press_by_number
-  frame: `ArgumentError ... No array-type handler`). A fresh venv needs `PyOpenGL==3.1.9`.
+  frame: `ArgumentError ... No array-type handler` / `glGenTextures`). `pyproject.toml` overrides it to 3.1.9
+  (`[tool.uv] override-dependencies`), so `uv sync` / `uv lock` venvs get the working version; a venv built with plain
+  `uv pip install -e .` before that override still has 3.1.0 (check `python -c "import OpenGL; print(OpenGL.__version__)"`).
 - **A held_look `held` has three values.** `None` (with `error`) is "no answer": no evidence (a uniform wrist frame, a
   silhouette fit that singles out no opening is not used, the fingertips out of view), the agent gave no yes / no, B1
   failed, or the asked arm had no verdict. Never read it as "not held" (`if not r["held"]` does), and with `arm` read
