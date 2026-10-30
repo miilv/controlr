@@ -98,3 +98,21 @@ The leading hypothesis for the next owner (not tested):
 Candidate levers:
 - re-pick only on a stuck judgment that a second read confirms;
 - after an empty-jaws re-pick, re-read the piece instead of keeping the dropped belief.
+
+## Outcome: the rendered A/B/C on measurement ids (27c7a5b7, compute4, 30 Oct; adopted by the lead)
+
+Both levers above were built default-off: `peg_stuck_confirm` (a re-pick only on a second-read-confirmed stuck
+judgment, plus a re-read after an empty-jaws re-pick) and `peg_base_refine`. The rule was pre-registered: adopt B over A,
+and C over B, iff the pooled score is higher and no pair loses more than 0.3.
+
+| Arm | Lever | Pooled score | Pairs | Rule |
+|---|---|---|---|---|
+| A | baseline | 41.0 | 10 | - |
+| B | `peg_base_refine: local`, `peg_base_tries: 8` | **62.0** | 10 (vs A) | **adopted**: higher pooled; the worst pairs (22, 24) lose exactly 0.3, which is not more than 0.3. 2 successes vs 0 |
+| C | B + `peg_stuck_confirm: on` | 47.8 | 9 / 10 (vs B at 65.6) | **rejected**: 3 pairs (05, 20, 21) lose more than 0.3 |
+
+Re-measuring the peg base is the lever that pays, about +0.5 strict on this cell. Requiring a second read before
+re-picking a stuck piece hurts: it delays or skips re-picks that were needed, and the "stuck chain" hypothesis does
+not hold on the measurement ids. `peg_stuck_confirm` stays in the code default off. Integration carries B in
+CANDIDATE.txt (a new md5; the D-C19 freeze manifest and candidate_parity are re-run on it). Measurement ids were used
+for scoring only; no lever was tuned on them.
