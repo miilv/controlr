@@ -322,6 +322,9 @@ class Skills:
         # 12 mm) | "cover" (the range of centres where the object covers / lies inside the support: ``cover_region``) |
         # "cover_obb" (the same on the object's rotated footprint: ``cover_goal_obb``)
         self.push_goal = "centre"
+        # ``library.fill_container`` (stream H; ``RuntimeConfig.fill_move_lift``): after the container's move, "off"
+        # (today: the place's 50 mm retreat) | "clear" (hands still below its top go straight up clear of it)
+        self.fill_move_lift = "off"
         # ``library.arrange`` (stream N): the places' order, "near" (today: nearest the arms first) | "big_first" |
         # "push_big_first" (the pushes first, then the places largest first)
         self.arrange_order = "near"

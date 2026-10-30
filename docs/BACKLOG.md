@@ -774,6 +774,11 @@
   through the relay leg (ok, 0.3 mm drift), and the pen still did not end inside. So the top grasp may hold and the
   miss may be in the relay / drop. Next: thread the family through the relay, then screen pen0 on 3 layouts
   (`h95_family_screen2.py`, kept off main: compute3 `~/controlr-h95n/scripts/skills/`).
+- [ ] **dojo skills: fill_pen_holder, what tips the holder after `fill_move_lift`** (journal
+  2026-10-30-dojo-h95-fill-pen-lift).
+  - A pen drop knocks the standing holder over late (2 of 20 G3 v15 rows, both after their tier was scored).
+  - A tilted side grasp of the holder ("box close 1 approach +2 tilt -25", 100031) stalls 43 mm above the table and
+    lets go there. The holder stays hooked on the fingers and falls when the arm moves off.
 - [ ] **dojo skills: IK under `joint_limits` "measured" plans slower** (G3 plan_s: insert_tubes x2, fill_pen x1.6).
   A failing IK costs ~2.4x a succeeding one (55-60 vs 23-25 ms), and "measured" fails more targets (53 vs 13 of 300
   random ones). Cap the failing path, e.g. stop the remaining seeds once one stalls against the joint-5 stop.
