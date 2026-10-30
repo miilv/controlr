@@ -70,6 +70,10 @@
 - [ ] **dojo perception: store_laptop headset identity 00002 vs 00004** (5.1 c4 frames; B1 picks 00002 with the alternative
   00004 at +0.03..+0.08, so `identity_margin_swap` never fires): try the embedding path (`embed_b1`) on these frames.
   The laptop flip: `on_base_refit` (off) fixes 7 of 17 estimates; A/B after the root-vs-mesh offset is resolved.
+- [ ] **dojo skills: sort_nesting_dolls camera rows: two of five "order right" dev rows placed all five dolls and
+  scored 0** (std 100003, `_random` 100002; journal 2026-10-30-dojo-row-size-read). The reports carry no final GT, so
+  the failing check (row y spread, x gaps, upright, arms home) is unknown. Two more were `ik_fail` with 0 grasp-place
+  pairs for one doll (std 100001, 100004). Find out with a dev GT end-state dump or a replay.
 - [ ] **dojo skills: store_laptop: the headset hang plans now; its hold and the laptop's pick do not** (journal
   2026-10-29-dojo-newskill-hang, store_laptop sections).
   - Done: `hang_cradle` "straddle" (#345) lets the held headset straddle the stand's top, so the hang plans in 16 of
