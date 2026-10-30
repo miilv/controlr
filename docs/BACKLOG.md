@@ -10,8 +10,8 @@
   --lock FILE` exists (`dojo.simlab.sealed`):
   - it runs manifest ids only (>= 100100), each md5-verified before staging and again in RoboDojo's process;
   - the manifest's `settled: false` marks the raw tasks;
-  - the server runs without `--dev`, and the lock is required: `--lock-slots` takes the first free of the 3 agreed
-    slots (`~/coord/dc19.lock.{1,2,3}`), non-blocking, for one call = one cell's tranche (BRIDGE-RUNBOOK).
+  - the server runs without `--dev`, and the lock is required: `--lock-slots` takes the first free of the 2 agreed
+    slots (`~/coord/dc19.lock.1`, `.2`), non-blocking, for one call = one cell's tranche (BRIDGE-RUNBOOK).
   - Open: the manifest format and who generates / holds the sealed directory, as Misha amends the design. Then the
     `route_probe.py` pre-flight and the real freeze manifest before tranche A.
 - [ ] **dojo infra: compute2's physics differ from compute3 / compute4's.** Never replay a compute3 / compute4 recording on

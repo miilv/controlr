@@ -32,8 +32,9 @@
 #   only the ids the manifest lists for the task (all >= 100100), each md5-verified before it is staged into this run's
 #   layout dir (nowhere else; logs name id + md5 + pass / fail only); raw records where the manifest says
 #   "settled": false; robot-harness's server WITHOUT --dev (no truth log, HARNESS_DEV=0); the lock is required (no
-#   default). D-C19's slots (agreed with Mikhail's side, 30 Oct): --lock-slots "F1 F2 F3" (~/coord/dc19.lock.{1,2,3}):
-#   the call tries F1, F2, F3 with a NON-blocking flock, in that order, every OFFICIAL_SLOT_POLL_S (15 s) until one is
+#   default). D-C19's slots (agreed with Mikhail's side, 30 Oct): --lock-slots "F1 F2" (~/coord/dc19.lock.1 and .2 on
+#   compute4: at most 2 calls at once, VRAM; existing regular files, never symlinks, never created here): the call
+#   tries them with a NON-blocking flock, in that order, every OFFICIAL_SLOT_POLL_S (15 s) until one is
 #   free (at most OFFICIAL_LOCK_WAIT_S), and holds it for exactly this call (one cell's tranche, <= 5 ids, one Isaac):
 #   released when the call ends, by the kernel too if it dies. --lock-slots is for a sealed block only and excludes
 #   --lock (one FILE, a blocking flock: a single slot). Before anything starts it
@@ -81,6 +82,9 @@ if [[ "${1:-}" != --inner ]]; then
     read -ra _sl <<< "$_slots"; LOCK=""; _t0=$(date +%s)
     for _i in "${!_sl[@]}"; do _sl[$_i]="${_sl[$_i]/#\~/$HOME}"; done       # a quoted "~/coord/..." too
     [[ ${#_sl[@]} -ge 1 ]] || { echo "[official] --lock-slots: no slot file given" >&2; exit 2; }
+    for _f in "${_sl[@]}"; do   # the slots exist once, made by hand: never created here, never a symlink (e.g. to gpu.lock)
+      [[ -f "$_f" && ! -L "$_f" ]] || { echo "[official] --lock-slots: $_f is not an existing regular file (not a symlink)" >&2; exit 2; }
+    done
     echo "[official] waiting for a free slot of: ${_sl[*]}" >&2
     while [[ -z "$LOCK" ]]; do
       for _f in "${_sl[@]}"; do

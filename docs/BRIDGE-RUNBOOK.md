@@ -223,12 +223,15 @@ rules were agreed with Mikhail's side (bus 30 Oct 0008Z / 0035Z), and each side 
 
 ```bash
 COORD_DIR=~/coord scripts/dojo/official_eval.sh --candidate CANDIDATE.txt --task T --layouts "<tranche ids>" \
-    --sealed-block DIR --manifest MANIFEST --lock-slots "$HOME/coord/dc19.lock.1 $HOME/coord/dc19.lock.2 $HOME/coord/dc19.lock.3"
+    --sealed-block DIR --manifest MANIFEST --lock-slots "$HOME/coord/dc19.lock.1 $HOME/coord/dc19.lock.2"
 python -m dojo.simlab.sealed verify --dir DIR --manifest MANIFEST     # before the first episode and after the last
 ```
 
-- **Slots (agreed with Mikhail's side, 30 Oct):** three lock files `~/coord/dc19.lock.{1,2,3}` on compute4 for the
-  whole block. A call tries them in order, 1 → 2 → 3, each with a NON-blocking flock, and retries every 15 s
+- **Slots (agreed with Mikhail's side, 30 Oct):** two lock files, `~/coord/dc19.lock.1` and `~/coord/dc19.lock.2`, on
+  compute4 for the whole block. There is no `.3`: three calls at once do not fit compute4's 32 GB of VRAM, since one
+  sealed call peaks at ~14.3 GB. Our side creates them once, as plain 0-byte regular files: not symlinks, and never
+  `~/coord/gpu.lock`. The launcher refuses a slot that is missing or a symlink, and never creates one. A call tries them
+  in order, 1 → 2, each with a NON-blocking flock, and retries every 15 s
   (`OFFICIAL_SLOT_POLL_S`) until one is free, up to `OFFICIAL_LOCK_WAIT_S` (3 h). It holds that slot for exactly
   this call and releases it when the call ends; a crash releases it too, because the flock dies with the process.
   - One call is one cell's tranche: up to 5 ids, one eval client, one Isaac plus its own seg / glyph / glyph-kong

@@ -209,6 +209,8 @@ def test_lock_slots_take_the_first_free_slot_for_the_call_and_release_it(tmp_pat
     d, m = _block(tmp_path)
     sh = str(ROOT / "scripts/dojo/official_eval.sh")
     slots = [tmp_path / f"dc19.lock.{i}" for i in (1, 2, 3)]
+    for f in slots:
+        f.touch()                                                              # the slots exist (made once, by hand)
     base = ["--task", "stack_blocks", "--layouts", "100100", "--sealed-block", str(d), "--manifest", str(m),
             "--lock-slots", " ".join(map(str, slots))]
     held = _hold(slots[0])                                                     # the other side holds slot 1
@@ -233,6 +235,8 @@ def test_lock_slots_wait_for_a_free_one_and_give_up_after_the_limit(tmp_path):
     d, m = _block(tmp_path)
     sh = str(ROOT / "scripts/dojo/official_eval.sh")
     slots = [tmp_path / f"dc19.lock.{i}" for i in (1, 2, 3)]
+    for f in slots:
+        f.touch()                                                              # the slots exist (made once, by hand)
     base = ["--task", "stack_blocks", "--layouts", "100100", "--sealed-block", str(d), "--manifest", str(m),
             "--lock-slots", " ".join(map(str, slots))]
     held = [_hold(f) for f in slots]
@@ -259,6 +263,16 @@ def test_lock_slots_are_sealed_only_and_exclude_lock(tmp_path):
     sh = str(ROOT / "scripts/dojo/official_eval.sh")
     slots = f"{tmp_path}/s1 {tmp_path}/s2"
     dev = ["--task", "stack_blocks", "--layouts", "100000", "--lock-slots", slots]
+    # a slot must already exist as a regular file: never created by the launcher, never a symlink (gpu.lock)
+    gpu = tmp_path / "dojo-gpu.lock"
+    gpu.touch()
+    (tmp_path / "dc19.lock.1").symlink_to(gpu)
+    sealed_args = ["--task", "stack_blocks", "--layouts", "100100", "--sealed-block", str(d), "--manifest", str(m)]
+    for bad in (f"{tmp_path}/dc19.lock.1", f"{tmp_path}/missing.lock"):
+        r = subprocess.run(["bash", sh] + sealed_args + ["--lock-slots", bad], capture_output=True, text=True,
+                           env=_slot_env(tmp_path, [bad]))
+        assert r.returncode == 2 and "not an existing regular file" in r.stderr
+    assert not (tmp_path / "missing.lock").exists() and not gpu.read_text()   # nothing created, gpu.lock untouched
     for inner in ([], ["--inner"]):
         r = subprocess.run(["bash", sh] + inner + dev, capture_output=True, text=True, env=_env(tmp_path))
         assert r.returncode == 2 and "for a sealed block only" in r.stderr
