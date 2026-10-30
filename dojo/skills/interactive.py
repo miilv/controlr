@@ -1043,10 +1043,17 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
     # mode B: the wrist look from BELT_LOOK_H above the descent's start, BELT_LOOK_DOWN steps before it (from the
     # pre-grasp itself the rider fills or leaves the wrist view: 5.1 conveyor, 2 of 9 looks fit; the head track is 30-60
     # mm off there). The descent's start is re-aimed after the look.
-    look = _belt_look_pose(sk, a, samples, track, go, n_desc_start) if getattr(sk, "refine", None) is not None else None
+    mode_b = getattr(sk, "refine", None) is not None
+    look = _belt_look_pose(sk, a, samples, track, go, n_desc_start) if mode_b else None
     if look is not None:
         app, q_look = look
         wait = max(0, n_desc_start - len(app) - BELT_LOOK_DOWN)
+    if mode_b:
+        # the approach fully open, narrowed to the grasp's pre-opening ``go`` on the way down: below half open, the
+        # perception robot mask takes the hand for a closed one holding something and masks a 65 mm box between the
+        # fingertips (6 of 30 5.1 belt wrist looks were blind at go 0.444: visible_frac <= 0.12), the head-view track
+        # reads around the jaws too
+        app = [(q, OPEN) for q, _ in app]
     try:
         if wait:
             sk.ex.hold(wait)
@@ -1101,6 +1108,16 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
             q0, q1 = np.asarray(sk.ex.q[a], float), np.asarray(track[0][0], float)
             sk.ex.run_lists({a: [(q0 + (q1 - q0) * k / (BELT_LOOK_DOWN + 1), go) for k in range(1, BELT_LOOK_DOWN + 1)]},
                             name="belt look down")
+        if mode_b:
+            # the descent, then the jaws as measured just before they close (the narrowing from OPEN must be done)
+            n_open = next((i for i, (_, gg) in enumerate(track) if gg == 0.0), len(track))
+            sk.ex.run_lists({a: track[:n_open]}, name=f"belt descent {label}")
+            try:
+                g_obs = float(np.asarray(sk.ex.env.proprio()[f"{a}_ee_joint_state"]).reshape(-1)[0])
+                sk.log(f"[belt] jaws before the close: measured {g_obs:.3f}, command {go:.3f}")
+            except Exception:  # noqa: BLE001 (a log line)
+                pass
+            track = track[n_open:]
         sk.ex.run_lists({a: track}, name=f"belt pick {label}")
         sk.ex.settle(tol=0.01, max_steps=12)            # the arm lags its command on the lift: measure at the top
         sk.ex.hold(2)

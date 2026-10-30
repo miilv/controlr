@@ -529,3 +529,55 @@ def test_belt_wrist_look_pose_is_above_the_descent_and_fits_the_time():
     T_hi = T0.copy()
     T_hi[2, 3] = 1.95                                                   # unreachable once raised
     assert I._belt_look_pose(sk, "left", [("open", T_hi)], track, 0.9, n_desc_start=40) is None
+
+
+def test_belt_approach_is_open_in_mode_b_and_narrows_on_the_way_down(monkeypatch):
+    """Mode B (a refine hook): the approach runs fully open (a hand below half open is masked as holding a 65 mm box,
+    blinding the wrist look), the grasp's pre-opening comes on the way down, and the jaws are logged before the close.
+    Mode A keeps the plan's opening throughout."""
+    from types import SimpleNamespace
+
+    import dojo.skills.interactive as I
+    go = 0.444
+    q = np.zeros(6)
+    samples = [("open", np.eye(4))] * 9 + [("close", np.eye(4))] * 5 + [("lift", np.eye(4))] * 3
+    track = [(q, go)] * 9 + [(q, 0.0)] * 8
+    grasp = SimpleNamespace(method="top", note="axis 0")
+    monkeypatch.setattr(I, "plan_intercept", lambda *a, **k: ("left", 40, [(q, go)] * 10, list(track), grasp, samples, go))
+    monkeypatch.setattr(I, "_belt_look_pose", lambda *a, **k: None)
+    o = SimpleNamespace(pos=np.array([0.0, 0.0, 0.8]))
+    w = SimpleNamespace(obj=lambda label: o)
+
+    def run(mode_b):
+        calls, logs = [], []
+
+        class Ex:
+            steps_used = 0
+            env = SimpleNamespace(proprio=lambda: {"left_ee_joint_state": [0.45]})
+
+            def __init__(self):
+                self.q = {"left": np.zeros(6)}
+
+            def run_lists(self, lists, name=""):
+                calls.append((name, [g for _, g in lists["left"]]))
+                self.steps_used += len(lists["left"])
+
+            def hold(self, n):
+                self.steps_used += n
+
+            def settle(self, **k):
+                pass
+        sk = SimpleNamespace(ex=Ex(), refresh=lambda: w, log=logs.append, held={"left": None, "right": None},
+                             _record=lambda r: r)
+        if mode_b:
+            sk.refine, sk._refine, sk.last_refine = object(), (lambda *a: None), None
+        I.pick_from_belt(sk, "rider0", np.array([0.004, 0.0]))
+        return calls, logs
+    calls, logs = run(True)
+    assert calls[0][0] == "belt approach" and set(calls[0][1]) == {I.OPEN}
+    assert calls[1][0].startswith("belt descent") and set(calls[1][1]) == {go}
+    assert calls[2][0].startswith("belt pick") and calls[2][1][0] == 0.0
+    assert any("jaws before the close: measured 0.450, command 0.444" in m for m in logs)
+    calls, logs = run(False)
+    assert calls[0][0] == "belt approach" and set(calls[0][1]) == {go}
+    assert calls[1][0].startswith("belt pick") and len(calls) == 2
