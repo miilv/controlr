@@ -43,3 +43,11 @@ def test_default_and_validation():
         RuntimePolicy(RuntimeConfig(mode="perception", fill_joint_limits="wide"), assets=None)
     from dojo.skills.g3 import SKILL_ATTRS
     assert SKILL_ATTRS["fill_joint_limits"] == ("inherit", "measured")
+
+
+def test_fill_lean_default_and_validation():
+    assert RuntimeConfig().fill_lean == "mixed"
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(mode="perception", fill_lean="upright"), assets=None)
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert SKILL_ATTRS["fill_lean"] == ("mixed", "fallback")

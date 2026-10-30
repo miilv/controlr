@@ -2001,13 +2001,23 @@ def _fill_container(sk: Skills, objects: list[str], container: str, drop: float 
         said: list = []
         log0 = sk.log
         sk.log = lambda m, _l=log0: (said.append(str(m)), _l(m))[1]
+        poses = _leaning(sk, lab, T)
+        # ``Skills.fill_lean`` "fallback" (stream H; default "mixed" = upright and leaning drop poses ranked together,
+        # a leaning one only 0.05 a pose behind): the upright pose alone first, the leaning ones only when it does not
+        # plan (G3 v15 dev, fill_joint_limits measured: 31/34 upright drops ended inside, 8/17 leaning ones)
+        tiers = [poses[:1], poses[1:]] if getattr(sk, "fill_lean", "mixed") == "fallback" and len(poses) > 1 else [poses]
         try:
-            r = place_oriented(sk, lab, _leaning(sk, lab, T), yaw_sym=8, tol_xy=0.03, tol_tilt=45.0, tol_z=0.3,
-                           ignore=(container, *st["inside"]),
-                           place_kw={"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 1,
-                                     "servo": True, "servo_ref": container, "seat_tol": 0.3, "probe": False,
-                                     "hover_clear": 0.01, "grip_only": (container, *st["inside"])},
-                           transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min, skip=tuple(bad))}, air_handover=False)
+            for ti, tg in enumerate(tiers):
+                r = place_oriented(sk, lab, tg, yaw_sym=8, tol_xy=0.03, tol_tilt=45.0, tol_z=0.3,
+                                   ignore=(container, *st["inside"]),
+                                   place_kw={"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 1,
+                                             "servo": True, "servo_ref": container, "seat_tol": 0.3, "probe": False,
+                                             "hover_clear": 0.01, "grip_only": (container, *st["inside"])},
+                                   transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min, skip=tuple(bad))},
+                                   air_handover=False)
+                if r.steps or r.status not in ("ik_fail", "collision") or ti == len(tiers) - 1:
+                    break
+                sk.log(f"[fill] {lab}: no upright drop plans ({r.note[:80]}); the leaning poses")
         finally:
             sk.log = log0
         if r.status == "grasp_slip":

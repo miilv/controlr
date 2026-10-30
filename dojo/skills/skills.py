@@ -328,6 +328,9 @@ class Skills:
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
         # episode's ``joint_limits``) | "measured" (joint 5 inside the sim's stop for that skill only)
         self.fill_joint_limits = "inherit"
+        # ``library.fill_container``'s drop poses (stream H; ``RuntimeConfig.fill_lean``): "mixed" (today: upright and
+        # leaning ranked together) | "fallback" (the leaning ones only when the upright one does not plan)
+        self.fill_lean = "mixed"
         # ``library.arrange`` (stream N): the places' order, "near" (today: nearest the arms first) | "big_first" |
         # "push_big_first" (the pushes first, then the places largest first)
         self.arrange_order = "near"
