@@ -894,9 +894,9 @@ def _run_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), pla
     tkw = dict(transfer_kw or {})
     t = 0
     while t < tries:
-        plan = first if (t == 0 and first is not None) else sk.plan_transfer(label, targets, yaw_sym=yaw_sym,
-                                                                             ignore=ignore, place_kw=place_kw,
-                                                                             **tkw)
+        plan = first if first is not None else sk.plan_transfer(label, targets, yaw_sym=yaw_sym, ignore=ignore,
+                                                                place_kw=place_kw, **tkw)
+        first = None
         if isinstance(plan, SkillResult):
             return sk._record(plan)
         r = sk.run_transfer(*plan, tol_xy=tol[0], tol_tilt=tol[1], tol_z=tol[2])

@@ -39,8 +39,8 @@ def test_run_leg_retries_across_both_sides(monkeypatch):
                          plan_transfer=plan_transfer, run_transfer=lambda *a, **k: next(results),
                          log=logs.append, refresh=lambda: None, _record=lambda r: r)
     monkeypatch.setattr(L, "_shifted_grasps", lambda sk, label, d, tilts: ("shift", d))
-    r = L._run_leg(sk, "bread_1", ["T"], 2)
-    assert r.ok and calls == [None, ("shift", L.SLIP_SHIFT), ("shift", -L.SLIP_SHIFT)]
+    r = L._run_leg(sk, "bread_1", ["T"], 2, first=("pp0", "pl0"))       # the caller's plan first, then re-planned
+    assert r.ok and calls == [("shift", L.SLIP_SHIFT), ("shift", -L.SLIP_SHIFT)]
     assert sum("closed on air" in m for m in logs) == 2
 
 
