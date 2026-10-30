@@ -65,3 +65,32 @@ dev frames. 0 LLM calls.
   refine's pose when that refine is ok, max 3 cm.
 
 Next: the lead's make_kong A/B (candidate vs + `watch_relocate`) on 100005-09 + 100020-29.
+
+## 2026-10-30: camera A/B verdict: not adopted, stays default off
+
+Camera A/B (lead's pre-registered rule), make_kong, 15 ids each arm:
+
+| | all | unseen ids | identified ids |
+|---|---|---|---|
+| relocon (`watch_relocate`) | 9/15 (60) | 2 wins / 1 loss | 2 wins / 0 losses |
+| relocoff (candidate) | 6/15 (40) | | |
+
+- The bar was 0 success losers on the unseen ids, so it is not adopted. One unseen pair lost.
+- The overall signal is real: +3 successes net.
+- The losing id is a measurement id. Nobody may look at it to design a fix.
+- The make_kong measurement ids are used up for this lever. Its next real test is D-C19 tranche B (a later freeze).
+- A future version needs fresh evidence, on dev frames only (100000-04, 100030-49).
+- The same rows also cleared the #330 boundary alert: relocoff 6/15 vs kongon2 9/15 is above the ≤ 4/15 revisit line, so
+  it is noise. Code, inputs and env were checked inert.
+
+Ways relocate could HURT, to check on dev before a v2:
+- **A mislocated tile:** a location that is wrong but agrees twice (the opponent's arm or a neighbour's new white pixels
+  inside the window plus 3 cm) is written to the belief. The read then crops elsewhere.
+- **Settling before the fall ends:** two locations within 3 mm while the tile still slides (a slow topple). The search
+  stops early on a stale pose.
+- **A crop on a neighbour:** a located pose next to a standing hand tile. The head crop takes the neighbour's back or
+  face, which turns a wrong read into "no evidence" or a different glyph.
+- Cheap hardening to test:
+  - require agreement on frames >= 8 steps apart;
+  - refuse a location whose silhouette overlaps a believed neighbour by more than ~30 %;
+  - keep the slot pose when the located read's margin is below the slot read's.
