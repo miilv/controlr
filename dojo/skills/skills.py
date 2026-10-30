@@ -928,6 +928,7 @@ class Skills:
                    seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True, hover_clear: float = 0.003,
                    fingers_out: bool = False, pre_clear: float = 0.015, ref_top: float | None = None,
                    sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None,
+                   guard_step: float | None = None, guard_rate: float | None = None,
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
                    blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None,
                    held_read: bool | None = None, purpose: str | None = None):
@@ -953,7 +954,9 @@ class Skills:
         ``guard_seated``: the guarded (mode B) tail's seated tolerance instead of ``GUARD_SEATED`` (a ring threaded 4 mm
         onto a peg that stops on the peg's rounded top is 2-3 mm short of its target, not seated); ``guard_lag``: its
         contact threshold instead of ``GUARD_LAG`` (twin: a ring stopped by a peg's top slid 2.6 mm in the pads and the
-        arm lagged only 1.7 mm). ``servo_xy_tol``: once seated, the servo tail corrects the object's measured xy until
+        arm lagged only 1.7 mm); ``guard_step`` (m): its stride instead of 3 mm (each stride is a move and a still step:
+        a tube's 52 mm into a hole 1-2 mm wider than it took 46 env steps), ``guard_rate`` (rad/step) its rate instead of
+        0.02. ``servo_xy_tol``: once seated, the servo tail corrects the object's measured xy until
         it is this close to the target (two more moves at most; a ring seated 0.6 mm off its neighbour's axis on a peg
         judged at 1 mm).
         Mode B only (no in-hand re-measure; a provider ``held_pose``; ``_held_protocol``): ``held_gate`` (m) = the
@@ -995,6 +998,10 @@ class Skills:
             tail_kw["guard_seated"] = float(guard_seated)
         if guard_lag is not None:
             tail_kw["guard_lag"] = float(guard_lag)
+        if guard_step is not None:
+            tail_kw["guard_step"] = float(guard_step)
+        if guard_rate is not None:
+            tail_kw["guard_rate"] = float(guard_rate)
         if servo_xy_tol is not None:
             tail_kw["servo_xy_tol"] = float(servo_xy_tol)
         for k, v in (("held_tol", held_tol), ("held_gate", held_gate), ("blind_up", blind_up), ("spiral", spiral)):
@@ -1050,7 +1057,8 @@ class Skills:
                     seat_tol: float = 0.004, drop_ok: bool = False, probe: bool = True,
                     hover_clear: float = 0.003, fingers_out: bool = False, ref_top: float | None = None,
                     sym_axis: int | None = None, guard_seated: float | None = None,
-                    guard_lag: float | None = None, servo_xy_tol: float | None = None,
+                    guard_lag: float | None = None, guard_step: float | None = None, guard_rate: float | None = None,
+                    servo_xy_tol: float | None = None,
                     held_tol: float | None = None, held_gate: float | None = None,
                     blind_up: float | None = None, spiral: float | None = None,
                     guarded: bool | None = None, held_read: bool | None = None) -> ArmPlan | str:
@@ -1343,6 +1351,8 @@ class Skills:
         T_goal = np.asarray(T_obj, float) @ inv_T(h.T_tcp_obj)
         T_goal[2, 3] += float(kw.get("release_gap", 0.0))
         lag_stop = float(kw.get("guard_lag", lag_stop))
+        step_m = float(kw.get("guard_step", step_m))  # a loose fit's descent may take longer strides ...
+        rate = float(kw.get("guard_rate", rate))      # ... at a rate that makes each stride one move step
         note, off = "", None
         try:
             n, lag, reached = self._guarded_line(arm, T_goal, rate, step_m, lag_stop)

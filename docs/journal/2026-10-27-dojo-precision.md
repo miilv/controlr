@@ -251,9 +251,66 @@ tweak beats main.
     two charger grasps slipped (the extra carry).
   - So `insert_into` does not ask by default: a skill that opts in shows it on rendered frames first.
 
+## 8. insert_tubes mode B: the guarded descent's stride
+
+Mode B's per-tube cost (G3 mode B, the actions' segments): a tube's insertion is the guarded / probing tail (no in-hand
+read), 23 strides of 3 mm with a still step each, so 46 env steps for the hole's 52 mm, plus 7 for the release. That is
+a third of the ~140 steps a tube costs in mode B. A relay leg (~110) then never fits in 500, and the step-budget
+failures missed by 1-30 steps.
+
+**Change:** `plan_place(guard_step=, guard_rate=)` (default unchanged: 3 mm, 0.02 rad/step); `insert_each` descends in
+6 mm strides at 0.04 rad/step, one move step each. The holes are 29-30 mm for a 28 mm tube. Mode A never runs this
+tail (it re-measures and servos).
+
+| G3 mode B, 2 mm offsets, fixtures belief, 100000-14 | success | mean | steps median / max (500) |
+|---|---|---|---|
+| main d2e64f1 | 9/15 | 0.760 | 452 / 481 |
+| + guard stride (2f80385) | **11/15** | **0.840** | 388 / 485 |
+
+- Rescued 100000 / 100011, lost 0. Left: 100005 / 09 / 13 (two relays in one episode, still out of steps) and 100008
+  (no plan for the last tube).
+- Rendered 5.1 B (submit_v1, compute6, 100000-09 paired, chunks of 5 interleaved; main d2e64f1 vs 2f80385):
+
+| rendered 5.1 B, 100000-09 | success | mean | steps median | wall median |
+|---|---|---|---|---|
+| main | 6/10 | 0.760 | 466 | 180 s |
+| + guard stride | **7/10** | **0.820** | 393 | 132 s |
+
+  - Rescued: 100000 (budget). Lost: none.
+  - Still failing:
+    - 100002 went from budget to belief_mismatch;
+    - 100008: no plan, in both arms;
+    - 100009: budget, in both arms.
+  - Every success took fewer steps: 45-67 fewer per episode.
+
+## 9. plug_in_charger 100002: relay spots toward the socket's side (#163)
+
+100002 had no relay plan in any mode. The socket is 0.39 m to the right and only the left arm reaches the charger. Every
+relay chain from spots near `relay_near` (0, -0.28) failed to plan: from there, no grasp the right arm can take
+inserts.
+
+G3 snippets with `relay_near` moved:
+- (0.12, -0.28): 1.0 (2 of 2);
+- (0.2, -0.28) and (0.15, -0.24): 1.0;
+- (0.15, -0.28): 0 (the left arm's as-is put-down landed 26 deg tilted).
+
+**Change:** when no chain plans near `relay_near`, `place_oriented` runs a second round of spots near a point moved
+toward the targets' mean x, by up to `RELAY_SHIFT` = 0.12 m. The first round is unchanged, so only an episode with no
+relay plan at all can change.
+
+G3 mode A, paired against main:
+- plug 100002: 0 -> 1.0;
+- plug's other failures (100008 / 13): identical;
+- the regression set (store_tools 5, insert_tubes 100005-14, make_kong 5, stack_blocks 5): identical scores and
+  steps.
+
+The second round fired only on 100002. The first version (0.15 m) over all 25 plug layouts was identical to main
+except 100002.
+
 ## Spend and machines
 
 - LLM calls: only the agentic perceiver's in the rendered plug A/Bs: 4 arms x 10 episodes, ~3 calls each, ~120 calls
   (Sonnet 5.5 via omniroute). Every G3 run: none.
+- The rendered tubes guard A/B (§8): 20 episodes, ~3 agentic-perceiver calls each, ~60 calls.
 - compute3 light slot 4 until compute6 opened (screws, tubes chunk 1); then compute6 light slots 1-4 and heavy lock 1
   (rendered A/Bs).
