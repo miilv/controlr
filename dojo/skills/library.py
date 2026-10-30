@@ -1925,6 +1925,23 @@ def _lift_clear_of(sk: Skills, container: str) -> None:
 
 def fill_container(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
                    comfy: float = 0.42, tries: int = 2) -> dict:
+    """``_fill_container``, under ``Skills.fill_joint_limits`` (stream H): "inherit" (default: the episode's
+    ``joint_limits``) | "measured" (joint 5 inside the sim's pi/2 stop for this skill only, restored after). G3 v15 dev,
+    fill_move_lift "clear": 21 of 52 pen drops were planned with |q5| past pi/2 and the arm stood 1-56 mm off the
+    plan at the release; 3 of those 21 pens ended inside, against 17 of the other 31."""
+    mode = getattr(sk, "fill_joint_limits", "inherit")
+    prev = getattr(sk, "joint_limits", None)
+    if mode == "inherit" or prev is None or prev == mode:
+        return _fill_container(sk, objects, container, drop, comfy, tries)
+    sk.joint_limits = mode
+    try:
+        return _fill_container(sk, objects, container, drop, comfy, tries)
+    finally:
+        sk.joint_limits = prev
+
+
+def _fill_container(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
+                    comfy: float = 0.42, tries: int = 2) -> dict:
     """Put every object into ``container`` leading end first, grippers open after each (partial credit per
     object). A movable container out of comfortable reach of the arm that picks the objects is first
     carried to a free spot both arms reach (the instruction's "hold the holder"); it stays upright.

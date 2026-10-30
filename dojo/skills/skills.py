@@ -325,6 +325,9 @@ class Skills:
         # ``library.fill_container`` (stream H; ``RuntimeConfig.fill_move_lift``): after the container's move, "off"
         # (today: the place's 50 mm retreat) | "clear" (hands still below its top go straight up clear of it)
         self.fill_move_lift = "off"
+        # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
+        # episode's ``joint_limits``) | "measured" (joint 5 inside the sim's stop for that skill only)
+        self.fill_joint_limits = "inherit"
         # ``library.arrange`` (stream N): the places' order, "near" (today: nearest the arms first) | "big_first" |
         # "push_big_first" (the pushes first, then the places largest first)
         self.arrange_order = "near"
