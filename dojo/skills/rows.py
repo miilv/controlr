@@ -167,6 +167,7 @@ def size_reads(sk, labels: list, max_looks: int = MAX_SIZE_LOOKS) -> list[dict]:
         left = steps_left_of(sk.ex)
         if left is not None and left < SIZE_LOOK_RESERVE * (len(labels) + 1):
             out.append({"label": todo[0], "skipped": f"{left} steps left"})
+            sk.log(f"[rows] size looks stop: {left} steps left")
             break
 
         def near(k):
@@ -185,6 +186,7 @@ def size_reads(sk, labels: list, max_looks: int = MAX_SIZE_LOOKS) -> list[dict]:
                 break
         if mv is None:
             out.append({"label": k, "skipped": "no look pose"})
+            sk.log(f"[rows] size look {k}: no look pose")
             continue
         try:
             sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"size look {k}")
