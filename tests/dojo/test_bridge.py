@@ -153,9 +153,11 @@ def test_joint_steps_run_verbatim_and_refuse_before_stepping(bench):
         assert srv.hold_g[arm] == pytest.approx(0.4, abs=1e-7)
     jump = dict(acts[-1])
     jump["left_arm_joint_state"] = jump["left_arm_joint_state"] + np.float32(0.35)
+    be.ramp = False                                        # --no-ramp-jumps: the server's refusal, as before
     with pytest.raises(ServerError, match="refused: jump at entry 0"):
         be.execute([jump])
     assert envs[0].steps_used == 10                        # refused at 0 steps
+    be.ramp = True
     rep = be.c.call("joint_steps", actions=[action_json(acts[-1])] * (envs[0].step_lim - 15), reserve=10)
     assert rep["ok"] and rep["refused"] == "budget" and rep["steps"] == 0 and envs[0].steps_used == 10
     assert len(be.chunks) == 1 and be.chunks[0]["n"] == 10 and len(be.chunks[0]["md5"]) == 32   # md5 checked vs the reply

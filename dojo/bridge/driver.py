@@ -173,6 +173,8 @@ def main(argv=None) -> None:
     ap.add_argument("--wait-episode", type=float, default=900.0)
     ap.add_argument("--close", action="store_true", help="close the server after the episode (RoboDojo writes its result)")
     ap.add_argument("--allow-non-strict", action="store_true", help="dev only: accept a non-strict server")
+    ap.add_argument("--no-ramp-jumps", action="store_true",
+                    help="send plans verbatim: a > 0.2 rad joint jump is then the strict server's refusal (ramp_jumps)")
     ap.add_argument("--print-config", action="store_true", help="print the resolved policy + RuntimeConfig and exit")
     a = ap.parse_args(argv)
     # a TERM (a wall-time cap: timeout(1), the launcher's cleanup) unwinds through the finally below, so the twin
@@ -201,7 +203,7 @@ def main(argv=None) -> None:
     client = RobotServerClient(a.server_id, sock=a.sock, bench=a.bench,
                                log=lambda r: calls.write(json.dumps(r) + "\n"))
     backend = RobotServerBackend(client, strict=not a.allow_non_strict, frames_dir=out_dir / "frames",
-                                 keep_every=a.keep_frames, log=print)
+                                 keep_every=a.keep_frames, log=print, ramp=not a.no_ramp_jumps)
     info = backend.connect()
     print(f"[bridge] server {a.server_id}: {info.get('tier')}; commands {info.get('commands')}", flush=True)
     backend.wait_episode(a.wait_episode)
