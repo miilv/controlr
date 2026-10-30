@@ -952,7 +952,7 @@ def _glyph_read_config_slot(h: "Hypothesis", g: dict, views) -> None:
     h.per_view["glyph_read"] = out
 
 
-def _glyph_read_numeral(h: "Hypothesis", views) -> None:
+def _glyph_read_numeral(h: "Hypothesis", views, cands=None) -> None:
     """``cfg.glyph_read`` on a ``GLYPH_ONLY`` object (RoboDojo's 3-D numerals): ``_glyph_views`` on its silhouette at
     its fitted pose; the chosen asset follows the read digit within its texture group (the checker reads idx % 10).
     No read: unknown; B1's texture compare never sets it."""
@@ -966,9 +966,28 @@ def _glyph_read_numeral(h: "Hypothesis", views) -> None:
         out = {**out, "read": False, "why": "not a digit"}
     if out.get("read"):
         k = _glyph_key(h.key, list(h.per_view.get("geom_group") or [h.key]), out["name"])
+        if k is None and cands:            # glyph_numeral_key "label": the read digit's mesh, not the fitted one
+            k2 = _glyph_key(h.key, list(cands), out["name"])
+            if k2 is not None and _numeral_switch(h, k2, cands):
+                k = k2
         if k is not None:
             h.key = k
     h.per_view["glyph_read"] = out
+
+
+def _numeral_switch(h: "Hypothesis", k: str, cands) -> bool:
+    """Give ``h`` the read digit's asset ``k`` (another mesh): the same place tag when ``k`` has it (a fixed-pose tag
+    always), the pose kept (the runtime's refine re-measures it before a pick); ``geom_group`` = the candidates showing
+    that digit (they share its mesh). Logged in ``per_view["glyph_mesh"]``; False (nothing changed) without the tag."""
+    from .digits import NUMERAL_DIGIT
+    if not h.tag.startswith("zq:") and h.tag not in {s.tag for s in shape_models(k)}:
+        h.per_view["glyph_mesh"] = {"from": h.key, "to": k, "switched": False, "why": f"no tag {h.tag!r}"}
+        return False
+    cat = k.split("/")[1]
+    d = NUMERAL_DIGIT[cat](int(k.split("/")[2]))
+    h.per_view["glyph_mesh"] = {"from": h.key, "to": k, "switched": True}
+    h.per_view["geom_group"] = [c for c in cands if c.split("/")[1] == cat and NUMERAL_DIGIT[cat](int(c.split("/")[2])) == d]
+    return True
 
 
 @lru_cache(maxsize=4096)
@@ -4044,6 +4063,11 @@ class EstimatorConfig:
     # at DOJO_GLYPH_ADDR, else a no-op): "kong_cls" = a read above the classifier's per-view margin sets the tile's asset
     # and marks it "read"; every other tile stays unread ("unknown"). "off" (default): the texture read as before
     glyph_read: str = "off"
+    # a numeral's asset when the glyph read names a digit the FITTED geometry does not show (every digit has its own
+    # mesh; the texture groups share it): "geom" (default, as before): only within the fitted geometry's group, so the
+    # key keeps the fitted digit's mesh while ``digit`` says the read one; "label": the read digit's asset among the
+    # label's candidates (same texture group first), so the mesh follows the glyph read (D-C17: glyph reads own digits)
+    glyph_numeral_key: str = "geom"
     # glyph_upright: a runtime wrist read (the perception service's refine: a look-over, a pick hover) of a flat glyph
     # (the digit model's numerals / operators) is turned so that world +y at the object points up in the crop
     # (glyph_read.upright_deg / turn_upright): "on"; "off" (default): the crop as the camera sees it. Frame-0 reads
@@ -4906,8 +4930,11 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                                              float(rest.min() - C[row, ci]) if rest.size else None,
                                                              cfg.glyph_min_margin, cfg.ambiguity_margin)
     if cfg.glyph_read != "off":
+        if cfg.glyph_numeral_key not in ("geom", "label"):
+            raise ValueError(f"glyph_numeral_key {cfg.glyph_numeral_key!r}: 'geom' or 'label'")
         for h in chosen:
-            _glyph_read_numeral(h, views)
+            _glyph_read_numeral(h, views, groups[h.label_group]["candidates"]
+                                if cfg.glyph_numeral_key == "label" else None)
         chosen = _drop_unread_raised(chosen, groups, record)
         # numerals / operators the config pins to a slot or stacks on a base (solve_equation's t0 / t1 / t2 / t4 on
         # the mats): every slot placement path ends in slot_placed
