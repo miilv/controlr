@@ -3,7 +3,10 @@ then (1) evaluate each condition of the task's remaining success stage, (2) send
 re-check. Used for the belief_mismatch census (journal 2026-10-30-dojo-h95-belief-mismatch).
     RD_HOME=.. DOJO_DATA=.. scripts/simlab/rdpy.sh -u scripts/dojo/belief_mismatch_replay.py --task T --layout L.json \\
         --actions A_actions.json.gz --out O.json"""
-import argparse, gzip, json, os, sys
+import argparse
+import gzip
+import json
+import os
 from pathlib import Path
 import numpy as np
 
@@ -23,7 +26,8 @@ def describe(chk):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--task"); ap.add_argument("--layout"); ap.add_argument("--actions"); ap.add_argument("--out")
+    for k in ("--task", "--layout", "--actions", "--out"):
+        ap.add_argument(k)
     ap.add_argument("--home-steps", type=int, default=60)
     a = ap.parse_args()
     from dojo.simlab import paths
