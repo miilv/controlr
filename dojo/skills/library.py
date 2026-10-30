@@ -845,20 +845,75 @@ def _plan_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), pl
         o.pos, o.quat = saved
 
 
+SLIP_SHIFT = 0.007            # m: ``Skills.slip_shift`` "across": the pinch retried this far to either side of a thin object
+SLIP_THIN = 0.02              # m: ... whose thinnest extent is under this
+SLIP_NO_RISE = 0.005          # m: ... after a pick that lifted it less than this (the jaws closed on air)
+
+
+def _no_rise_slip(sk: Skills, label: str, r: SkillResult) -> bool:
+    """A grasp slip of a thin object (thinnest extent < ``SLIP_THIN``) that did not lift it (rose < ``SLIP_NO_RISE``):
+    the jaws closed beside it."""
+    if r is None or r.status != "grasp_slip" or label not in sk.world.objects:
+        return False
+    m = re.search(r"object rose (-?[\d.]+) mm", r.note or "")
+    if m is None or float(m.group(1)) >= SLIP_NO_RISE * 1000:
+        return False
+    return float(np.min(sk.world.obj(label).asset.extents)) < SLIP_THIN
+
+
+def _shifted_grasps(sk: Skills, label: str, d: float, box_tilts=(0.0, 25.0, -25.0)):
+    """A ``plan_transfer`` grasp source: the usual box / category candidates moved ``d`` along the object's thinnest
+    axis (its belief across that axis is off by about that much: G3 mode B, make_toast, a 12 mm bread slice believed
+    10 mm off slipped in 4/4 picks)."""
+    import dataclasses
+
+    from dojo.skills import grasps as G
+
+    def source(arm):
+        o = sk.world.obj(label)
+        u = o.R[:, int(np.argmin(o.asset.extents))] * d
+        out = []
+        for g in G.box_grasps(o, sk.kin, arm, tilts=tuple(box_tilts)) + G.candidates(o, sk.kin, arm):
+            T = np.asarray(g.T, float).copy()
+            T[:3, 3] += u
+            out.append(dataclasses.replace(g, T=T, note=f"{g.note} across {d * 1000:+.0f}mm"))
+        return out
+    return source
+
+
 def _run_leg(sk: Skills, label: str, targets: list, yaw_sym: int, ignore=(), place_kw=None, first=None,
              tol=(0.03, 10.0, 0.03), tries: int = 2, transfer_kw=None) -> SkillResult:
-    """Plan (or take ``first``) and run one transfer; a loose grasp is put down and the leg re-planned."""
+    """Plan (or take ``first``) and run one transfer; a loose grasp is put down and the leg re-planned.
+
+    ``Skills.slip_shift`` "across" (stream H; default "off"): after a pick of a thin object that closed on air
+    (``_no_rise_slip``), the pinch is retried ``SLIP_SHIFT`` to one side of it across its thinnest axis, then to the
+    other (``_shifted_grasps``), instead of where it slipped (make_toast camera: a stale or mis-hinted slice pose 5-13 mm
+    off across its 12 mm thickness; the same pinch slipped again in place)."""
     r = None
-    for t in range(tries):
+    shifts = [SLIP_SHIFT, -SLIP_SHIFT] if getattr(sk, "slip_shift", "off") == "across" else []
+    tkw = dict(transfer_kw or {})
+    t = 0
+    while t < tries:
         plan = first if (t == 0 and first is not None) else sk.plan_transfer(label, targets, yaw_sym=yaw_sym,
                                                                              ignore=ignore, place_kw=place_kw,
-                                                                             **(transfer_kw or {}))
+                                                                             **tkw)
         if isinstance(plan, SkillResult):
             return sk._record(plan)
         r = sk.run_transfer(*plan, tol_xy=tol[0], tol_tilt=tol[1], tol_z=tol[2])
+        if shifts and _no_rise_slip(sk, label, r):
+            d = shifts.pop(0)
+            sk.log(f"[slip] {label}: closed on air; the pinch {d * 1000:+.0f} mm across its thinnest axis")
+            tkw = {**(transfer_kw or {}), "grasps": _shifted_grasps(sk, label, d, (transfer_kw or {}).get(
+                "box_tilts", (0.0, 25.0, -25.0)))}
+            for a in ARMS:
+                if sk.held[a] is not None:
+                    sk._record(sk.regrasp(a))
+            sk.refresh()
+            continue                    # the shifted retries do not count against ``tries``
         if r.status != "loose":
             return r
         sk.refresh()
+        t += 1
     return r
 
 

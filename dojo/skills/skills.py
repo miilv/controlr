@@ -329,6 +329,9 @@ class Skills:
         # ``_refine_hover`` (stream H; ``RuntimeConfig.rehover_siblings``): "follow" (today: a refine's "seen elsewhere"
         # hint moves the object there and re-hovers) | "keep" (not for an object with an identical sibling beside it)
         self.rehover_siblings = "follow"
+        # ``library._run_leg`` (stream H; ``RuntimeConfig.slip_shift``): "off" (today: a slipped pick is re-planned where it
+        # was) | "across" (a thin object whose pick closed on air: the pinch 7 mm to either side across its thin axis)
+        self.slip_shift = "off"
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
         # episode's ``joint_limits``) | "measured" (joint 5 inside the sim's stop for that skill only)
         self.fill_joint_limits = "inherit"

@@ -345,6 +345,9 @@ class RuntimeConfig:
     # ``Skills._refine_hover`` (stream H; ``Skills.rehover_siblings``): follow (today) | keep (an object with an identical
     # sibling within 5 cm keeps its pose instead of following a refine's "seen elsewhere" hint)
     rehover_siblings: str = "follow"
+    # ``library._run_leg`` after a slip (stream H; ``Skills.slip_shift``): off (today) | across (a thin object's pick that
+    # closed on air is retried 7 mm to either side across its thinnest axis)
+    slip_shift: str = "off"
     # ``library.arrange``'s place order (``Skills.arrange_order``): near (today: nearest the arms first) | big_first (the
     # largest object first, while the table is emptiest) | push_big_first (the pushes first, then big_first)
     arrange_order: str = "near"
@@ -596,6 +599,7 @@ class RuntimePolicy:
                 or self.cfg.fill_move_lift not in ("off", "clear")
                 or self.cfg.fill_joint_limits not in ("inherit", "measured")
                 or self.cfg.rehover_siblings not in ("follow", "keep")
+                or self.cfg.slip_shift not in ("off", "across")
                 or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
                 or self.cfg.hang_cradle not in ("strict", "straddle") or self.cfg.artic_geom not in ("authored", "measured")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
@@ -897,6 +901,7 @@ class RuntimePolicy:
             sk_.fill_move_lift = cfg.fill_move_lift
             sk_.fill_joint_limits = cfg.fill_joint_limits
             sk_.rehover_siblings = cfg.rehover_siblings
+            sk_.slip_shift = cfg.slip_shift
             sk_.arrange_order = cfg.arrange_order
             sk_.push_stroke = cfg.push_stroke
             sk_.hang_cradle = cfg.hang_cradle
