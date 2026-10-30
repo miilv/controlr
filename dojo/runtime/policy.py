@@ -520,6 +520,10 @@ class RuntimeConfig:
     # ... pouring balls: v1 (Mikhail's pour: stops when no ball is left in the cup) | full (pour_p1: the whole roll profile;
     # camera mode sees no balls inside the cup, so v1 read "empty" at the first hold and stopped with the balls inside)
     ported_pour: str = "v1"
+    # pour_p1's way back to upright (stream H; ``Skills.ported_pour_untilt``): direct (today: one fast hover move_to rolls
+    # the cup upright while carrying it back) | staged (retrace the pour's reached profile poses backwards to upright at
+    # slow speed, then the hover translates)
+    ported_pour_untilt: str = "direct"
     # ... "pick up the X by N cm": v1 (Mikhail's pick_up: top-down mesh-cloud grasps) | library (our Skills.pick first, its
     # grasp generator, then v1 on the same object when ours fails with >= 120 steps left; dojo/skills/pickup.py), the object
     # grounded by its public description or its category words
@@ -638,7 +642,7 @@ class RuntimePolicy:
                 or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
-                or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pickup not in ("v1", "library")
+                or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
                 or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap")
                 or self.cfg.joint_limits not in ("wide", "measured")
@@ -659,7 +663,8 @@ class RuntimePolicy:
                                                                                       "pour": self.cfg.ported_pour,
                                                                                       "pickup": self.cfg.ported_pickup,
                                                                                       "pour_aim": self.cfg.ported_pour_aim,
-                                                                                      "classify": self.cfg.ported_classify}))
+                                                                                      "classify": self.cfg.ported_classify,
+                                                                                      "pour_untilt": self.cfg.ported_pour_untilt}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
         self.log_lines: list[str] = []
@@ -962,6 +967,7 @@ class RuntimePolicy:
             sk_.ported_pour_pace = cfg.ported_pour_pace
             sk_.nest_verify = cfg.nest_verify
             sk_.ported_pour = cfg.ported_pour
+            sk_.ported_pour_untilt = cfg.ported_pour_untilt
             sk_.ported_pickup = cfg.ported_pickup
             if verifier is not None and cfg.verify_select == "risky":
                 self._gate_verify(sk_)

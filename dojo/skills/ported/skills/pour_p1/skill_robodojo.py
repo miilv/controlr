@@ -211,7 +211,7 @@ def run(robot, container=None, target=None, arm="auto", pinch_h=0.04, pinch_dy=0
         yaws=(0, 15, -15, 30, -30), sides="auto", axis_mode="tool", pre_dz=0.06, lift_clear=0.03,
         phis=(0, 40, 65, 80, 88, 94, 100, 106, 112, 118, 124, 130), hold_from=88, hold_steps=4,
         lip_clear=0.010, body_clear=0.012, spout_back=0.012, slip_deg=14.0, slip_m=0.012, settle=8, set_dz=0.004,
-        min_return_steps=110, home=True):
+        min_return_steps=110, home=True, untilt="direct"):
     log = []
     o = _obs(robot)
     objs = o.get("objects")
@@ -360,6 +360,33 @@ def run(robot, container=None, target=None, arm="auto", pinch_h=0.04, pinch_dy=0
     details["pour_stop"] = stop or "profile end"
     if settle:
         robot.hold(steps=int(settle))
+
+    # H: ``untilt`` "staged" (default "direct" = the hover move below rolls the cup upright and carries it back in one
+    # fast move_to): first retrace the pour's own reached profile poses backwards to upright at "slow" speed, the
+    # spout still over the target, re-solved per step from the MEASURED in-hand transform; the hover then only
+    # translates. Why: official pour_balls dev 100000 (isr-lab pbreplay): after a 126 deg pour the raise's move_delta was
+    # unreachable and the 46-step hover move_to rolled the cup back; in one of two near-identical runs (perceived cup
+    # yaw 5.0 vs 6.9 deg, the cup held 14 mm further out along the tool) it left the jaws at the move's start (tilt
+    # 125 -> 75 deg in 5 steps) and landed on its side
+    if untilt == "staged" and trace:
+        back = []
+        reached = [t["phi"] for t in trace if (t.get("move") or {}).get("moved")]
+        for ph in [p_ for p_ in sorted(set(reached), reverse=True)[1:]] + ([0] if reached and min(reached) > 0 else []):
+            o = _obs(robot, [ci])
+            if o.get("ended") or o.get("steps_left", 999) < min_return_steps // 2:
+                break
+            e, cp = o["eef"][A], o["objects"][ci]
+            Rf = rotm(e["quat"])
+            cup.r_hc = Rf.T @ (np.asarray(cp["pos"]) - np.asarray(e["pos"]))
+            cup.R_hc = Rf.T @ rotm(cp["quat"])
+            tcp, Qn, tilt = _pour_pose(cup, Qg, sd, ph, sxy, top_z + lip_clear, top_z, body_clear, axis_mode, head_h)
+            mv = robot.move_to(arm=A, pos=r4(tcp), quat=r4(Qn, 6), speed="slow", max_dev=0.03, max_steps=80)
+            o = _obs(robot, [ci])
+            back.append({"phi": ph, "move": _short(mv),
+                         "tilt": round(ang(rotm(o["objects"][ci]["quat"])[:, 2], [0, 0, 1]), 1)})
+            if not mv.get("moved"):
+                break
+        details["untilt_staged"] = back
 
     # ------------------------------------------------------------ return the cup upright to its start spot
     ret = {}
