@@ -3,6 +3,7 @@ nothing scored, starts no server, never reads a layout.
 
     python scripts/dojo/freeze_manifest.py --candidate ~/dojo-integ-c4-state/CANDIDATE.txt [--sha SHA]
         [--models ~/dojo-data/segtrain/models] [--rd-python PY] [--rd-home DIR] [--bench DIR] [--out manifest.json]
+        [--packages-ref LANE.json] [--lock-slots "F1 F2"]   (the sealed launcher line: D-C19 slots, BRIDGE-RUNBOOK)
 
 Run it on the box that will run the block, from a checkout AT the frozen sha (refused otherwise, and on a dirty tree,
 unless --allow-mismatch for a dry run). It writes:
@@ -88,6 +89,9 @@ def main(argv=None) -> int:
     ap.add_argument("--packages-ref", default=None,
                     help="pkg_versions.py JSON of a compute4 lane venv: recorded, and a version mismatch is a parity diff")
     ap.add_argument("--packages-python", default=None, help="the official side's venv python (default <repo>/.venv)")
+    ap.add_argument("--lock-slots", default=None,
+                    help='the sealed block\'s slots exactly as official_eval.sh --lock-slots takes them ("F1 F2"): recorded '
+                         "in the launcher line (the sealed form of the call)")
     ap.add_argument("--out", default=None)
     a = ap.parse_args(argv)
     import candidate_parity as CP
@@ -132,7 +136,11 @@ def main(argv=None) -> int:
         "host": platform.node(), "dry_run_notes": problems,
         "controlr": {"sha": sha, "head": head, "on_origin_main": on_main, "dirty": dirty},
         "candidate": {"path": str(cand), "md5": md5(cand), "text": cand.read_text()},
-        "launcher": {"line": f"scripts/dojo/official_eval.sh --candidate {cand} --task <task> --layouts <ids>",
+        "launcher": {"line": (f"COORD_DIR=<coord dir> scripts/dojo/official_eval.sh --candidate {cand} --task <task> "
+                              f"--layouts <tranche ids> --sealed-block <DIR> --manifest <MANIFEST> --lock-slots \"{a.lock_slots}\""
+                              if a.lock_slots else
+                              f"scripts/dojo/official_eval.sh --candidate {cand} --task <task> --layouts <ids>"),
+                     "lock_slots": a.lock_slots.split() if a.lock_slots else None,
                      "policy": full["policy"], "preset": full["preset"], "config_arg": full["config_arg"],
                      "setenv": full["setenv"], "driver_args": full["driver_args"], "runtime_config": full["runtime_config"]},
         "side_servers": {k: {"model": v["model"], "env": v["env"],

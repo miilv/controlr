@@ -295,7 +295,8 @@ def test_freeze_manifest_records_names_and_md5s_never_keys(tmp_path, monkeypatch
     monkeypatch.setenv("DOJO_BG_FOLDS", str(Path.home() / "dojo-data/bg_folds_51_ilia"))
     monkeypatch.setenv("AGENTIC_API_KEY_FAKE", "sk-SYNTHETIC-never-recorded")
     out = tmp_path / "m.json"
-    rc = FM.main(["--candidate", str(tmp_path / "CANDIDATE.txt"), "--models", str(_models(tmp_path)), "--allow-mismatch",
+    models = _models(tmp_path)
+    rc = FM.main(["--candidate", str(tmp_path / "CANDIDATE.txt"), "--models", str(models), "--allow-mismatch",
                   "--out", str(out)])
     text = out.read_text()
     m = json.loads(text)
@@ -304,6 +305,12 @@ def test_freeze_manifest_records_names_and_md5s_never_keys(tmp_path, monkeypatch
     assert m["routes"]["agentic_model"] and "ee_joint_state_official" in m["grip"]
     assert "color_calib_sha256" in m["perception"]                    # (None here: no catalogue on the CI box)
     assert "SYNTHETIC" not in text
+    assert m["launcher"]["lock_slots"] is None and "--lock-slots" not in m["launcher"]["line"]
+    rc = FM.main(["--candidate", str(tmp_path / "CANDIDATE.txt"), "--models", str(models), "--allow-mismatch",
+                  "--lock-slots", "/c/dc19.lock.1 /c/dc19.lock.2", "--out", str(out)])
+    m = json.loads(out.read_text())
+    assert rc == 0 and m["launcher"]["lock_slots"] == ["/c/dc19.lock.1", "/c/dc19.lock.2"]
+    assert '--sealed-block <DIR> --manifest <MANIFEST> --lock-slots "/c/dc19.lock.1 /c/dc19.lock.2"' in m["launcher"]["line"]
 
 
 def test_raw_ok_is_off_by_default_and_never_mixes(tmp_path):
