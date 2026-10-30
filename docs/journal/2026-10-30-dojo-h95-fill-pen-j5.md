@@ -37,10 +37,11 @@ episode's range is restored afterwards, also on an exception. The holder move ru
 
 - **Losers.** 100048 0.25 → 0.10 and 100049 0.10 → 0. Both are high-hover drops, the class below: a pen let go 22 mm
   over the rim leaned out; one stuck at the rim.
-- **What remains.** Under the flag, drops whose hover is ≤ 8 mm over the rim end inside 31/34. Those that hover
-  22-25 mm, 8/17.
-  - The low hover would need |q5| past the stop for that grasp, so the servo stops higher.
-  - Next: rank the pen's grasp / drop pairs by whether the 6 mm hover plans within the measured range.
+- **What remains: the leaning drops.** Under the flag, drops whose hover is ≤ 8 mm over the rim end inside 31/34.
+  Those that hover 22-25 mm, 8/17.
+  - The 22-25 mm hovers are `_leaning`'s poses: 15 / 25 deg, the leading end 12 mm inside the opening. The servo
+    hovers `hover_clear` above them, and `fill_container` takes them only when no upright pose plans.
+  - Next: a leaning drop that holds the pen until its leading end is inside, or upright poses for more grasps.
 
 ## Spend
 
