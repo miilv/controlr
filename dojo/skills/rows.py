@@ -32,6 +32,12 @@ MAX_X = 0.30              # m: |x| of a slot (both arms reach a standing object 
 WIDE_MOVE = 0.4           # m of travel: what moving the widest object costs on top of its distance
 CENTRE_COST = 1.5         # m of travel per m the row's middle lies off (0, ROW_YS[0])
 YAW_DEG = tuple(range(0, 360, 30))   # target headings: a doll is round, any heading stands
+# ``Skills.row_home_clear`` (default off): no row slot within HOME_CLEAR of an arm's home hand (xy of the flange at home,
+# both arms). G3 c42e011c std 100003 (and the camera row on the same layout): the right arm going home after a place
+# swept its hand through the 130 mm doll standing in the row's end slot (0.245, -0.21), 0.15 m from its home hand, and
+# rolled it off the table
+HOME_XY = ((-0.30, -0.352), (0.30, -0.352))
+HOME_CLEAR = 0.17         # m (the doll at 0.153 was hit; _random rows are wider, 0.20 left some layouts no row)
 
 
 def width(o) -> float:
@@ -84,14 +90,15 @@ def route(text: str, world, routes) -> tuple | None:
             f"{len(labels)} objects in a row by size, {'smallest' if ascending else 'largest'} on the left")
 
 
-def row_slots(world, labels: list, ascending: bool = True, by: str = "volume") -> list[dict]:
+def row_slots(world, labels: list, ascending: bool = True, by: str = "volume", home_clear: bool = False) -> list[dict]:
     """Candidate rows, cheapest first: {"order": labels left to right, "xy": {label: slot xy}, "cost", "y", "xc",
     "anchor"}; slots clear every other object (not one of ``labels``) by ``OCCUPIED``, within ``MAX_X`` (an anchor
     may stay where it is beyond it). Two families: the row on a fixed line (``ROW_YS`` x ``ROW_XS``), and the row
     built around one object that stays where it is (its line and its place in the order). A row that moves the
     widest object costs ``WIDE_MOVE`` more: it fits the open gripper worst (G3 1911fbc: 4 of 5 dolls placed in both
     episodes, the last one had no grasp). ``by``: the size the order ranks, "volume" (``size_key``) or "height"
-    (``height`` in SIZE_CLASS_MM classes, then the volume)."""
+    (``height`` in SIZE_CLASS_MM classes, then the volume). ``home_clear``: only rows whose slots all keep HOME_CLEAR
+    from both arms' home hands, when there is one."""
     objs = {k: world.obj(k) for k in labels}
     order = sorted(labels, key=lambda k: _rank_key(objs[k], by), reverse=not ascending)
     ws = [width(objs[k]) for k in order]
@@ -111,6 +118,7 @@ def row_slots(world, labels: list, ascending: bool = True, by: str = "volume") -
             continue
         if not (min(ROW_YS) - 0.02 <= y <= max(ROW_YS) + 0.02):
             continue
+        near_home = any(float(np.hypot(x - hx, y - hy)) < HOME_CLEAR for x in xs for hx, hy in HOME_XY)
         ok = True
         for x, w in zip(xs, ws):
             for o in others:
@@ -128,7 +136,10 @@ def row_slots(world, labels: list, ascending: bool = True, by: str = "volume") -
         # slots where only one arm reaches them, with no grasp-place pair after a slip)
         cost = (sum(moves.values()) + (WIDE_MOVE if moves[widest] > THERE else 0.0)
                 + CENTRE_COST * (abs(float(np.mean(xs))) + abs(y - ROW_YS[0])))
-        out.append({"order": order, "xy": xy, "cost": cost, "y": y, "xc": float(xc), "anchor": anchor})
+        out.append({"order": order, "xy": xy, "cost": cost, "y": y, "xc": float(xc), "anchor": anchor,
+                    "near_home": near_home})
+    if home_clear and any(not r["near_home"] for r in out):
+        out = [r for r in out if not r["near_home"]]          # none clear: today's rows stand
     return sorted(out, key=lambda r: r["cost"])
 
 
@@ -205,6 +216,58 @@ def size_reads(sk, labels: list, max_looks: int = MAX_SIZE_LOOKS) -> list[dict]:
     return out
 
 
+# ``Skills.row_stage`` (default off = today). On, a doll whose transfer to its slot finds no plan ("ik_fail") is first
+# set down upright on a staging spot near the middle, off the row's line, and then tried again from there (a fallback:
+# a doll that plans goes straight to its slot as today). G3 (b7763a97 std 100030-39, e783de43 _random 100000-09, c42e011c
+# dev 100000-04): the failures leave dolls unplaced, most of them started at |x| 0.34-0.44 where one arm alone reaches
+# them. That arm's carry hit a doll already in the row ("joint move ... hits doll3", "via failed: lift: ik_fail") or no
+# grasp-place pair reached the slot, and the second try repeated the first plan
+STAGE_SPOT_X = 0.18       # m: a staging spot's |x| at most (both arms reach it)
+STAGE_DY = 0.11           # m: staging spots this far off the row's line (the arms' side first, then the far side)
+STAGE_MIN_Y = -0.27       # m: no staging spot nearer the arms' bases (y -0.45) than this: cramped picks (G3 std 100033:
+#                           8 of 180 grasps reachable at y -0.19, x 0.22)
+
+
+def stage_spots(sk, row: dict, label: str) -> list:
+    """Free table spots for ``label`` within ``STAGE_SPOT_X`` of the middle, ``STAGE_DY`` off the row's line (on its own
+    side of the middle first), clear of every row slot."""
+    from dojo.skills.library import free_spots
+    w = sk.world
+    o = w.obj(label)
+    side = 1.0 if float(o.center_w[0]) > 0 else -1.0
+    slots = [(np.asarray(row["xy"][j], float), width(w.obj(j))) for j in row["order"] if j in w.objects]
+    spots = []
+    for dy in (-STAGE_DY, STAGE_DY):
+        spots += [s for s in free_spots(sk, label, near_xy=(side * 0.06, row["y"] + dy), clearance=0.02)
+                  if abs(s[1] - row["y"]) > 0.06 and abs(s[0]) <= STAGE_SPOT_X and s[1] >= STAGE_MIN_Y
+                  and all(float(np.linalg.norm(np.asarray(s) - xy)) > width(o) / 2 + wj / 2 + OCCUPIED
+                          for xy, wj in slots)]
+    return spots
+
+
+def stage_one(sk, row: dict, label: str) -> dict:
+    """``Skills.row_stage``: ``label`` set down upright on one of ``stage_spots`` (the first three tried).
+    Returns {"label", "status", "xy"} or {"label", "skipped"}."""
+    from dojo.skills.library import place_oriented
+    sk.refresh()
+    x0 = float(sk.world.obj(label).center_w[0])
+    spots = stage_spots(sk, row, label)
+    if not spots:
+        sk.log(f"[rows] stage {label}: no staging spot")
+        return {"label": label, "skipped": "no staging spot"}
+    targets = [T for s in spots[:3] for T in upright_targets(sk, label, s)]
+    r = place_oriented(sk, label, targets, yaw_sym=1, tol_xy=0.03, tol_tilt=10.0, tol_z=0.03,
+                       transfer_kw=_transfer_kw(sk, label), air_handover=False)
+    for a in ARMS:
+        if sk.held[a] is not None:
+            sk._record(sk.regrasp(a))
+    sk.bank()
+    w = sk.refresh()
+    xy = w.obj(label).center_w[:2] if label in w.objects else None
+    sk.log(f"[rows] stage {label} from x {x0:.2f}: {r.status} {r.note[:120]}")
+    return {"label": label, "status": r.status, "xy": None if xy is None else np.round(xy, 3).tolist()}
+
+
 def upright_targets(sk, label: str, xy) -> list:
     """Object poses standing upright (its asset's ``up`` pose) centred over ``xy`` at each heading of ``YAW_DEG``."""
     from dojo.skills.geometry import T_from, quat_to_R, rot_z
@@ -246,7 +309,8 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
     read = getattr(sk, "row_size_read", "off") != "off"
     reads = size_reads(sk, objects) if read and getattr(sk, "refine", None) is not None else []
     w = sk.refresh()
-    rows = row_slots(w, objects, ascending, by="height" if read else "volume")
+    rows = row_slots(w, objects, ascending, by="height" if read else "volume",
+                     home_clear=getattr(sk, "row_home_clear", False) in (True, "on"))
     if not rows:
         return {"ok": False, "stage": "plan", "note": "no free row for the slots"}
     row = rows[0]
@@ -255,6 +319,8 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
     w.notes["rows"] = {"order": row["order"], "xy": {k: v.tolist() for k, v in row["xy"].items()}}
     if reads:
         w.notes["rows"]["size_reads"] = reads
+    stage = getattr(sk, "row_stage", False) in (True, "on")
+    staged: list = []
     pairs = [(k, row["xy"][k]) for k in row["order"]]
     done, failed, tries, aside = [], [], {k: 0 for k in objects}, 0
 
@@ -295,6 +361,10 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
             r = place_oriented(sk, k, upright_targets(sk, k, xy), yaw_sym=1, tol_xy=0.015, tol_tilt=10.0, tol_z=0.03,
                                transfer_kw=_transfer_kw(sk, k), air_handover=False)
             sk.log(f"[rows] {k} -> {np.round(xy, 3).tolist()}: {r.status} {r.note[:120]}")
+            if (stage and r.status == "ik_fail" and k not in {d["label"] for d in staged}
+                    and all(sk.held[a] is None for a in ARMS)):
+                staged.append(stage_one(sk, row, k))       # the next try starts from the staging spot
+                w.notes["rows"]["staged"] = staged
         else:
             k, xy = pairs[0]
             b = blockers(k, xy)[0]

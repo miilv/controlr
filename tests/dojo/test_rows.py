@@ -269,3 +269,77 @@ def test_refine_hook_kind_size_reads_identity(monkeypatch, mode, kind, twin):
     assert pc.vocab == [own + tw if twin else own]
     assert prov.belief.objects["doll1"].asset.key == "Rigid/matryoshka_dolls/00002"
     assert P.twin_vocabulary("sort_nesting_dolls_by_size_random") == "sort_nesting_dolls_by_size"
+
+
+# ``Skills.row_stage`` (default off): a doll whose transfer finds no plan is staged near the middle, then tried again
+
+
+def test_row_stage_default_off():
+    from dojo.runtime.policy import RuntimeConfig
+    assert RuntimeConfig().row_stage is False
+
+
+def test_stage_one_sets_the_doll_down_near_the_middle_off_the_row():
+    objs = _dolls()
+    objs[1].pos = np.array([0.42, -0.09, Z + HALVES[1][2]])          # far right: one arm reaches it
+    env = KinematicEnv(_rows_of(objs), step_lim=1050, instruction=DOLLS)
+    sk = Skills(env, GTProvider(env, None, instruction=DOLLS))
+    labs = [f"doll{i}" for i in range(5)]
+    row = rows.row_slots(sk.refresh(), labs)[0]
+    before = {k: sk.world.obj(k).center_w[:2].copy() for k in labs}
+    out = rows.stage_one(sk, row, "doll1")
+    w = sk.refresh()
+    assert out["label"] == "doll1" and out["status"] == "ok", out
+    c = w.obj("doll1").center_w[:2]
+    assert abs(c[0]) <= rows.STAGE_SPOT_X + 0.03 and abs(c[1] - row["y"]) > 0.05 and w.obj("doll1").R[2, 2] > 0.97
+    assert c[1] >= rows.STAGE_MIN_Y - 0.03
+    assert all(np.linalg.norm(c - row["xy"][j]) > rows.width(w.obj("doll1")) / 2 for j in labs)
+    for k in labs:
+        if k != "doll1":
+            assert np.allclose(w.obj(k).center_w[:2], before[k], atol=0.005)
+
+
+def test_row_by_size_stages_only_after_an_ik_fail(monkeypatch):
+    """The fallback: the first ik_fail of a doll stages it once, the next try goes from there; off, no staging."""
+    from dojo.skills import library
+    from dojo.skills.skills import SkillResult
+    real = library.place_oriented
+    fails = {"doll1": 1}                                             # doll1's first transfer finds no plan
+
+    def po(sk, label, targets, **kw):
+        if fails.get(label) and len(targets) == len(rows.YAW_DEG):    # a slot (staging tries up to three spots)
+            fails[label] -= 1
+            return SkillResult(False, "place_oriented", "ik_fail", 0, None, note="no direct transfer")
+        return real(sk, label, targets, **kw)
+    monkeypatch.setattr(library, "place_oriented", po)
+    calls = []
+    real_stage = rows.stage_one
+    monkeypatch.setattr(rows, "stage_one", lambda sk, row, k: calls.append(k) or real_stage(sk, row, k))
+    for flag, want in (("off", []), ("on", ["doll1"])):
+        fails["doll1"] = 1
+        calls.clear()
+        objs = _dolls()
+        env = KinematicEnv(_rows_of(objs), step_lim=1050, instruction=DOLLS)
+        sk = Skills(env, GTProvider(env, None, instruction=DOLLS))
+        sk.row_stage = flag
+        res = rows.row_by_size(sk, [f"doll{i}" for i in range(5)])
+        assert calls == want and res["ok"], (flag, res)
+
+
+def test_row_home_clear_keeps_slots_off_the_home_hands():
+    """``Skills.row_home_clear`` (default off): the widest doll standing near the right arm's home hand would anchor a
+    row at y -0.21 (G3 std 100003: rolled off by that arm going home); with the rule no slot is within HOME_CLEAR."""
+    from dojo.runtime.policy import RuntimeConfig
+    assert RuntimeConfig().row_home_clear is False
+    objs = _dolls()
+    objs[0].pos = np.array([0.245, -0.21, Z + HALVES[0][2]])
+    w = _world(objs)
+    labs = [f"doll{i}" for i in range(5)]
+
+    def near(r):
+        return min(float(np.hypot(xy[0] - hx, xy[1] - hy)) for xy in r["xy"].values() for hx, hy in rows.HOME_XY)
+    off = rows.row_slots(w, labs)
+    on = rows.row_slots(w, labs, home_clear=True)
+    assert near(off[0]) < rows.HOME_CLEAR                        # today: the cheapest row keeps it there
+    assert on and all(near(r) >= rows.HOME_CLEAR for r in on)
+    assert len(on) < len(off)
