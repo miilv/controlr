@@ -32,6 +32,7 @@ def test_no_salt_keeps_today_s_sub_seeds_and_a_salt_moves_them(monkeypatch):
     lay = G.generate("t", 100003, seed_salt="salt-A")
     a = G.salted_seed(100003, "salt-A")
     assert subs == [a * 1000] and a >= G.SALT_BASE and lay["_simlab"]["id"] == 100003
+    assert lay["_simlab"]["seed"] == G.env_seed(a) < 2 ** 31                    # presettle's reset seed: the salted one
     assert lay["_simlab"]["seed_salt"].startswith("sha256:") and "salt-A" not in json.dumps(lay)
     assert G.salted_seed(100003, "salt-A") == a                                  # deterministic
     assert len({G.salted_seed(i, s) for i in (100003, 100004) for s in ("salt-A", "salt-B")}) == 4
@@ -72,4 +73,5 @@ def test_no_salt_output_equals_today_s_for_dev_ids_and_a_salt_changes_it():
         assert md5(G.generate(task, i)) == want, (task, i)
     salted = G.generate("stack_blocks", 100000, seed_salt="test-salt")
     assert md5(salted) != TODAY[("stack_blocks", 100000)] and salted["_simlab"]["id"] == 100000
+    assert salted["_simlab"]["seed"] != 100000
     assert md5(G.generate("stack_blocks", 100000, seed_salt="test-salt")) == md5(salted)
