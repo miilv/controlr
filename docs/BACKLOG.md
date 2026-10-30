@@ -779,6 +779,9 @@
   - A pen drop knocks the standing holder over late (2 of 20 G3 v15 rows, both after their tier was scored).
   - A tilted side grasp of the holder ("box close 1 approach +2 tilt -25", 100031) stalls 43 mm above the table and
     lets go there. The holder stays hooked on the fingers and falls when the arm moves off.
+- [ ] **dojo skills: fill_pen drops that hover 22-25 mm** (journal 2026-10-30-dojo-h95-fill-pen-j5). Under
+  `fill_joint_limits` "measured", 8/17 of these pens end inside, against 31/34 at ≤ 8 mm: for those grasps the 6 mm hover
+  needs |q5| past the stop. Rank the grasp / drop pairs by a hover that plans within the measured range.
 - [ ] **dojo skills: IK under `joint_limits` "measured" plans slower** (G3 plan_s: insert_tubes x2, fill_pen x1.6).
   A failing IK costs ~2.4x a succeeding one (55-60 vs 23-25 ms), and "measured" fails more targets (53 vs 13 of 300
   random ones). Cap the failing path, e.g. stop the remaining seeds once one stalls against the joint-5 stop.
