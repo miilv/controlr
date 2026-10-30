@@ -1,4 +1,4 @@
-# 2026-10-30: make_toast(_random) camera slips: the pick refine's re-hover hint in a bread rack; `rehover_siblings` (stream H)
+# 2026-10-30: make_toast(_random) camera slips: the slice beside the one just pulled out; `rehover_siblings`, `sibling_order`, `slip_shift` (stream H)
 
 **Rows used.**
 - Integration's dev camera rows: `c4b_maketoastsg_dev_<id>` and `c4b_maketoastrandomsg_dev_<id>`, be7a798b, dev ids
@@ -67,3 +67,52 @@ guarded:
 - make_kong (0 hints in 5 dev rows);
 - pour_balls (it picks the vase; the spheres are never picked);
 - stack_blocks, the dolls, insert_tubes and fill_pen (no identical asset within 5 cm at a pick).
+
+## The census over 8 A rows (be7a798b, dev 100000-03, both cells)
+
+| | picks | ended in a slip |
+|---|---|---|
+| after a re-hover hint | 12 | 6 |
+| without a hint | 9 | 5 |
+| the first slice of a row | 8 | 1 |
+| the next slice | 8 | 8 (or the episode ended before it) |
+
+- **The hint is not what decides; the slice is.** The second slice slipped in every row, with a hint or on the
+  frame-0 prior. It stood beside the one just pulled out, and the tracker's resync read it at IoU 0.14-0.49 afterwards.
+- **Why it moves.** The records are raw: no settled record of these layouts is stable. The slices lean on each other
+  and settle into the gap.
+- **The pick refine** then fails on the thin slice (IoU 0.16-0.62, "perception not ok"). Neither the stale prior nor
+  the rejected fit is within the pinch's margin.
+- **Pinch margin (G3 mode B, make_toast 100000-01, every slice believed dx off across its thickness):** 3 mm 2/2,
+  6 mm 1/2 (picks ok), 10 mm 0/2 (every pick slips), 13 mm 0/2.
+- **make_toast_random** also ends on perception_gross in 4/4 rows (flags "conf 0.45" on every slice): a separate class,
+  for perception.
+
+## `sibling_order` (new switch, default "given")
+
+- "far": `slots_and_press` takes next the object farthest from where the taken ones stood. With two of four slices
+  needed, that is the far end of the rack, not the neighbour.
+- G3 mode gt (it cannot show the disturbance):
+  - make_toast 5/5 = 5/5; every row now takes bread_0 + bread_3, which 3 of 5 base rows already did.
+  - make_toast_random 3/4 → 2/4 (100003 1.0 → 0.5, a different second slice).
+- The screen is camera.
+
+## `slip_shift` (new switch, default "off"): null in G3
+
+- "across": after a pick of a thin object (thinnest extent < 20 mm) that closed on air (rose < 5 mm), `_run_leg`
+  retries the pinch 7 mm to one side across that axis, then to the other.
+- G3 mode B sweep, make_toast 100000-01, off vs across:
+
+| offset | off | across |
+|---|---|---|
+| 3 mm | 2/2 | 2/2 |
+| 6 mm | 1/2 | 1/2 |
+| 10 mm | 0/2 | 0/2 (8 retries, 1 ran shifted) |
+| 13 mm | 0/2 | 0/2 (9 retries, 2 ran shifted) |
+
+- Most shifted re-plans found no pair beside the siblings, and the ones that ran slipped too: a missed pinch also knocks
+  the slice.
+- No-regression in mode gt:
+  - fill_pen_holder 100030-34: 0.09 → 0.12 (1 retry, 1 up);
+  - insert_key 100000-02: identical (0 retries).
+- Kept default-off for the record.
