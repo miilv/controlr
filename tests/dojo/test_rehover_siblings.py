@@ -42,12 +42,12 @@ def test_keep_ignores_the_hint_beside_a_sibling():
     assert any("not followed" in m for m in sk.logs)
 
 
-def test_follow_and_a_lone_object_still_rehover():
-    for mode, label in (("follow", "bread_1"), ("keep", "toaster")):
+def test_follow_a_lone_object_and_a_place_still_rehover():
+    for mode, label, kind in (("follow", "bread_1", "pick"), ("keep", "toaster", "pick"), ("keep", "bread_1", "place")):
         objs = _rack()
         sk = _sk(mode, objs)
         moved = []
-        S.Skills._refine_hover(sk, label, "left", "pick", rehover=lambda: moved.append(1) or True)
+        S.Skills._refine_hover(sk, label, "left", kind, rehover=lambda: moved.append(1) or True)
         assert moved == [1] and objs[label].pos == pytest.approx([-0.126, -0.037, 0.841])
 
 

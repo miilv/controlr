@@ -677,9 +677,10 @@ class Skills:
             if hint is None or rehover is None or label is None or label not in self.world.objects:
                 return
             o = self.world.obj(label)
-            sib = self._near_sibling(label) if getattr(self, "rehover_siblings", "follow") == "keep" else None
+            sib = (self._near_sibling(label) if kind == "pick" and getattr(self, "rehover_siblings", "follow") == "keep"
+                   else None)
             if sib is not None:
-                # ``rehover_siblings`` "keep" (stream H): an object with an identical sibling beside it keeps its pose;
+                # ``rehover_siblings`` "keep" (stream H): a pick of an object with an identical sibling beside it keeps its pose;
                 # "seen elsewhere" there is most likely the sibling (make_toast camera, dev 100000: the hint put bread_1
                 # 5 mm across its 12 mm thickness and 12 mm along it from where it stood, and the pinch closed on air)
                 self.log(f"[refine] {kind} {label}: hint {np.round(np.asarray(hint[0], float), 3).tolist()} not "
