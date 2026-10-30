@@ -2406,6 +2406,9 @@ def _wrist_identity(chosen: list[Hypothesis], views, cfg, groups, pending) -> tu
         if (h.per_view.get("occluded") or h.per_view.get("z_off") or h.label_group not in prior_by_g
                 or not h.key.startswith("Rigid/") or h.key.split("/")[1] in CONTAINER_CATEGORIES):
             continue
+        if time.time() - t0 > cfg.wrist_id_budget_s:
+            info["budget_hit"] = True               # the rest keep their fits
+            break
         g, prior = prior_by_g[h.label_group]
         geo = _geometry_groups(g, prior)
         keys = sorted({s_.key for sms in geo.values() for s_ in sms})
@@ -2473,6 +2476,8 @@ def _wrist_identity(chosen: list[Hypothesis], views, cfg, groups, pending) -> tu
                                 "view": vn, "px": int(b.area)})
         out[i] = best
     info["time_s"] = round(time.time() - t0, 2)
+    print(f"[wrist_identity] checked {info['checked']} changed {len(info['changed'])} in {info['time_s']} s"
+          + (" (budget hit)" if info.get("budget_hit") else ""), flush=True)   # the service log: where frame 0 went
     return out, info
 
 
@@ -4073,6 +4078,10 @@ class EstimatorConfig:
     wrist_id_min_px: int = 800
     wrist_id_margin: float = 0.12
     wrist_id_max_shift: float = 0.025  # m: a re-fit that lands farther from the fit took another object's pixels
+    # s: no further object is checked once the step has run this long (frame 0 blocks the episode: on compute4 the
+    # frame-0 estimate took 88-99 s with the step vs 53 s without, and the runner's watchdog ends an episode with no
+    # env step for 300 s); a check in progress finishes
+    wrist_id_budget_s: float = 45.0
     region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
     # a select list that holds every category of its entry exactly once (``hierarchical``, k categories x 1 instance), and
     # the ``same_as_label`` copies of such a list: a list whose objects (told apart by the lists' generator regions) repeat
