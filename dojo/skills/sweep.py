@@ -39,6 +39,14 @@ INSIDE = 0.045                 # m: objects are pushed this far past the lip (th
 LANE = 0.02                    # m: lateral spacing of the objects' lanes into the pan (the head is 11.6 cm long, the
                                # pan 17 cm wide inside: 3.5 cm lanes put the head into a side wall)
 LIFT = 0.05                    # m: the head is lifted this far over the objects' tops between strokes
+# ``Skills.sweep_deep`` (default off): after an object's push into the pan, while it is not STRICT_MARGIN inside the
+# collecting circle (the checker's test), up to DEEP_TRIES more pushes along the pan's axis to DEEP_INSIDE past the lip.
+# G3 46540867 / 875258d2: in 4 "everything swept" episodes the skill's own test (centre within the radius, read right
+# after the push) passed, and the checker failed one to three objects 87-126 mm from the circle's centre (radius 81),
+# 1-4 cm short at the lip
+STRICT_MARGIN = 0.015
+DEEP_INSIDE = 0.06
+DEEP_TRIES = 2
 
 
 def _other(arm: str) -> str:
@@ -449,6 +457,15 @@ def sweep_into(sk: Skills, objects: list[str], pan: str, tool: str) -> dict:
             if abs(lateral) > 0.015 or front > -0.02:
                 push_leg(sk, arm, tool, lab, S)
             left = push_leg(sk, arm, tool, lab, F, along=g["e"][:2])
+            if getattr(sk, "sweep_deep", False) in (True, "on"):
+                F2 = g["lip"][:2] + g["e"][:2] * DEEP_INSIDE + g["lat"][:2] * lane
+                for _ in range(DEEP_TRIES):
+                    c_o = sk.refresh().obj(lab).center_w
+                    if float(np.linalg.norm(c_o[:2] - g["c"][:2])) < g["r"] - STRICT_MARGIN:
+                        break
+                    sk.log(f"[sweep] {lab}: {float(np.linalg.norm(c_o[:2] - g['c'][:2])) * 1000:.0f} mm from the circle's "
+                           f"centre (radius {g['r'] * 1000:.0f}): pushed deeper")
+                    left = push_leg(sk, arm, tool, lab, F2, along=g["e"][:2], max_strokes=1)
             ok = in_pan(g, sk.refresh().obj(lab).center_w)
             sk._record(SkillResult(ok, "sweep", "ok" if ok else "place_miss", 0, arm,
                                    note=f"{lab} {'in' if ok else 'not in'} the pan ({left * 1000:.0f} mm from its lane end)"))

@@ -387,6 +387,9 @@ class Skills:
         # ``sweep.relay_tool`` (stream N): False (today) | True (the giver's straight-down grasps, ranked by
         # ``grasps.hold_quality``, planned first)
         self.sweep_relay_grip = False
+        # ``sweep.sweep_into`` (stream N): False (today) | True (an object not sweep.STRICT_MARGIN inside the collecting
+        # circle after its push is pushed deeper, up to sweep.DEEP_TRIES strokes)
+        self.sweep_deep = False
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"

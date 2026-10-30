@@ -143,3 +143,36 @@ def test_sweep_relay_grip_default_off_and_giver_grasps_straight_down_first(monke
             assert len(seen[1]) >= len(seen[0])                       # then today's set
         else:
             assert len(seen) == len(seen) // 1 and all(len(x) == len(seen[0]) for x in seen)   # today's set only
+
+
+def test_sweep_deep_default_off_and_pushes_a_short_object_again(monkeypatch):
+    """``Skills.sweep_deep`` (default off): an object left short of STRICT_MARGIN inside the collecting circle after
+    its push gets more pushes (up to DEEP_TRIES); off, none."""
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills import sweep
+    assert RuntimeConfig().sweep_deep is False
+    for flag, extra in (("off", 0), ("on", sweep.DEEP_TRIES)):
+        legs = []
+        monkeypatch.setattr(sweep, "push_leg", lambda sk, arm, tool, lab, T, along=None, max_strokes=3:
+                            legs.append(max_strokes) or 0.03)
+        from dojo.skills.env import KinematicEnv
+        from dojo.skills.skills import GTProvider, Skills
+        from dojo.skills.world import AssetDB, AssetInfo
+        rows = [{"label": "broom_shovel", "category": "broom_shovel", "category_idx": 0, "pos": [-0.05, 0.02, 0.789],
+                 "quat": [1, 0, 0, 0], "half": [0.092, 0.14, 0.024], "center": [0, 0, 0]},
+                {"label": "broom", "category": "broom", "category_idx": 0, "pos": [0.05, -0.27, 0.784],
+                 "quat": [0.7071, 0.0, 0.7071, 0.0], "half": [0.019, 0.041, 0.125], "center": [0, 0, 0]},
+                {"label": "cube_0", "category": "small_cube", "category_idx": 0, "pos": [0.2, -0.05, 0.775],
+                 "quat": [1, 0, 0, 0], "half": [0.0096] * 3, "center": [0, 0, 0]}]
+        env = KinematicEnv(rows, step_lim=1000, instruction="sweep the blocks")
+
+        class DB(AssetDB):
+            def get(self, obj_type, category, idx, clutter=False, mesh=False):
+                m = {"broom_shovel": PAN, "broom": BROOM}.get(category, _box((-0.0096,) * 3, (0.0096,) * 3))
+                return AssetInfo(key=f"Rigid/{category}/00000", bbox_min=m[0].min(0), bbox_max=m[0].max(0), mesh=m,
+                                 support=SUPPORT if category == "broom_shovel" else {})
+        sk = Skills(env, GTProvider(env, DB(None, None), instruction="sweep the blocks"), reserve=30, log=lambda m: None)
+        sk.sweep_deep = flag
+        sweep.sweep_into(sk, ["cube_0"], "broom_shovel", "broom")
+        # the kinematic env does not push: the cube stays out, so "on" pushes DEEP_TRIES more single strokes
+        assert legs.count(1) == extra, (flag, legs)

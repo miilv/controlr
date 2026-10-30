@@ -424,6 +424,10 @@ class RuntimeConfig:
     # ``sweep.relay_tool`` (``Skills.sweep_relay_grip``): False (today) | True (the giver's straight-down broom grasps,
     # ranked by how the pads hold, planned first; G3 dev: its 25 deg tilted pinches slipped in 4 of 4 relays)
     sweep_relay_grip: bool = False
+    # ``sweep.sweep_into`` (``Skills.sweep_deep``): False (today) | True (an object short of 15 mm inside the dustpan's
+    # collecting circle after its push gets up to 2 more pushes along the pan's axis; G3: 4 "all swept" episodes failed
+    # the checker with objects 1-4 cm short at the lip)
+    sweep_deep: bool = False
     # ``copy_demonstration`` re-entered after a re-plan (``Skills.imitate_keep_sides``): False (today: the demonstrator's
     # half is the far half of the objects as they stand now; two of ours already in basket0 moved that line and our toy
     # car counted as the demonstrator's: "no free object like" at 2/5, dev 100001) | True (the episode start's halves)
@@ -926,6 +930,7 @@ class RuntimePolicy:
             sk_.row_stage = bool(cfg.row_stage)
             sk_.row_home_clear = bool(cfg.row_home_clear)
             sk_.sweep_relay_grip = bool(cfg.sweep_relay_grip)
+            sk_.sweep_deep = bool(cfg.sweep_deep)
             sk_.imitate_keep_sides = bool(cfg.imitate_keep_sides)
             sk_.imitate_repair = bool(cfg.imitate_repair)
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
