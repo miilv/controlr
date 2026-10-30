@@ -112,7 +112,7 @@ and C over B, iff the pooled score is higher and no pair loses more than 0.3.
 | C | B + `peg_stuck_confirm: on` | 47.8 | 9 / 10 (vs B at 65.6) | **rejected**: 3 pairs (05, 20, 21) lose more than 0.3 |
 
 Re-measuring the peg base is the lever that pays, about +0.5 strict on this cell. Requiring a second read before
-re-picking a stuck piece hurts: it delays or skips re-picks that were needed, and the "stuck chain" hypothesis does
-not hold on the measurement ids. `peg_stuck_confirm` stays in the code default off. Integration carries B in
+re-picking a stuck piece hurts. Why was not diagnosed: measurement ids are for scoring only, so their reports were not
+opened. `peg_stuck_confirm` stays in the code default off. Integration carries B in
 CANDIDATE.txt (a new md5; the D-C19 freeze manifest and candidate_parity are re-run on it). Measurement ids were used
 for scoring only; no lever was tuned on them.
