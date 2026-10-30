@@ -3248,8 +3248,15 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
         sf = so.get(t) or slot_frame(c, t)
         return np.asarray(sf[0][:2], float) if sf else c.center_w[:2]
     left.sort(key=lambda t: -float(np.linalg.norm(_slot_xy(t) - src)))
+    taken: list = []
     while left and pool:
         sk.refresh()
+        if getattr(sk, "sibling_order", "given") == "far" and taken:
+            # ``Skills.sibling_order`` "far" (stream H; default "given"): the next object is the one farthest from where
+            # the taken ones stood (make_toast camera, dev 100000-03: the slice beside the one just pulled out slipped
+            # in 8/8 rows, its believed pose stale; the first slice 7/8 held)
+            pool.sort(key=lambda l: -min(float(np.linalg.norm(sk.world.obj(l).center_w[:2] - p)) for p in taken))
+        xy0 = {l: np.asarray(sk.world.obj(l).center_w[:2], float).copy() for l in pool if l in sk.world.objects}
         found = None
         # a 3 cm clearance over the container first, 1.5 cm when that pre-place is out of reach (a slot at the far
         # side of a tall appliance)
@@ -3277,6 +3284,8 @@ def slots_and_press(sk: Skills, objects: list[str], container: str, slots: list[
             r = place_oriented(sk, lab, [tg], yaw_sym=2, tol_xy=0.015, tol_tilt=20.0, tol_z=0.06, ignore=(container,),
                                place_kw=place_kw, transfer_kw=SLOT_TRANSFER_KW)
         pool.remove(lab)
+        if lab in xy0:
+            taken.append(xy0[lab])                # where it stood before this pick
         (done if r.ok else failed).append(lab)
         if r.ok or r.status not in ("ik_fail", "collision", "logic"):
             left.remove(tag)          # something went into (or onto) it; a plan failure leaves it for the next object

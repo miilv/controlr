@@ -332,6 +332,9 @@ class Skills:
         # ``library._run_leg`` (stream H; ``RuntimeConfig.slip_shift``): "off" (today: a slipped pick is re-planned where it
         # was) | "across" (a thin object whose pick closed on air: the pinch 7 mm to either side across its thin axis)
         self.slip_shift = "off"
+        # ``library.slots_and_press`` (stream H; ``RuntimeConfig.sibling_order``): "given" (today: the given objects first,
+        # then identical ones nearest the container) | "far" (next, the one farthest from where the taken ones stood)
+        self.sibling_order = "given"
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
         # episode's ``joint_limits``) | "measured" (joint 5 inside the sim's stop for that skill only)
         self.fill_joint_limits = "inherit"

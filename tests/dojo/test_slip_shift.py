@@ -58,3 +58,11 @@ def test_default_and_validation():
         RuntimePolicy(RuntimeConfig(mode="perception", slip_shift="on"), assets=None)
     from dojo.skills.g3 import SKILL_ATTRS
     assert SKILL_ATTRS["slip_shift"] == ("off", "across")
+
+
+def test_sibling_order_default_and_validation():
+    assert RuntimeConfig().sibling_order == "given"
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(mode="perception", sibling_order="near"), assets=None)
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert SKILL_ATTRS["sibling_order"] == ("given", "far")
