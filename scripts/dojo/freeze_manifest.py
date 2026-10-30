@@ -141,6 +141,7 @@ def main(argv=None) -> int:
                               if a.lock_slots else
                               f"scripts/dojo/official_eval.sh --candidate {cand} --task <task> --layouts <ids>"),
                      "lock_slots": a.lock_slots.split() if a.lock_slots else None,
+                     "server_env_sealed": full.get("server_env_sealed"),
                      "policy": full["policy"], "preset": full["preset"], "config_arg": full["config_arg"],
                      "setenv": full["setenv"], "driver_args": full["driver_args"], "runtime_config": full["runtime_config"]},
         "side_servers": {k: {"model": v["model"], "env": v["env"],

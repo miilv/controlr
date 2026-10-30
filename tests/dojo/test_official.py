@@ -311,6 +311,8 @@ def test_freeze_manifest_records_names_and_md5s_never_keys(tmp_path, monkeypatch
     m = json.loads(out.read_text())
     assert rc == 0 and m["launcher"]["lock_slots"] == ["/c/dc19.lock.1", "/c/dc19.lock.2"]
     assert '--sealed-block <DIR> --manifest <MANIFEST> --lock-slots "/c/dc19.lock.1 /c/dc19.lock.2"' in m["launcher"]["line"]
+    # robot-harness's server env in a sealed call: unattended, never waits for an operator (DR3)
+    assert m["launcher"]["server_env_sealed"] == {"J1_HELD_FALLBACK": "no", "J1_PERCEIVER_CPU_ONLY": "1", "J1_NO_OPERATOR": "1"}
 
 
 def test_raw_ok_is_off_by_default_and_never_mixes(tmp_path):

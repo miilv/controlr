@@ -159,8 +159,16 @@ SIDE=()                                  # "kind|model|ENVVAR..." of the side se
 [[ -n "$SEG" ]] && SIDE+=("seg|$SEG|DOJO_SEG_ADDR")
 [[ -n "$GLYPH" ]] && SIDE+=("glyph|$GLYPH|DOJO_GLYPH_ADDR DOJO_GLYPH_ADDR_DIGIT")
 [[ -n "$GLYPHK" ]] && SIDE+=("glyphk|$GLYPHK|DOJO_GLYPH_ADDR_KONG")
+# robot-harness's J1 server env (exported at step 2), resolved once and reported by --dry-run (the freeze manifest).
+# A sealed block is unattended: J1_NO_OPERATOR=1 answers an operator ask still open at its max wait "no" and the
+# episode is scored, never hung (robot-harness DR3); J1_HELD_FALLBACK=no already keeps B1 held questions off the operator
+J1_FB="${J1_HELD_FALLBACK:-no}" J1_CPU="${J1_PERCEIVER_CPU_ONLY:-1}" J1_NOOP="${J1_NO_OPERATOR:-0}"
+[[ -n "$SEALED_DIR$MANIFEST" ]] && J1_NOOP=1
 if [[ -n "$DRY" ]]; then                 # the resolved call as JSON, nothing started
   _pd="${DOJO_PERCEPTION_DATA:-$HOME/dojo-perception-data}"      # step 0's perception data, as it will resolve
+  export DRY_SERVER_ENV="$(printf '{"J1_HELD_FALLBACK": "%s", "J1_PERCEIVER_CPU_ONLY": "%s", "J1_NO_OPERATOR": "%s"}' \
+    "$J1_FB" "$J1_CPU" "$J1_NOOP")" DRY_SERVER_ENV_SEALED="$(printf '{"J1_HELD_FALLBACK": "%s", "J1_PERCEIVER_CPU_ONLY": "%s", "J1_NO_OPERATOR": "1"}' \
+    "$J1_FB" "$J1_CPU")"
   export DRY_PERCEPTION_ENV="$(printf '{"DOJO_CATALOG": "%s", "DOJO_X5_DIR": "%s", "DOJO_BG_FOLDS": "%s", "DOJO_COLOR_CALIB": "%s", "DOJO_CALIB_SET": "%s"}' \
     "${DOJO_CATALOG:-$_pd/catalog}" "${DOJO_X5_DIR:-$_pd/catalog/robot/x5}" "${DOJO_BG_FOLDS:-$_pd/bg_folds_51}" \
     "${DOJO_COLOR_CALIB:-$_pd/catalog/color_calib_51.json}" "${DOJO_CALIB_SET:-frozen_d0_100040_49}")"
@@ -184,6 +192,8 @@ print(json.dumps({"launcher": "official_eval.sh", "candidate": cand or None,
                   "config_arg": json.loads(config), "runtime_config": cfg.__dict__,
                   "setenv": dict(kv.split("=", 1) for kv in setenv), "side_servers": servers,
                   "perception_env": json.loads(os.environ["DRY_PERCEPTION_ENV"]),
+                  "server_env": json.loads(os.environ["DRY_SERVER_ENV"]),
+                  "server_env_sealed": json.loads(os.environ["DRY_SERVER_ENV_SEALED"]),
                   "driver_args": {"perception": "local", "verify": "bundle", "twin": "spawn", "twin_envs": int(twin_envs)},
                   "grip": "strict v2 server: eef.<arm>.ee_joint_state_official (D-C11), no DOJO_GRIP_SOURCE needed"},
                  sort_keys=True, default=str))
@@ -339,8 +349,8 @@ export HARNESS_SHIM_ADDR="$RUNDIR/shim.sock" HARNESS_SHIM_AUTHKEY="$(python3 -c 
 export HARNESS_PRIVILEGED=0 HARNESS_DEV="$HDEV" HARNESS_STRICT=1
 export HARNESS_SHIM_IDLE_S="$("$SPY" "$BENCH/harness/ask_pause.py" shim-idle)" || { log "ask_pause shim-idle failed"; exit 2; }
 export J1_PERCEIVER="${J1_PERCEIVER:-dojo.perception.j1_adapter:perceive}" J1_PERCEIVER_PATH="${J1_PERCEIVER_PATH:-$HERE}"
-export J1_PERCEIVER_PYTHON="${J1_PERCEIVER_PYTHON:-$PY}" J1_ORIG_HOME="$HOME" J1_PERCEIVER_CPU_ONLY="${J1_PERCEIVER_CPU_ONLY:-1}"
-export J1_HELD_FALLBACK="${J1_HELD_FALLBACK:-no}"          # no operator here: never wait for one
+export J1_PERCEIVER_PYTHON="${J1_PERCEIVER_PYTHON:-$PY}" J1_ORIG_HOME="$HOME" J1_PERCEIVER_CPU_ONLY="$J1_CPU"
+export J1_HELD_FALLBACK="$J1_FB" J1_NO_OPERATOR="$J1_NOOP"   # no operator here: never wait for one (resolved above)
 export PYTHONDONTWRITEBYTECODE=1
 ( exec setsid nice -n 5 "$SPY" "$BENCH/harness/robodojo_server_j2.py" --id "$ID" --strict "${DEVF[@]}" --reserve 20 \
     --idle-timeout 3600 9>&- ) > "$RUNDIR/server.log" 2>&1 < /dev/null &

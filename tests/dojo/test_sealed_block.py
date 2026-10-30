@@ -287,6 +287,21 @@ def test_lock_slots_are_sealed_only_and_exclude_lock(tmp_path):
     assert r.returncode == 2 and "needs COORD_DIR" in r.stderr and "explicit --lock" not in r.stderr
 
 
+def test_a_sealed_call_never_waits_for_an_operator(tmp_path):
+    """robot-harness DR3: J1_NO_OPERATOR=1 in a sealed call (an operator ask open at its max wait is answered "no" and
+    the episode is scored); the dev path keeps the caller's value (default 0). Read from --dry-run's resolved env."""
+    d, m = _block(tmp_path)
+    sh = str(ROOT / "scripts/dojo/official_eval.sh")
+    env = {k: v for k, v in _env(tmp_path).items() if not k.startswith("J1_")}
+    dev = subprocess.run(["bash", sh, "--dry-run"], capture_output=True, text=True, env=env)
+    sealed = subprocess.run(["bash", sh, "--dry-run", "--sealed-block", str(d), "--manifest", str(m)], capture_output=True,
+                            text=True, env=env)
+    assert dev.returncode == 0 and sealed.returncode == 0, dev.stderr + sealed.stderr
+    j_dev, j_sealed = json.loads(dev.stdout.splitlines()[-1]), json.loads(sealed.stdout.splitlines()[-1])
+    assert j_dev["server_env"] == {"J1_HELD_FALLBACK": "no", "J1_PERCEIVER_CPU_ONLY": "1", "J1_NO_OPERATOR": "0"}
+    assert j_sealed["server_env"]["J1_NO_OPERATOR"] == "1" and j_dev["server_env_sealed"] == j_sealed["server_env"]
+
+
 def test_route_probe_reports_ok_and_rate_limits_without_keys():
     sys.path.insert(0, str(ROOT / "scripts" / "dojo"))
     import route_probe
