@@ -384,6 +384,9 @@ class Skills:
         self.row_stage = False
         # ``rows.row_slots`` (stream N): False (today) | True (no row slot within rows.HOME_CLEAR of an arm's home hand)
         self.row_home_clear = False
+        # ``sweep.relay_tool`` (stream N): False (today) | True (the giver's straight-down grasps, ranked by
+        # ``grasps.hold_quality``, planned first)
+        self.sweep_relay_grip = False
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"

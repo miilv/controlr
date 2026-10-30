@@ -106,3 +106,40 @@ def test_a_sweep_plans_end_to_end_in_the_kinematic_env():
     # the kinematic env does not push cubes: the plan runs end to end, the cube stays out
     assert res["stage"] == "sweep" and "cube_0" in res.get("note", "")
     assert env.steps_used > 100
+
+
+def test_sweep_relay_grip_default_off_and_giver_grasps_straight_down_first(monkeypatch):
+    """``Skills.sweep_relay_grip`` (default off): the relay's giver plans its straight-down broom grasps first, ranked
+    by ``grasps.hold_quality``, and falls back to today's set (G3 dev: tilted giver pinches slipped)."""
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills import sweep
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.skills import GTProvider, SkillResult, Skills
+    from dojo.skills.world import AssetDB, AssetInfo
+    assert RuntimeConfig().sweep_relay_grip is False
+    rows = [{"label": "broom", "category": "broom", "category_idx": 0, "pos": [-0.33, -0.12, 0.784],
+             "quat": [0.7071, 0.0, 0.7071, 0.0], "half": [0.019, 0.041, 0.125], "center": [0, 0, 0]}]
+    env = KinematicEnv(rows, step_lim=1000, instruction="sweep the blocks")
+
+    class DB(AssetDB):
+        def get(self, obj_type, category, idx, clutter=False, mesh=False):
+            return AssetInfo(key="Rigid/broom/00000", bbox_min=BROOM[0].min(0), bbox_max=BROOM[0].max(0), mesh=BROOM)
+    seen = []
+
+    def plan_transfer(self, tool, targets, arms=None, yaw_sym=1, grasps=None, **kw):
+        gs = grasps(arms[0])
+        seen.append([round(-float(g.T[2, 0]), 3) for g in gs])
+        return SkillResult(False, "transfer", "ik_fail", 0, arms[0], note="test")
+    for flag, n_calls in (("off", 1), ("on", 2)):
+        seen.clear()
+        sk = Skills(env, GTProvider(env, DB(None, None), instruction="sweep the blocks"), reserve=30, log=lambda m: None)
+        sk.sweep_relay_grip = flag
+        monkeypatch.setattr(Skills, "plan_transfer", plan_transfer)
+        monkeypatch.setattr(sweep, "_spots_ok", lambda *a: True, raising=False)
+        sweep.relay_tool(sk, "broom", "right")
+        assert seen, flag                                             # a spot the taker can pick from was tried
+        if flag == "on":
+            assert all(v > sweep.RELAY_DOWN for v in seen[0])        # the firm set first, straight down only
+            assert len(seen[1]) >= len(seen[0])                       # then today's set
+        else:
+            assert len(seen) == len(seen) // 1 and all(len(x) == len(seen[0]) for x in seen)   # today's set only

@@ -90,8 +90,12 @@ def tool_head(tool) -> dict:
     return {"axis": k, "sign": sgn, "centre": 0.5 * (P.min(0) + P.max(0)), "pts": P[:: max(1, len(P) // 3000)]}
 
 
-def handle_grasps(sk: Skills, tool, arm: str) -> list:
-    """Top-down grasps of the tool on its handle half (away from the head)."""
+RELAY_DOWN = 0.97                # ``Skills.sweep_relay_grip``: the giver's grasps this close to straight down first
+
+
+def handle_grasps(sk: Skills, tool, arm: str, rank: str = "com") -> list:
+    """Top-down grasps of the tool on its handle half (away from the head). ``rank``: "com" (today: nearest the centre
+    of mass, straight down first) | "hold" (by ``grasps.hold_quality``, straight down first: how the pads hold it)."""
     from dojo.skills import grasps as G
     hd = tool_head(tool)
     k, sgn = hd["axis"], hd["sign"]
@@ -110,7 +114,10 @@ def handle_grasps(sk: Skills, tool, arm: str) -> list:
             # nearest the head's root first (the least lever on a level carry), straight down first
             # nearest the centre of mass first (the broom's is at its head's root: twin, a pinch 7 mm in held with 5 mm
             # drift, 19 mm in came loose with 13 mm), straight down first
-            g.score = float(g.score) + 3.0 * abs(float(p[k] - com_k)) + 0.5 * (1.0 + float(g.T[2, 0]))
+            if rank == "hold":
+                g.score = float(g.score) + G.hold_quality(tool, g.T) + 0.5 * (1.0 + float(g.T[2, 0]))
+            else:
+                g.score = float(g.score) + 3.0 * abs(float(p[k] - com_k)) + 0.5 * (1.0 + float(g.T[2, 0]))
             out.append(g)
     # box grasps only when there are any (twin probe: a box pinch 7 mm into the head held with 5 mm drift; a 76 mm slice
     # across the bristles caught nothing; plan_transfer re-ranks by score, so filter rather than sort)
@@ -135,6 +142,7 @@ def relay_tool(sk: Skills, tool: str, arm: str, near_xy=(0.08, -0.27)) -> SkillR
     from dojo.skills.geometry import R_to_quat
     o = sk.world.obj(tool)
     giver = _other(arm)
+    firm = getattr(sk, "sweep_relay_grip", False) in (True, "on")
 
     def taker_can_pick(T_obj) -> bool:
         saved = (o.pos.copy(), o.quat.copy())
@@ -161,8 +169,17 @@ def relay_tool(sk: Skills, tool: str, arm: str, near_xy=(0.08, -0.27)) -> SkillR
             continue
         # the head's root (``handle_grasps``): a 40 g broom pinched at its handle's end swung 17 cm in the pads on the
         # carry, a wide slice across its bristles caught nothing (twin); 7 mm into the head held (5 mm drift)
-        plan = sk.plan_transfer(tool, targets, arms=[giver], yaw_sym=1,
-                                grasps=(lambda a, o=o: handle_grasps(sk, o, a)))
+        plan = None
+        if firm:
+            # ``Skills.sweep_relay_grip``: the giver's straight-down grasps by how the pads hold, first (the taker
+            # re-grips it at the spot, so the giver's station costs the strokes nothing). G3 46540867 dev 100001 / 100004
+            # (both cells): the giver's 25 deg tilted pinches (off -11 / -17 mm) slipped at the lift or 5 steps into the
+            # carry, the place then moved an empty hand and the right arm never reached the broom
+            plan = sk.plan_transfer(tool, targets, arms=[giver], yaw_sym=1, grasps=(
+                lambda a, o=o: [g for g in handle_grasps(sk, o, a, rank="hold") if -float(g.T[2, 0]) > RELAY_DOWN]))
+        if plan is None or isinstance(plan, SkillResult):
+            plan = sk.plan_transfer(tool, targets, arms=[giver], yaw_sym=1,
+                                    grasps=(lambda a, o=o: handle_grasps(sk, o, a)))
         if isinstance(plan, SkillResult):
             continue
         r = sk.run_transfer(*plan, tol_xy=0.05, tol_tilt=15.0, tol_z=0.03)
