@@ -214,6 +214,12 @@ if [[ -n "${HAVE_RAW:-}" ]]; then
   SUFFIX=""
   log "--raw-ok: raw dev records (no settled ones for $TASK)"
 fi
+if [[ "$TASK" == imitate_sorting_sequence && -z "$SEALED_DIR" ]]; then   # its support-arm demo, one per id (demo_gen)
+  for lid in "${IDS[@]}"; do
+    d="$DOJO_DATA/simlab/traj/$TASK/$lid.pkl"
+    [[ -f "$d" ]] || { log "no demo $d (demo_gen): the support arm would stay home, RoboDojo flags the env unstable"; exit 2; }
+  done
+fi
 N=${#IDS[@]}
 log "task $TASK, $N layouts: ${IDS[*]}; policy $POLICY preset $PRESET config $CONFIG; out $OUT"
 # perception data (genuine 5.1 calibration), checked before anything starts

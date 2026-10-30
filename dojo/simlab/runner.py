@@ -354,6 +354,23 @@ def build_env_cfg(task: str, num_envs: int = 1, device_id: int = 0, eval_cfg_typ
 
 
 DEMO_TASKS = ("imitate_sorting_sequence",)
+# RoboDojo keys a task's random draws (make_kong's discard group, tic-tac-toe's opponent cell, the instruction's
+# wording) and imitate's demo file by the ENV seed. Upstream SeedManager (and dev_eval) seeds with the layout's
+# POSITION in the eval call (0..N-1); this runner seeds with our layout key unless SIMLAB_ENV_SEED=index.
+ENV_SEED_MODES = ("layout_id", "index")
+# env seed -> our layout key, where they differ (dev_eval; SIMLAB_ENV_SEED=index): the demo loader translates
+DEMO_KEY: dict[int, int] = {}
+# our layout id -> a staged demo file that replaces DATA/simlab/traj (the sealed block; md5-checked when registered)
+DEMO_FILE: dict[int, Path] = {}
+
+
+def env_seed_mode() -> str:
+    """``SIMLAB_ENV_SEED``: ``layout_id`` (default: the env seed is our layout key) or ``index`` (upstream: the
+    layout's position within the ``load`` call, 0..num_envs-1)."""
+    mode = os.environ.get("SIMLAB_ENV_SEED", "layout_id") or "layout_id"
+    if mode not in ENV_SEED_MODES:
+        raise ValueError(f"SIMLAB_ENV_SEED={mode!r}: one of {ENV_SEED_MODES}")
+    return mode
 
 
 def dev_demo(task: str, key: int) -> dict:
@@ -369,6 +386,9 @@ def dev_demo(task: str, key: int) -> dict:
     seed = key // 100 if key >= 100 * paths.SEED_BASE else key
     if seed < paths.SEED_BASE:
         raise RuntimeError(f"{task}: seed {seed} is not a dev seed; eval-paired demos are off limits")
+    if seed in DEMO_FILE:                             # a staged (sealed) demo: it exists, or this fails loudly
+        with open(DEMO_FILE[seed], "rb") as fh:
+            return pickle.load(fh)
     f = paths.DATA / "simlab" / "traj" / task / f"{seed}.pkl"
     if f.exists():
         with open(f, "rb") as fh:
@@ -386,6 +406,16 @@ def demo_order(seed: int, n: int = 5) -> list[int]:
     return order
 
 
+def env_seed_keys(layout_keys: list[int]) -> list[int]:
+    """The env seeds ``load`` resets with (``SIMLAB_ENV_SEED``): our layout keys, or their positions 0..n-1 with
+    ``DEMO_KEY`` mapping each position back to its layout key (imitate's demo)."""
+    DEMO_KEY.clear()
+    if env_seed_mode() == "layout_id":
+        return list(layout_keys)
+    DEMO_KEY.update(enumerate(layout_keys))
+    return list(range(len(layout_keys)))
+
+
 def _routed_load_pkl(orig):
     def load_pkl(path):
         p = Path(str(path))
@@ -393,7 +423,8 @@ def _routed_load_pkl(orig):
             task = next((t for t in DEMO_TASKS if t in p.parts), None)
             if task is None:
                 raise PermissionError(f"eval-paired demo with no dev route: {p}")
-            return dev_demo(task, int(p.stem))
+            key = int(p.stem)                         # the ENV seed: our layout key unless DEMO_KEY maps it
+            return dev_demo(task, DEMO_KEY.get(key, key))
         return orig(path)
     load_pkl._simlab_routed = True
     return load_pkl
@@ -480,6 +511,7 @@ class RoboDojoRunner:
             seeds = [int((l.get("_simlab") or {}).get("seed", paths.SEED_BASE)) for l in layouts]
         # distinct keys per env even if two envs share a seed
         keys = [s * 100 + i for i, s in enumerate(seeds)] if len(set(seeds)) < len(seeds) else list(seeds)
+        keys = env_seed_keys(keys)
         sm = self.env.seed_manager
         sm.layouts.clear()
         for k, lay in zip(keys, layouts):
