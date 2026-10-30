@@ -32,7 +32,10 @@
 #   only the ids the manifest lists for the task (all >= 100100), each md5-verified before it is staged into this run's
 #   layout dir (nowhere else; logs name id + md5 + pass / fail only); raw records where the manifest says
 #   "settled": false; robot-harness's server WITHOUT --dev (no truth log, HARNESS_DEV=0); the lock is required (no
-#   default: the joint run's lock is chosen per D-C19 scheduling). Every other call keeps refusing ids >= 100100.
+#   default: the joint run's lock is chosen per D-C19 scheduling: ~/coord/dc19.lock per episode). Before anything starts it
+#   takes the run-once claim, an O_EXCL marker per (task, id) in $COORD_DIR/scored/<block>/ (COORD_DIR required); a
+#   second claim refuses. Manifest schema dc19-sealed/1 (tranches, ids 100100-100119; tranche B only once pre-registered).
+#   Every other call keeps refusing ids >= 100100.
 #
 # Env (defaults for a dojo GPU box, ~/dojo-env.sh): RD_SRC (the box's RoboDojo install, read-only; default $RD_HOME),
 #   OFFICIAL_RDHOME (our farm over it, scripts/dojo/rd_farm.sh; default ~/dojo-official-rdhome), BENCH (a robot-harness
@@ -178,6 +181,11 @@ if [[ -n "$SEALED_DIR" ]]; then          # the sealed block: manifest ids only, 
           --ids "$LAYOUT_IDS" --dest "$OUT/layouts" 2>&1 )"; rc=$?
   echo "$ST" | tee -a "$LOG" >&2
   [[ "$rc" -eq 0 ]] || { log "sealed block refused: nothing started"; exit 2; }
+  # run once (D-C19): one O_EXCL marker per (task, id) in $COORD_DIR/scored/<block>/, before anything else starts
+  CL="$( cd "$HERE" && "$PY" -m dojo.simlab.sealed claim --coord-dir "${COORD_DIR:?sealed mode needs COORD_DIR}" \
+          --manifest "$MANIFEST" --task "$TASK" --ids "$LAYOUT_IDS" --run-id "$ID" 2>&1 )"; rc=$?
+  echo "$CL" | tee -a "$LOG" >&2
+  [[ "$rc" -eq 0 ]] || { log "sealed block: run-once claim refused: nothing started"; exit 2; }
   [[ "$( cd "$HERE" && "$PY" -m dojo.simlab.sealed settled --manifest "$MANIFEST" --task "$TASK" )" == 1 ]] || SUFFIX=""
   mapfile -t IDS < <(tr ' ,' '\n\n' <<< "$LAYOUT_IDS" | grep -v '^$' | sort -n)
   LAYOUT_IDS=""                          # the dev loop below stages nothing

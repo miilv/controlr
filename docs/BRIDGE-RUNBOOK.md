@@ -218,24 +218,40 @@ scripts/dojo/official_eval.sh --task press_by_number --layouts "100000 100001 10
 python -m dojo.bridge.official compare --official ~/dojo-data/official/runs/<id> --integ <integ_eval out dir> --md pair.md
 ```
 
-**A sealed joint block (D-C19).** This is the only way ids >= 100100 run; every other call refuses them:
+**A sealed joint block (D-C19).** This is the only way ids >= 100100 run; every other call refuses them. The format and
+rules were agreed with Mikhail's side (bus 30 Oct 0008Z / 0035Z), and each side runs its own code to the same rules.
 
 ```bash
-scripts/dojo/official_eval.sh --candidate CANDIDATE.txt --task T --layouts "100100 100101" \
-    --sealed-block <sealed dir> --manifest <manifest.json> --lock <the lock agreed for the joint run>
+COORD_DIR=~/coord scripts/dojo/official_eval.sh --candidate CANDIDATE.txt --task T --layouts "<tranche ids>" \
+    --sealed-block DIR --manifest MANIFEST --lock ~/coord/dc19.lock
+python -m dojo.simlab.sealed verify --dir DIR --manifest MANIFEST     # before the first episode and after the last
 ```
 
-- **The manifest (`dojo.simlab.sealed`):**
-  `{"tasks": {T: {"settled": true|false, "records": {"100100": "<md5>", ...}}}}`. Records are
-  `DIR/T/<id>.settled.json`, or `<id>.json` where `settled` is false (make_toast, the conveyors).
-- **Checks:** only listed ids run, all >= 100100. Each record's md5 is checked before it is staged into the run's
-  layout dir (read-only, nowhere else), and again in RoboDojo's process (`SIMLAB_SEALED_MANIFEST`). A mismatch or an
-  unlisted id refuses the call before anything starts.
-- **No dev path:** logs name id, md5 and pass/fail only. robot-harness's server runs without `--dev` (no truth log), and
-  HARNESS_DEV / HARNESS_PRIVILEGED are refused.
-- **Lock:** `--lock` has no default.
-- **Pre-flight before tranche A:** `scripts/dojo/route_probe.py` makes one tiny call on the agentic route (ok /
-  rate-limited / error). `freeze_manifest.py --route-probe` records it.
+- **Manifest, schema `dc19-sealed/1` (`dojo.simlab.sealed`):**
+  - generator provenance, `seed_salt_sha256`, `created_utc`;
+  - per task: `settled`, `records {id: md5}`, `tranche_a` / `tranche_b`, `unstable_count`, and `shortfall` for a short
+    cell.
+  - Ids lie in 100100-100119. Tranches are ascending and disjoint, A is below B, and together they equal the records:
+    5 each unless the shortfall says otherwise.
+  - Tranche B runs only once `tranche_b.preregistered` exists beside the manifest.
+  - Position k of a tranche is its k-th id.
+- **Staging:** only runnable ids are staged. Each record is md5-checked before staging into the run's layout dir
+  (read-only, nowhere else), and checked again in RoboDojo's process (`SIMLAB_SEALED_MANIFEST`). Raw records are used
+  where `settled` is false (make_toast, the conveyors).
+- **Run once:** before anything starts, an O_EXCL marker `$COORD_DIR/scored/<block>/<task>-<id>.json` is created. A
+  second claim refuses. The one disclosed infrastructure re-run (before any verdict was read) needs
+  `DC19_INFRA_RERUN=<reason>`.
+- **No dev path:** robot-harness's server runs without `--dev`, and HARNESS_DEV / HARNESS_PRIVILEGED are refused.
+  `--lock` has no default.
+- **`verify`** prints `task id md5 pass/fail`, then its own md5. It fails on an unlisted file or task folder and on an
+  empty record. It never prints content.
+- **Generation:** `scripts/dojo/dc19_generate.py`. It runs once, only on the lead's `--go`, after both freezes:
+  - draws the salt from /dev/urandom into `DIR/.salt` (0400, never printed);
+  - generates salted records (fill_egg_holder on its v6 tree), then presettles them (pass 1, then keep-raw-unmoved);
+  - selects the first 10 stable ids and writes DIR plus the manifest;
+  - prints only sha256(manifest) and per-cell n_stable / n_unstable.
+- **Pre-flight before tranche A:** `scripts/dojo/route_probe.py` makes one tiny call on the agentic route.
+  `freeze_manifest.py --route-probe` records it.
 
 **The candidate on this path (D-C19).** `--candidate ~/dojo-integ-c4-state/CANDIDATE.txt` takes Integration's file
 verbatim:

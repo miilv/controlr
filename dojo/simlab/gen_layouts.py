@@ -646,6 +646,11 @@ def salted_seed(seed: int, salt: str | None = None) -> int:
     return SALT_BASE + int.from_bytes(hashlib.sha256(f"{int(seed)}\x00{salt}".encode()).digest()[:6], "big")
 
 
+def env_seed(base: int) -> int:
+    """A salted record's ``_simlab.seed`` (what the runner hands RoboDojo's reset): its salted base, in 31 bits."""
+    return int(base) % (2 ** 31 - 1)
+
+
 def salt_fingerprint(salt: str) -> str:
     """What a record carries of its salt (the salt itself is published with the block's md5 manifest)."""
     return "sha256:" + hashlib.sha256(salt.encode()).hexdigest()[:16]
@@ -786,6 +791,8 @@ def generate(task: str, seed: int, max_tries: int = 40, variant: int = 0, extra:
             layout["_simlab"]["variant"] = variant
         if seed_salt is not None:
             layout["_simlab"]["seed_salt"] = salt_fingerprint(seed_salt)
+            # the runner seeds RoboDojo's reset with _simlab.seed (presettle, the twin): the salted stream, not the id
+            layout["_simlab"]["seed"] = env_seed(base)
         if extra:
             layout["_simlab"]["seg_extra"] = list(extra)
         return layout
