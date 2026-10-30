@@ -9,7 +9,11 @@ Two faces over one server connection (``client.RobotServerClient``):
   ``execute(actions)`` for a whole list): our per-step joint action dicts (``{arm}_arm_joint_state`` [6] and
   ``{arm}_ee_joint_state`` [1], both arms every step, from ``dojo.skills.executor``) are buffered and flushed
   through the ``joint_steps`` verb, one RoboDojo ``take_action`` per entry, verbatim (no re-timing, no IK, no
-  gripper ramp on the server), so what the twin verified is what runs. ``joint_steps`` is the one verb this needs
+  gripper ramp on the server), so what the twin verified is what runs. One exception (``ramp_jumps``, on by default,
+  ``--no-ramp-jumps`` off): where an arm joint would move > 0.19 rad from the server's hold_q (the last executed entry)
+  or between consecutive entries, linear ramp entries are inserted (grippers held), each a real env step, logged and
+  counted (``stats["ramps"]``, ``ramp_steps``, ``ramp_max_rad``). Without it the strict shim refuses the whole list
+  (max_dq 0.2) whenever a plan starts from measured joints that lag the command. ``joint_steps`` is the one verb this needs
   beyond the strict server's frozen set: requested in robot-harness issue #8 (contract in ``docs/BRIDGE-RUNBOOK.md``
   §9); a server without it is refused at ``connect()`` unless ``allow_no_joint_steps`` (observation-only use).
   ``reserve=0`` on every call: the runtime keeps its own fixed reserve for ``finish()`` (``RuntimeConfig.reserve``,
@@ -30,6 +34,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import time
 from pathlib import Path
@@ -40,7 +45,16 @@ from . import contract
 from .client import RobotServerClient, ServerError
 
 ACTION_KEYS = ("left_arm_joint_state", "left_ee_joint_state", "right_arm_joint_state", "right_ee_joint_state")
+ARM_KEYS = ("left_arm_joint_state", "right_arm_joint_state")
 JOINT_STEPS = "joint_steps"
+# the strict v2 shim refuses a whole joint_steps list when an arm joint moves > 0.2 rad between consecutive entries or
+# from hold_q (the last EXECUTED entry): our plans start from the MEASURED joints, which lag the command after contact.
+# ramp_jumps inserts velocity-respecting entries instead (RAMP_DQ leaves float32 slack under the cap); they are real
+# env steps, counted against the budget like any other
+SERVER_MAX_DQ = 0.2
+RAMP_DQ = 0.19
+RAMP_WARN_RAD, RAMP_WARN_STEPS = 1.5, 10        # a ramp this large is logged as a warning (and still run)
+READ_ONLY_VERBS = ("obs", "info", "perceive", "held_look", "locate")   # a foreign verb outside these may move hold_q
 # verbs only the driver may send (the grader and the episode's own life cycle); a skill's are refused before sending
 FOREIGN_REFUSED = ("success", "end", "reset", "close")
 
@@ -72,6 +86,32 @@ class ForeignRobot:
         return lambda **kw: self.call(verb, **kw)
 
 
+def ramp_jumps(prev: dict | None, acts: list[dict], max_dq: float = RAMP_DQ) -> tuple[list[dict], list[dict]]:
+    """``acts`` with linear ramp entries inserted wherever an arm joint would move more than ``max_dq`` from the
+    previous entry (``prev``: the server's hold_q, i.e. the last executed entry; None = unknown, the first entry is
+    taken as is). The grippers hold the previous command during a ramp; nothing is dropped. -> (actions, ramps:
+    [{"at": index in ``acts``, "n": entries inserted, "max_rad": the jump}])."""
+    out: list[dict] = []
+    ramps: list[dict] = []
+    last = prev
+    for idx, a in enumerate(acts):
+        if last is not None:
+            lq = {k: np.asarray(last[k], np.float64).reshape(-1) for k in ARM_KEYS}
+            aq = {k: np.asarray(a[k], np.float64).reshape(-1) for k in ARM_KEYS}
+            d = max(float(np.max(np.abs(aq[k] - lq[k]))) for k in ARM_KEYS)
+            if d > max_dq:
+                n = int(math.ceil(d / max_dq)) - 1
+                for s in range(1, n + 1):
+                    t = s / (n + 1)
+                    e = {k: np.asarray(last[k], np.float32).copy() for k in ACTION_KEYS if k not in ARM_KEYS}
+                    e.update({k: (lq[k] + t * (aq[k] - lq[k])).astype(np.float32) for k in ARM_KEYS})
+                    out.append(e)
+                ramps.append({"at": idx, "n": n, "max_rad": round(d, 4)})
+        out.append(a)
+        last = a
+    return out, ramps
+
+
 def read_png(path: str) -> np.ndarray:
     from PIL import Image
     with Image.open(path) as im:
@@ -100,13 +140,16 @@ def action_json(a: dict) -> dict:
 
 class RobotServerBackend:
     def __init__(self, client: RobotServerClient, strict: bool = True, frames_dir: str | Path | None = None,
-                 keep_every: int = 20, chunk: int = 500, allow_no_joint_steps: bool = False, log=None):
+                 keep_every: int = 20, chunk: int = 500, allow_no_joint_steps: bool = False, log=None,
+                 ramp: bool = True):
         self.c = client
         self.strict = strict
         self.frames_dir = Path(frames_dir) if frames_dir else None
         self.keep_every = int(keep_every)
         self.chunk = int(chunk)
         self.allow_no_joint_steps = allow_no_joint_steps
+        self.ramp = bool(ramp)              # ramp_jumps before each joint_steps call (off: the server's refusal)
+        self._hold: dict | None = None      # the server's hold_q as we know it: the last executed entry
         self.log = log or (lambda msg: None)
         self.pending: list[dict] = []
         self.executed: list[dict] = []
@@ -121,7 +164,7 @@ class RobotServerBackend:
         self.n_obs = 0
         self.stats = {"obs": 0, "obs_s": 0.0, "png_s": 0.0, "joint_steps_calls": 0, "joint_steps": 0, "exec_s": 0.0,
                       "perceive": 0, "held_look": 0, "frames_kept": 0, "grip_change_while_moving": {},
-                      "tracking_max_rad": 0.0}
+                      "tracking_max_rad": 0.0, "ramps": 0, "ramp_steps": 0, "ramp_max_rad": 0.0}
         self.chunks: list[dict] = []        # per joint_steps call: first step, size, executed, actions_md5
         self.c.on_request = self._before_foreign_verb
         self.c.on_reply = self._facts
@@ -152,6 +195,8 @@ class RobotServerBackend:
             return
         self.flush()
         self.fresh = False
+        if verb not in READ_ONLY_VERBS:
+            self._hold = None               # it may have moved hold_q: ramp from the measured joints next
 
     @property
     def robot(self) -> ForeignRobot:
@@ -182,6 +227,7 @@ class RobotServerBackend:
         """Take the next RoboDojo episode. Returns the episode info the runtime gets (instruction, step_lim only)."""
         rep = self._call("reset", timeout=float(timeout_s))
         self.pending, self.executed, self.ended, self.chunks = [], [], False, []
+        self._hold = None
         self.instruction = rep.get("instruction")
         self._step_lim = int(rep.get("step_budget") or 0)
         self._steps = int(rep.get("step", 0))
@@ -276,6 +322,8 @@ class RobotServerBackend:
             self.log(f"[bridge] episode ended: {len(acts)} actions not sent")
             return {"steps": 0, "ended": True, "dropped": len(acts)}
         t0, n0 = time.perf_counter(), self._steps
+        if self.ramp:
+            acts = self._ramped(acts)
         self.fresh = False
         left = self._step_lim - self._steps
         if len(acts) > left:                    # like the proxy / official harness: steps past the limit never run
@@ -295,6 +343,8 @@ class RobotServerBackend:
                                                 "hint": "the server did not receive what we sent"})
             ran = int(rep.get("executed", rep.get("steps", 0)))
             self.executed.extend(acts[i:i + ran])
+            if ran:
+                self._hold = acts[i + ran - 1]
             sent += ran
             self.chunks.append({"step0": self._steps - int(rep.get("steps", 0)), "n": len(part), "ran": ran, "md5": md5,
                                 **{k: rep.get(k) for k in ("tracking_rad", "tracking_max_rad", "start_tracking_rad",
@@ -308,6 +358,25 @@ class RobotServerBackend:
         self.stats["joint_steps"] += sent
         self.stats["exec_s"] += time.perf_counter() - t0
         return {"steps": self._steps - n0, "ended": self.ended}
+
+    def _ramped(self, acts: list[dict]) -> list[dict]:
+        """``ramp_jumps`` from the server's hold_q (the last executed entry; after a reset or a foreign motion verb,
+        the measured joints of the freshest observation). Every ramp is logged and counted."""
+        prev = self._hold
+        if prev is None and self._obs is not None:
+            st = self._obs.get("state") or {}
+            if all(k in st for k in ARM_KEYS):
+                prev = {k: np.asarray(st[k], np.float32) for k in ARM_KEYS}
+        out, ramps = ramp_jumps(prev, acts)
+        for r in ramps:
+            big = r["max_rad"] > RAMP_WARN_RAD or r["n"] > RAMP_WARN_STEPS
+            self.log(f"[bridge] {'WARNING large ' if big else ''}ramp at step {self._steps + r['at']}: an arm joint "
+                     f"jumps {r['max_rad']:.3f} rad from {'hold_q' if r['at'] == 0 else 'the previous entry'} "
+                     f"(> {RAMP_DQ}): {r['n']} ramp steps inserted (counted against the budget)")
+            self.stats["ramps"] += 1
+            self.stats["ramp_steps"] += r["n"]
+            self.stats["ramp_max_rad"] = max(self.stats["ramp_max_rad"], r["max_rad"])
+        return out
 
     # bookkeeping the runtime's verifier uses (same names as dojo.runtime.bridge.Bridge)
     @property
@@ -336,6 +405,7 @@ class RobotServerBackend:
         self.flush()
         self.fresh = False
         rep = self._call("return_home", arms=list(arms), open=bool(open_grippers))
+        self._hold = None                   # hold_q is the home pose now
         return {"all_home": rep.get("all_home"), "steps": rep.get("steps", 0)}
 
     def perceive(self, want=None, prior_n: int | None = None) -> dict:
