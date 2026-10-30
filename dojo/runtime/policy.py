@@ -402,9 +402,9 @@ class RuntimeConfig:
     # config's candidates: one instruction, both pools). Dev camera rows 100000-04, std + _random: the order was wrong at
     # the row decision in 5 of 10, a shared class in 7 of 10; pick-hover identity reads fixed 4 sizes, all too late
     row_size_read: str = "off"
-    # ``rows.row_by_size`` (``Skills.row_stage``): False (today) | True (a doll standing beyond |x| 0.30, where one arm
-    # alone reaches it, is first set down upright near the middle, off the row's line, while the row is empty; G3: 8 of
-    # the 12 dolls left unplaced started there, their carry hitting a doll already in the row)
+    # ``rows.row_by_size`` (``Skills.row_stage``): False (today) | True (a doll whose transfer to its slot finds no plan
+    # is set down upright near the middle, off the row's line, and tried again from there; G3: most dolls left unplaced
+    # started at |x| 0.34-0.44, one arm's carry hitting a doll already in the row, and the retry repeated the plan)
     row_stage: bool = False
     # ``copy_demonstration`` re-entered after a re-plan (``Skills.imitate_keep_sides``): False (today: the demonstrator's
     # half is the far half of the objects as they stand now; two of ours already in basket0 moved that line and our toy

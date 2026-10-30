@@ -205,57 +205,56 @@ def size_reads(sk, labels: list, max_looks: int = MAX_SIZE_LOOKS) -> list[dict]:
     return out
 
 
-# ``Skills.row_stage`` (default off = today). On, before the row fills, each object standing beyond STAGE_X goes to a
-# staging spot near the middle, off the row's line, while the row is still empty. Out there only one arm reaches it, at
-# the limit of its lift. G3 (b7763a97 std 100030-39, e783de43 _random 100000-09): 9 failures left 12 dolls unplaced, 8
-# of which started at |x| 0.36-0.44. Their arm's carry hit a doll already in the row ("joint move ... hits doll3", "via
-# failed: lift: ik_fail"), or no grasp-place pair reached the slot
-STAGE_X = 0.30            # m: |x| beyond which an object is staged first
+# ``Skills.row_stage`` (default off = today). On, a doll whose transfer to its slot finds no plan ("ik_fail") is first
+# set down upright on a staging spot near the middle, off the row's line, and then tried again from there (a fallback:
+# a doll that plans goes straight to its slot as today). G3 (b7763a97 std 100030-39, e783de43 _random 100000-09, c42e011c
+# dev 100000-04): the failures leave dolls unplaced, most of them started at |x| 0.34-0.44 where one arm alone reaches
+# them. That arm's carry hit a doll already in the row ("joint move ... hits doll3", "via failed: lift: ik_fail") or no
+# grasp-place pair reached the slot, and the second try repeated the first plan
 STAGE_SPOT_X = 0.18       # m: a staging spot's |x| at most (both arms reach it)
 STAGE_DY = 0.11           # m: staging spots this far off the row's line (the arms' side first, then the far side)
 STAGE_MIN_Y = -0.27       # m: no staging spot nearer the arms' bases (y -0.45) than this: cramped picks (G3 std 100033:
 #                           8 of 180 grasps reachable at y -0.19, x 0.22)
 
 
-def stage_far(sk, row: dict, labels: list) -> list[dict]:
-    """``Skills.row_stage``: objects of ``labels`` beyond ``STAGE_X`` (farthest first; not the row's anchor, not already
-    in their slot) set down upright on a free spot within ``STAGE_SPOT_X`` of the middle, clear of every row slot.
-    Returns [{"label", "status", "xy"} | {"label", "skipped"}]."""
-    from dojo.skills.library import free_spots, place_oriented
-    out = []
+def stage_spots(sk, row: dict, label: str) -> list:
+    """Free table spots for ``label`` within ``STAGE_SPOT_X`` of the middle, ``STAGE_DY`` off the row's line (on its own
+    side of the middle first), clear of every row slot."""
+    from dojo.skills.library import free_spots
+    w = sk.world
+    o = w.obj(label)
+    side = 1.0 if float(o.center_w[0]) > 0 else -1.0
+    slots = [(np.asarray(row["xy"][j], float), width(w.obj(j))) for j in row["order"] if j in w.objects]
+    spots = []
+    for dy in (-STAGE_DY, STAGE_DY):
+        spots += [s for s in free_spots(sk, label, near_xy=(side * 0.06, row["y"] + dy), clearance=0.02)
+                  if abs(s[1] - row["y"]) > 0.06 and abs(s[0]) <= STAGE_SPOT_X and s[1] >= STAGE_MIN_Y
+                  and all(float(np.linalg.norm(np.asarray(s) - xy)) > width(o) / 2 + wj / 2 + OCCUPIED
+                          for xy, wj in slots)]
+    return spots
+
+
+def stage_one(sk, row: dict, label: str) -> dict:
+    """``Skills.row_stage``: ``label`` set down upright on one of ``stage_spots`` (the first three tried).
+    Returns {"label", "status", "xy"} or {"label", "skipped"}."""
+    from dojo.skills.library import place_oriented
+    sk.refresh()
+    x0 = float(sk.world.obj(label).center_w[0])
+    spots = stage_spots(sk, row, label)
+    if not spots:
+        sk.log(f"[rows] stage {label}: no staging spot")
+        return {"label": label, "skipped": "no staging spot"}
+    targets = [T for s in spots[:3] for T in upright_targets(sk, label, s)]
+    r = place_oriented(sk, label, targets, yaw_sym=1, tol_xy=0.03, tol_tilt=10.0, tol_z=0.03,
+                       transfer_kw=_transfer_kw(sk, label), air_handover=False)
+    for a in ARMS:
+        if sk.held[a] is not None:
+            sk._record(sk.regrasp(a))
+    sk.bank()
     w = sk.refresh()
-    far = sorted((k for k in labels if k in w.objects and k != row.get("anchor")
-                  and abs(float(w.obj(k).center_w[0])) > STAGE_X), key=lambda k: -abs(float(w.obj(k).center_w[0])))
-    for k in far:
-        w = sk.refresh()
-        o = w.obj(k)
-        if float(np.linalg.norm(o.center_w[:2] - row["xy"][k])) <= THERE:
-            continue
-        side = 1.0 if float(o.center_w[0]) > 0 else -1.0
-        slots = [(np.asarray(row["xy"][j], float), width(w.obj(j))) for j in row["order"] if j in w.objects]
-        spots = []
-        for dy in (-STAGE_DY, STAGE_DY):
-            spots += [s for s in free_spots(sk, k, near_xy=(side * 0.06, row["y"] + dy), clearance=0.02)
-                      if abs(s[1] - row["y"]) > 0.06 and abs(s[0]) <= STAGE_SPOT_X and s[1] >= STAGE_MIN_Y
-                      and all(float(np.linalg.norm(np.asarray(s) - xy)) > width(o) / 2 + wj / 2 + OCCUPIED
-                              for xy, wj in slots)]
-        if not spots:
-            out.append({"label": k, "skipped": "no staging spot"})
-            sk.log(f"[rows] stage {k}: no staging spot")
-            continue
-        targets = [T for s in spots[:3] for T in upright_targets(sk, k, s)]
-        r = place_oriented(sk, k, targets, yaw_sym=1, tol_xy=0.03, tol_tilt=10.0, tol_z=0.03,
-                           transfer_kw=_transfer_kw(sk, k), air_handover=False)
-        for a in ARMS:
-            if sk.held[a] is not None:
-                sk._record(sk.regrasp(a))
-        sk.bank()
-        xy = sk.world.obj(k).center_w[:2] if k in sk.world.objects else None
-        out.append({"label": k, "status": r.status, "xy": None if xy is None else np.round(xy, 3).tolist()})
-        sk.log(f"[rows] stage {k} from x {float(o.center_w[0]):.2f}: {r.status} {r.note[:120]}")
-        if r.status in ("step_budget", "ended"):
-            break
-    return out
+    xy = w.obj(label).center_w[:2] if label in w.objects else None
+    sk.log(f"[rows] stage {label} from x {x0:.2f}: {r.status} {r.note[:120]}")
+    return {"label": label, "status": r.status, "xy": None if xy is None else np.round(xy, 3).tolist()}
 
 
 def upright_targets(sk, label: str, xy) -> list:
@@ -308,8 +307,8 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
     w.notes["rows"] = {"order": row["order"], "xy": {k: v.tolist() for k, v in row["xy"].items()}}
     if reads:
         w.notes["rows"]["size_reads"] = reads
-    if getattr(sk, "row_stage", False) in (True, "on"):
-        w.notes["rows"]["staged"] = stage_far(sk, row, objects)
+    stage = getattr(sk, "row_stage", False) in (True, "on")
+    staged: list = []
     pairs = [(k, row["xy"][k]) for k in row["order"]]
     done, failed, tries, aside = [], [], {k: 0 for k in objects}, 0
 
@@ -350,6 +349,10 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
             r = place_oriented(sk, k, upright_targets(sk, k, xy), yaw_sym=1, tol_xy=0.015, tol_tilt=10.0, tol_z=0.03,
                                transfer_kw=_transfer_kw(sk, k), air_handover=False)
             sk.log(f"[rows] {k} -> {np.round(xy, 3).tolist()}: {r.status} {r.note[:120]}")
+            if (stage and r.status == "ik_fail" and k not in {d["label"] for d in staged}
+                    and all(sk.held[a] is None for a in ARMS)):
+                staged.append(stage_one(sk, row, k))       # the next try starts from the staging spot
+                w.notes["rows"]["staged"] = staged
         else:
             k, xy = pairs[0]
             b = blockers(k, xy)[0]
