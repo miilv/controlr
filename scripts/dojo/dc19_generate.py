@@ -12,12 +12,17 @@ lead says so, after both freeze manifests are committed:
 3. Presettle, physics-only, per task (``dojo.simlab.presettle --reserved-slice``, then ``--keep-raw-unmoved``), under
    ``--lock``. An id is stable iff it has a settled record afterwards; the settled:false tasks (make_toast and the two
    conveyors) run their RAW record, stable by the same check (the agreed rule).
-4. Selection: per task the first 10 stable ids ascending; tranche A = the first 5, tranche B = the next 5; a short cell
-   says so (``shortfall``), never padded; ``unstable_count`` = the unstable ids among 100100-100119.
-5. DIR/<task>/<id>[.settled].json (0400) for the selected ids only, the manifest (schema dc19-sealed/1) at ``--manifest``
-   (outside DIR), the work dir deleted.
-6. Prints only sha256(manifest) and per cell "task n_stable n_unstable". Nothing else (no listing, no record content, no
-   presettle output: its log stays in the work dir and is deleted with it).
+3b. imitate_sorting_sequence (``sealed.DEMO_TASKS``): its support-arm demo, planned and validated blind by
+   ``dojo.simlab.demo_gen`` under ``--lock`` on the stable ids, ascending, in rounds until 10 validate or the stable ids
+   run out (agreed 30 Oct). An id is eligible iff it is stable AND its demo validated; ``demo_dropped`` counts the stable
+   ids tried whose demo did not.
+4. Selection: per task the first 10 eligible (stable) ids ascending; tranche A = the first 5, tranche B = the next 5; a
+   short cell says so (``shortfall``), never padded; ``unstable_count`` = the unstable ids among 100100-100119.
+5. DIR/<task>/<id>[.settled].json (0400) for the selected ids only (plus ``<id>.demo.pkl``, 0400, for imitate; its md5
+   in the manifest's ``demos``), the manifest (schema dc19-sealed/1) at ``--manifest`` (outside DIR), the work dir deleted.
+6. Prints only sha256(manifest) and per cell "task n_stable n_unstable" (plus "n_demo_dropped" for imitate). Nothing
+   else (no listing, no record content, no presettle / demo_gen output: their log stays in the work dir and is deleted
+   with it).
 """
 from __future__ import annotations
 
@@ -86,6 +91,31 @@ def presettle(task: str, work: Path, lock: str, log: Path) -> None:
                            timeout=3600, check=False)
 
 
+def make_demos(task: str, work: Path, lock: str, ids: list[int], log: Path) -> None:
+    """demo_gen on ``ids`` (physics-only, under ``lock``, output only to the private log); a validated demo is
+    ``work/simlab/traj/<task>/<id>.pkl`` afterwards (demo_gen deletes the ones that fail validation)."""
+    env = {**os.environ, "DOJO_DATA": str(work), "DOJO_GPU_LOCK": lock, "SIMLAB_GPU": "1"}
+    with open(log, "a") as f:
+        subprocess.run(["bash", str(ROOT / "scripts/simlab/rdpy.sh"), "-m", "dojo.simlab.demo_gen", "--task", task,
+                        "--ids", *[str(i) for i in ids]], env=env, stdout=f, stderr=subprocess.STDOUT,
+                       timeout=4 * 3600, check=False)
+
+
+def demo_ids(task: str, work: Path, lock: str, stable: list[int], demos=make_demos) -> tuple[list[int], int]:
+    """(stable ids with a validated demo, ascending; how many tried ones failed), in rounds over the stable ids
+    ascending until 2 x TRANCHE validate or none are left."""
+    traj = work / "simlab" / "traj" / task
+    ok: list[int] = []
+    tried: list[int] = []
+    left = sorted(stable)
+    while left and len(ok) < 2 * TRANCHE:
+        batch, left = left[:2 * TRANCHE - len(ok)], left[2 * TRANCHE - len(ok):]
+        demos(task, work, lock, batch, work / "demo_gen.log")
+        tried += batch
+        ok += [i for i in batch if (traj / f"{i}.pkl").is_file()]
+    return sorted(ok), len(tried) - len(ok)
+
+
 def provenance() -> dict:
     from dojo.simlab import gen_layouts as G
     from dojo.simlab import presettle as P
@@ -105,8 +135,17 @@ def provenance() -> dict:
             "settler": f"{P.SETTLER} @ {commit or 'unknown'}", "robodojo": rd_commit, "isaacsim": isaac}
 
 
+def _seal(src: Path, dst: Path) -> str:
+    """Copy ``src`` into the block as ``dst`` (0400, O_EXCL); its md5."""
+    data = src.read_bytes()
+    fd = os.open(dst, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o400)
+    with os.fdopen(fd, "wb") as f:
+        f.write(data)
+    return hashlib.md5(data).hexdigest()
+
+
 def run(out: Path, manifest: Path, lock: str, tasks: list[str], v6_checkout: str | None,
-        gen=generate_raw, settle=presettle, prov=provenance) -> dict:
+        gen=generate_raw, settle=presettle, prov=provenance, demos=make_demos) -> dict:
     from dojo.simlab import sealed
     out.mkdir(parents=True)
     work = out.parent / f".{out.name}.work-{int(time.time())}"
@@ -126,23 +165,24 @@ def run(out: Path, manifest: Path, lock: str, tasks: list[str], v6_checkout: str
             settle(task, work, lock, work / "presettle.log")
             stable = [i for i in IDS if (raw_dir / f"{i}.settled.json").is_file()]
             raw = task in RAW_TASKS
-            sel = tranches(stable)
+            eligible, dropped = (demo_ids(task, work, lock, stable, demos) if task in sealed.DEMO_TASKS
+                                 else (stable, None))
+            sel = tranches(eligible)
             d = out / task
             d.mkdir()
-            recs = {}
+            recs, dems = {}, {}
             for i in sel["tranche_a"] + sel["tranche_b"]:
-                src = raw_dir / sealed.record_name(i, not raw)
-                data = src.read_bytes()
-                fd = os.open(d / sealed.record_name(i, not raw), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o400)
-                with os.fdopen(fd, "wb") as f:
-                    f.write(data)
-                recs[str(i)] = hashlib.md5(data).hexdigest()
+                recs[str(i)] = _seal(raw_dir / sealed.record_name(i, not raw), d / sealed.record_name(i, not raw))
+                if dropped is not None:
+                    dems[str(i)] = _seal(work / "simlab" / "traj" / task / f"{i}.pkl", d / sealed.demo_name(i))
             entry = {"settled": not raw, "records": recs, **sel, "unstable_count": len(IDS) - len(stable)}
+            if dropped is not None:
+                entry.update({"demos": dems, "demo_dropped": dropped})
             if task in V6_TASKS:
                 entry["generator"] = {"GENERATOR": "simlab/v6", "checkout": str(v6_checkout)}
             sealed.check_task(task, entry)
             man["tasks"][task] = entry
-            counts[task] = (len(stable), len(IDS) - len(stable))
+            counts[task] = (len(stable), len(IDS) - len(stable)) + (() if dropped is None else (dropped,))
         manifest.write_text(json.dumps(man, indent=1, sort_keys=True) + "\n")
         sealed.load_manifest(manifest)              # the loader's rules, once more, on the written file
     finally:
@@ -170,8 +210,8 @@ def main(argv=None) -> int:
     tasks = a.tasks.split(",") if a.tasks else sorted(p.name for p in paths.LAYOUTS.iterdir() if p.is_dir())
     res = run(out, manifest, a.lock, tasks, os.path.expanduser(a.v6_checkout))
     print(f"manifest sha256 {res['sha256']}")
-    for t, (ns, nu) in sorted(res["counts"].items()):
-        print(f"{t} n_stable {ns} n_unstable {nu}")
+    for t, (ns, nu, *nd) in sorted(res["counts"].items()):
+        print(f"{t} n_stable {ns} n_unstable {nu}" + (f" n_demo_dropped {nd[0]}" if nd else ""))
     return 0
 
 

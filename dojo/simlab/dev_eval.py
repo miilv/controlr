@@ -64,6 +64,10 @@ def patch_seed_manager(layout_root: str | os.PathLike) -> None:
         from dojo.simlab import runner
         runner.DEMO_KEY.clear()
         runner.DEMO_KEY.update({i: v["layout_id"] for i, v in self.seed_info.items()})
+        runner.DEMO_FILE.clear()
+        if sealed_m:                                 # the sealed block's demos: the staged, md5-checked files only
+            runner.DEMO_FILE.update(sealed.staged_demos(d, man, self.task_name,
+                                                        [v["layout_id"] for v in self.seed_info.values()]))
         self.st_idx, self.ed_idx, self.type, self.idx = 0, len(self.seed_list), "eval", 0
         self._current_batch_seeds = None
         print(f"[dev_eval] {len(files)} dev layouts{suffix} from {d} ({files[0].name}..{files[-1].name})", flush=True)

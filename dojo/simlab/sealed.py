@@ -12,6 +12,11 @@ Mikhail's side, bus 30 Oct 0008Z / 0035Z)::
                           "tranche_a": [<ids>], "tranche_b": [<ids>], "unstable_count": <int>,
                           "shortfall": <int, optional>}}}
 
+imitate_sorting_sequence (``DEMO_TASKS``) also carries ``"demos": {"<id>": "<md5>"}`` for exactly its record ids and
+``"demo_dropped": <int>`` (stable ids whose blind demo failed validation): its support-arm demo
+``DIR/<task>/<id>.demo.pkl`` is staged 0400 beside the record and verified like one. The tranches take the first ids
+with a validated demo. No other task carries ``demos``.
+
 Rules (``load_manifest``; Mikhail's side enforces the same on its own path):
 - every id in [100100, 100119]; ``tranche_a`` / ``tranche_b`` ascending, disjoint, every A id below every B id, together
   exactly the ``records``; 5 ids each unless ``shortfall`` (the cell's missing stable ids, never padded) says otherwise:
@@ -47,6 +52,7 @@ BLOCK_IDS = (100100, 100119)
 TRANCHE = 5
 PREREGISTERED = "tranche_b.preregistered"     # beside the manifest: tranche B may run
 SALT_FILE = ".salt"                           # DIR/.salt (0400, never printed): the only non-record file DIR may hold
+DEMO_TASKS = ("imitate_sorting_sequence",)     # = runner.DEMO_TASKS: a support-arm demo per record (demo_gen, blind)
 GENERATOR_KEYS = ("repo", "commit", "GENERATOR", "settler", "robodojo", "isaacsim")
 MD5 = re.compile(r"^[0-9a-f]{32}$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -84,6 +90,15 @@ def check_task(task: str, e: dict) -> None:
     if len(a) != min(TRANCHE, n) or len(b) != n - min(TRANCHE, n):
         raise SealedError(f"task {task!r}: tranche sizes {len(a)} / {len(b)} do not match shortfall {short} "
                           f"(A = the first min({TRANCHE}, n) stable ids, B the rest; never padded)")
+    demos = e.get("demos")
+    if task not in DEMO_TASKS:
+        if demos is not None or "demo_dropped" in e:
+            raise SealedError(f"task {task!r}: only {list(DEMO_TASKS)} carry demos")
+        return
+    dropped = e.get("demo_dropped", 0)
+    if not isinstance(demos, dict) or set(demos) != set(recs) or not all(MD5.match(str(h)) for h in demos.values()) \
+            or not isinstance(dropped, int) or dropped < 0:
+        raise SealedError(f"task {task!r}: needs demos {{id: md5}} for exactly its record ids, demo_dropped (int >= 0)")
 
 
 def load_manifest(path: str | os.PathLike) -> dict:
@@ -119,6 +134,10 @@ def task_entry(manifest: dict, task: str) -> dict:
 
 def record_name(layout_id: int | str, settled: bool) -> str:
     return f"{int(layout_id)}{'.settled' if settled else ''}.json"
+
+
+def demo_name(layout_id: int | str) -> str:
+    return f"{int(layout_id)}.demo.pkl"
 
 
 def position_id(manifest: dict, task: str, tranche: str, k: int) -> int:
@@ -171,21 +190,70 @@ def verify_records(block_dir: str | os.PathLike, manifest: dict, task: str, ids)
     return out
 
 
-def stage(block_dir, manifest: dict, task: str, ids, dest: str | os.PathLike) -> list[tuple[int, str]]:
-    """Verify, then write each record's verified bytes to ``dest/<task>/`` (mode 0400). Returns (id, md5)."""
+def verify_demos(block_dir: str | os.PathLike, manifest: dict, task: str, ids) -> list[tuple[int, str, bytes]]:
+    """(id, md5, bytes) of each requested id's demo (DEMO_TASKS only; [] otherwise), md5-checked like a record."""
+    e = task_entry(manifest, task)
+    if task not in DEMO_TASKS:
+        return []
+    check_runnable(manifest, task, ids)
+    out, bad = [], []
+    for i in (int(x) for x in ids):
+        p = Path(block_dir) / task / demo_name(i)
+        if not p.is_file() or p.stat().st_size == 0:
+            bad.append(f"{i} demo missing or empty")
+            continue
+        data = p.read_bytes()
+        got = hashlib.md5(data).hexdigest()
+        if got != e["demos"][str(i)]:
+            bad.append(f"{i} demo md5 {got} != {e['demos'][str(i)]}")
+            continue
+        out.append((i, got, data))
+    if bad:
+        raise SealedError(f"sealed block {task}: refused ({'; '.join(bad)})")
+    return out
+
+
+def _write_ro(p: Path, data: bytes) -> None:
+    if p.exists():
+        p.chmod(0o600)
+        p.unlink()
+    fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o400)
+    with os.fdopen(fd, "wb") as f:
+        f.write(data)
+
+
+def stage(block_dir, manifest: dict, task: str, ids, dest: str | os.PathLike) -> list[tuple[int, str, str | None]]:
+    """Verify every record (and demo), then write the verified bytes to ``dest/<task>/`` (mode 0400).
+    Returns (id, md5, demo md5 or None)."""
     e = task_entry(manifest, task)
     recs = verify_records(block_dir, manifest, task, ids)
+    demos = {i: (h, data) for i, h, data in verify_demos(block_dir, manifest, task, ids)}
     d = Path(dest) / task
     d.mkdir(parents=True, exist_ok=True)
-    for i, h, data in recs:
-        p = d / record_name(i, e["settled"])
-        if p.exists():
-            p.chmod(0o600)
-            p.unlink()
-        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o400)
-        with os.fdopen(fd, "wb") as f:
-            f.write(data)
-    return [(i, h) for i, h, _ in recs]
+    for i, _, data in recs:
+        _write_ro(d / record_name(i, e["settled"]), data)
+        if i in demos:
+            _write_ro(d / demo_name(i), demos[i][1])
+    return [(i, h, demos[i][0] if i in demos else None) for i, h, _ in recs]
+
+
+def staged_demos(layout_dir: str | os.PathLike, manifest: dict, task: str, ids) -> dict[int, Path]:
+    """RoboDojo's side: each staged id's demo (DEMO_TASKS), present and still matching its md5 -> {id: path}."""
+    e = task_entry(manifest, task)
+    if task not in DEMO_TASKS:
+        return {}
+    out, bad = {}, []
+    for i in (int(x) for x in ids):
+        p = Path(layout_dir) / demo_name(i)
+        if not p.is_file():
+            bad.append(f"{i} demo missing")
+        elif hashlib.md5(p.read_bytes()).hexdigest() != e["demos"].get(str(i)):
+            bad.append(f"{i} demo md5 mismatch")
+        else:
+            out[i] = p
+    if bad:
+        raise SealedError(f"sealed block {task}: staged demos refused in {layout_dir} ({'; '.join(bad)})")
+    return out
 
 
 def check_staged(layout_dir: str | os.PathLike, manifest: dict, task: str, files) -> None:
@@ -208,6 +276,7 @@ def check_staged(layout_dir: str | os.PathLike, manifest: dict, task: str, files
             bad.append(str(err))
     if bad or not files:
         raise SealedError(f"sealed block {task}: staged records refused in {layout_dir} ({'; '.join(bad) or 'none'})")
+    staged_demos(layout_dir, manifest, task, [Path(p).name.split(".")[0] for p in files])
 
 
 def verify_dir(block_dir: str | os.PathLike, manifest: dict) -> tuple[list[tuple[str, int, str, bool]], list[str]]:
@@ -225,7 +294,12 @@ def verify_dir(block_dir: str | os.PathLike, manifest: dict) -> tuple[list[tuple
             if p.stat().st_size == 0:
                 problems.append(f"empty {task}/{p.name}")
             rows.append((task, i, got, got == e["records"][str(i)] and p.stat().st_size > 0))
+        for i in sorted(int(x) for x in e.get("demos") or {}):
+            p = root / task / demo_name(i)
+            got = hashlib.md5(p.read_bytes()).hexdigest() if p.is_file() else "-"
+            rows.append((task, f"{i}.demo", got, p.is_file() and p.stat().st_size > 0 and got == e["demos"][str(i)]))
     listed = {(t, record_name(i, e["settled"])) for t, e in manifest["tasks"].items() for i in e["records"]}
+    listed |= {(t, demo_name(i)) for t, e in manifest["tasks"].items() for i in e.get("demos") or {}}
     for p in sorted(root.iterdir()) if root.is_dir() else []:
         if p.is_dir():
             if p.name not in manifest["tasks"]:
@@ -316,8 +390,8 @@ def main(argv=None) -> int:
         for p in claim(a.coord_dir, m, a.task, _ids(a.ids), a.run_id):
             print(f"[sealed] claimed {Path(p).name}", flush=True)
         return 0
-    for i, h in stage(a.dir, m, a.task, _ids(a.ids), a.dest):
-        print(f"[sealed] {a.task} {i} md5 {h} pass", flush=True)
+    for i, h, dh in stage(a.dir, m, a.task, _ids(a.ids), a.dest):
+        print(f"[sealed] {a.task} {i} md5 {h} pass" + (f"; demo md5 {dh} pass" if dh else ""), flush=True)
     return 0
 
 

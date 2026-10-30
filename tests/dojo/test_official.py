@@ -302,6 +302,7 @@ def test_freeze_manifest_records_names_and_md5s_never_keys(tmp_path, monkeypatch
     assert rc == 0 and m["parity"]["zero_diff"] and m["candidate"]["text"] == CAND
     assert m["launcher"]["policy"] == "dojo.runtime.policy:RuntimePolicy" and m["side_servers"]["seg"]["files"]["best.pt"]["sha256"]
     assert m["routes"]["agentic_model"] and "ee_joint_state_official" in m["grip"]
+    assert "color_calib_sha256" in m["perception"]                    # (None here: no catalogue on the CI box)
     assert "SYNTHETIC" not in text
 
 
