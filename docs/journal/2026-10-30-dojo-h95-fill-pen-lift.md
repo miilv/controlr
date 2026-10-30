@@ -56,8 +56,8 @@ What the pens did (80 in total):
 | base (main 0c5cddfb) | 0.125 | 0/20 | | 5 |
 | fill_move_lift=clear | 0.190 | 0/20 | 5 / 0 | 3 |
 
-The fix arm ran the 12 move episodes. The 8 no-move episodes were rerun under the flag for the identity check (result
-in the PR).
+All 20 ran under the flag. The 8 episodes that never move the holder are bit-identical to base (steps, scores and
+classes).
 
 | seed | base | clear | |
 |---|---|---|---|
