@@ -355,6 +355,7 @@ class Skills:
         # timeout keeps holding until the demonstrator's arm is at rest, the copy's steps kept back)
         self.imitate_wait = "still"
         self.imitate_keep_sides = False   # copy_demonstration: the episode start's demonstrator / our halves on re-entry
+        self.imitate_repair = False       # copy_demonstration: a twin not put in after REPAIR_TRIES: the next candidate
         # ``interactive.look_twins`` (stream W): "off" (today) | "ambiguous" (with imitate_pairing "one_to_one": a wrist
         # look at each of our objects whose assigned twin has another believed asset, then the assignment again)
         self.imitate_look = "off"

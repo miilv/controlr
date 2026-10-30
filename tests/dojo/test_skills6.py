@@ -6,6 +6,7 @@ from __future__ import annotations
 import math
 
 import numpy as np
+import pytest
 
 from tests.dojo.test_skills2 import _box_mesh, _obj, _world
 
@@ -379,6 +380,79 @@ def test_copy_demonstration_follows_departures_and_matches_twins_by_asset_then_c
     monkeypatch.setattr(I, "wait_actors_still", lambda sk_, **kw: "still")
     r = I.copy_demonstration(sk, "basket0", "basket1", [o.label for o in objs])
     assert put == ["t1", "t0", "t2"] and r["ok"], (put, r, sk.logs)
+
+
+@pytest.mark.parametrize("repair", [False, True])
+@pytest.mark.parametrize("pairing", ["greedy", "one_to_one"])
+def test_imitate_repair_drops_a_twin_that_cannot_be_put_and_takes_the_next(monkeypatch, repair, pairing):
+    """imitate_repair: our watch read as a garage ("t1", nothing there to grasp) is the first garage twin; off, three
+    puts fail and the copy stops; on, two puts fail, it is dropped and the real garage ("t3") is put, then the rest."""
+    import dojo.skills.interactive as I
+    from dojo.skills.skills import SkillResult
+
+    objs = [_obj("basket0", "basket", 5, (-0.4, -0.15, 0.8), (0.1, 0.1, 0.05), typ="Geometry"),
+            _obj("basket1", "basket", 5, (0.35, 0.25, 0.8), (0.1, 0.1, 0.05), typ="Geometry"),
+            _obj("t0", "phone", 0, (0.1, -0.1, 0.77), (0.03, 0.06, 0.01)),
+            _obj("t1", "garage", 14, (-0.2, -0.19, 0.79), (0.04, 0.04, 0.04)),      # a misread: our watch is here
+            _obj("t3", "garage", 14, (-0.13, -0.08, 0.79), (0.04, 0.04, 0.04)),
+            _obj("aim0", "phone", 0, (-0.19, 0.19, 0.77), (0.03, 0.06, 0.01)),
+            _obj("aim3", "garage", 14, (-0.19, 0.26, 0.79), (0.04, 0.04, 0.04))]
+    w = _world(objs)
+    departures = {20: "aim3", 140: "aim0"}
+
+    class Ex:
+        steps_used = 0
+
+        def hold(self, n):
+            self.steps_used += n
+
+    class Kin:
+        def base(self, arm):
+            T = np.eye(4)
+            T[:3, 3] = (-0.3 if arm == "left" else 0.3, -0.45, 0.77)
+            return T
+
+    class Prov:
+        def watch_read(self, region, prior=None):
+            gone = [{"asset": w.obj(l).asset.key, "label": l} for s_, l in sorted(departures.items()) if s_ <= sk.ex.steps_used]
+            return {"kind": "container", "gone": gone, "inside": gone, "visible_frac": 1.0, "occluded": False}
+
+    class Sk:
+        ex, kin, provider, held = Ex(), Kin(), Prov(), {"left": None, "right": None}
+        logs: list = []
+        imitate_pairing = pairing
+        imitate_repair = repair
+
+        def refresh(self):
+            w.step = self.ex.steps_used
+            return w
+
+        def log(self, m):
+            self.logs.append(m)
+
+        def bank(self):
+            pass
+    sk = Sk()
+    put = []
+
+    def put_in_open(sk_, label, container):
+        put.append(label)
+        if label == "t1":                               # the jaws close on air: nothing moves
+            return SkillResult(False, "put_in_open", "grasp_slip", 10, "left", note="object rose 0 mm")
+        w.obj(label).pos = w.obj(container).pos.copy()
+        return SkillResult(True, "put_in_open", "ok", 10, "left")
+    monkeypatch.setattr(I, "put_in_open", put_in_open)
+    monkeypatch.setattr(I, "wait_actors_still", lambda sk_, **kw: "still")
+    r = I.copy_demonstration(sk, "basket0", "basket1", [o.label for o in objs])
+    if pairing == "greedy" or repair:
+        first = put[:put.index("t3")] if "t3" in put else put
+        assert set(first) <= {"t1"}
+    if not repair:
+        assert not r["ok"] and r["stage"] in ("put t1", "match aim3") or put[0] == "t3", (put, r)
+        if put[0] == "t1":
+            assert put == ["t1"] * 3 and r["stage"] == "put t1"
+    else:
+        assert r["ok"] and put[-2:] == ["t3", "t0"] and put.count("t1") in (0, I.REPAIR_TRIES), (put, r, sk.logs)
 
 
 def test_match_and_pick_waits_for_a_first_object_when_none_was_read():

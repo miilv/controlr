@@ -389,6 +389,10 @@ class RuntimeConfig:
     # objects in pairs whose believed assets differ, then the assignment again; camera: frame-0 category misreads on
     # both sides in 6 of 6 runs)
     imitate_look: str = "off"
+    # ``copy_demonstration``'s puts (``Skills.imitate_repair``): False (today: a twin that cannot be put after 3 tries
+    # stops the copy) | True (after REPAIR_TRIES it is dropped as a misread, the next candidate like the demonstrated object
+    # is tried and the rest are paired again among ours; dev 100001: our watch read as a garage took the garage's slot)
+    imitate_repair: bool = False
     # ``rows.row_by_size`` (``Skills.row_size_read``): off (today: the size order from the frame-0 belief) | look (first a
     # wrist look at each doll whose believed size class another shares, the refine hook of kind "size" re-reading its
     # identity over its config group; then the order by height) | look_union (the read also over the std / _random twin
@@ -885,6 +889,7 @@ class RuntimePolicy:
             sk_.imitate_look = cfg.imitate_look
             sk_.row_size_read = cfg.row_size_read
             sk_.imitate_keep_sides = bool(cfg.imitate_keep_sides)
+            sk_.imitate_repair = bool(cfg.imitate_repair)
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.belt_confirm_zone = cfg.belt_confirm_zone

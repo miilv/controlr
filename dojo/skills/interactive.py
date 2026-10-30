@@ -603,6 +603,7 @@ def twin_assignment(w, demo: list[str], ours: list[str]) -> dict[str, str]:
     return {demo[int(i)]: ours[int(j)] for i, j in pairs}
 
 
+REPAIR_TRIES = 2     # imitate_repair: puts of one twin before it is dropped as a misread and the next candidate is tried
 MAX_TWIN_LOOKS = 3   # imitate_look "ambiguous": wrist looks before the copy (each ~30-60 steps; the copy needs ~120 per object)
 
 
@@ -731,6 +732,8 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
                 w = sk.refresh()
                 st["twins"] = twin_assignment(w, demo_side, ours)
                 sk.log(f"[imitate] looked at {looked}; one-to-one twins {st['twins']}")
+    repair = getattr(sk, "imitate_repair", False) in (True, "on")   # runtime: bool; G3 --skill-attr: "on" / "off"
+    bad = st.setdefault("bad", [])
     for i, key in enumerate(st["order"]):
         if i < len(st["done"]):
             continue
@@ -744,7 +747,7 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
         if key in w.objects:                            # departure order: a label; its twin is on our side
             k_ = w.obj(key).asset.key
             free = [m for m in movers if m not in st["gone"] and m not in demo_side and m not in st["done"] and m in w.objects
-                    and not inside_xy(w.obj(m), w.obj(container))]
+                    and not inside_xy(w.obj(m), w.obj(container)) and not (repair and m in bad)]
             cands = [m for m in free if w.obj(m).asset.key == k_] or \
                 [m for m in free if w.obj(m).category == w.obj(key).category]
             tw = (st.get("twins") or {}).get(key)
@@ -754,21 +757,36 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
         else:
             cands = [m for m in keys.get(key, []) if m not in st["done"]
                      and not inside_xy(w.obj(m), w.obj(container)) and not inside_xy(w.obj(m), w.obj(demo_container))]
+        if repair:
+            cands = [m for m in cands if m not in bad]
         if not cands:
             return {"ok": False, "stage": f"match {l}", "note": f"no free object like {key}"}
-        twin = cands[0]
         ok = False
-        for attempt in range(tries):
-            r = put_in_open(sk, twin, container)
-            sk.bank()
-            w = sk.refresh()
-            if inside_xy(w.obj(twin), w.obj(container)):
-                ok = True
+        # imitate_repair: a twin not put in after REPAIR_TRIES (the pick closes on air: B1 read another object there, or
+        # nothing reachable) is dropped as a misread and the next candidate like it is tried; the demonstrator's objects
+        # still to copy are paired again among ours that are left (dev 100001: our watch read as a garage was the
+        # garage's twin, 6 empty closes; the real garage was the second candidate)
+        for twin in (cands if repair else cands[:1]):
+            for attempt in range(REPAIR_TRIES if repair else tries):
+                r = put_in_open(sk, twin, container)
+                sk.bank()
+                w = sk.refresh()
+                if inside_xy(w.obj(twin), w.obj(container)):
+                    ok = True
+                    break
+                sk.log(f"[imitate] {twin} not in {container} after try {attempt + 1}: {str(r.note)[:160]}")
+                if any(sk.held.values()):
+                    sk.home(gripper=OPEN)
+                    sk.held = {a: None for a in sk.held}
+            if ok or not repair:
                 break
-            sk.log(f"[imitate] {twin} not in {container} after try {attempt + 1}: {str(r.note)[:160]}")
-            if any(sk.held.values()):
-                sk.home(gripper=OPEN)
-                sk.held = {a: None for a in sk.held}
+            bad.append(twin)
+            later = [k for k in st["order"][i + 1:] if k in w.objects]
+            if st.get("twins") is not None and later:
+                ours = [m for m in movers if m not in demo_side and m not in st["done"] and m not in bad
+                        and m in w.objects and not inside_xy(w.obj(m), w.obj(container))]
+                st["twins"].update(twin_assignment(w, later, ours))
+            sk.log(f"[imitate] {twin} dropped after {REPAIR_TRIES} tries (misread or unreachable); next candidate like {l}")
         if not ok:
             return {"ok": False, "stage": f"put {twin}", "note": f"done {st['done']}"}
         st["done"].append(twin)
