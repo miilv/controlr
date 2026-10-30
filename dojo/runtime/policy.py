@@ -522,7 +522,7 @@ class RuntimeConfig:
     ported_pour: str = "v1"
     # pour_p1's way back to upright (stream H; ``Skills.ported_pour_untilt``): direct (today: one fast hover move_to rolls
     # the cup upright while carrying it back) | staged (retrace the pour's reached profile poses backwards to upright at
-    # slow speed, then the hover translates)
+    # slow speed, then the hover translates) | capped (the profile ends at 112 deg, then staged)
     ported_pour_untilt: str = "direct"
     # ... "pick up the X by N cm": v1 (Mikhail's pick_up: top-down mesh-cloud grasps) | library (our Skills.pick first, its
     # grasp generator, then v1 on the same object when ours fails with >= 120 steps left; dojo/skills/pickup.py), the object
@@ -642,7 +642,7 @@ class RuntimePolicy:
                 or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
-                or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged") or self.cfg.ported_pickup not in ("v1", "library")
+                or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
                 or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap")
                 or self.cfg.joint_limits not in ("wide", "measured")

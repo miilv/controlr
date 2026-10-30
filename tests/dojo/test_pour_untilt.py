@@ -34,4 +34,11 @@ def test_direct_is_today():
     assert "untilt" not in args["args"] and "untilt_staged" not in d
     assert RuntimeConfig().ported_pour_untilt == "direct"
     from dojo.skills.g3 import SKILL_ATTRS
-    assert SKILL_ATTRS["ported_pour_untilt"] == ("direct", "staged")
+    assert SKILL_ATTRS["ported_pour_untilt"] == ("direct", "staged", "capped")
+
+
+def test_capped_stops_the_profile_at_the_cap():
+    from dojo.skills.ported.skills.pour_p1.skill_robodojo import PHI_CAP
+    args, d = _run("capped")
+    assert args["args"].get("untilt") == "capped"
+    assert max(t["phi"] for t in d["pour"]) <= PHI_CAP and d["untilt_staged"][-1]["phi"] == 0

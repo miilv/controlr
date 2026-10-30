@@ -302,7 +302,7 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
         if re.search(r"\bballs?\b", text):
             if (opts or {}).get("pour") == "full":
                 # ``ported_opts["pour_untilt"]`` (stream H; default "direct"): "staged" retraces the profile back to upright
-                return run("pour_p1", **({"untilt": "staged"} if (opts or {}).get("pour_untilt") == "staged" else {}))
+                return run("pour_p1", **({"untilt": (opts or {})["pour_untilt"]} if (opts or {}).get("pour_untilt") in ("staged", "capped") else {}))
             return run("pour")
         if re.search(r"\bliquid\b|\bwater\b|\bwine\b", text) and not re.search(r"\bfirst\b.*\bsecond\b", text):
             skill, args = pour_bottle_call((opts or {}).get("pour_aim"), None)     # one pour: always v1's pace

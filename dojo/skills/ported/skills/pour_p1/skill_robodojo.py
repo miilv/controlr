@@ -31,6 +31,7 @@ import math
 import numpy as np
 
 TABLE_Z = 0.765
+PHI_CAP = 112.0   # H: ``untilt`` "capped": the last profile angle (deg)
 BASES = {"left": np.array([-0.30, -0.45]), "right": np.array([0.30, -0.45])}
 OTHER = {"left": "right", "right": "left"}
 QH = np.array([0.70710678, 0.0, 0.0, 0.70710678])  # home flange quat: tool (+flange x) along +y, jaws along world x
@@ -316,6 +317,11 @@ def run(robot, container=None, target=None, arm="auto", pinch_h=0.04, pinch_dy=0
 
     # ------------------------------------------------------------ pour profile
     trace, stop = [], None
+    if untilt == "capped":
+        # H: ``untilt`` "capped": the profile ends at ``PHI_CAP`` (G3 mode B, pour_balls dev 100000-04: every pour that
+        # emptied the cup had all balls in the vase by 94-106 deg; the last three increments to 130 only add the
+        # in-hand slip the untilt then starts from), then the staged untilt
+        phis = tuple(p_ for p_ in phis if p_ <= PHI_CAP)
     for i, ph in enumerate(phis):
         o = _obs(robot, [ci])
         if o.get("ended"):
@@ -368,7 +374,7 @@ def run(robot, container=None, target=None, arm="auto", pinch_h=0.04, pinch_dy=0
     # unreachable and the 46-step hover move_to rolled the cup back; in one of two near-identical runs (perceived cup
     # yaw 5.0 vs 6.9 deg, the cup held 14 mm further out along the tool) it left the jaws at the move's start (tilt
     # 125 -> 75 deg in 5 steps) and landed on its side
-    if untilt == "staged" and trace:
+    if untilt in ("staged", "capped") and trace:
         back = []
         reached = [t["phi"] for t in trace if (t.get("move") or {}).get("moved")]
         for ph in [p_ for p_ in sorted(set(reached), reverse=True)[1:]] + ([0] if reached and min(reached) > 0 else []):
