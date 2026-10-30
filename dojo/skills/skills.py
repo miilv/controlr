@@ -366,6 +366,9 @@ class Skills:
         # look at each object of a shared believed size class first, the refine hook of kind "size" re-reading its
         # identity; then the order by height) | "look_union" (as look, the read over the std / _random twin's shapes too)
         self.row_size_read = "off"
+        # ``rows.row_by_size`` (stream N): False (today) | True (objects beyond rows.STAGE_X staged near the middle, off
+        # the row's line, before the row fills: ``rows.stage_far``)
+        self.row_stage = False
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"

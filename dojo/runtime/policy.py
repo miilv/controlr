@@ -402,6 +402,10 @@ class RuntimeConfig:
     # config's candidates: one instruction, both pools). Dev camera rows 100000-04, std + _random: the order was wrong at
     # the row decision in 5 of 10, a shared class in 7 of 10; pick-hover identity reads fixed 4 sizes, all too late
     row_size_read: str = "off"
+    # ``rows.row_by_size`` (``Skills.row_stage``): False (today) | True (a doll standing beyond |x| 0.30, where one arm
+    # alone reaches it, is first set down upright near the middle, off the row's line, while the row is empty; G3: 8 of
+    # the 12 dolls left unplaced started there, their carry hitting a doll already in the row)
+    row_stage: bool = False
     # ``copy_demonstration`` re-entered after a re-plan (``Skills.imitate_keep_sides``): False (today: the demonstrator's
     # half is the far half of the objects as they stand now; two of ours already in basket0 moved that line and our toy
     # car counted as the demonstrator's: "no free object like" at 2/5, dev 100001) | True (the episode start's halves)
@@ -893,6 +897,7 @@ class RuntimePolicy:
             sk_.imitate_wait = cfg.imitate_wait
             sk_.imitate_look = cfg.imitate_look
             sk_.row_size_read = cfg.row_size_read
+            sk_.row_stage = bool(cfg.row_stage)
             sk_.imitate_keep_sides = bool(cfg.imitate_keep_sides)
             sk_.imitate_repair = bool(cfg.imitate_repair)
             sk_.belt_wrist_veto = cfg.belt_wrist_veto

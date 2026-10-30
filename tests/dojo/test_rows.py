@@ -269,3 +269,49 @@ def test_refine_hook_kind_size_reads_identity(monkeypatch, mode, kind, twin):
     assert pc.vocab == [own + tw if twin else own]
     assert prov.belief.objects["doll1"].asset.key == "Rigid/matryoshka_dolls/00002"
     assert P.twin_vocabulary("sort_nesting_dolls_by_size_random") == "sort_nesting_dolls_by_size"
+
+
+# ``Skills.row_stage`` (default off): dolls beyond STAGE_X staged near the middle before the row fills
+
+
+def test_row_stage_default_off():
+    from dojo.runtime.policy import RuntimeConfig
+    assert RuntimeConfig().row_stage is False
+
+
+def test_stage_far_moves_only_the_far_doll_on_the_kinematic_env():
+    objs = _dolls()
+    objs[1].pos = np.array([0.42, -0.09, Z + HALVES[1][2]])          # beyond STAGE_X on the right
+    env = KinematicEnv(_rows_of(objs), step_lim=1050, instruction=DOLLS)
+    sk = Skills(env, GTProvider(env, None, instruction=DOLLS))
+    labs = [f"doll{i}" for i in range(5)]
+    row = rows.row_slots(sk.refresh(), labs)[0]
+    before = {k: sk.world.obj(k).center_w[:2].copy() for k in labs}
+    out = rows.stage_far(sk, row, labs)
+    w = sk.refresh()
+    # doll1 (x 0.42) and doll4 (x -0.33) stand beyond STAGE_X, farthest first; the others stay
+    assert [r["label"] for r in out] == ["doll1", "doll4"] and all(r["status"] == "ok" for r in out), out
+    for k in ("doll1", "doll4"):
+        c = w.obj(k).center_w[:2]
+        assert abs(c[0]) <= rows.STAGE_SPOT_X + 0.03 and abs(c[1] - row["y"]) > 0.05 and w.obj(k).R[2, 2] > 0.97
+        assert c[1] >= rows.STAGE_MIN_Y - 0.03
+        assert all(np.linalg.norm(c - row["xy"][j]) > rows.width(w.obj(k)) / 2 for j in labs)
+    for k in ("doll0", "doll2", "doll3"):
+        assert np.allclose(w.obj(k).center_w[:2], before[k], atol=0.005)
+
+
+def test_row_by_size_stage_on_the_kinematic_env():
+    objs = _dolls()
+    objs[1].pos = np.array([0.42, -0.09, Z + HALVES[1][2]])
+    env = KinematicEnv(_rows_of(objs), step_lim=1050, instruction=DOLLS)
+    prov = GTProvider(env, None, instruction=DOLLS)
+    prov.notes["routes"] = ["row_by_size"]
+    sk = Skills(env, prov)
+    sk.row_stage = "on"                                              # as G3's --skill-attr sets it
+    res = planner.solve(sk)
+    assert res["ok"], res
+    w = sk.refresh()
+    order = ["doll4", "doll3", "doll2", "doll1", "doll0"]
+    xs = [float(w.obj(k).pos[0]) for k in order]
+    assert all(xs[i + 1] - xs[i] > 0.03 for i in range(4)), xs
+    assert w.notes["rows"]["staged"][0]["label"] == "doll1"
