@@ -3353,6 +3353,29 @@ def _support_models() -> tuple:
     return tuple(out)
 
 
+SUPPORT_HOME_MATCH = 15.0   # support_home: at home within this mean |RGB| (dev demo tails, Isaac 6.0 proxy renders: at
+                            # home 9.8-13.5, returning 16-77; the runtime renderer's frame 0 reads 0.9-2.4)
+
+
+def support_home(img: np.ndarray, thr: float = SUPPORT_HOME_MATCH) -> dict:
+    """Is a support robot (``_support_models``) standing at its home in this head image: {"name", "diff", "at_home"}
+    (mean |RGB| inside its head mask vs its stored appearance, at home within ``thr``); {"at_home": None, "why"}
+    without a model of this image size. The robot elsewhere (moving, or out of the view) shows something else in its
+    mask: imitate's demonstrator returning home left the head view, so a motion read called it still (dev 100002 demo
+    tail: 1-22 changed px over steps 648-672 while its joints moved 1.8 -> 0.8 rad from home)."""
+    best = None
+    for name, ref, masks in _support_models():
+        m = masks["cam_head"]
+        if img.shape[:2] != m.shape:
+            continue
+        diff = float(np.abs(img[m].astype(np.float32) - ref[m].astype(np.float32)).mean())
+        if best is None or diff < best[1]:
+            best = (name, diff)
+    if best is None:
+        return {"at_home": None, "why": "no support robot model"}
+    return {"name": best[0], "diff": round(best[1], 2), "at_home": bool(best[1] <= thr)}
+
+
 def _support_mask(views: dict, state: dict) -> dict:
     """``cfg.support_mask``: a support robot found at its home pose in the head view (``_support_models``, within
     ``SUPPORT_MATCH``) has its pixels unknown (not foreground; robot) in the head view and, with our arms at home, in

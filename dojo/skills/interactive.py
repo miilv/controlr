@@ -194,7 +194,8 @@ def wait_demo_done(sk: Skills, after_last: int, n_copy: int) -> str:
     ``COPY_STEPS_PER_OBJECT`` still fit (camera 100007 / 100009: the copy started on a timeout at step 830 / 699 while
     the speed-1.5 demo was still running, and the episode ended). ``n_copy``: logged only."""
     r = wait_actors_still(sk, fallback=after_last)
-    if getattr(sk, "imitate_wait", "still") != "origin":
+    mode = getattr(sk, "imitate_wait", "still")
+    if mode not in ("origin", "home"):
         return r
     rounds = 1
     while r == "timeout":
@@ -205,7 +206,40 @@ def wait_demo_done(sk: Skills, after_last: int, n_copy: int) -> str:
             return f"timeout x{rounds}, budget kept for one copy"
         r = wait_actors_still(sk, fallback=after_last)
         rounds += 1
-    return r if rounds == 1 else f"{r} (after {rounds - 1} timeouts)"
+    r = r if rounds == 1 else f"{r} (after {rounds - 1} timeouts)"
+    if mode == "home":
+        r = f"{r}; {wait_support_home(sk)}"
+    return r
+
+
+HOME_EVERY = 2          # imitate_wait "home": steps between reads of the support robot's home
+HOME_MAX_WAIT = 400     # ... at most this long after the arm reads still
+
+
+def wait_support_home(sk: Skills) -> str:
+    """``imitate_wait`` "home": hold until the provider reads the scene's support robot back at its home
+    (``provider.support_at_home``: the head view's appearance at eval, GT joints in G3), every ``HOME_EVERY`` steps, at
+    most ``HOME_MAX_WAIT``, while one copy's ``COPY_STEPS_PER_OBJECT`` still fit. A motion read alone called imitate's
+    demonstrator still while it returned out of the head view (dev 100002: ours moved at 664, the episode ended at 669).
+    Unknown (None: no reader, no support robot at home at frame 0) proceeds as before."""
+    f = getattr(sk.provider, "support_at_home", None)
+    home = f() if f is not None else None
+    if home is None:
+        return "home unknown"
+    n = 0
+    while home is False:
+        left = _steps_left(sk)
+        if left is not None and left - HOME_EVERY - 160 < COPY_STEPS_PER_OBJECT:
+            return f"not home after {n}, budget kept for one copy"
+        if n >= HOME_MAX_WAIT:
+            return f"not home after {n}"
+        try:
+            sk.ex.hold(HOME_EVERY)
+        except (BudgetExceeded, EpisodeEnded):
+            return f"not home after {n}, ended"
+        n += HOME_EVERY
+        home = f()
+    return f"home after {n}"
 
 
 def _still(prev: dict, w, labels, tol: float = 5e-4) -> bool:
@@ -635,6 +669,9 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
     # identity of each comes from the episode-start estimate, so a twin is matched by asset, else by category
     base = 0.5 * (sk.kin.base("left")[:2, 3] + sk.kin.base("right")[:2, 3])
     demo_side = sorted(movers, key=lambda l: -float(np.linalg.norm(w.obj(l).pos[:2] - base)))[:len(movers) // 2]
+    if getattr(sk, "imitate_keep_sides", False) in (True, "on"):     # runtime: bool; G3 --skill-attr: "on" / "off"
+        # a re-entry (re-plan mid-copy) keeps the first entry's halves: ours already in basket0 moved the line
+        demo_side = [l for l in st.setdefault("demo_side", demo_side) if l in w.objects]
     st.setdefault("gone", [])
     if not st["order"] or len(st["order"]) < expect:      # (the start estimate may see no identity twice)
         t0 = w.step
