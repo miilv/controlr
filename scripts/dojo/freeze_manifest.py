@@ -142,6 +142,8 @@ def main(argv=None) -> int:
         "perception": {"calib_set": calib, "bg_folds": full["perception_env"]["DOJO_BG_FOLDS"],
                        "color_calib": full["perception_env"]["DOJO_COLOR_CALIB"],
                        "color_calib_md5": md5(Path(full["perception_env"]["DOJO_COLOR_CALIB"])),
+                       "color_calib_sha256": hashlib.sha256(Path(full["perception_env"]["DOJO_COLOR_CALIB"]).read_bytes())
+                       .hexdigest() if Path(full["perception_env"]["DOJO_COLOR_CALIB"]).is_file() else None,
                        "calib_set_files_md5": {f.name: md5(f) for f in sorted(
                            (Path(full["perception_env"]["DOJO_BG_FOLDS"]) / calib).glob("*")) if f.is_file()}},
         "grip": "the strict v2 server supplies eef.<arm>.ee_joint_state_official (D-C11); DOJO_GRIP_SOURCE is inert there",
