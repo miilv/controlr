@@ -116,3 +116,27 @@ guarded:
   - fill_pen_holder 100030-34: 0.09 → 0.12 (1 retry, 1 up);
   - insert_key 100000-02: identical (0 retries).
 - Kept default-off for the record.
+
+## Camera dev B arm: keep + sibling_order far (9e8bf90d, merged as 710b9a70)
+
+Integration's `c4b_maketoast*sg_dev_rsk_<id>`, ids 100000-04, paired with the A rows (be7a798b):
+
+| id | make_toast A | make_toast B | random A | random B |
+|---|---|---|---|---|
+| 100000 | 0.25, slip | 0.0, belief_mismatch | 0, perception_gross | 0, perception_gross |
+| 100001 | 0.25, slip | 0.5, belief_mismatch | 0 | 0 |
+| 100002 | 0.25, slip | 0.5, belief_mismatch | 0 | 0 |
+| 100003 | 0.25, perception_gross | 0.25, perception_gross | 0 | 0 |
+| 100004 | 0.25, slip | **1.0, success** | 0 | 0 |
+| mean | 0.25 | 0.45 (3 up / 1 down) | 0 | 0 |
+
+- **The fix works on the slip class.** Every make_toast B row took bread_0 and then bread_3, the far end of the rack.
+  The B picks held in 4/5 rows. In 100003 a perception_gross row still slipped twice; in A, all 5 rows slipped.
+  "keep" refused 1-2 hints a row.
+- **The loser, 100000, and the belief_mismatch rows.**
+  - 100000 went 0.25 → 0.0. Both B picks and places read ok in the belief, but the official score counts no slot.
+  - 100001 and 100002 reach 0.5 (both slots) and miss the success: the lever / finish check.
+  - These are the class after the grasp: the placement as the checker sees it, and the press.
+- **make_toast_random stays 0/5 in both arms: a perception class (W).** The random scenes are routed to the
+  "make_toast" vocabulary, whose toaster candidates (00000 / 00001) don't include the random layouts' 00004 / 00002.
+  B1 fits the wrong toaster model.
