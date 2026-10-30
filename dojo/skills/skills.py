@@ -335,6 +335,9 @@ class Skills:
         # ``library.slots_and_press`` (stream H; ``RuntimeConfig.sibling_order``): "given" (today: the given objects first,
         # then identical ones nearest the container) | "far" (next, the one farthest from where the taken ones stood)
         self.sibling_order = "given"
+        # ``library.press_joint`` (stream H; ``RuntimeConfig.press_repeat``): "off" (today: one stroke) | "cross" (four
+        # more, the press point 4 mm each way: the lever's 85 % has ~0.1 mm of margin at the planned point)
+        self.press_repeat = "off"
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
         # episode's ``joint_limits``) | "measured" (joint 5 inside the sim's stop for that skill only)
         self.fill_joint_limits = "inherit"
