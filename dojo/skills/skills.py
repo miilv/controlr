@@ -60,6 +60,7 @@ HELD_GENERIC_SHOW = True      # mode B: when none of the provider's candidates p
                               # one of perception's candidates was infeasible, "palm at table" / "arms closer than 4
                               # cm", so no look ever ran; G3's generic candidates took plug mode B 2/10 -> 8/10)
 HELD_GENERIC_MAX = 24         # generic candidates planned at most per place (planning time)
+SIBLING_NEAR = 0.05            # m: ``rehover_siblings`` "keep": an identical object this near counts as a sibling
 SPIRAL_PITCH = 0.00015        # m per turn of the pressed spiral (``_servo_tail``, tail kw ``spiral``; mode B only)
 SPIRAL_STEP = 0.0003          # m of spiral path per env step
 SPIRAL_PRESS = 0.0015         # m the object is commanded below its contact height while it is dragged
@@ -325,6 +326,15 @@ class Skills:
         # ``library.fill_container`` (stream H; ``RuntimeConfig.fill_move_lift``): after the container's move, "off"
         # (today: the place's 50 mm retreat) | "clear" (hands still below its top go straight up clear of it)
         self.fill_move_lift = "off"
+        # ``_refine_hover`` (stream H; ``RuntimeConfig.rehover_siblings``): "follow" (today: a refine's "seen elsewhere"
+        # hint moves the object there and re-hovers) | "keep" (not for an object with an identical sibling beside it)
+        self.rehover_siblings = "follow"
+        # ``library._run_leg`` (stream H; ``RuntimeConfig.slip_shift``): "off" (today: a slipped pick is re-planned where it
+        # was) | "across" (a thin object whose pick closed on air: the pinch 7 mm to either side across its thin axis)
+        self.slip_shift = "off"
+        # ``library.slots_and_press`` (stream H; ``RuntimeConfig.sibling_order``): "given" (today: the given objects first,
+        # then identical ones nearest the container) | "far" (next, the one farthest from where the taken ones stood)
+        self.sibling_order = "given"
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
         # episode's ``joint_limits``) | "measured" (joint 5 inside the sim's stop for that skill only)
         self.fill_joint_limits = "inherit"
@@ -673,12 +683,32 @@ class Skills:
             if hint is None or rehover is None or label is None or label not in self.world.objects:
                 return
             o = self.world.obj(label)
+            sib = (self._near_sibling(label) if kind == "pick" and getattr(self, "rehover_siblings", "follow") == "keep"
+                   else None)
+            if sib is not None:
+                # ``rehover_siblings`` "keep" (stream H): a pick of an object with an identical sibling beside it keeps its pose;
+                # "seen elsewhere" there is most likely the sibling (make_toast camera, dev 100000: the hint put bread_1
+                # 5 mm across its 12 mm thickness and 12 mm along it from where it stood, and the pinch closed on air)
+                self.log(f"[refine] {kind} {label}: hint {np.round(np.asarray(hint[0], float), 3).tolist()} not "
+                         f"followed ({sib} {SIBLING_NEAR * 1000:.0f} mm or nearer)")
+                return
             o.pos, o.quat = np.asarray(hint[0], float).copy(), np.asarray(hint[1], float).copy()
             self.log(f"[refine] {kind} {label}: re-hover {i + 1} over the hinted pose {np.round(o.pos, 3).tolist()}")
             if not rehover():
                 self.refresh()
                 return
             hint = self._refine(label, arm, kind)   # after the last allowed re-hover a further hint is ignored
+
+    def _near_sibling(self, label: str) -> str | None:
+        """Another object of ``label``'s asset whose centre is within ``SIBLING_NEAR`` of its centre (a slice beside
+        it in a rack), or None."""
+        w = self.world
+        o = w.obj(label)
+        for l, x in w.objects.items():
+            if l != label and x.asset.key == o.asset.key and \
+                    float(np.linalg.norm(np.asarray(x.center_w) - np.asarray(o.center_w))) <= SIBLING_NEAR:
+                return l
+        return None
 
     def _pick_rehover(self, label: str, arm: str, method: str, plan_kw: dict, pp: "PickPlan | None" = None):
         def f() -> bool:
