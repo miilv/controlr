@@ -261,6 +261,10 @@ python -m dojo.simlab.sealed verify --dir DIR --manifest MANIFEST     # before t
   second claim refuses. The one disclosed infrastructure re-run (before any verdict was read) needs
   `DC19_INFRA_RERUN=<reason>`.
 - **No dev path:** robot-harness's server runs without `--dev`, and HARNESS_DEV / HARNESS_PRIVILEGED are refused.
+- **Unattended:** a sealed call exports `J1_NO_OPERATOR=1` to robot-harness's J1 server, next to
+  `J1_HELD_FALLBACK=no`. From robot-harness DR3 on, an operator ask still open at its maximum wait is answered
+  "no" and the episode is scored, so the block never hangs on an operator. The freeze manifest records this
+  as `launcher.server_env_sealed`.
   The lock (`--lock-slots` or `--lock`) has no default.
 - **`verify`** prints `task id md5 pass/fail`, then its own md5. It fails on an unlisted file or task folder and on an
   empty record. It never prints content.
