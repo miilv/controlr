@@ -324,3 +324,22 @@ def test_row_by_size_stages_only_after_an_ik_fail(monkeypatch):
         sk.row_stage = flag
         res = rows.row_by_size(sk, [f"doll{i}" for i in range(5)])
         assert calls == want and res["ok"], (flag, res)
+
+
+def test_row_home_clear_keeps_slots_off_the_home_hands():
+    """``Skills.row_home_clear`` (default off): the widest doll standing near the right arm's home hand would anchor a
+    row at y -0.21 (G3 std 100003: rolled off by that arm going home); with the rule no slot is within HOME_CLEAR."""
+    from dojo.runtime.policy import RuntimeConfig
+    assert RuntimeConfig().row_home_clear is False
+    objs = _dolls()
+    objs[0].pos = np.array([0.245, -0.21, Z + HALVES[0][2]])
+    w = _world(objs)
+    labs = [f"doll{i}" for i in range(5)]
+
+    def near(r):
+        return min(float(np.hypot(xy[0] - hx, xy[1] - hy)) for xy in r["xy"].values() for hx, hy in rows.HOME_XY)
+    off = rows.row_slots(w, labs)
+    on = rows.row_slots(w, labs, home_clear=True)
+    assert near(off[0]) < rows.HOME_CLEAR                        # today: the cheapest row keeps it there
+    assert on and all(near(r) >= rows.HOME_CLEAR for r in on)
+    assert len(on) < len(off)

@@ -369,6 +369,8 @@ class Skills:
         # ``rows.row_by_size`` (stream N): False (today) | True (a doll whose transfer to its slot finds no plan is first
         # staged near the middle, off the row's line, then tried again from there: ``rows.stage_one``)
         self.row_stage = False
+        # ``rows.row_slots`` (stream N): False (today) | True (no row slot within rows.HOME_CLEAR of an arm's home hand)
+        self.row_home_clear = False
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"

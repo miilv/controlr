@@ -32,6 +32,12 @@ MAX_X = 0.30              # m: |x| of a slot (both arms reach a standing object 
 WIDE_MOVE = 0.4           # m of travel: what moving the widest object costs on top of its distance
 CENTRE_COST = 1.5         # m of travel per m the row's middle lies off (0, ROW_YS[0])
 YAW_DEG = tuple(range(0, 360, 30))   # target headings: a doll is round, any heading stands
+# ``Skills.row_home_clear`` (default off): no row slot within HOME_CLEAR of an arm's home hand (xy of the flange at home,
+# both arms). G3 c42e011c std 100003 (and the camera row on the same layout): the right arm going home after a place
+# swept its hand through the 130 mm doll standing in the row's end slot (0.245, -0.21), 0.15 m from its home hand, and
+# rolled it off the table
+HOME_XY = ((-0.30, -0.352), (0.30, -0.352))
+HOME_CLEAR = 0.17         # m (the doll at 0.153 was hit; _random rows are wider, 0.20 left some layouts no row)
 
 
 def width(o) -> float:
@@ -84,14 +90,15 @@ def route(text: str, world, routes) -> tuple | None:
             f"{len(labels)} objects in a row by size, {'smallest' if ascending else 'largest'} on the left")
 
 
-def row_slots(world, labels: list, ascending: bool = True, by: str = "volume") -> list[dict]:
+def row_slots(world, labels: list, ascending: bool = True, by: str = "volume", home_clear: bool = False) -> list[dict]:
     """Candidate rows, cheapest first: {"order": labels left to right, "xy": {label: slot xy}, "cost", "y", "xc",
     "anchor"}; slots clear every other object (not one of ``labels``) by ``OCCUPIED``, within ``MAX_X`` (an anchor
     may stay where it is beyond it). Two families: the row on a fixed line (``ROW_YS`` x ``ROW_XS``), and the row
     built around one object that stays where it is (its line and its place in the order). A row that moves the
     widest object costs ``WIDE_MOVE`` more: it fits the open gripper worst (G3 1911fbc: 4 of 5 dolls placed in both
     episodes, the last one had no grasp). ``by``: the size the order ranks, "volume" (``size_key``) or "height"
-    (``height`` in SIZE_CLASS_MM classes, then the volume)."""
+    (``height`` in SIZE_CLASS_MM classes, then the volume). ``home_clear``: only rows whose slots all keep HOME_CLEAR
+    from both arms' home hands, when there is one."""
     objs = {k: world.obj(k) for k in labels}
     order = sorted(labels, key=lambda k: _rank_key(objs[k], by), reverse=not ascending)
     ws = [width(objs[k]) for k in order]
@@ -111,6 +118,7 @@ def row_slots(world, labels: list, ascending: bool = True, by: str = "volume") -
             continue
         if not (min(ROW_YS) - 0.02 <= y <= max(ROW_YS) + 0.02):
             continue
+        near_home = any(float(np.hypot(x - hx, y - hy)) < HOME_CLEAR for x in xs for hx, hy in HOME_XY)
         ok = True
         for x, w in zip(xs, ws):
             for o in others:
@@ -128,7 +136,10 @@ def row_slots(world, labels: list, ascending: bool = True, by: str = "volume") -
         # slots where only one arm reaches them, with no grasp-place pair after a slip)
         cost = (sum(moves.values()) + (WIDE_MOVE if moves[widest] > THERE else 0.0)
                 + CENTRE_COST * (abs(float(np.mean(xs))) + abs(y - ROW_YS[0])))
-        out.append({"order": order, "xy": xy, "cost": cost, "y": y, "xc": float(xc), "anchor": anchor})
+        out.append({"order": order, "xy": xy, "cost": cost, "y": y, "xc": float(xc), "anchor": anchor,
+                    "near_home": near_home})
+    if home_clear and any(not r["near_home"] for r in out):
+        out = [r for r in out if not r["near_home"]]          # none clear: today's rows stand
     return sorted(out, key=lambda r: r["cost"])
 
 
@@ -298,7 +309,8 @@ def row_by_size(sk, objects: list[str], ascending: bool = True, max_tries: int =
     read = getattr(sk, "row_size_read", "off") != "off"
     reads = size_reads(sk, objects) if read and getattr(sk, "refine", None) is not None else []
     w = sk.refresh()
-    rows = row_slots(w, objects, ascending, by="height" if read else "volume")
+    rows = row_slots(w, objects, ascending, by="height" if read else "volume",
+                     home_clear=getattr(sk, "row_home_clear", False) in (True, "on"))
     if not rows:
         return {"ok": False, "stage": "plan", "note": "no free row for the slots"}
     row = rows[0]
