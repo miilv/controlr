@@ -69,3 +69,32 @@ calls.
 
 Next: judge both flags on the runtime frame-0 dumps of `c4b_imitatesg_dev_r2_100000-04`, the runtime render domain. If
 they hold, an A/B on the imitate cell (B = `support_mask` + `wrist_pool` "support_masked"), guarded by make_kong.
+
+## 2026-10-30: the bundle's make_kong guard failed; the gate is real there
+
+- The imitate bundle block (A / B / C) ran its first make_kong rows.
+- On the measurement row 100005, B and C showed `support_mask` applied ("franka_home") and `wrist_pool` active. The
+  registered guard required both gates off on make_kong.
+- The lead stopped the block and rejected it for this freeze. M had already seen the first kong scores (0 / 0 / 0),
+  so the guard could not be amended.
+
+Cause (dev only; the measurement record was not opened):
+- make_kong's opponent is the same RoboDojo `support_arm0` Franka at the same home joints, [0, 0.196, 0, -2.618, 0,
+  2.941, 0.785] in both tasks' GT. On the runtime frame 0 it matches the stored appearance, so the mask is correct
+  scene content.
+- My "9.9-10.0, not applied" came from offline make_kong frames. Both sets, pmodels d0test 100000-04 and kong_d0
+  (6.0 proxy), measure 9.80-9.95 again.
+- In those renders the Franka's flange and gripper edges are blurred against the reference: the difference sits in
+  the middle third of the mask (14 vs 7-8 in the others). It's not the pose, and not the overall lighting (mean RGB
+  189 vs 193).
+- So the offline make_kong frames don't reproduce the runtime render there. An imitate frame from the same proxy
+  matches at 1.8.
+
+Fix idea, after D-C19 (no PR yet):
+- First, runtime frame-0 dumps of make_kong dev rows (100000-04, `save_look_frames`, the A config). Offline on those,
+  check whether masking the opponent's pixels changes make_kong's frame-0 tile reads (hand-row slot reads, wall tops).
+  Check also whether `wrist_pool`'s class-agnostic wrist blobs add or move tiles in the dense rows.
+- If neither hurts, keep the gate as is (it is scene content). The re-test then needs a make_kong guard on SCORES (no
+  success lost, pooled >= A - 0.05), newly registered.
+- If one hurts, gate that part on what it costs, not on the task. An example: `wrist_pool` only where the masked
+  region hides unexplained foreground, not where label objects explain it.
