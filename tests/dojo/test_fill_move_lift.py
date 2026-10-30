@@ -53,8 +53,23 @@ def test_a_hand_below_the_rim_goes_up_clear(monkeypatch):
     assert [a for a, _, _ in lines] == ["left"] and [p.arm for p in ran] == ["left"]
     T_goal = lines[0][1]
     tip_goal = T_goal[2, 3] - TIP_BEYOND_TCP
-    assert tip_goal == pytest.approx(0.885 + library.FILL_LIFT_CLEAR)
+    assert tip_goal == pytest.approx(0.885 + library.FILL_LIFT_CLEAR[0])
     assert T_goal[:2, 3] == pytest.approx([-0.24, -0.27])
+
+
+def test_a_lower_margin_when_the_full_lift_has_no_ik(monkeypatch):
+    monkeypatch.setattr(library, "ArmPlan", _Plan)
+    sk, lines, ran = _sk({"left": (-0.24, -0.27, 0.870), "right": (0.25, -0.2, 0.80)})
+    line0 = sk.motion.line
+
+    def line(arm, q0, T_goal, step, name, gripper=1.0, check=True):
+        r = line0(arm, q0, T_goal, step, name, gripper, check)
+        r.ok = T_goal[2, 3] - TIP_BEYOND_TCP < 0.885 + 0.02             # reachable up to 20 mm over the rim
+        return r
+    sk.motion = SimpleNamespace(line=line)
+    library._lift_clear_of(sk, "pen_holder")
+    assert [round(T[2, 3] - TIP_BEYOND_TCP, 3) for _, T, _ in lines] == [0.915, 0.9]
+    assert [p.arm for p in ran] == ["left"]
 
 
 def test_a_hand_already_clear_does_not_move(monkeypatch):

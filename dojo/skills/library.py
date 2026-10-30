@@ -1878,7 +1878,8 @@ def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, b
     return source
 
 
-FILL_LIFT_CLEAR = 0.03        # m: ``fill_move_lift`` "clear": the fingertips end this far above the moved container's top
+FILL_LIFT_CLEAR = (0.03, 0.015, 0.005)   # m: ``fill_move_lift`` "clear": the fingertips end this far above the moved
+                                         # container's top, the first that a straight lift reaches
 FILL_LIFT_NEAR = 0.06         # m: ... for a hand whose fingertips are within this of the container's footprint
 
 
@@ -1886,8 +1887,10 @@ def _lift_clear_of(sk: Skills, container: str) -> None:
     """``Skills.fill_move_lift`` "clear" (stream H): after the container's move, raise every hand whose fingertips are
     over (or beside) it and below its top straight up until they are ``FILL_LIFT_CLEAR`` above it. The place's
     retreat backs out 50 mm: a hand that held fill_pen_holder's 120 mm holder across its walls kept its fingers 15 mm
-    below the rim, and the first pen's pick approach dragged the holder over (G3 v15 100030: the holder upright at the
-    release, on its side 10 steps into the next move, the episode 0)."""
+    below the rim, and its next move (the first pen's pick, or its way back) dragged the holder over (G3 v15: 4 of the
+    12 moves, the holder upright at the release and on its side 3-10 steps into the next move, each episode 0). The
+    right arm, reaching across to the holder's spot, has no straight 44 mm lift there: lower margins first, then
+    none."""
     from dojo.skills.kinematics import TIP_BEYOND_TCP
     o = sk.refresh().obj(container)
     mn, mx = (np.asarray(v, float) for v in o.aabb())
@@ -1896,14 +1899,20 @@ def _lift_clear_of(sk: Skills, container: str) -> None:
         T = sk.kin.tcp(arm, sk.ex.q[arm])
         tip = T[:3, 3] + T[:3, 0] * TIP_BEYOND_TCP
         near = bool(np.all(tip[:2] >= mn[:2] - FILL_LIFT_NEAR) and np.all(tip[:2] <= mx[:2] + FILL_LIFT_NEAR))
-        dz = float(mx[2]) + FILL_LIFT_CLEAR - float(tip[2])
-        if not near or dz <= 0.0:
+        if not near or float(tip[2]) >= float(mx[2]) + FILL_LIFT_CLEAR[-1]:
             continue
-        T_up = T.copy()
-        T_up[2, 3] += dz
-        m = sk.motion.line(arm, sk.ex.q[arm], T_up, MEDIUM, "lift_clear", gripper=float(sk.ex.g[arm]), check=False)
-        if not m.ok:
-            sk.log(f"[fill] {arm}: no straight lift clear of {container} ({m.note[:60]})")
+        m = None
+        for margin in FILL_LIFT_CLEAR:
+            dz = float(mx[2]) + margin - float(tip[2])
+            if dz <= 0.0:
+                break
+            T_up = T.copy()
+            T_up[2, 3] += dz
+            m = sk.motion.line(arm, sk.ex.q[arm], T_up, MEDIUM, "lift_clear", gripper=float(sk.ex.g[arm]), check=False)
+            if m.ok:
+                break
+        if m is None or not m.ok:
+            sk.log(f"[fill] {arm}: no straight lift clear of {container} ({m.note[:60] if m is not None else ''})")
             continue
         plans.append(ArmPlan(arm, sk.ex.q[arm].copy(), float(sk.ex.g[arm])).move(m, "lift_clear"))
         sk.log(f"[fill] {arm}: fingertips {dz * 1000:.0f} mm up, clear of {container}")
