@@ -3993,8 +3993,12 @@ class EstimatorConfig:
     edge_yaw: bool = False
     # a std / _random twin pair has one instruction, so the routed set cannot say which variant the scene is: every label
     # draws its candidates from both public configs (``union_twin_pool``; 12 pairs differ in assets: pour_liquid's
-    # _random bottle / cup are not among the std candidates). One fixed rule, never picked by variant
-    twin_union_pool: bool = False
+    # _random bottle / cup are not among the std candidates). One fixed rule, never picked by variant.
+    # Values: False / "off"; True / "on" (always); "weak" (``_estimate_twin_weak``: the routed set first; only when a label
+    # the twin would extend is missing or below TWIN_WEAK_CONF, the union estimate too, kept when it finds as many of those
+    # labels at no lower mean confidence (TWIN_WEAK_EPS). make_toast_random's white toaster 00004 / 00002 under the routed
+    # make_toast set (00000 / 00001): conf 0.2-0.4 or missing; the std scenes' toasters fit at 0.87-0.98 and keep their set)
+    twin_union_pool: bool | str = False
     top_feature_yaw: bool = True  # the yaw of a round-outline object with a cut in its top (a keyhole) from that cut
     small_rechoose: bool = True  # a small unique object's loose fit gives way to a tighter one on another blob (pool)
     slot_free_search: bool = True  # a slot child whose slot looks empty is looked for loose on the table
@@ -4332,6 +4336,50 @@ def _extend_pad_rows(tlabels: dict, slots: dict, groups: list, images, views, de
     return tlabels, groups
 
 
+TWIN_WEAK_CONF = 0.5   # twin_union_pool "weak": a twin-extended label below this confidence (or missing) asks for the union
+TWIN_WEAK_EPS = 0.02   # ... whose estimate is kept when its mean confidence over those labels is not lower by more than this
+
+
+def _label_conf(rec: dict) -> dict[str, float]:
+    """label -> confidence of a record's objects (the first object of a label)."""
+    out: dict[str, float] = {}
+    for typ in ("Rigid", "Geometry", "Articulation", "Dynamic"):
+        for _cat, lst in (rec.get(typ) or {}).items():
+            for o in lst:
+                if o.get("label") is not None and o["label"] not in out:
+                    out[o["label"]] = float((o.get("_perception") or {}).get("confidence") or 0.0)
+    return out
+
+
+def _estimate_twin_weak(images, state, task, instruction, bgs, cfg, extra_frames, extra_views, cams) -> dict:
+    """``twin_union_pool`` "weak": the routed set's estimate; the union estimate only when a label the twin would extend
+    (``union_twin_pool`` grows its candidates) is missing or below ``TWIN_WEAK_CONF``, and kept when it finds at least as
+    many of those labels at a mean confidence (missing = 0) no lower than the routed one's minus ``TWIN_WEAK_EPS``.
+    ``_perception.twin_union`` says what ran and which was kept."""
+    from dataclasses import replace
+
+    kw = dict(extra_frames=extra_frames, extra_views=extra_views, cams=cams)
+    g0 = label_groups(task)
+    g1 = union_twin_pool(task, g0)
+    ext = sorted({lab for a, b in zip(g0, g1) if list(a["candidates"]) != list(b["candidates"]) for lab in a["labels"]})
+    rec = estimate(images, state, task, instruction, bgs=bgs, cfg=replace(cfg, twin_union_pool=False), **kw)
+    c0 = _label_conf(rec)
+    weak = [lab for lab in ext if c0.get(lab, -1.0) < TWIN_WEAK_CONF]
+    info = {"extended": ext, "weak": weak, "ran": False, "kept": "routed"}
+    if weak:
+        rec2 = estimate(images, state, task, instruction, bgs=bgs, cfg=replace(cfg, twin_union_pool=True), **kw)
+        c1 = _label_conf(rec2)
+        n0, n1 = sum(lab in c0 for lab in ext), sum(lab in c1 for lab in ext)
+        m0 = float(np.mean([c0.get(lab, 0.0) for lab in ext]))
+        m1 = float(np.mean([c1.get(lab, 0.0) for lab in ext]))
+        info.update(ran=True, found=[n0, n1], mean_conf=[round(m0, 3), round(m1, 3)])
+        if n1 >= n0 and m1 >= m0 - TWIN_WEAK_EPS:
+            info["kept"] = "union"
+            rec = rec2
+    rec.setdefault("_perception", {})["twin_union"] = info
+    return rec
+
+
 def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction: str = "",
              bgs: dict | None = None, cfg: EstimatorConfig | None = None,
              extra_frames: list[tuple[dict, dict]] | None = None,
@@ -4342,6 +4390,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     from the first frame's head view."""
     global _COLOR_M, _SELECT_TIES
     cfg = cfg or EstimatorConfig()
+    if cfg.twin_union_pool == "weak":
+        return _estimate_twin_weak(images, state, task, instruction, bgs, cfg, extra_frames, extra_views, cams)
     _COLOR_M = colour_map_for(task, cfg)
     _SELECT_TIES = cfg.select_ties
     t0 = time.time()
@@ -4358,7 +4408,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     support_info = _support_mask(views, state) if cfg.support_mask else None
     head_blobs = blobs(views["cam_head"], "cam_head")
     groups = label_groups(task)
-    if cfg.twin_union_pool:
+    if cfg.twin_union_pool in (True, "on"):
         groups = union_twin_pool(task, groups)
     if instruction:
         groups = restrict_by_instruction(groups, instruction)
