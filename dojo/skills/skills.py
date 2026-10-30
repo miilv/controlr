@@ -2726,7 +2726,7 @@ class Skills:
             self.refresh()
             other = "right" if job.arm == "left" else "left"
             T = job.target(self)
-            if self.held[other] is None and job.park_other:
+            if self.held[other] is None and job.park_other and other not in self.no_park:
                 T_o = self.kin.tcp(other, self.ex.q[other])
                 if float(np.linalg.norm(T_o[:2, 3] - T[:2, 3])) < 0.30 or T_o[2, 3] < 0.86:
                     try:
@@ -2785,7 +2785,7 @@ class Skills:
     # ------------------------------------------------------------------ parallel
     def _park_if_blocking(self, plan: ArmPlan, min_dist: float = 0.12) -> None:
         other = "right" if plan.arm == "left" else "left"
-        if other in getattr(self, "no_park", ()):       # it holds something no Held records (sweep's dustpan)
+        if other in self.no_park:                       # it holds something no Held records (sweep's dustpan)
             return
         if self.held.get(other) is None and not self.clear_of(
                 plan, ArmPlan(other, self.ex.q[other].copy(), self.ex.g[other]), min_dist):
@@ -2831,7 +2831,8 @@ class Skills:
             # stack site blocked the other arm's pick; the pick missed by 7-10 cm, twice)
             p = plans[0]
             other = "right" if p.arm == "left" else "left"
-            if not self.clear_of(p, ArmPlan(other, self.ex.q[other].copy(), self.ex.g[other]), min_dist):
+            if other not in self.no_park and not self.clear_of(
+                    p, ArmPlan(other, self.ex.q[other].copy(), self.ex.g[other]), min_dist):
                 self.ex.run({other: self.plan_home(other)}, name=f"park {other}")
         r = self.ex.run({p.arm: p for p in plans}, name=name)
         return {"steps": r["steps"], "parallel": True}

@@ -189,7 +189,7 @@ def test_no_park_keeps_the_dustpan_arm_where_it_is(monkeypatch):
     sk = Skills(env, GTProvider(env, None, instruction="x"), log=lambda m: None)
     assert sk.no_park == set() and sk.sweep_hold_pan is False
     runs = []
-    monkeypatch.setattr(sk.ex, "run", lambda plans, name="": runs.append(name))
+    monkeypatch.setattr(sk.ex, "run", lambda plans, name="": runs.append(name) or {"steps": 0})
     monkeypatch.setattr(sk, "clear_of", lambda a, b, d=0.12: False)          # the arms would come close
     p = ArmPlan("right", sk.ex.q["right"].copy(), sk.ex.g["right"])
     sk._park_if_blocking(p)
@@ -198,3 +198,9 @@ def test_no_park_keeps_the_dustpan_arm_where_it_is(monkeypatch):
     sk.no_park = {"left"}
     sk._park_if_blocking(p)
     assert runs == []
+    sk.parallel([p])                                                         # a single plan: no park either
+    assert "park left" not in runs
+    sk.no_park = set()
+    runs.clear()
+    sk.parallel([p])
+    assert runs[0] == "park left"

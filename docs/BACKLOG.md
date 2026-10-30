@@ -70,6 +70,10 @@
 - [ ] **dojo perception: store_laptop headset identity 00002 vs 00004** (5.1 c4 frames; B1 picks 00002 with the alternative
   00004 at +0.03..+0.08, so `identity_margin_swap` never fires): try the embedding path (`embed_b1`) on these frames.
   The laptop flip: `on_base_refit` (off) fixes 7 of 17 estimates; A/B after the root-vs-mesh offset is resolved.
+- [ ] **dojo skills: sweep_blocks: a stack of classes, G3 2/30 with all of stream N's levers on** (journal
+  2026-10-30-dojo-sweep-stack). The broom relay giver's tilted pinch slips (13-16 of 30), the dustpan arm is parked home
+  holding the dustpan (5), cubes are left short at the lip (1-3), strokes out of reach (7-10). `sweep_hold_pan` as
+  fixed (the `Skills.parallel` park) has not run in G3 yet.
 - [ ] **dojo skills: sort_nesting_dolls: dolls left unplaced from far / near starts** (journal
   2026-10-30-dojo-rows-skill-fails). G3 baseline 17/30. A doll starting beyond |x| 0.34, or near the arm bases, has 0-32
   reachable grasps under `rows`' centred-grasp filter (8 mm off the axis, <= 30 deg tilt), and its one arm's carry hits
