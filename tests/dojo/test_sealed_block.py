@@ -282,3 +282,125 @@ def test_generation_script_makes_a_valid_block_from_synthetic_draws(tmp_path, ca
         GEN.main(["--out", str(tmp_path / "b2"), "--manifest", str(tmp_path / "m2.json"), "--lock", "l", "--v6-checkout", "v"])
     with pytest.raises(SystemExit, match="exists"):
         GEN.main(["--out", str(out), "--manifest", str(tmp_path / "m3.json"), "--lock", "l", "--v6-checkout", "v", "--go"])
+
+
+IMITATE = "imitate_sorting_sequence"
+
+
+def _imitate_block(tmp_path, ids=(100100, 100101)):
+    """A synthetic imitate cell: records + their demos (pickled dicts), md5s in the manifest."""
+    import pickle
+    d, m = _block(tmp_path, task=IMITATE, ids=ids)
+    man = json.loads(m.read_text())
+    dem = {}
+    for i in ids:
+        data = pickle.dumps({"joint_path": [], "target_label": [f"t{i % 5}"], "note": SECRET})
+        (d / IMITATE / sealed.demo_name(i)).write_bytes(data)
+        dem[str(i)] = hashlib.md5(data).hexdigest()
+    man["tasks"][IMITATE].update({"demos": dem, "demo_dropped": 1})
+    m.write_text(json.dumps(man))
+    return d, m
+
+
+def test_manifest_demo_rules(tmp_path):
+    d, m = _imitate_block(tmp_path)
+    man = json.loads(m.read_text())
+    assert sealed.DEMO_TASKS == __import__("dojo.simlab.runner", fromlist=["x"]).DEMO_TASKS
+    sealed.check_task(IMITATE, man["tasks"][IMITATE])
+    e = dict(man["tasks"][IMITATE])
+    for bad in ({"demos": None}, {"demos": {"100100": e["demos"]["100100"]}}, {"demos": {**e["demos"], "100100": "x"}},
+                {"demo_dropped": -1}):
+        with pytest.raises(SystemExit, match="demos"):
+            sealed.check_task(IMITATE, {**e, **bad})
+    with pytest.raises(SystemExit, match="carry demos"):                     # no other task carries demos
+        sealed.check_task("stack_blocks", e)
+
+
+def test_stage_imitate_puts_the_verified_demo_beside_its_record(tmp_path, capsys):
+    d, m = _imitate_block(tmp_path)
+    dest = tmp_path / "run" / "layouts"
+    assert sealed.main(["stage", "--dir", str(d), "--manifest", str(m), "--task", IMITATE, "--ids", "100100 100101",
+                        "--dest", str(dest)]) == 0
+    out = capsys.readouterr().out
+    assert SECRET not in out and out.count("demo md5") == 2
+    staged = sorted(p.name for p in (dest / IMITATE).iterdir())
+    assert staged == ["100100.demo.pkl", "100100.settled.json", "100101.demo.pkl", "100101.settled.json"]
+    assert all(stat.S_IMODE(p.stat().st_mode) == 0o400 for p in (dest / IMITATE).iterdir())
+    rows, problems = sealed.verify_dir(d, sealed.load_manifest(m))
+    assert len(rows) == 4 and all(r[3] for r in rows) and not problems
+    (d / IMITATE / "100101.demo.pkl").write_bytes(b"tampered")
+    dest2 = tmp_path / "run2"
+    with pytest.raises(SystemExit, match="100101 demo md5") as e:
+        sealed.stage(d, sealed.load_manifest(m), IMITATE, [100100, 100101], dest2)
+    assert SECRET not in str(e.value) and not (dest2 / IMITATE).exists()     # nothing staged on a partial pass
+    (d / IMITATE / "100101.demo.pkl").unlink()
+    with pytest.raises(SystemExit, match="100101 demo missing"):
+        sealed.stage(d, sealed.load_manifest(m), IMITATE, [100101], dest2)
+    rows, _ = sealed.verify_dir(d, sealed.load_manifest(m))
+    assert [r[1] for r in rows if not r[3]] == ["100101.demo"]
+
+
+def test_dev_eval_serves_only_the_staged_checked_demos(tmp_path, monkeypatch):
+    from dojo.simlab import dev_eval, runner
+    d, m = _imitate_block(tmp_path)
+    dest = tmp_path / "run" / "layouts"
+    sealed.stage(d, sealed.load_manifest(m), IMITATE, [100100, 100101], dest)
+    SM = _patched_seed_manager(monkeypatch)
+    SM.task_name = IMITATE
+    monkeypatch.setenv("SIMLAB_SEALED_MANIFEST", str(m))
+    dev_eval.patch_seed_manager(dest)
+    try:
+        SM().init_eval()
+        assert runner.DEMO_KEY == {0: 100100, 1: 100101}
+        assert runner.DEMO_FILE == {i: dest / IMITATE / f"{i}.demo.pkl" for i in (100100, 100101)}
+        load = runner._routed_load_pkl(lambda p: pytest.fail(f"opened {p}"))
+        assert load(f"/rd/Assets/Traj/RoboDojo/{IMITATE}/0/1.pkl")["target_label"] == ["t1"]   # position 1 -> 100101
+        p = dest / IMITATE / "100101.demo.pkl"
+        p.chmod(0o600)
+        p.write_bytes(b"tampered")                                           # changed after staging
+        with pytest.raises(SystemExit, match="demo md5 mismatch"):
+            SM().init_eval()
+    finally:
+        runner.DEMO_KEY.clear()
+        runner.DEMO_FILE.clear()
+
+
+def test_generation_script_seals_imitate_demos_in_rounds(tmp_path):
+    import pickle
+    sys.path.insert(0, str(ROOT / "scripts" / "dojo"))
+    import dc19_generate as GEN
+
+    def gen(task, i, salt, v6):
+        return {"layout_id": i, "note": SECRET}
+
+    def settle(task, work, lock, log):              # every id but 100107 "settles"
+        dd = work / "simlab" / "layouts" / task
+        for p in dd.glob("*.json"):
+            if p.stem != "100107" and ".settled" not in p.name:
+                p.with_name(f"{p.stem}.settled.json").write_bytes(p.read_bytes() + b" ")
+
+    rounds = []
+
+    def demos(task, work, lock, ids, log):          # synthetic demo_gen: 100101 and 100104 fail validation
+        rounds.append(list(ids))
+        t = work / "simlab" / "traj" / task
+        t.mkdir(parents=True, exist_ok=True)
+        for i in ids:
+            if i not in (100101, 100104):
+                (t / f"{i}.pkl").write_bytes(pickle.dumps({"joint_path": [], "id": i}))
+
+    prov = lambda: {"repo": "controlr", "commit": "abc", "GENERATOR": "simlab/v15", "settler": "s",   # noqa: E731
+                    "robodojo": "f57e163", "isaacsim": "5.1.0"}
+    out, man_p = tmp_path / "block", tmp_path / "manifest.json"
+    res = GEN.run(out, man_p, "lock", [IMITATE, "stack_blocks"], None, gen=gen, settle=settle, prov=prov, demos=demos)
+    man = sealed.load_manifest(man_p)
+    e = man["tasks"][IMITATE]
+    assert rounds == [[100100, 100101, 100102, 100103, 100104, 100105, 100106, 100108, 100109, 100110],
+                      [100111, 100112]]                                       # stable ids ascending, until 10 validate
+    assert e["tranche_a"] == [100100, 100102, 100103, 100105, 100106] and e["shortfall"] == 0
+    assert set(e["demos"]) == set(e["records"]) and e["demo_dropped"] == 2 and e["unstable_count"] == 1
+    assert "demos" not in man["tasks"]["stack_blocks"]
+    rows, problems = sealed.verify_dir(out, man)
+    assert len(rows) == 30 and all(r[3] for r in rows) and not problems
+    assert stat.S_IMODE((out / IMITATE / "100100.demo.pkl").stat().st_mode) == 0o400
+    assert res["counts"][IMITATE] == (19, 1, 2) and res["counts"]["stack_blocks"] == (19, 1)

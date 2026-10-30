@@ -231,13 +231,19 @@ python -m dojo.simlab.sealed verify --dir DIR --manifest MANIFEST     # before t
   - generator provenance, `seed_salt_sha256`, `created_utc`;
   - per task: `settled`, `records {id: md5}`, `tranche_a` / `tranche_b`, `unstable_count`, and `shortfall` for a short
     cell.
+  - imitate_sorting_sequence also has `demos {id: md5}` for exactly its record ids, plus `demo_dropped`. Its
+    support-arm demo `DIR/<task>/<id>.demo.pkl` is staged and verified like a record. No other task carries demos.
   - Ids lie in 100100-100119. Tranches are ascending and disjoint, A is below B, and together they equal the records:
     5 each unless the shortfall says otherwise.
   - Tranche B runs only once `tranche_b.preregistered` exists beside the manifest.
   - Position k of a tranche is its k-th id.
 - **Staging:** only runnable ids are staged. Each record is md5-checked before staging into the run's layout dir
   (read-only, nowhere else), and checked again in RoboDojo's process (`SIMLAB_SEALED_MANIFEST`). Raw records are used
-  where `settled` is false (make_toast, the conveyors).
+  where `settled` is false (make_toast, the conveyors). An imitate demo is staged 0400 beside its record. RoboDojo's
+  process serves only that md5-checked file (`runner.DEMO_FILE`) and never falls back to the stub.
+- **Call shape:** RoboDojo seeds each env with the layout's POSITION in the call (0..N-1, upstream `SeedManager`). That
+  seed draws make_kong's discard group, tic-tac-toe's opponent cell and the instruction's wording, so both sides must
+  run the same ids per call, in the same order.
 - **Run once:** before anything starts, an O_EXCL marker `$COORD_DIR/scored/<block>/<task>-<id>.json` is created. A
   second claim refuses. The one disclosed infrastructure re-run (before any verdict was read) needs
   `DC19_INFRA_RERUN=<reason>`.
@@ -248,8 +254,10 @@ python -m dojo.simlab.sealed verify --dir DIR --manifest MANIFEST     # before t
 - **Generation:** `scripts/dojo/dc19_generate.py`. It runs once, only on the lead's `--go`, after both freezes:
   - draws the salt from /dev/urandom into `DIR/.salt` (0400, never printed);
   - generates salted records (fill_egg_holder on its v6 tree), then presettles them (pass 1, then keep-raw-unmoved);
-  - selects the first 10 stable ids and writes DIR plus the manifest;
-  - prints only sha256(manifest) and per-cell n_stable / n_unstable.
+  - for imitate, plans its demos blind (`demo_gen`, under `--lock`) on the stable ids, ascending, in rounds until 10
+    validate. An imitate id is eligible only if its demo validated;
+  - selects the first 10 eligible (stable) ids and writes DIR plus the manifest;
+  - prints only sha256(manifest) and per-cell n_stable / n_unstable (plus n_demo_dropped for imitate).
 - **Pre-flight before tranche A:** `scripts/dojo/route_probe.py` makes one tiny call on the agentic route.
   `freeze_manifest.py --route-probe` records it.
 
