@@ -12,6 +12,10 @@ mirrors lane2.sh's queue-line rules (Integration's script, read here, never run:
 environment; everything else goes to integ_eval / dojo.runtime.eval). The official side is official_eval.sh's own
 ``--dry-run``. Both paths get the candidate's environment verbatim; ``expected`` notes a variable that acts on one
 path only (DOJO_GRIP_SOURCE=v2: the proxy's emulation of what the strict v2 server sends itself).
+
+``--packages-ref FILE`` (``pkg_versions.py`` run in a compute4 LANE venv, the one the board rows ran on): the official
+side's venv (``--packages-python``, default ``<repo>/.venv/bin/python``: what official_eval.sh runs our processes with)
+must have the same versions of ``pkg_versions.PACKAGES`` and the same python; any difference is a diff (``packages``).
 """
 from __future__ import annotations
 
@@ -118,21 +122,46 @@ def diff(a: dict, b: dict) -> dict:
     return out
 
 
+def official_packages(python: str | None = None) -> dict:
+    """``pkg_versions.py`` in the official side's venv (``python``; default this repo's .venv, else this interpreter)."""
+    py = python or (str(ROOT / ".venv/bin/python") if (ROOT / ".venv/bin/python").exists() else sys.executable)
+    r = subprocess.run([py, str(ROOT / "scripts/dojo/pkg_versions.py")], capture_output=True, text=True, timeout=300)
+    if r.returncode != 0:
+        raise SystemExit(f"pkg_versions.py failed in {py}: {r.stderr[-300:]}")
+    return json.loads(r.stdout)
+
+
+def packages_check(ref_path: str | None, python: str | None = None) -> dict:
+    """{"official": versions, "ref": the lane's (or None), "ref_path", "diff"}; without a ref, informational only."""
+    sys.path.insert(0, str(ROOT / "scripts/dojo"))
+    import pkg_versions
+    got = official_packages(python)
+    if not ref_path:
+        return {"official": got, "ref": None, "ref_path": None, "diff": {}}
+    ref = json.loads(Path(ref_path).expanduser().read_text())
+    return {"official": got, "ref": ref, "ref_path": str(Path(ref_path).expanduser()), "diff": pkg_versions.diff(ref, got)}
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--candidate", required=True)
     ap.add_argument("--models", default=str(Path.home() / "dojo-data/segtrain/models"))
     ap.add_argument("--official", default=str(ROOT / "scripts/dojo/official_eval.sh"))
     ap.add_argument("--json", default=None, help="write the full report here")
+    ap.add_argument("--packages-ref", default=None, help="pkg_versions.py JSON of a compute4 lane venv: versions must match")
+    ap.add_argument("--packages-python", default=None, help="the official side's venv python (default <repo>/.venv)")
     a = ap.parse_args(argv)
     cand, models = Path(a.candidate).expanduser(), Path(a.models).expanduser()
     integ = integ_side(candidate_tokens(cand.read_text()), models)
     official = official_side(cand, models, Path(a.official))
     d = diff(integ, official)
+    pk = packages_check(a.packages_ref, a.packages_python)
+    if pk.get("diff"):
+        d["packages"] = pk["diff"]
     expected = {k: {"value": integ["setenv"][k], "why": why} for k, why in EXPECTED_ENV_ONLY["integ"].items()
                 if k in integ["setenv"]}
     rep = {"candidate": str(cand), "candidate_md5": md5(cand), "models": str(models), "diff": d, "expected": expected,
-           "integ": integ, "official": official, "parity": not d}
+           "integ": integ, "official": official, "packages": pk, "parity": not d}
     if a.json:
         Path(a.json).write_text(json.dumps(rep, indent=1, sort_keys=True, default=str))
     print(json.dumps({"parity": not d, "diff": d, "expected": expected}, indent=1, sort_keys=True, default=str))

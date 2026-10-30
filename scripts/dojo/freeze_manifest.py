@@ -85,6 +85,9 @@ def main(argv=None) -> int:
     ap.add_argument("--allow-mismatch", action="store_true", help="dry run: HEAD != --sha or a dirty tree is noted")
     ap.add_argument("--route-probe", action="store_true",
                     help="pre-flight: one tiny call on the agentic route (route_probe.py), recorded; costs one call")
+    ap.add_argument("--packages-ref", default=None,
+                    help="pkg_versions.py JSON of a compute4 lane venv: recorded, and a version mismatch is a parity diff")
+    ap.add_argument("--packages-python", default=None, help="the official side's venv python (default <repo>/.venv)")
     ap.add_argument("--out", default=None)
     a = ap.parse_args(argv)
     import candidate_parity as CP
@@ -116,6 +119,9 @@ def main(argv=None) -> int:
     integ = CP.integ_side(CP.candidate_tokens(cand.read_text()), models)
     official = CP.official_side(cand, models, ROOT / "scripts/dojo/official_eval.sh")
     d = CP.diff(integ, official)
+    pk = CP.packages_check(a.packages_ref, a.packages_python)
+    if pk.get("diff"):
+        d["packages"] = pk["diff"]
     full = json.loads(subprocess.run(["bash", str(ROOT / "scripts/dojo/official_eval.sh"), "--candidate", str(cand),
                                       "--dry-run"], capture_output=True, text=True, timeout=300,
                                      env={**os.environ, "DOJO_SEG_MODELS": str(models)}).stdout.strip().splitlines()[-1])
@@ -133,6 +139,8 @@ def main(argv=None) -> int:
                              "files": {f: {**x, "sha256": hashlib.sha256(Path(x["path"]).read_bytes()).hexdigest()
                                            if Path(x["path"]).is_file() else None} for f, x in v["files"].items()}}
                          for k, v in full["side_servers"].items()},
+        "packages": {"official": pk["official"], "lane_ref": pk["ref"], "lane_ref_path": pk["ref_path"],
+                     "lane_ref_md5": md5(Path(pk["ref_path"])) if pk["ref_path"] else None, "diff": pk["diff"]},
         "parity": {"zero_diff": not d, "diff": d,
                    "expected": {k: v for k, v in CP.EXPECTED_ENV_ONLY["integ"].items() if k in integ["setenv"]}},
         "routes": routes(full["runtime_config"], full["setenv"]),
