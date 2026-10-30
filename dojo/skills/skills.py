@@ -338,6 +338,8 @@ class Skills:
         # ``library.press_joint`` (stream H; ``RuntimeConfig.press_repeat``): "off" (today: one stroke) | "cross" (four
         # more, the press point 4 mm each way: the lever's 85 % has ~0.1 mm of margin at the planned point)
         self.press_repeat = "off"
+        # pour_p1's way back to upright (stream H; ``RuntimeConfig.ported_pour_untilt``): "direct" (today) | "staged" | "capped"
+        self.ported_pour_untilt = "direct"
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
         # episode's ``joint_limits``) | "measured" (joint 5 inside the sim's stop for that skill only)
         self.fill_joint_limits = "inherit"
