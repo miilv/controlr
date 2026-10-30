@@ -106,3 +106,101 @@ def test_a_sweep_plans_end_to_end_in_the_kinematic_env():
     # the kinematic env does not push cubes: the plan runs end to end, the cube stays out
     assert res["stage"] == "sweep" and "cube_0" in res.get("note", "")
     assert env.steps_used > 100
+
+
+def test_sweep_relay_grip_default_off_and_giver_grasps_straight_down_first(monkeypatch):
+    """``Skills.sweep_relay_grip`` (default off): the relay's giver plans its straight-down broom grasps first, ranked
+    by ``grasps.hold_quality``, and falls back to today's set (G3 dev: tilted giver pinches slipped)."""
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills import sweep
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.skills import GTProvider, SkillResult, Skills
+    from dojo.skills.world import AssetDB, AssetInfo
+    assert RuntimeConfig().sweep_relay_grip is False
+    rows = [{"label": "broom", "category": "broom", "category_idx": 0, "pos": [-0.33, -0.12, 0.784],
+             "quat": [0.7071, 0.0, 0.7071, 0.0], "half": [0.019, 0.041, 0.125], "center": [0, 0, 0]}]
+    env = KinematicEnv(rows, step_lim=1000, instruction="sweep the blocks")
+
+    class DB(AssetDB):
+        def get(self, obj_type, category, idx, clutter=False, mesh=False):
+            return AssetInfo(key="Rigid/broom/00000", bbox_min=BROOM[0].min(0), bbox_max=BROOM[0].max(0), mesh=BROOM)
+    seen = []
+
+    def plan_transfer(self, tool, targets, arms=None, yaw_sym=1, grasps=None, **kw):
+        gs = grasps(arms[0])
+        seen.append([round(-float(g.T[2, 0]), 3) for g in gs])
+        return SkillResult(False, "transfer", "ik_fail", 0, arms[0], note="test")
+    for flag, n_calls in (("off", 1), ("on", 2)):
+        seen.clear()
+        sk = Skills(env, GTProvider(env, DB(None, None), instruction="sweep the blocks"), reserve=30, log=lambda m: None)
+        sk.sweep_relay_grip = flag
+        monkeypatch.setattr(Skills, "plan_transfer", plan_transfer)
+        monkeypatch.setattr(sweep, "_spots_ok", lambda *a: True, raising=False)
+        sweep.relay_tool(sk, "broom", "right")
+        assert seen, flag                                             # a spot the taker can pick from was tried
+        if flag == "on":
+            assert all(v > sweep.RELAY_DOWN for v in seen[0])        # the firm set first, straight down only
+            assert len(seen[1]) >= len(seen[0])                       # then today's set
+        else:
+            assert len(seen) == len(seen) // 1 and all(len(x) == len(seen[0]) for x in seen)   # today's set only
+
+
+def test_sweep_deep_default_off_and_pushes_a_short_object_again(monkeypatch):
+    """``Skills.sweep_deep`` (default off): an object left short of STRICT_MARGIN inside the collecting circle after
+    its push gets more pushes (up to DEEP_TRIES); off, none."""
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills import sweep
+    assert RuntimeConfig().sweep_deep is False
+    for flag, extra in (("off", 0), ("on", sweep.DEEP_TRIES)):
+        legs = []
+        monkeypatch.setattr(sweep, "push_leg", lambda sk, arm, tool, lab, T, along=None, max_strokes=3:
+                            legs.append(max_strokes) or 0.03)
+        from dojo.skills.env import KinematicEnv
+        from dojo.skills.skills import GTProvider, Skills
+        from dojo.skills.world import AssetDB, AssetInfo
+        rows = [{"label": "broom_shovel", "category": "broom_shovel", "category_idx": 0, "pos": [-0.05, 0.02, 0.789],
+                 "quat": [1, 0, 0, 0], "half": [0.092, 0.14, 0.024], "center": [0, 0, 0]},
+                {"label": "broom", "category": "broom", "category_idx": 0, "pos": [0.05, -0.27, 0.784],
+                 "quat": [0.7071, 0.0, 0.7071, 0.0], "half": [0.019, 0.041, 0.125], "center": [0, 0, 0]},
+                {"label": "cube_0", "category": "small_cube", "category_idx": 0, "pos": [0.2, -0.05, 0.775],
+                 "quat": [1, 0, 0, 0], "half": [0.0096] * 3, "center": [0, 0, 0]}]
+        env = KinematicEnv(rows, step_lim=1000, instruction="sweep the blocks")
+
+        class DB(AssetDB):
+            def get(self, obj_type, category, idx, clutter=False, mesh=False):
+                m = {"broom_shovel": PAN, "broom": BROOM}.get(category, _box((-0.0096,) * 3, (0.0096,) * 3))
+                return AssetInfo(key=f"Rigid/{category}/00000", bbox_min=m[0].min(0), bbox_max=m[0].max(0), mesh=m,
+                                 support=SUPPORT if category == "broom_shovel" else {})
+        sk = Skills(env, GTProvider(env, DB(None, None), instruction="sweep the blocks"), reserve=30, log=lambda m: None)
+        sk.sweep_deep = flag
+        sweep.sweep_into(sk, ["cube_0"], "broom_shovel", "broom")
+        # the kinematic env does not push: the cube stays out, so "on" pushes DEEP_TRIES more single strokes
+        assert legs.count(1) == extra, (flag, legs)
+
+
+def test_no_park_keeps_the_dustpan_arm_where_it_is(monkeypatch):
+    """``Skills.no_park`` (``sweep_hold_pan``, default off): ``_park_if_blocking`` leaves a listed arm in place."""
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.executor import ArmPlan
+    from dojo.skills.skills import GTProvider, Skills
+    assert RuntimeConfig().sweep_hold_pan is False
+    env = KinematicEnv([], step_lim=100, instruction="x")
+    sk = Skills(env, GTProvider(env, None, instruction="x"), log=lambda m: None)
+    assert sk.no_park == set() and sk.sweep_hold_pan is False
+    runs = []
+    monkeypatch.setattr(sk.ex, "run", lambda plans, name="": runs.append(name) or {"steps": 0})
+    monkeypatch.setattr(sk, "clear_of", lambda a, b, d=0.12: False)          # the arms would come close
+    p = ArmPlan("right", sk.ex.q["right"].copy(), sk.ex.g["right"])
+    sk._park_if_blocking(p)
+    assert runs == ["park left"]
+    runs.clear()
+    sk.no_park = {"left"}
+    sk._park_if_blocking(p)
+    assert runs == []
+    sk.parallel([p])                                                         # a single plan: no park either
+    assert "park left" not in runs
+    sk.no_park = set()
+    runs.clear()
+    sk.parallel([p])
+    assert runs[0] == "park left"

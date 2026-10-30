@@ -39,6 +39,14 @@ INSIDE = 0.045                 # m: objects are pushed this far past the lip (th
 LANE = 0.02                    # m: lateral spacing of the objects' lanes into the pan (the head is 11.6 cm long, the
                                # pan 17 cm wide inside: 3.5 cm lanes put the head into a side wall)
 LIFT = 0.05                    # m: the head is lifted this far over the objects' tops between strokes
+# ``Skills.sweep_deep`` (default off): after an object's push into the pan, while it is not STRICT_MARGIN inside the
+# collecting circle (the checker's test), up to DEEP_TRIES more pushes along the pan's axis to DEEP_INSIDE past the lip.
+# G3 46540867 / 875258d2: in 4 "everything swept" episodes the skill's own test (centre within the radius, read right
+# after the push) passed, and the checker failed one to three objects 87-126 mm from the circle's centre (radius 81),
+# 1-4 cm short at the lip
+STRICT_MARGIN = 0.015
+DEEP_INSIDE = 0.06
+DEEP_TRIES = 2
 
 
 def _other(arm: str) -> str:
@@ -90,8 +98,12 @@ def tool_head(tool) -> dict:
     return {"axis": k, "sign": sgn, "centre": 0.5 * (P.min(0) + P.max(0)), "pts": P[:: max(1, len(P) // 3000)]}
 
 
-def handle_grasps(sk: Skills, tool, arm: str) -> list:
-    """Top-down grasps of the tool on its handle half (away from the head)."""
+RELAY_DOWN = 0.97                # ``Skills.sweep_relay_grip``: the giver's grasps this close to straight down first
+
+
+def handle_grasps(sk: Skills, tool, arm: str, rank: str = "com") -> list:
+    """Top-down grasps of the tool on its handle half (away from the head). ``rank``: "com" (today: nearest the centre
+    of mass, straight down first) | "hold" (by ``grasps.hold_quality``, straight down first: how the pads hold it)."""
     from dojo.skills import grasps as G
     hd = tool_head(tool)
     k, sgn = hd["axis"], hd["sign"]
@@ -110,7 +122,10 @@ def handle_grasps(sk: Skills, tool, arm: str) -> list:
             # nearest the head's root first (the least lever on a level carry), straight down first
             # nearest the centre of mass first (the broom's is at its head's root: twin, a pinch 7 mm in held with 5 mm
             # drift, 19 mm in came loose with 13 mm), straight down first
-            g.score = float(g.score) + 3.0 * abs(float(p[k] - com_k)) + 0.5 * (1.0 + float(g.T[2, 0]))
+            if rank == "hold":
+                g.score = float(g.score) + G.hold_quality(tool, g.T) + 0.5 * (1.0 + float(g.T[2, 0]))
+            else:
+                g.score = float(g.score) + 3.0 * abs(float(p[k] - com_k)) + 0.5 * (1.0 + float(g.T[2, 0]))
             out.append(g)
     # box grasps only when there are any (twin probe: a box pinch 7 mm into the head held with 5 mm drift; a 76 mm slice
     # across the bristles caught nothing; plan_transfer re-ranks by score, so filter rather than sort)
@@ -135,6 +150,7 @@ def relay_tool(sk: Skills, tool: str, arm: str, near_xy=(0.08, -0.27)) -> SkillR
     from dojo.skills.geometry import R_to_quat
     o = sk.world.obj(tool)
     giver = _other(arm)
+    firm = getattr(sk, "sweep_relay_grip", False) in (True, "on")
 
     def taker_can_pick(T_obj) -> bool:
         saved = (o.pos.copy(), o.quat.copy())
@@ -161,8 +177,17 @@ def relay_tool(sk: Skills, tool: str, arm: str, near_xy=(0.08, -0.27)) -> SkillR
             continue
         # the head's root (``handle_grasps``): a 40 g broom pinched at its handle's end swung 17 cm in the pads on the
         # carry, a wide slice across its bristles caught nothing (twin); 7 mm into the head held (5 mm drift)
-        plan = sk.plan_transfer(tool, targets, arms=[giver], yaw_sym=1,
-                                grasps=(lambda a, o=o: handle_grasps(sk, o, a)))
+        plan = None
+        if firm:
+            # ``Skills.sweep_relay_grip``: the giver's straight-down grasps by how the pads hold, first (the taker
+            # re-grips it at the spot, so the giver's station costs the strokes nothing). G3 46540867 dev 100001 / 100004
+            # (both cells): the giver's 25 deg tilted pinches (off -11 / -17 mm) slipped at the lift or 5 steps into the
+            # carry, the place then moved an empty hand and the right arm never reached the broom
+            plan = sk.plan_transfer(tool, targets, arms=[giver], yaw_sym=1, grasps=(
+                lambda a, o=o: [g for g in handle_grasps(sk, o, a, rank="hold") if -float(g.T[2, 0]) > RELAY_DOWN]))
+        if plan is None or isinstance(plan, SkillResult):
+            plan = sk.plan_transfer(tool, targets, arms=[giver], yaw_sym=1,
+                                    grasps=(lambda a, o=o: handle_grasps(sk, o, a)))
         if isinstance(plan, SkillResult):
             continue
         r = sk.run_transfer(*plan, tol_xy=0.05, tol_tilt=15.0, tol_z=0.03)
@@ -410,6 +435,12 @@ def sweep_into(sk: Skills, objects: list[str], pan: str, tool: str) -> dict:
         r = _drag_pan(sk, pan, pan_arm, T_t)
         if not r.ok and r.status == "ik_fail":
             return {"ok": False, "stage": "dustpan", "note": r.note}
+        if getattr(sk, "sweep_hold_pan", False) in (True, "on"):
+            # ``Skills.sweep_hold_pan``: the drag holds the dustpan without a Held, so the broom pick's
+            # ``_park_if_blocking`` sent this arm home with the jaws still closed on its handle. G3 46540867 std 100003
+            # (replayed): the dustpan rode home in the left hand from step 56 to 414, every cube was swept to where it
+            # had been; 4 of 14 episodes that reached the sweep ended with the dustpan by the left arm's home
+            sk.no_park = set(getattr(sk, "no_park", set())) | {pan_arm}
         sk.confirm_moved(pan, T_t, "drag")
         g = pan_geometry(sk.refresh().obj(pan))
         # 2. the broom in the other hand
@@ -432,6 +463,15 @@ def sweep_into(sk: Skills, objects: list[str], pan: str, tool: str) -> dict:
             if abs(lateral) > 0.015 or front > -0.02:
                 push_leg(sk, arm, tool, lab, S)
             left = push_leg(sk, arm, tool, lab, F, along=g["e"][:2])
+            if getattr(sk, "sweep_deep", False) in (True, "on"):
+                F2 = g["lip"][:2] + g["e"][:2] * DEEP_INSIDE + g["lat"][:2] * lane
+                for _ in range(DEEP_TRIES):
+                    c_o = sk.refresh().obj(lab).center_w
+                    if float(np.linalg.norm(c_o[:2] - g["c"][:2])) < g["r"] - STRICT_MARGIN:
+                        break
+                    sk.log(f"[sweep] {lab}: {float(np.linalg.norm(c_o[:2] - g['c'][:2])) * 1000:.0f} mm from the circle's "
+                           f"centre (radius {g['r'] * 1000:.0f}): pushed deeper")
+                    left = push_leg(sk, arm, tool, lab, F2, along=g["e"][:2], max_strokes=1)
             ok = in_pan(g, sk.refresh().obj(lab).center_w)
             sk._record(SkillResult(ok, "sweep", "ok" if ok else "place_miss", 0, arm,
                                    note=f"{lab} {'in' if ok else 'not in'} the pan ({left * 1000:.0f} mm from its lane end)"))
@@ -465,6 +505,9 @@ def sweep_into(sk: Skills, objects: list[str], pan: str, tool: str) -> dict:
             sk.held[a] = None
     except (BudgetExceeded, EpisodeEnded) as e:
         return {"ok": False, "stage": "sweep", "note": str(e)}
+    finally:
+        if getattr(sk, "sweep_hold_pan", False) in (True, "on"):
+            sk.no_park = set()
     if failed:
         return {"ok": False, "stage": "sweep", "note": f"in {done}, out {failed}"}
     return {"ok": True, "stage": "sweep", "done": done}

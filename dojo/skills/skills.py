@@ -384,6 +384,16 @@ class Skills:
         self.row_stage = False
         # ``rows.row_slots`` (stream N): False (today) | True (no row slot within rows.HOME_CLEAR of an arm's home hand)
         self.row_home_clear = False
+        # ``sweep.relay_tool`` (stream N): False (today) | True (the giver's straight-down grasps, ranked by
+        # ``grasps.hold_quality``, planned first)
+        self.sweep_relay_grip = False
+        # ``sweep.sweep_into`` (stream N): False (today) | True (an object not sweep.STRICT_MARGIN inside the collecting
+        # circle after its push is pushed deeper, up to sweep.DEEP_TRIES strokes)
+        self.sweep_deep = False
+        # ``sweep.sweep_into`` (stream N): False (today) | True (the arm holding the dragged dustpan is never parked home
+        # by the other arm's pick: ``Skills.no_park``)
+        self.sweep_hold_pan = False
+        self.no_park: set = set()          # arms ``_park_if_blocking`` leaves where they are
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"
@@ -2716,7 +2726,7 @@ class Skills:
             self.refresh()
             other = "right" if job.arm == "left" else "left"
             T = job.target(self)
-            if self.held[other] is None and job.park_other:
+            if self.held[other] is None and job.park_other and other not in self.no_park:
                 T_o = self.kin.tcp(other, self.ex.q[other])
                 if float(np.linalg.norm(T_o[:2, 3] - T[:2, 3])) < 0.30 or T_o[2, 3] < 0.86:
                     try:
@@ -2775,6 +2785,8 @@ class Skills:
     # ------------------------------------------------------------------ parallel
     def _park_if_blocking(self, plan: ArmPlan, min_dist: float = 0.12) -> None:
         other = "right" if plan.arm == "left" else "left"
+        if other in self.no_park:                       # it holds something no Held records (sweep's dustpan)
+            return
         if self.held.get(other) is None and not self.clear_of(
                 plan, ArmPlan(other, self.ex.q[other].copy(), self.ex.g[other]), min_dist):
             self.ex.run({other: self.plan_home(other)}, name=f"park {other}")
@@ -2819,7 +2831,8 @@ class Skills:
             # stack site blocked the other arm's pick; the pick missed by 7-10 cm, twice)
             p = plans[0]
             other = "right" if p.arm == "left" else "left"
-            if not self.clear_of(p, ArmPlan(other, self.ex.q[other].copy(), self.ex.g[other]), min_dist):
+            if other not in self.no_park and not self.clear_of(
+                    p, ArmPlan(other, self.ex.q[other].copy(), self.ex.g[other]), min_dist):
                 self.ex.run({other: self.plan_home(other)}, name=f"park {other}")
         r = self.ex.run({p.arm: p for p in plans}, name=name)
         return {"steps": r["steps"], "parallel": True}

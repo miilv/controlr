@@ -418,9 +418,19 @@ class RuntimeConfig:
     # is set down upright near the middle, off the row's line, and tried again from there; G3: most dolls left unplaced
     # started at |x| 0.34-0.44, one arm's carry hitting a doll already in the row, and the retry repeated the plan)
     row_stage: bool = False
-    # ``rows.row_slots`` (``Skills.row_home_clear``): False (today) | True (no row slot within 0.20 m of an arm's home
+    # ``rows.row_slots`` (``Skills.row_home_clear``): False (today) | True (no row slot within 0.17 m of an arm's home
     # hand: G3 / camera std 100003, an arm going home rolled the doll standing in the row's end slot off the table)
     row_home_clear: bool = False
+    # ``sweep.relay_tool`` (``Skills.sweep_relay_grip``): False (today) | True (the giver's straight-down broom grasps,
+    # ranked by how the pads hold, planned first; G3 dev: its 25 deg tilted pinches slipped in 4 of 4 relays)
+    sweep_relay_grip: bool = False
+    # ``sweep.sweep_into`` (``Skills.sweep_deep``): False (today) | True (an object short of 15 mm inside the dustpan's
+    # collecting circle after its push gets up to 2 more pushes along the pan's axis; G3: 4 "all swept" episodes failed
+    # the checker with objects 1-4 cm short at the lip)
+    sweep_deep: bool = False
+    # ``sweep.sweep_into`` (``Skills.sweep_hold_pan``): False (today) | True (the arm holding the dragged dustpan is never
+    # parked home by the broom pick; G3: in 4 of 14 sweeps it went home holding the dustpan, the cubes swept to nothing)
+    sweep_hold_pan: bool = False
     # ``copy_demonstration`` re-entered after a re-plan (``Skills.imitate_keep_sides``): False (today: the demonstrator's
     # half is the far half of the objects as they stand now; two of ours already in basket0 moved that line and our toy
     # car counted as the demonstrator's: "no free object like" at 2/5, dev 100001) | True (the episode start's halves)
@@ -922,6 +932,9 @@ class RuntimePolicy:
             sk_.row_size_read = cfg.row_size_read
             sk_.row_stage = bool(cfg.row_stage)
             sk_.row_home_clear = bool(cfg.row_home_clear)
+            sk_.sweep_relay_grip = bool(cfg.sweep_relay_grip)
+            sk_.sweep_deep = bool(cfg.sweep_deep)
+            sk_.sweep_hold_pan = bool(cfg.sweep_hold_pan)
             sk_.imitate_keep_sides = bool(cfg.imitate_keep_sides)
             sk_.imitate_repair = bool(cfg.imitate_repair)
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
