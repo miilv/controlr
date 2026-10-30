@@ -172,6 +172,121 @@ def test_official_eval_sealed_mode_needs_a_lock_refuses_dev_and_bad_records(tmp_
     assert r.returncode == 2 and "reserved" in r.stderr                      # the dev path still refuses >= 100100
 
 
+def _hold(path):
+    """Hold a slot the way another runner would (flock(2) on its own open file)."""
+    import fcntl
+    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    return fd
+
+
+def _is_free(path) -> bool:
+    import fcntl
+    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except BlockingIOError:
+        return False
+    finally:
+        os.close(fd)
+
+
+def _slot_env(tmp_path, slots):
+    """The outer part for real, with a systemd-run stub that records which slots are held while the call runs."""
+    b = tmp_path / "bin"
+    b.mkdir(exist_ok=True)
+    stub = b / "systemd-run"
+    stub.write_text("#!/usr/bin/env bash\n"
+                    "for f in $STUB_SLOTS; do if flock -n \"$f\" true; then echo \"free $f\"; else echo \"held $f\"; fi; done"
+                    " > \"$STUB_OUT\"\n")
+    stub.chmod(0o755)
+    return {**_env(tmp_path), "PATH": f"{b}:{os.environ['PATH']}", "DOJO_MIN_AVAIL_GB": "0", "OFFICIAL_YIELD_S": "0",
+            "OFFICIAL_SLOT_POLL_S": "0.2", "STUB_SLOTS": " ".join(map(str, slots)), "STUB_OUT": str(tmp_path / "stub.out")}
+
+
+def test_lock_slots_take_the_first_free_slot_for_the_call_and_release_it(tmp_path):
+    d, m = _block(tmp_path)
+    sh = str(ROOT / "scripts/dojo/official_eval.sh")
+    slots = [tmp_path / f"dc19.lock.{i}" for i in (1, 2, 3)]
+    for f in slots:
+        f.touch()                                                              # the slots exist (made once, by hand)
+    base = ["--task", "stack_blocks", "--layouts", "100100", "--sealed-block", str(d), "--manifest", str(m),
+            "--lock-slots", " ".join(map(str, slots))]
+    held = _hold(slots[0])                                                     # the other side holds slot 1
+    try:
+        r = subprocess.run(["bash", sh] + base, capture_output=True, text=True, env=_slot_env(tmp_path, slots))
+        assert r.returncode == 0, r.stderr
+        assert f"took slot {slots[1]}" in r.stderr
+        # during the call: slot 1 (theirs) and slot 2 (this call's) are held, slot 3 stays free
+        assert (tmp_path / "stub.out").read_text().split("\n")[:3] == [f"held {slots[0]}", f"held {slots[1]}",
+                                                                        f"free {slots[2]}"]
+        assert slots[1].read_text().startswith("pid=") and "stream=official" in slots[1].read_text()
+        assert not slots[2].read_text()                                       # never taken
+        assert _is_free(slots[1]) and not _is_free(slots[0])                  # released at the call's end
+    finally:
+        os.close(held)
+    (tmp_path / "stub.out").unlink()
+    r = subprocess.run(["bash", sh] + base, capture_output=True, text=True, env=_slot_env(tmp_path, slots))
+    assert r.returncode == 0 and f"took slot {slots[0]}" in r.stderr          # all free: slot 1, in order
+
+
+def test_lock_slots_wait_for_a_free_one_and_give_up_after_the_limit(tmp_path):
+    d, m = _block(tmp_path)
+    sh = str(ROOT / "scripts/dojo/official_eval.sh")
+    slots = [tmp_path / f"dc19.lock.{i}" for i in (1, 2, 3)]
+    for f in slots:
+        f.touch()                                                              # the slots exist (made once, by hand)
+    base = ["--task", "stack_blocks", "--layouts", "100100", "--sealed-block", str(d), "--manifest", str(m),
+            "--lock-slots", " ".join(map(str, slots))]
+    held = [_hold(f) for f in slots]
+    try:
+        r = subprocess.run(["bash", sh] + base, capture_output=True, text=True,
+                           env={**_slot_env(tmp_path, slots), "OFFICIAL_LOCK_WAIT_S": "1"})
+        assert r.returncode == 75 and "gave up waiting for a slot" in r.stderr
+        assert not (tmp_path / "stub.out").exists()                           # nothing started
+        p = subprocess.Popen(["bash", sh] + base, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                             env={**_slot_env(tmp_path, slots), "OFFICIAL_LOCK_WAIT_S": "30"})
+        import time
+        time.sleep(1.0)
+        assert p.poll() is None                                               # still waiting: all three are held
+        os.close(held.pop())                                                  # slot 3 frees up
+        _, err = p.communicate(timeout=30)
+        assert p.returncode == 0 and f"took slot {slots[2]}" in err
+    finally:
+        for fd in held:
+            os.close(fd)
+
+
+def test_lock_slots_are_sealed_only_and_exclude_lock(tmp_path):
+    d, m = _block(tmp_path)
+    sh = str(ROOT / "scripts/dojo/official_eval.sh")
+    slots = f"{tmp_path}/s1 {tmp_path}/s2"
+    dev = ["--task", "stack_blocks", "--layouts", "100000", "--lock-slots", slots]
+    # a slot must already exist as a regular file: never created by the launcher, never a symlink (gpu.lock)
+    gpu = tmp_path / "dojo-gpu.lock"
+    gpu.touch()
+    (tmp_path / "dc19.lock.1").symlink_to(gpu)
+    sealed_args = ["--task", "stack_blocks", "--layouts", "100100", "--sealed-block", str(d), "--manifest", str(m)]
+    for bad in (f"{tmp_path}/dc19.lock.1", f"{tmp_path}/missing.lock"):
+        r = subprocess.run(["bash", sh] + sealed_args + ["--lock-slots", bad], capture_output=True, text=True,
+                           env=_slot_env(tmp_path, [bad]))
+        assert r.returncode == 2 and "not an existing regular file" in r.stderr
+    assert not (tmp_path / "missing.lock").exists() and not gpu.read_text()   # nothing created, gpu.lock untouched
+    for inner in ([], ["--inner"]):
+        r = subprocess.run(["bash", sh] + inner + dev, capture_output=True, text=True, env=_env(tmp_path))
+        assert r.returncode == 2 and "for a sealed block only" in r.stderr
+        r = subprocess.run(["bash", sh] + inner + ["--task", "stack_blocks", "--layouts", "100100", "--sealed-block",
+                           str(d), "--manifest", str(m), "--lock", str(tmp_path / "x.lock"), "--lock-slots", slots],
+                           capture_output=True, text=True, env=_env(tmp_path))
+        assert r.returncode == 2 and "exclude each other" in r.stderr
+    # the inner part takes --lock-slots as the sealed block's lock (it gets past the lock check to the claim)
+    r = subprocess.run(["bash", sh, "--inner", "--task", "stack_blocks", "--layouts", "100100", "--sealed-block", str(d),
+                        "--manifest", str(m), "--lock-slots", slots, "--id", "s1"], capture_output=True, text=True,
+                       env={**_env(tmp_path), "DOJO_PERCEPTION_DATA": str(tmp_path / "pd")})
+    assert r.returncode == 2 and "needs COORD_DIR" in r.stderr and "explicit --lock" not in r.stderr
+
+
 def test_route_probe_reports_ok_and_rate_limits_without_keys():
     sys.path.insert(0, str(ROOT / "scripts" / "dojo"))
     import route_probe

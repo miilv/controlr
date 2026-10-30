@@ -32,7 +32,12 @@
 #   only the ids the manifest lists for the task (all >= 100100), each md5-verified before it is staged into this run's
 #   layout dir (nowhere else; logs name id + md5 + pass / fail only); raw records where the manifest says
 #   "settled": false; robot-harness's server WITHOUT --dev (no truth log, HARNESS_DEV=0); the lock is required (no
-#   default: the joint run's lock is chosen per D-C19 scheduling: ~/coord/dc19.lock per episode). Before anything starts it
+#   default). D-C19's slots (agreed with Mikhail's side, 30 Oct): --lock-slots "F1 F2" (~/coord/dc19.lock.1 and .2 on
+#   compute4: at most 2 calls at once, VRAM; existing regular files, never symlinks, never created here): the call
+#   tries them with a NON-blocking flock, in that order, every OFFICIAL_SLOT_POLL_S (15 s) until one is
+#   free (at most OFFICIAL_LOCK_WAIT_S), and holds it for exactly this call (one cell's tranche, <= 5 ids, one Isaac):
+#   released when the call ends, by the kernel too if it dies. --lock-slots is for a sealed block only and excludes
+#   --lock (one FILE, a blocking flock: a single slot). Before anything starts it
 #   takes the run-once claim, an O_EXCL marker per (task, id) in $COORD_DIR/scored/<block>/ (COORD_DIR required); a
 #   second claim refuses. Manifest schema dc19-sealed/1 (tranches, ids 100100-100119; tranche B only once pre-registered).
 #   Every other call keeps refusing ids >= 100100.
@@ -56,9 +61,15 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 for _a in "$@"; do [[ "$_a" == --dry-run && "${1:-}" != --inner ]] && exec bash "$HERE/scripts/dojo/official_eval.sh" --inner "$@"; done
 if [[ "${1:-}" != --inner ]]; then
   # outer: the memory gate, the heavy lock, then this script again inside a systemd user scope
-  _sealed="" _lock="" _prev=""                 # a sealed block names its lock (no default): checked before any wait
-  for _a in "$@"; do [[ "$_prev" == --sealed-block ]] && _sealed="$_a"; [[ "$_prev" == --lock ]] && _lock="$_a"; _prev="$_a"; done
-  [[ -z "$_sealed" || -n "$_lock" ]] || { echo "[official] --sealed-block needs an explicit --lock FILE (no default)" >&2; exit 2; }
+  _sealed="" _lock="" _slots="" _prev=""      # a sealed block names its lock (no default): checked before any wait
+  for _a in "$@"; do
+    [[ "$_prev" == --sealed-block ]] && _sealed="$_a"; [[ "$_prev" == --lock ]] && _lock="$_a"
+    [[ "$_prev" == --lock-slots ]] && _slots="$_a"; _prev="$_a"
+  done
+  [[ -z "$_sealed" || -n "$_lock$_slots" ]] || {
+    echo "[official] --sealed-block needs an explicit --lock FILE or --lock-slots \"F1 F2 F3\" (no default)" >&2; exit 2; }
+  [[ -z "$_slots" || -n "$_sealed" ]] || { echo "[official] --lock-slots is for a sealed block only (--sealed-block)" >&2; exit 2; }
+  [[ -z "$_slots" || -z "$_lock" ]] || { echo "[official] --lock and --lock-slots exclude each other" >&2; exit 2; }
   export DOJO_DATA="${DOJO_DATA:-$HOME/dojo-data}"
   avail() { awk '/MemAvailable/ {print int($2/1048576)}' /proc/meminfo; }
   for i in $(seq 30); do
@@ -66,10 +77,32 @@ if [[ "${1:-}" != --inner ]]; then
     [[ "$i" -eq 30 ]] && { echo "[official] MemAvailable $(avail) GB too low: refusing to start" >&2; exit 75; }
     echo "[official] MemAvailable $(avail) GB, waiting..." >&2; sleep 20
   done
-  # our own heavy lock (never compute4's ~/dojo-gpu.lock = ~/coord/gpu.lock: Mikhail's alone)
-  LOCK="${_lock:-${DOJO_GPU_LOCK:-$HOME/dojo-ours-gpu.lock}}"; exec 9>>"$LOCK"
-  echo "[official] waiting for $LOCK: $(head -c 160 "$LOCK" | tr '\n' ' ')" >&2
-  flock -w "${OFFICIAL_LOCK_WAIT_S:-10800}" 9 || { echo "[official] gave up waiting for $LOCK" >&2; exit 75; }
+  if [[ -n "$_slots" ]]; then
+    # D-C19 slots: the first free one, non-blocking, in the given order; re-tried every OFFICIAL_SLOT_POLL_S
+    read -ra _sl <<< "$_slots"; LOCK=""; _t0=$(date +%s)
+    for _i in "${!_sl[@]}"; do _sl[$_i]="${_sl[$_i]/#\~/$HOME}"; done       # a quoted "~/coord/..." too
+    [[ ${#_sl[@]} -ge 1 ]] || { echo "[official] --lock-slots: no slot file given" >&2; exit 2; }
+    for _f in "${_sl[@]}"; do   # the slots exist once, made by hand: never created here, never a symlink (e.g. to gpu.lock)
+      [[ -f "$_f" && ! -L "$_f" ]] || { echo "[official] --lock-slots: $_f is not an existing regular file (not a symlink)" >&2; exit 2; }
+    done
+    echo "[official] waiting for a free slot of: ${_sl[*]}" >&2
+    while [[ -z "$LOCK" ]]; do
+      for _f in "${_sl[@]}"; do
+        exec 9>>"$_f" || { echo "[official] slot $_f: cannot open" >&2; exit 2; }
+        if flock -n 9; then LOCK="$_f"; break; fi
+        exec 9>&-
+      done
+      [[ -n "$LOCK" ]] && break
+      (( $(date +%s) - _t0 < ${OFFICIAL_LOCK_WAIT_S:-10800} )) || { echo "[official] gave up waiting for a slot of: ${_sl[*]}" >&2; exit 75; }
+      sleep "${OFFICIAL_SLOT_POLL_S:-15}"
+    done
+    echo "[official] took slot $LOCK" >&2
+  else
+    # our own heavy lock (never compute4's ~/dojo-gpu.lock = ~/coord/gpu.lock: Mikhail's alone)
+    LOCK="${_lock:-${DOJO_GPU_LOCK:-$HOME/dojo-ours-gpu.lock}}"; exec 9>>"$LOCK"
+    echo "[official] waiting for $LOCK: $(head -c 160 "$LOCK" | tr '\n' ' ')" >&2
+    flock -w "${OFFICIAL_LOCK_WAIT_S:-10800}" 9 || { echo "[official] gave up waiting for $LOCK" >&2; exit 75; }
+  fi
   printf 'pid=%s stream=official start=%s cmd=official_eval %s\n' "$$" "$(date -u +%FT%TZ)" "$*" > "$LOCK"
   UNIT="official-$(date -u +%H%M%S)-$$"
   systemd-run --user --scope -q --unit="$UNIT" -p MemoryMax="${OFFICIAL_MEM:-24G}" -p CPUQuota="${OFFICIAL_CPU:-1400%}" \
@@ -85,7 +118,7 @@ shift   # --inner
 
 TASK="" LAYOUT_IDS="" POLICY="dojo.agent.policy:AgentPolicy" PRESET="submit_v2" CONFIG='{}' TWIN_ENVS=8 NAME="" OUT=""
 EP_MAX_MIN=25 CANDIDATE="" POLICY_SET="" DRY="" SEG="" GLYPH="" GLYPHK="" SETENV=() SEALED_DIR="" MANIFEST="" LOCK_ARG=""
-RAW_OK=""
+RAW_OK="" LOCK_SLOTS=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --task) TASK="$2"; shift 2 ;;        --layouts) LAYOUT_IDS="$2"; shift 2 ;;
@@ -107,13 +140,17 @@ while [[ $# -gt 0 ]]; do
     --raw-ok) RAW_OK=1; shift ;;
     --sealed-block) SEALED_DIR="$2"; shift 2 ;;    --manifest) MANIFEST="$2"; shift 2 ;;
     --lock) LOCK_ARG="$2"; shift 2 ;;              # taken by the outer part
+    --lock-slots) LOCK_SLOTS="$2"; shift 2 ;;      # taken by the outer part (a sealed block only)
     *) echo "[official] unknown option $1" >&2; exit 2 ;;
   esac
 done
 [[ -n "$CANDIDATE" && -z "$POLICY_SET" ]] && POLICY="dojo.runtime.policy:RuntimePolicy"   # integ_eval's policy
+[[ -z "$LOCK_SLOTS" || -n "$SEALED_DIR$MANIFEST" ]] || { echo "[official] --lock-slots is for a sealed block only (--sealed-block)" >&2; exit 2; }
+[[ -z "$LOCK_SLOTS" || -z "$LOCK_ARG" ]] || { echo "[official] --lock and --lock-slots exclude each other" >&2; exit 2; }
 if [[ -n "$SEALED_DIR$MANIFEST" ]]; then     # a sealed joint block: its own rules, nothing of the dev path's
   [[ -d "$SEALED_DIR" && -f "$MANIFEST" ]] || { echo "[official] --sealed-block DIR and --manifest FILE are both required" >&2; exit 2; }
-  [[ -n "$DRY" || -n "$LOCK_ARG" ]] || { echo "[official] --sealed-block needs an explicit --lock FILE (no default)" >&2; exit 2; }
+  [[ -n "$DRY" || -n "$LOCK_ARG$LOCK_SLOTS" ]] || {
+    echo "[official] --sealed-block needs an explicit --lock FILE or --lock-slots \"F1 F2 F3\" (no default)" >&2; exit 2; }
   [[ "${HARNESS_DEV:-0}" == 0 && "${HARNESS_PRIVILEGED:-0}" == 0 ]] || {
     echo "[official] --sealed-block refuses HARNESS_DEV / HARNESS_PRIVILEGED (no dev or debug path in a scored block)" >&2; exit 2; }
 fi

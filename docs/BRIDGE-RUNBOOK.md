@@ -223,9 +223,22 @@ rules were agreed with Mikhail's side (bus 30 Oct 0008Z / 0035Z), and each side 
 
 ```bash
 COORD_DIR=~/coord scripts/dojo/official_eval.sh --candidate CANDIDATE.txt --task T --layouts "<tranche ids>" \
-    --sealed-block DIR --manifest MANIFEST --lock ~/coord/dc19.lock
+    --sealed-block DIR --manifest MANIFEST --lock-slots "$HOME/coord/dc19.lock.1 $HOME/coord/dc19.lock.2"
 python -m dojo.simlab.sealed verify --dir DIR --manifest MANIFEST     # before the first episode and after the last
 ```
+
+- **Slots (agreed with Mikhail's side, 30 Oct):** two lock files, `~/coord/dc19.lock.1` and `~/coord/dc19.lock.2`, on
+  compute4 for the whole block. There is no `.3`: three calls at once do not fit compute4's 32 GB of VRAM, since one
+  sealed call peaks at ~14.3 GB. Our side creates them once, as plain 0-byte regular files: not symlinks, and never
+  `~/coord/gpu.lock`. The launcher refuses a slot that is missing or a symlink, and never creates one. A call tries them
+  in order, 1 → 2, each with a NON-blocking flock, and retries every 15 s
+  (`OFFICIAL_SLOT_POLL_S`) until one is free, up to `OFFICIAL_LOCK_WAIT_S` (3 h). It holds that slot for exactly
+  this call and releases it when the call ends; a crash releases it too, because the flock dies with the process.
+  - One call is one cell's tranche: up to 5 ids, one eval client, one Isaac plus its own seg / glyph / glyph-kong
+    servers. A slot is never released between the episodes of a call, because the Isaac stays on the GPU.
+  - Our side may take any free slot. Mikhail's side holds at most one at a time.
+  - `--lock-slots` works only with `--sealed-block`, and it excludes `--lock FILE`, which is one blocking flock (a
+    single slot).
 
 - **Manifest, schema `dc19-sealed/1` (`dojo.simlab.sealed`):**
   - generator provenance, `seed_salt_sha256`, `created_utc`;
@@ -248,7 +261,7 @@ python -m dojo.simlab.sealed verify --dir DIR --manifest MANIFEST     # before t
   second claim refuses. The one disclosed infrastructure re-run (before any verdict was read) needs
   `DC19_INFRA_RERUN=<reason>`.
 - **No dev path:** robot-harness's server runs without `--dev`, and HARNESS_DEV / HARNESS_PRIVILEGED are refused.
-  `--lock` has no default.
+  The lock (`--lock-slots` or `--lock`) has no default.
 - **`verify`** prints `task id md5 pass/fail`, then its own md5. It fails on an unlisted file or task folder and on an
   empty record. It never prints content.
 - **Generation:** `scripts/dojo/dc19_generate.py`. It runs once, only on the lead's `--go`, after both freezes:
