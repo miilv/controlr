@@ -2362,6 +2362,120 @@ def _stack_proposals(chosen, short, shapes_by_group, views, cfg, groups) -> list
     return out
 
 
+WRIST_ID_DILATE = 15  # px (wrist view, ~0.5 mm/px): the fitted silhouette is grown to reach a misfit's true pixels
+
+
+def _wrist_crop(h: Hypothesis, v: ViewMasks, others: np.ndarray) -> Blob | None:
+    """The wrist-view pixels of a chosen object: the foreground component that overlaps its (dilated) silhouette most,
+    the other chosen objects and the robot removed."""
+    s = h.sm().sil(v.cam, h.T())
+    if not s.any():
+        return None
+    near = cv2.dilate(s, np.ones((WRIST_ID_DILATE, WRIST_ID_DILATE), np.uint8))
+    m = (v.fg > 0) & (others == 0) & (v.robot == 0)
+    n, lab, st, cents = cv2.connectedComponentsWithStats(m.astype(np.uint8), connectivity=8)
+    if n < 2:
+        return None
+    ov = np.bincount(lab[near > 0].ravel(), minlength=n)
+    ov[0] = 0
+    j = int(np.argmax(ov))
+    if ov[j] == 0:
+        return None
+    mj = (lab == j) & (near > 0)
+    ys, xs = np.nonzero(mj)
+    bb = (int(xs.min()), int(ys.min()), int(xs.max() - xs.min() + 1), int(ys.max() - ys.min() + 1))
+    return Blob(v.cam.name, mj.astype(np.uint8), int(mj.sum()), np.array([xs.mean(), ys.mean()]), bb)
+
+
+def _wrist_identity(chosen: list[Hypothesis], views, cfg, groups, pending) -> tuple[list[Hypothesis], dict]:
+    """``wrist_identity`` "embed" (see ``EstimatorConfig.wrist_identity``): per chosen table object, the learned identity
+    in the wrist view that sees it largest; a better-scoring category is re-fitted at the object's head blob."""
+    from .embed_id import identity
+
+    t0 = time.time()
+    emb = identity(cfg.embed_model or "dinov2_b", color_M=cfg.color_M, lit=cfg.embed_lit, crop_mode=cfg.embed_crop)
+    head = views["cam_head"]
+    wnames = [n for n in views if n != "cam_head" and "wrist" in n]
+    prior_by_g = {gi: (g, p) for gi, g, p in pending}
+    out = list(chosen)
+    info = {"checked": 0, "changed": [], "views": wnames}
+    if not wnames:
+        info["why"] = "no wrist view"
+        return out, info
+    for i, h in enumerate(out):
+        if (h.per_view.get("occluded") or h.per_view.get("z_off") or h.label_group not in prior_by_g
+                or not h.key.startswith("Rigid/") or h.key.split("/")[1] in CONTAINER_CATEGORIES):
+            continue
+        g, prior = prior_by_g[h.label_group]
+        geo = _geometry_groups(g, prior)
+        keys = sorted({s_.key for sms in geo.values() for s_ in sms})
+        cats = {k.split("/")[1] for k in keys}
+        if len(cats) < 2:
+            continue                                    # one category: nothing to tell apart here
+        others = _union_masks(out, views, skip=i, target=out[i])
+        crops = [(b, n) for n in wnames for b in [_wrist_crop(h, views[n], others[n])] if b is not None]
+        b, vn = max(crops, key=lambda t: t[0].area) if crops else (None, None)
+        if b is None or b.area < cfg.wrist_id_min_px:
+            info.setdefault("small", []).append({"key": h.key, "xy": [round(float(h.x), 3), round(float(h.y), 3)],
+                                                 "px": 0 if b is None else int(b.area)})
+            continue
+        v = views[vn]
+        sims = emb.scores(v.img, v.cam, b.mask, b.bbox, b.centroid, keys, bg=v.bg) or {}
+        if not sims:
+            continue
+        info["checked"] += 1
+        by_cat = {c: max(sims[k] for k in keys if k.split("/")[1] == c and k in sims) for c in cats
+                  if any(k in sims for k in keys if k.split("/")[1] == c)}
+        cur = h.key.split("/")[1]
+        top = max(by_cat, key=by_cat.get)
+        rec = {"view": vn, "px": int(b.area), "top": top, "sim": round(by_cat[top], 4),
+               "cur_sim": round(by_cat.get(cur, float("nan")), 4), "cats": {c: round(x, 4) for c, x in by_cat.items()}}
+        h.per_view["wrist_identity"] = rec
+        if top == cur or by_cat[top] - by_cat.get(cur, -1.0) < cfg.wrist_id_margin:
+            continue
+        # re-fit the read category's assets at the object's head blob (the polish's trial fit), the fused score decides
+        s_h = h.sm().sil(head.cam, h.T())
+        m = cv2.dilate(s_h, np.ones((5, 5), np.uint8)) & head.fg & (1 - others["cam_head"])
+        if m.sum() < 10:
+            rec["why"] = "no head blob"
+            continue
+        n_, lab, st, cents = cv2.connectedComponentsWithStats(m, connectivity=8)
+        j = 1 + int(np.argmax(st[1:, cv2.CC_STAT_AREA]))
+        hb = Blob("cam_head", (lab == j).astype(np.uint8), int(st[j, cv2.CC_STAT_AREA]), cents[j], tuple(st[j, :4]))
+        h0 = _score_hyp(h, views, others, cfg, groups, cfg.quick_iters, color=True)
+        f0 = by_cat.get(cur, -1.0) - cfg.embed_weight * float(h0.loss)
+        best, fb = None, f0
+        for sms in geo.values():
+            if sms[0].key.split("/")[1] != top:
+                continue
+            ks = [s_.key for s_ in sms if s_.key in sims]
+            if not ks:
+                continue
+            sm = sms[0]
+            for x, y, yaw, l in coarse_fit(sm, hb, {"cam_head": head}, cfg.yaw_step_deg)[:2]:
+                t = Hypothesis(h.label_group, sm.key, sm.tag, x, y, yaw, l, blob=h.blob)
+                t.per_view = {"geom_group": [s_.key for s_ in sms]}
+                t2 = _score_hyp(t, views, others, cfg, groups, cfg.quick_iters, color=True)
+                if not region_ok(g, *_centre_xy(t2, g), t2.yaw, t2.sm().yaw_period):
+                    continue
+                if np.hypot(*(np.subtract(_centre_xy(t2, g), _centre_xy(h, g)))) > cfg.wrist_id_max_shift:
+                    continue                            # the re-fit moved onto another object's pixels
+                ft = max(sims[k] for k in ks) - cfg.embed_weight * float(t2.loss)
+                if ft > fb:
+                    best, fb = t2, ft
+        if best is None:
+            rec["why"] = "no re-fit of the read category beat the fit"
+            continue
+        best.per_view["wrist_identity"] = {**rec, "from": h.key, "loss_from": round(float(h0.loss), 4),
+                                           "loss": round(float(best.loss), 4)}
+        best.per_view["polished"] = True
+        info["changed"].append({"from": h.key, "to": best.key, "xy": [round(float(best.x), 4), round(float(best.y), 4)],
+                                "view": vn, "px": int(b.area)})
+        out[i] = best
+    info["time_s"] = round(time.time() - t0, 2)
+    return out, info
+
+
 def _swap_pairs(chosen: list[Hypothesis], views, cfg, groups, margin: float = 0.02) -> list[Hypothesis]:
     """Cross-label identity: two chosen objects of different label groups whose generator regions admit each
     other's place (store_tools' hammer and wrench share a region) trade places when the swapped fits cost
@@ -3947,6 +4061,18 @@ class EstimatorConfig:
     # under that robot's gripper; every other estimate unchanged)
     support_mask: bool = False
     wrist_pool: bool | str = False
+    # frame-0 identity of small objects (imitate_sorting_sequence: our watch read as an action camera / a garage figure as a
+    # toy car, 16 of 130 of our objects on 26 dev / training frames; journal 2026-10-30-dojo-imit-identity). "embed": every
+    # chosen table object that a wrist view sees with >= wrist_id_min_px pixels gets the learned identity (embed_id,
+    # ``embed_model`` or dinov2_b) of that crop over its label group's candidates; a category that beats the fitted one by
+    # wrist_id_margin is re-fitted at the object's head blob (within wrist_id_max_shift of the fit) and replaces it when the
+    # fused score (similarity minus embed_weight x loss) is higher. The home wrist views see our half's misread objects
+    # at 0.9-17k px (the head: 230-1700). "support_masked": the same, only in a frame where ``support_mask`` masked a
+    # support robot (the scene it was measured on; every other estimate unchanged). "off": unchanged
+    wrist_identity: str = "off"
+    wrist_id_min_px: int = 800
+    wrist_id_margin: float = 0.12
+    wrist_id_max_shift: float = 0.025  # m: a re-fit that lands farther from the fit took another object's pixels
     region_seeds: bool = True  # extra proposals seeded inside compact generator regions (_region_seeds)
     # a select list that holds every category of its entry exactly once (``hierarchical``, k categories x 1 instance), and
     # the ``same_as_label`` copies of such a list: a list whose objects (told apart by the lists' generator regions) repeat
@@ -4623,6 +4749,12 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         chosen = _polish(chosen, views, cfg, groups, pending)
     if cfg.swap_pairs:
         chosen = _swap_pairs(chosen, views, cfg, groups)
+    wid_info = None
+    wid_off = _wrist_pool_off("on" if cfg.wrist_identity == "embed" else cfg.wrist_identity, support_info)
+    if wid_off is None:
+        chosen, wid_info = _wrist_identity(chosen, views, cfg, groups, pending)
+    elif cfg.wrist_identity not in (None, False, "off"):
+        wid_info = {"checked": 0, "changed": [], "why": wid_off}
     if cfg.category_quota:
         chosen = _category_quota(chosen, views, cfg, groups, pending, task)
     if cfg.twin_pairing and task == TWIN_TASK:
@@ -4902,6 +5034,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
                                **({"contained": h.per_view["contained"]} if h.per_view.get("contained") else {}),
                                **({"on_base": h.per_view["on_base"]} if h.per_view.get("on_base") else {}),
                                **({"identity_swap": h.per_view["identity_swap"]} if h.per_view.get("identity_swap") else {}),
+                               **({"wrist_identity": h.per_view["wrist_identity"]} if h.per_view.get("wrist_identity") else {}),
                                **({"twin": h.per_view["twin"]} if h.per_view.get("twin") else {}),
                                **({"identity": h.per_view["identity"]} if h.per_view.get("identity") else {}),
                                **({"glyph_read": _slim_glyph(h.per_view["glyph_read"])} if h.per_view.get("glyph_read") else {})}}
@@ -4934,6 +5067,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         record["_perception"]["support_mask"] = support_info
     if wpool_info is not None:
         record["_perception"]["wrist_pool"] = wpool_info
+    if wid_info is not None:
+        record["_perception"]["wrist_identity"] = wid_info
     ranking = {lab: g["target_ranking"] for g in groups if g.get("target_ranking") for lab in g["labels"]}
     if ranking:  # instruction -> candidate ranking (general_pickup): the agent can look among the top ones
         record["_perception"]["target_ranking"] = ranking
