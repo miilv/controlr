@@ -61,7 +61,16 @@ play_tic_tac_toe demos are eval data.
 - Every `RoboDojoRunner` process (and `dev_eval`) installs `paths.install_asset_firewall()`. That is a
   permanent audit hook: open, list, glob or copy of those paths raises `PermissionError`, whoever calls.
 - The imitate demo is routed to our own `~/dojo-data/simlab/traj/<task>/<seed>.pkl` (`demo_gen`), or a
-  no-demo stub.
+  no-demo stub. RoboDojo asks for it by the ENV seed. Under upstream seeding (`dev_eval`, `SIMLAB_ENV_SEED=index`)
+  that is the layout's position in the call; `runner.DEMO_KEY` maps it back to our layout id.
+  `official_eval.sh` refuses an imitate id with no demo.
+
+**Env seed.** RoboDojo reseeds from the env seed before its random draws: make_kong's discard group,
+play_tic_tac_toe's opponent cell, and the instruction's template and paraphrases.
+- Upstream `SeedManager` seeds with the layout's position in the eval call (0..N-1). `dev_eval` / `official_eval.sh`
+  keep that, so the call shape decides the draws.
+- `RoboDojoRunner.load` seeds with our layout key by default (`SIMLAB_ENV_SEED=layout_id`). Use
+  `SIMLAB_ENV_SEED=index` to seed like upstream: the position within the `load` call.
 - `tests/dojo/test_simlab_firewall.py` fails on any dojo/ code that builds such a path.
 
 | What | Entry point |

@@ -6,6 +6,9 @@ success latching, ``_result.json``, mp4s. The only substitution is where layouts
 (``<id>.settled.json`` with ``SIMLAB_DEV_LAYOUT_SUFFIX=.settled``)
 (our records, ids sorted; ``--seed`` picks nothing) instead of ``Assets/Eval_Layout``, and our ``_simlab``
 key is stripped. So a dev-eval score is computed exactly like a leaderboard score, on layouts we own.
+Env seeds stay upstream's: a layout's POSITION in the call (0..N-1), which draws make_kong's discard group,
+tic-tac-toe's opponent cell and the instruction's wording. imitate's demo is keyed by it too: ``runner.DEMO_KEY``
+maps it back to our layout id for the routed demo loader.
 
     SIMLAB_DEV_LAYOUTS=/root/dojo-data/simlab/layouts python dojo/simlab/dev_eval.py <main.py args...>
     (scripts/simlab/dev_eval.sh wraps it with the policy server, like scripts/robodojo/run.sh)
@@ -57,6 +60,10 @@ def patch_seed_manager(layout_root: str | os.PathLike) -> None:
         self.seed_info = {i: {"scene_layout": str(p), "layout_id": int(p.name.split(".")[0])} for i, p in enumerate(files)}
         excluded = {int(s) for s in (completed_layout_ids or [])} | {int(s) for s in (abandoned_layout_ids or [])}
         self.seed_list = [i for i in range(len(files)) if i not in excluded]
+        # upstream seeds each env with this POSITION (get_seeds); imitate keys its demo file by it: map back to the id
+        from dojo.simlab import runner
+        runner.DEMO_KEY.clear()
+        runner.DEMO_KEY.update({i: v["layout_id"] for i, v in self.seed_info.items()})
         self.st_idx, self.ed_idx, self.type, self.idx = 0, len(self.seed_list), "eval", 0
         self._current_batch_seeds = None
         print(f"[dev_eval] {len(files)} dev layouts{suffix} from {d} ({files[0].name}..{files[-1].name})", flush=True)
