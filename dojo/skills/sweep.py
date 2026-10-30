@@ -435,6 +435,12 @@ def sweep_into(sk: Skills, objects: list[str], pan: str, tool: str) -> dict:
         r = _drag_pan(sk, pan, pan_arm, T_t)
         if not r.ok and r.status == "ik_fail":
             return {"ok": False, "stage": "dustpan", "note": r.note}
+        if getattr(sk, "sweep_hold_pan", False) in (True, "on"):
+            # ``Skills.sweep_hold_pan``: the drag holds the dustpan without a Held, so the broom pick's
+            # ``_park_if_blocking`` sent this arm home with the jaws still closed on its handle. G3 46540867 std 100003
+            # (replayed): the dustpan rode home in the left hand from step 56 to 414, every cube was swept to where it
+            # had been; 4 of 14 episodes that reached the sweep ended with the dustpan by the left arm's home
+            sk.no_park = set(getattr(sk, "no_park", set())) | {pan_arm}
         sk.confirm_moved(pan, T_t, "drag")
         g = pan_geometry(sk.refresh().obj(pan))
         # 2. the broom in the other hand
@@ -499,6 +505,9 @@ def sweep_into(sk: Skills, objects: list[str], pan: str, tool: str) -> dict:
             sk.held[a] = None
     except (BudgetExceeded, EpisodeEnded) as e:
         return {"ok": False, "stage": "sweep", "note": str(e)}
+    finally:
+        if getattr(sk, "sweep_hold_pan", False) in (True, "on"):
+            sk.no_park = set()
     if failed:
         return {"ok": False, "stage": "sweep", "note": f"in {done}, out {failed}"}
     return {"ok": True, "stage": "sweep", "done": done}

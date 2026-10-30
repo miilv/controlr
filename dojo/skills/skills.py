@@ -390,6 +390,10 @@ class Skills:
         # ``sweep.sweep_into`` (stream N): False (today) | True (an object not sweep.STRICT_MARGIN inside the collecting
         # circle after its push is pushed deeper, up to sweep.DEEP_TRIES strokes)
         self.sweep_deep = False
+        # ``sweep.sweep_into`` (stream N): False (today) | True (the arm holding the dragged dustpan is never parked home
+        # by the other arm's pick: ``Skills.no_park``)
+        self.sweep_hold_pan = False
+        self.no_park: set = set()          # arms ``_park_if_blocking`` leaves where they are
         # ``stacking.plan_stack``'s reach per (object, arm) (stream H): "centre" (today: to the object's centre) | "grasp"
         # (to its planned grasp's TCP)
         self.stack_reach = "centre"
@@ -2781,6 +2785,8 @@ class Skills:
     # ------------------------------------------------------------------ parallel
     def _park_if_blocking(self, plan: ArmPlan, min_dist: float = 0.12) -> None:
         other = "right" if plan.arm == "left" else "left"
+        if other in getattr(self, "no_park", ()):       # it holds something no Held records (sweep's dustpan)
+            return
         if self.held.get(other) is None and not self.clear_of(
                 plan, ArmPlan(other, self.ex.q[other].copy(), self.ex.g[other]), min_dist):
             self.ex.run({other: self.plan_home(other)}, name=f"park {other}")

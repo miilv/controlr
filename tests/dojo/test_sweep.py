@@ -176,3 +176,25 @@ def test_sweep_deep_default_off_and_pushes_a_short_object_again(monkeypatch):
         sweep.sweep_into(sk, ["cube_0"], "broom_shovel", "broom")
         # the kinematic env does not push: the cube stays out, so "on" pushes DEEP_TRIES more single strokes
         assert legs.count(1) == extra, (flag, legs)
+
+
+def test_no_park_keeps_the_dustpan_arm_where_it_is(monkeypatch):
+    """``Skills.no_park`` (``sweep_hold_pan``, default off): ``_park_if_blocking`` leaves a listed arm in place."""
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.executor import ArmPlan
+    from dojo.skills.skills import GTProvider, Skills
+    assert RuntimeConfig().sweep_hold_pan is False
+    env = KinematicEnv([], step_lim=100, instruction="x")
+    sk = Skills(env, GTProvider(env, None, instruction="x"), log=lambda m: None)
+    assert sk.no_park == set() and sk.sweep_hold_pan is False
+    runs = []
+    monkeypatch.setattr(sk.ex, "run", lambda plans, name="": runs.append(name))
+    monkeypatch.setattr(sk, "clear_of", lambda a, b, d=0.12: False)          # the arms would come close
+    p = ArmPlan("right", sk.ex.q["right"].copy(), sk.ex.g["right"])
+    sk._park_if_blocking(p)
+    assert runs == ["park left"]
+    runs.clear()
+    sk.no_park = {"left"}
+    sk._park_if_blocking(p)
+    assert runs == []

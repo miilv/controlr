@@ -428,6 +428,9 @@ class RuntimeConfig:
     # collecting circle after its push gets up to 2 more pushes along the pan's axis; G3: 4 "all swept" episodes failed
     # the checker with objects 1-4 cm short at the lip)
     sweep_deep: bool = False
+    # ``sweep.sweep_into`` (``Skills.sweep_hold_pan``): False (today) | True (the arm holding the dragged dustpan is never
+    # parked home by the broom pick; G3: in 4 of 14 sweeps it went home holding the dustpan, the cubes swept to nothing)
+    sweep_hold_pan: bool = False
     # ``copy_demonstration`` re-entered after a re-plan (``Skills.imitate_keep_sides``): False (today: the demonstrator's
     # half is the far half of the objects as they stand now; two of ours already in basket0 moved that line and our toy
     # car counted as the demonstrator's: "no free object like" at 2/5, dev 100001) | True (the episode start's halves)
@@ -931,6 +934,7 @@ class RuntimePolicy:
             sk_.row_home_clear = bool(cfg.row_home_clear)
             sk_.sweep_relay_grip = bool(cfg.sweep_relay_grip)
             sk_.sweep_deep = bool(cfg.sweep_deep)
+            sk_.sweep_hold_pan = bool(cfg.sweep_hold_pan)
             sk_.imitate_keep_sides = bool(cfg.imitate_keep_sides)
             sk_.imitate_repair = bool(cfg.imitate_repair)
             sk_.belt_wrist_veto = cfg.belt_wrist_veto

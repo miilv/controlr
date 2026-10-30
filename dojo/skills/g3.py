@@ -208,7 +208,7 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "imitate_look": ("off", "ambiguous"), "imitate_keep_sides": ("off", "on"), "imitate_repair": ("off", "on"),
                "row_size_read": ("off", "look", "look_union"), "row_stage": ("off", "on"),
                "row_home_clear": ("off", "on"), "sweep_relay_grip": ("off", "on"),
-               "sweep_deep": ("off", "on"),
+               "sweep_deep": ("off", "on"), "sweep_hold_pan": ("off", "on"),
                "ported_routes": ("off", "on"), "ported_swap": ("fixed", "reach"), "ported_drag": ("v1", "turn"),
                "ported_pour": ("v1", "full"), "ported_pour_aim": ("v1", "b10", "b20"), "ported_pickup": ("v1", "library"),
                "ported_classify": ("v3b", "p1", "p2"),
