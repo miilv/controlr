@@ -21,6 +21,15 @@ pass 1), but written back with the 0.26 deg tilt PhysX reports it slides 6-37 mm
 Such records carry ``_simlab.presettle = "keep_raw_unmoved"``; their index entry keeps the default run's
 entry under ``previous``. Existing settled records are never rewritten.
 
+``--raw-check`` (off by default) is the stability test for a task that RUNS ITS RAW RECORD (``settled: false``:
+make_toast and the two conveyor tasks; pass 1 / pass 2 can never settle them: a belt moves its riders by design, the
+toaster's slices re-drop 7-9 mm on every reload). It writes no record, only ``raw_index.json`` {id: status}; "raw ok"
+iff the raw record as stored (1) passes RoboDojo's reset check, (2) runs ``extra_steps`` physics steps without an
+exception, and (3) is at rest over the last ``rest_window`` steps (``at_rest``, 1 mm / 1 deg) after the belt's motion,
+the median displacement of the Rigid task objects, is subtracted from those riders (only in a scene with no Table; the
+Dynamic conveyor body itself is judged as is), and (4) no task object fell: below the table top - 5 cm, or (no table)
+more than 5 cm below its own record z.
+
     scripts/simlab/rdpy.sh -m dojo.simlab.presettle --task fill_egg_holder [--physics-only]
 """
 
@@ -45,6 +54,9 @@ SETTLER = "simlab/presettle v2"   # v2: articulations not written back; optional
 MOVABLE = ("Rigid", "Dynamic")
 KEEP_RAW_UNMOVED = "keep_raw_unmoved"   # _simlab.presettle of records made with --keep-raw-unmoved
 UNMOVED_MM, UNMOVED_DEG = 1.0, 1.0      # "did not move in pass 1": the at_rest tolerances
+RAW_OK = "raw ok"                       # raw_index.json status of a raw record that passes --raw-check
+RAW_CHECK = "simlab/raw-check v1"       # the raw-check rule's version (in every raw_index.json entry)
+FALL_M = 0.05                           # "fell": more than 5 cm below the table top / (no table) its record z
 ID_RE = re.compile(r"^\d+\.json$")
 
 
@@ -112,6 +124,32 @@ def at_rest(before: list[dict], after: list[dict], table: bool, tol_mm: float = 
         if table and o["pos"][2] < TABLE_TOP_Z - 0.05:
             bad.append(f"{o['label']} fell (z={o['pos'][2]:.3f})")
     return not bad, bad
+
+
+def raw_at_rest(before: list[dict], after: list[dict], table: bool, tol_mm: float = 1.0,
+                tol_deg: float = 1.0) -> tuple[bool, list[str], list[float]]:
+    """``--raw-check``'s rest test of a record that runs raw: ``at_rest`` after subtracting the belt (scenes with no
+    Table: the median window displacement of the Rigid task objects, i.e. the riders, is taken off each rider; the
+    Dynamic conveyor body is judged as is), plus the fall floor (no table: 5 cm below the object's record z).
+    Returns (ok, why, belt displacement over the window in m)."""
+    if table:
+        ok, why = at_rest(before, after, True, tol_mm, tol_deg)
+        return ok, why, [0.0, 0.0, 0.0]
+    prev = {o["inst_name"]: o for o in before}
+    riders = {o["inst_name"] for o in after if o["type"] == "Rigid" and not o["clutter"] and o["pos"] is not None
+              and (prev.get(o["inst_name"]) or {}).get("pos") is not None}
+    belt = (np.median([np.subtract(o["pos"], prev[o["inst_name"]]["pos"]) for o in after if o["inst_name"] in riders],
+                      axis=0) if riders else np.zeros(3))
+    corrected = [dict(o, pos=[float(v) for v in np.subtract(o["pos"], belt)]) if o["inst_name"] in riders else o
+                 for o in after]
+    ok, why = at_rest(before, corrected, False, tol_mm, tol_deg)
+    for o in after:
+        if o["type"] not in MOVABLE or o["clutter"] or o["pos"] is None or o.get("layout_pos") is None:
+            continue
+        if o["pos"][2] < o["layout_pos"][2] - FALL_M:
+            why.append(f"{o['label']} fell (z={o['pos'][2]:.3f}, record z={o['layout_pos'][2]:.3f})")
+            ok = False
+    return ok, why, [float(v) for v in belt]
 
 
 def drift(live: list[dict], top: list | None = None) -> tuple[float, float]:
@@ -226,6 +264,46 @@ def presettle_task(task: str, physics_only: bool = True, extra_steps: int = 250,
     return index
 
 
+def raw_check_task(task: str, physics_only: bool = True, extra_steps: int = 250, rest_window: int = 100,
+                   ids: list[int] | None = None, reserved_slice: bool = False) -> dict:
+    """``--raw-check``: judge each raw record as stored (it is what a ``settled: false`` task runs); writes only
+    ``raw_index.json`` {id: {"status": "raw ok" | "dropped: ...", ...}}, never a record."""
+    from dojo.simlab.runner import RoboDojoRunner
+    files = select_files(task, ids, reserved_slice)
+    run = RoboDojoRunner(task, physics_only=physics_only, need_planner=False,
+                         workdir=str(paths.DATA / "simlab" / "work" / f"rawcheck_{task}"))
+    index_p = paths.LAYOUTS / task / "raw_index.json"
+    index = json.loads(index_p.read_text()) if index_p.exists() else {}
+    for f in files:
+        t0 = time.perf_counter()
+        lay = json.loads(f.read_text())
+        rec: dict = {"from": f.name, "check": RAW_CHECK, "extra_steps": extra_steps, "rest_window": rest_window}
+        try:
+            info = run.load(lay)
+            rec["robodojo_stable"] = bool(info["stable"])
+            if not info["stable"]:
+                rec["status"] = "dropped: RoboDojo reset not stable"
+            else:
+                for _ in range(extra_steps - rest_window):
+                    run.env.sim_step(render=False)
+                before = run.objects_gt()
+                for _ in range(rest_window):
+                    run.env.sim_step(render=False)
+                live = run.objects_gt()
+                ok, why, belt = raw_at_rest(before, live, "Table" in lay)
+                rec.update({"belt_mm_per_window": round(float(np.linalg.norm(belt)) * 1000, 2), "why": why,
+                            "status": RAW_OK if ok else "dropped: raw record not at rest"})
+        except Exception as e:  # noqa: BLE001 (any failure of a raw record's run drops it; the type is recorded)
+            rec["status"] = f"dropped: exception {type(e).__name__}"
+        rec["s"] = round(time.perf_counter() - t0, 1)
+        index[f.stem] = rec
+        index_p.write_text(json.dumps(index, indent=1))
+        print(f"[raw-check] {task} {f.stem}: {rec['status']} ({rec['s']}s)", flush=True)
+    run.close()
+    print(f"[raw-check] {task}: {sum(1 for v in index.values() if v['status'] == RAW_OK)}/{len(index)} raw ok", flush=True)
+    return index
+
+
 def main(argv=None) -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--task", required=True)
@@ -239,7 +317,16 @@ def main(argv=None) -> None:
     ap.add_argument("--keep-raw-unmoved", action="store_true",
                     help="re-try dropped ids without a settled file: objects that did not move in pass 1 keep their "
                          "generated pose (records marked _simlab.presettle=keep_raw_unmoved)")
+    ap.add_argument("--raw-check", action="store_true",
+                    help="judge each RAW record as stored (settled: false tasks): raw_index.json only, no record "
+                         "written (RoboDojo stable + extra steps + belt-subtracted at rest + fall floor)")
     a = ap.parse_args(argv)
+    if a.raw_check:
+        if a.keep_raw_unmoved or a.extra_passes:
+            raise SystemExit("presettle: --raw-check excludes --keep-raw-unmoved / --extra-passes")
+        raw_check_task(a.task, physics_only=not a.rendered, extra_steps=a.extra_steps, ids=a.ids,
+                       reserved_slice=a.reserved_slice)
+        return
     presettle_task(a.task, physics_only=not a.rendered, extra_steps=a.extra_steps, ids=a.ids,
                    extra_passes=a.extra_passes, reserved_slice=a.reserved_slice, keep_raw_unmoved=a.keep_raw_unmoved)
 

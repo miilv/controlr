@@ -408,10 +408,60 @@ def test_generation_script_makes_a_valid_block_from_synthetic_draws(tmp_path, ca
     assert all(r[3] for r in rows) and not problems                                   # only records + .salt in DIR
     assert not list(tmp_path.glob(".block.work-*")) and res["counts"]["stack_blocks"] == (18, 2)
     assert res["sha256"] == hashlib.sha256(man_p.read_bytes()).hexdigest()
+    assert man["block"] == "D-C19" and "options" not in man["generator"]            # defaults: the 30 Oct shape
     with pytest.raises(SystemExit, match="--go"):
         GEN.main(["--out", str(tmp_path / "b2"), "--manifest", str(tmp_path / "m2.json"), "--lock", "l", "--v6-checkout", "v"])
     with pytest.raises(SystemExit, match="exists"):
         GEN.main(["--out", str(out), "--manifest", str(tmp_path / "m3.json"), "--lock", "l", "--v6-checkout", "v", "--go"])
+
+
+def test_generation_options_raw_check_demo_speed_and_block(tmp_path):
+    """The off-by-default options (journal 2026-10-31-dojo-dc19-supp-gen): raw tasks judged by presettle --raw-check's
+    raw_index ("raw ok"), demo_gen's --speed, the block's own name; recorded in generator.options."""
+    sys.path.insert(0, str(ROOT / "scripts" / "dojo"))
+    import dc19_generate as GEN
+    from dojo.simlab import presettle as P
+
+    settles, demo_calls = [], []
+
+    def gen(task, i, salt, v6):
+        return {"layout_id": i, "note": SECRET}
+
+    def settle(task, work, lock, log, raw_check=False):
+        settles.append((task, raw_check))
+        dd = work / "simlab" / "layouts" / task
+        if raw_check:                                # a raw task: only raw_index.json, never a settled record
+            (dd / "raw_index.json").write_text(json.dumps({str(i): {"status": P.RAW_OK if i != 100103 else
+                                                           "dropped: raw record not at rest"} for i in GEN.IDS}))
+            return
+        for p in dd.glob("*.json"):
+            if ".settled" not in p.name:
+                p.with_name(f"{p.stem}.settled.json").write_bytes(p.read_bytes() + b" ")
+
+    def demos(task, work, lock, ids, log, speed=None):
+        demo_calls.append((tuple(ids), speed))
+        traj = work / "simlab" / "traj" / task
+        traj.mkdir(parents=True, exist_ok=True)
+        for i in ids:
+            (traj / f"{i}.pkl").write_bytes(b"demo")
+
+    prov = lambda: {"repo": "controlr", "commit": "abc", "GENERATOR": "simlab/v15", "settler": "s",   # noqa: E731
+                    "robodojo": "f57e163", "isaacsim": "5.1.0"}
+    out, man_p = tmp_path / "supp", tmp_path / "supp_manifest.json"
+    GEN.run(out, man_p, "lock", ["make_toast", "imitate_sorting_sequence", "stack_blocks"], None, gen=gen, settle=settle,
+            prov=prov, demos=demos, raw_check=True, demo_speed=1.5, block="D-C19s")
+    man = sealed.load_manifest(man_p)
+    assert man["block"] == "D-C19s" and man["generator"]["options"] == {"raw_check": P.RAW_CHECK, "demo_speed": 1.5}
+    mt = man["tasks"]["make_toast"]
+    assert mt["settled"] is False and mt["tranche_a"] == [100100, 100101, 100102, 100104, 100105]
+    assert mt["unstable_count"] == 1 and (out / "make_toast" / "100100.json").is_file()   # the raw record is sealed
+    assert ("make_toast", True) in settles and ("stack_blocks", False) in settles
+    assert ("imitate_sorting_sequence", False) in settles                          # imitate settles as before
+    assert demo_calls and all(s == 1.5 for _, s in demo_calls)
+    assert man["tasks"]["imitate_sorting_sequence"]["demo_dropped"] == 0
+    rows, problems = sealed.verify_dir(out, man)
+    assert all(r[3] for r in rows) and not problems
+    assert "--speed" not in GEN.demo_cmd("t", [1, 2]) and GEN.demo_cmd("t", [1], 1.5)[-2:] == ["--speed", "1.5"]
 
 
 IMITATE = "imitate_sorting_sequence"
