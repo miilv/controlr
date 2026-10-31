@@ -1,4 +1,5 @@
 """Pre-settled records: write-back and rest checks (pure)."""
+import numpy as np
 import pytest
 
 from dojo.simlab import presettle as P
@@ -115,3 +116,40 @@ def test_keep_raw_unmoved_selects_only_dropped_ids_without_a_settled_file(tmp_pa
     assert names(P.select_files("t", root=tmp_path)) == ["100000", "100001", "100002", "100003", "100004"]  # reserved out
     assert names(P.select_files("t", root=tmp_path, keep_raw_unmoved=True)) == ["100001"]
     assert names(P.select_files("t", ids=[100000, 100002], root=tmp_path, keep_raw_unmoved=True)) == []
+
+
+def belt_rows(shift=(0.0, 0.0, 0.0), extra=None, conveyor_shift=(0.0, 0.0, 0.0), dz_rider=0.0):
+    """A conveyor scene (no Table): 3 Rigid riders + the Dynamic conveyor body; ``shift`` moves every rider (the belt),
+    ``extra`` {label: (dx, dy, dz)} on top of it (a rider tumbling / slipping)."""
+    rows = []
+    for k, (lab, x) in enumerate((("basket", 0.0), ("target", 0.1), ("object1", 0.2))):
+        d = [shift[i] + ((extra or {}).get(lab, (0.0, 0.0, 0.0))[i]) for i in range(3)]
+        rows.append({"inst_name": f"r{k}", "type": "Rigid", "category": "c", "category_idx": k, "label": lab,
+                     "clutter": False, "pos": [x + d[0], 0.3 + d[1], 0.9 + d[2] + dz_rider], "quat": [1.0, 0.0, 0.0, 0.0],
+                     "layout_pos": [x, 0.3, 0.9], "layout_quat": [1.0, 0.0, 0.0, 0.0]})
+    rows.append({"inst_name": "belt", "type": "Dynamic", "category": "conveyor", "category_idx": 1, "label": "conveyor",
+                 "clutter": False, "pos": list(np.add([0.0, 0.0, 0.8], conveyor_shift)), "quat": [1.0, 0.0, 0.0, 0.0],
+                 "layout_pos": [0.0, 0.0, 0.8], "layout_quat": [1.0, 0.0, 0.0, 0.0]})
+    return rows
+
+
+def test_raw_check_subtracts_the_belt_and_still_catches_tumbles_falls_and_a_moving_conveyor():
+    before = belt_rows()
+    belt = (0.040, 0.0, 0.0)                                         # 40 mm per window, as compute3's dev conveyor
+    assert not P.at_rest(before, belt_rows(belt), False)[0]          # the plain pass-1 test always drops a belt scene
+    ok, why, b = P.raw_at_rest(before, belt_rows(belt), False)
+    assert ok and not why and b == pytest.approx(list(belt))
+    ok, why, _ = P.raw_at_rest(before, belt_rows(belt, extra={"target": (0.0, 0.004, 0.0)}), False)
+    assert not ok and any("target still moving" in w for w in why)   # one rider slipping off the belt's motion
+    ok, why, _ = P.raw_at_rest(before, belt_rows(belt, conveyor_shift=(0.0, 0.003, 0.0)), False)
+    assert not ok and any("conveyor still moving" in w for w in why)  # the conveyor body is judged as is
+    ok, why, _ = P.raw_at_rest(belt_rows(dz_rider=-0.06), belt_rows(belt, dz_rider=-0.06), False)
+    assert not ok and sum("fell" in w for w in why) == 3             # no table: 5 cm below the record z = fell
+    lay = record()                                                   # a scene with a Table: plain at_rest, no belt
+    assert P.raw_at_rest(live_rows(lay), live_rows(lay), True) == (True, [], [0.0, 0.0, 0.0])
+    assert not P.raw_at_rest(live_rows(lay), live_rows(lay, dz=-0.003), True)[0]
+
+
+def test_raw_check_excludes_the_settle_passes():
+    with pytest.raises(SystemExit, match="--raw-check excludes"):
+        P.main(["--task", "make_toast", "--raw-check", "--keep-raw-unmoved"])

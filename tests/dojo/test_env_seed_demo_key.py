@@ -116,3 +116,35 @@ def test_official_eval_refuses_imitate_without_its_demo(tmp_path):
     r = subprocess.run(["bash", sh, "--inner", "--task", TASK, "--layouts", "100001", "--id", "t2"],
                        capture_output=True, text=True, env=env)
     assert "no demo" not in r.stderr and f"task {TASK}, 1 layouts: 100001" in r.stderr   # (stops later: no calib set)
+
+
+def test_a_salted_record_maps_its_salted_env_seed_to_its_layout_id(monkeypatch):
+    """D-C19 generation (30 Oct): a salted record resets with its salted _simlab.seed (~1e9); dev_demo read that as
+    seed * 100 + env and served the no-demo stub, so every salted imitate demo failed validation. Both seed modes."""
+    from dojo.simlab import gen_layouts as G
+    salt = "SYNTHETIC-salt"
+    base = G.salted_seed(100031, salt)
+    lay = {"_simlab": {"id": 100031, "seed": G.env_seed(base), "seed_salt": G.salt_fingerprint(salt)}}
+    plain = {"_simlab": {"id": 100032, "seed": 100032}}
+    monkeypatch.setenv("SIMLAB_ENV_SEED", "layout_id")
+    keys = runner.env_seed_keys([lay["_simlab"]["seed"], 100032])
+    runner.salted_demo_keys(keys, [lay, plain])
+    assert runner.DEMO_KEY == {lay["_simlab"]["seed"]: 100031}               # the unsalted record: no entry, as before
+    monkeypatch.setenv("SIMLAB_ENV_SEED", "index")
+    keys = runner.env_seed_keys([lay["_simlab"]["seed"], 100032])
+    runner.salted_demo_keys(keys, [lay, plain])
+    assert runner.DEMO_KEY == {0: 100031, 1: 100032}
+
+
+def test_the_routed_loader_serves_a_salted_records_own_demo(tmp_path, monkeypatch):
+    from dojo.simlab import gen_layouts as G
+    monkeypatch.setattr(paths, "DATA", tmp_path)
+    _demo(tmp_path / "simlab" / "traj" / TASK / "100031.pkl", "salted-own")
+    seed = G.env_seed(G.salted_seed(100031, "SYNTHETIC-salt"))
+    monkeypatch.setenv("SIMLAB_ENV_SEED", "layout_id")
+    keys = runner.env_seed_keys([seed])
+    load = runner._routed_load_pkl(_never)
+    ask = f"/rd/Assets/Traj/RoboDojo/{TASK}/0/{seed}.pkl"
+    assert load(ask).get("_simlab_no_demo")                                  # unmapped: the stub (the 30 Oct bug)
+    runner.salted_demo_keys(keys, [{"_simlab": {"id": 100031, "seed": seed, "seed_salt": "sha256:x"}}])
+    assert load(ask)["tag"] == "salted-own"

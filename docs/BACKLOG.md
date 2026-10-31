@@ -14,6 +14,17 @@
     slots (`~/coord/dc19.lock.1`, `.2`), non-blocking, for one call = one cell's tranche (BRIDGE-RUNBOOK).
   - Open: the manifest format and who generates / holds the sealed directory, as Misha amends the design. Then the
     `route_probe.py` pre-flight and the real freeze manifest before tranche A.
+- [ ] **dojo D-C19: a supplementary generation for the 4 empty cells (proposed to Misha, not scheduled).** In the
+  30 Oct block (manifest ebc899e9), make_toast and the two conveyor tasks were 0 / 20 stable, and imitate had all 20
+  demos dropped (journal 2026-10-31-dojo-dc19-supp-gen). Once both sides agree, after tranche A: `dc19_generate.py
+  --tasks <the 4> --raw-check --demo-speed 1.5 --block <name>`, with a new salt and its own DIR / manifest, pinned at
+  the fix's merge commit.
+  Landmines, fixed behind flags, so 127b65c4 still reproduces the block:
+  - **A settled:false task judged by "a settled record exists"** is never stable: a belt always moves its riders,
+    and the toaster's slices re-drift on reload. Use `presettle --raw-check` ("raw ok", rule simlab/raw-check v1).
+  - **A salted record's env seed (`_simlab.seed`, ~1e9) is not its layout id:** imitate's demo loader served the
+    no-demo stub until `runner.salted_demo_keys`. Any code that keys anything by the env seed of a salted record must
+    map it back to `_simlab.id`.
 - [ ] **dojo infra: compute2's physics differ from compute3 / compute4's.** Never replay a compute3 / compute4 recording on
   compute2, and never split an A/B pair across boxes. Same RoboDojo commit (f57e163) and isaacsim 5.1.0, but different
   CPUs (i9-13900KF vs 14900KF), and the Robots asset trees checksum differently on all three boxes. On compute2,

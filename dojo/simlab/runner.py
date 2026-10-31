@@ -416,6 +416,18 @@ def env_seed_keys(layout_keys: list[int]) -> list[int]:
     return list(range(len(layout_keys)))
 
 
+def salted_demo_keys(keys: list[int], layouts: list[dict]) -> None:
+    """A SALTED record (``_simlab.seed_salt``) resets with its salted ``_simlab.seed`` (~1e9, ``gen_layouts.env_seed``),
+    not its layout id, while its demo is ``traj/<task>/<id>.pkl`` (demo_gen keys it by the id). Without this map
+    ``dev_demo`` read the salted seed as ``seed * 100 + env`` and served the no-demo stub, so demo_gen's validation of a
+    salted imitate record always failed (D-C19 generation, 30 Oct: 20 / 20 dropped). In both env-seed modes the env
+    seed then maps to ``_simlab.id``. Unsalted records (seed == id) are left exactly as before."""
+    for k, lay in zip(keys, layouts):
+        meta = lay.get("_simlab") or {}
+        if meta.get("seed_salt") and meta.get("id") is not None and DEMO_KEY.get(k, k) != int(meta["id"]):
+            DEMO_KEY[int(k)] = int(meta["id"])
+
+
 def _routed_load_pkl(orig):
     def load_pkl(path):
         p = Path(str(path))
@@ -512,6 +524,7 @@ class RoboDojoRunner:
         # distinct keys per env even if two envs share a seed
         keys = [s * 100 + i for i, s in enumerate(seeds)] if len(set(seeds)) < len(seeds) else list(seeds)
         keys = env_seed_keys(keys)
+        salted_demo_keys(keys, layouts)
         sm = self.env.seed_manager
         sm.layouts.clear()
         for k, lay in zip(keys, layouts):
