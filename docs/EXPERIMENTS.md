@@ -93,6 +93,22 @@ open-loop replay keeps the recorded actions, so a harmful write cannot derail it
 Score grasp-time perception with `dojo.perception.grasp_metric` (R = 10 cm headline, required-only and R = 5 cm
 alongside, gap table by root cause). Score consumers against their own precision with the skills' `consume` events.
 
+### Camera A/B decision rule (dojo levers)
+
+Every lever A/B pre-registers its rule before any data. Unless a stronger rule is justified in the pre-registration,
+the default is:
+
+1. **Gain cell(s):** at least 10 pairs.
+   - The pooled score of B is at least **5 points** above A.
+   - Success flips (a success in one arm only) satisfy **wins ≥ 2 × losses**, with at least 2 net wins.
+2. **Guard cells:** on every guard cell, B's pooled score is no more than 5 points below A's, and B has no more flip
+   losses than wins.
+3. **Re-tests:** a lever rejected with a positive pooled delta may be re-tested **once**, on layouts it has never
+   run on, under a fresh pre-registration. Never re-run it on the same ids.
+
+A stricter "zero success losers" rule decides on a single noisy flip at 5-15 pairs, so it rejects most real gains.
+The flip ratio and the guard bound keep the protection against regressions that the zero-loser rule was meant to give.
+
 ## 4. Report template
 
 ```markdown
