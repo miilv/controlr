@@ -4,7 +4,7 @@
 
 ## Provenance and limits
 
-Repository main: `20903bc2f8e4f94714240afff6679ce3d86afcd5`. Ownership: robot-harness `coord/LANES.md` at `846c4216ea4ad90824b0d0646a940f551d8943d9` (shallow, sparse read-only clone, deleted). `_random` inherits its standard task owner; paired ownership remains unresolved, never silently claimed as ours.
+Checkpoint/main at initial audit: `20903bc2f8e4f94714240afff6679ce3d86afcd5`; final main relevance check: `c04335990e2b36c06fa5642998c4c2908d5f59b5` (#382). Ownership: robot-harness `coord/LANES.md` at `846c4216ea4ad90824b0d0646a940f551d8943d9` (shallow, sparse read-only clone, deleted). `_random` inherits its standard task owner; paired ownership remains unresolved, never silently claimed as ours.
 
 The 31 Oct 02:00Z backup is copied to `~/dojo-board` (11 MB). Its selected rows + G3 inputs are checked into `scripts/dojo/board/snapshot` with SHA-256 manifest. `ceil/` in the backup contains no surviving files. Missing raw historical `gt_rows`, proxy, breadth and other-system ledgers are explicitly omitted; strict still reproduces 51.53. G3 provenance comes from surviving `g3c_rows.json`, embedded references and the journals. No new ceiling measurements were run. Refreshed rows are not a measurement of current main: candidate selection and frozen historical rules remain unchanged.
 
@@ -124,27 +124,29 @@ These are historical decisions, not claims that flags became runtime defaults. `
 
 Additional journal evidence: imitation wait-home + keep-sides addresses start/re-entry failures; tie-look candidate (#383) is default-off and unmeasured on camera; wrist identity corrected 19 and broke 1 **in sample**, not a board gain. Kong v3 was rejected and v2 restored. Egg slow carry was null (15→15 on 10 dev draws; 23.5→20.5 on 10 old dev layouts). Fill-pen upright-first 24.7→26.0 (4 up/4 down) parked. Basket hook 1/20→1/20 parked. Sweep stacked levers 1/30→2/30 parked, with pan-hold fix not yet rechecked. Segmenter v2d parked after gate failure; frame-0 recall gains do not imply episode points.
 
+**Current-main addition (#382):** `disc_hold_evidence=on` is a merged, default-off coin candidate, isolating only the disc opening-resolution unknown rule from the broader held-thin/slot bundle. It has **no camera gain measured**; CPU physics smoke 2/5, mean 44 is not a new ceiling. Its dev audit found six opening-negative handover aborts, five absent-coin rows and four bad picks among 15 historical rows (five distinct layouts). That makes it a more targeted next diagnostic than replaying the rejected slot bundle. The existing stronger [coin pre-registration](../experiments/2026-11-05-coin-disc-hold-evidence-prereg.md) uses 45 pairs on coin plus 45 on each of three guards: **360 jobs = 60–120 lane-hours** (90 at 15 min), strict zero-loss/CI and harmful-write gates. Preserve that registered rule; the new default does not silently relax it. It reuses the historical scoring panel for a distinct lever; scoring-only aggregate access and no diagnosis remain mandatory. Defer its large booking until the lead accepts that budget; a smaller design would require a prospective registration before data, never a post-hoc relaxation. The original slot-bundle once-only retest remains a separate lower-priority option on never-used layouts.
+
 ## Top 15 in Ilia task lanes: expected points per effort
 
-Planning estimates, not measured treatment effects. Expected points = weight × assumed score improvement × probability of clearing the new gate. Effort includes implementation/diagnosis plus lane occupation; engineering estimates are coarse. These 15 exclude Misha and all paired tasks. Fresh scoring evidence is required before any promotion. Existing adopted effects are not counted twice.
+Planning estimates, not measured treatment effects. Expected points = weight × assumed score improvement × probability of clearing the new gate. Effort includes implementation/diagnosis plus lane occupation; engineering estimates are coarse. Effort uses 15 min/job plus engineering time; coin includes its existing 360-job protocol and imitation includes provisional guard jobs. Other new rendered designs reserve at least 10 gain pairs and guard coverage. These 15 exclude Misha and all paired tasks. Fresh scoring evidence is required before any promotion. Existing adopted effects are not counted twice.
 
 | Rank | Cell / lever | Assumed score gain × adoption probability | Expected Avg pts | Effort lane-h equiv | Expected pts/h | One-line plan |
 |---|---|---|---:|---:|---:|---|
-| 1 | make_kong | 20 × 60% | 0.300 | 6 | 0.050 | One fresh relocate retest, preserving v2 reader; guard other support scenes. |
-| 2 | imitate_sorting_sequence | 25 × 45% | 0.375 | 12 | 0.031 | Run pre-registered tie-look against ambiguous look after release; diagnose identity on dev only. |
-| 3 | play_stacking_toy | 15 × 50% | 0.188 | 8 | 0.023 | Keep adopted base refine; improve held-object/peg relative measurement, avoid rejected stuck-confirm. |
-| 4 | match_and_pick_from_conveyor | 15 × 50% | 0.250 | 12 | 0.021 | Keep wrist veto; repair wide-object cone interception on fresh dev trajectories. |
-| 5 | insert_key | 8.5 × 50% | 0.106 | 6 | 0.018 | One fresh key-handover v2 + lean retest, with insertion and budget guards. |
-| 6 | store_tools_in_toolbox | 15 × 45% | 0.169 | 12 | 0.014 | Fix slot approach/held-pose placement on v15 dev; then fresh camera gate. |
-| 7 | fill_egg_holder | 15 × 35% | 0.131 | 10 | 0.013 | Improve grasp/drop feasibility on stable v6-compatible dev; do not repeat slow carry. |
-| 8 | fill_pen_holder | 15 × 40% | 0.150 | 12 | 0.013 | Fix pen0 grasp/pick collisions and holder stability; abandon null lift-only arms. |
-| 9 | deposit_coin | 9.1 × 45% | 0.102 | 10 | 0.010 | One fresh slot+held-thin retest; retain calibrated multi-view coin check. |
-| 10 | insert_tubes | 10 × 40% | 0.100 | 10 | 0.010 | Shorten relay steps and camera refine overhead while preserving placement quality. |
-| 11 | make_toast | 20 × 40% | 0.067 | 8 | 0.008 | Retest sibling/rehover once, with stronger bowl and peg guards; reject global regressions. |
-| 12 | hang_mugs | 20 × 40% | 0.067 | 12 | 0.006 | Measure held handle at hover; use attainable hooks, preserving checker-independent geometry. |
-| 13 | pick_from_conveyor_by_image | 20 × 25% | 0.125 | 24 | 0.005 | Prove a stationary basket lift with collider-aware grasp in G3 before any camera jobs. |
-| 14 | store_laptop_and_headphones | 20 × 25% | 0.042 | 18 | 0.002 | G3 first: articulated lid/rack feasibility and correct articulation-root frames. |
-| 15 | sweep_blocks | 20 × 20% | 0.033 | 24 | 0.001 | G3 first: firm broom handover, fixed pan hold, then stroke reach; stop if chained failures persist. |
+| 1 | make_kong | 20 × 60% | 0.300 | 12 | 0.0250 | One fresh relocate retest, preserving v2 reader; guard other support scenes. |
+| 2 | match_and_pick_from_conveyor | 15 × 50% | 0.250 | 22 | 0.0114 | Keep wrist veto; repair wide-object cone interception on fresh dev trajectories. |
+| 3 | play_stacking_toy | 15 × 50% | 0.188 | 18 | 0.0104 | Keep adopted base refine; improve held-object/peg relative measurement, avoid rejected stuck-confirm. |
+| 4 | imitate_sorting_sequence | 25 × 45% | 0.375 | 36 | 0.0104 | Run pre-registered tie-look against ambiguous look after release; diagnose identity on dev only. |
+| 5 | insert_key | 8.5 × 50% | 0.106 | 12 | 0.0088 | One fresh key-handover v2 + lean retest, with insertion and budget guards. |
+| 6 | store_tools_in_toolbox | 15 × 45% | 0.169 | 22 | 0.0077 | Fix slot approach/held-pose placement on v15 dev; then fresh camera gate. |
+| 7 | fill_pen_holder | 15 × 40% | 0.150 | 22 | 0.0068 | Fix pen0 grasp/pick collisions and holder stability; abandon null lift-only arms. |
+| 8 | fill_egg_holder | 15 × 35% | 0.131 | 20 | 0.0066 | Improve grasp/drop feasibility on stable v6-compatible dev; do not repeat slow carry. |
+| 9 | insert_tubes | 10 × 40% | 0.100 | 20 | 0.0050 | Shorten relay steps and camera refine overhead while preserving placement quality. |
+| 10 | pick_from_conveyor_by_image | 20 × 25% | 0.125 | 32 | 0.0039 | Prove a stationary basket lift with collider-aware grasp in G3 before any camera jobs. |
+| 11 | make_toast | 20 × 40% | 0.067 | 18 | 0.0037 | Retest sibling/rehover once, with stronger bowl and peg guards; reject global regressions. |
+| 12 | hang_mugs | 20 × 40% | 0.067 | 22 | 0.0030 | Measure held handle at hover; use attainable hooks, preserving checker-independent geometry. |
+| 13 | store_laptop_and_headphones | 20 × 25% | 0.042 | 28 | 0.0015 | G3 first: articulated lid/rack feasibility and correct articulation-root frames. |
+| 14 | sweep_blocks | 20 × 20% | 0.033 | 32 | 0.0010 | G3 first: firm broom handover, fixed pan hold, then stroke reach; stop if chained failures persist. |
+| 15 | deposit_coin | 9.1 × 45% | 0.102 | 100 | 0.0010 | Prefer new disc_hold_evidence candidate first; defer slot-bundle retest and keep its calibration guards. |
 
 Positive rejected deltas create a **retest shortlist, not retroactive adoption**: relocate +20 (all 15; unseen +11.1, W/L=2/1 and only +1 net), key +8.5 (10; +1 net), coin +9.1 (11; +1 net), dolls look-union +10 (20; large loser), yaw +22.2 (9; fails minimum 10; guard swap has a loss balanced by a win). Relocate all-pair flips are 4/1 (+3 net), but the original unseen-only gate did not pass. Coin/key still fail the new +2-net-success requirement on existing rows. A fresh retest must have >=10 gain pairs, pooled +5, wins >=2×losses, >=2 net wins, each guard pooled >=A−5 and guard wins>=losses. Verify no prior once-only retest has been spent. Do not amend the old decisions.
 
@@ -211,11 +213,11 @@ Recommended queue (a **replacement plan**, not edits to compute4 queue):
 | 1 | Fresh relocate once-only A/B, 10 gain pairs + 10 guard pairs | 40 | 6.7–13.3 | 3.3–6.7 | Ilia; new default, scene-content guard |
 | 2 | Imitation tie-look registered gate: 20 dev layouts ×2 repeats ×2 arms; guard budget separate | 80 + guards | 13.3–26.7 + guards | 6.7–13.3 + guards | Ilia; retain its stronger >=10 and CI>0 rule; budget 40 extra guard jobs only after freezing protocol |
 | 3 | Fresh key v2+lean once-only retest, 10 gain pairs + 10 guard pairs | 40 | 6.7–13.3 | 3.3–6.7 | Ilia; no reuse of old scoring ids |
-| 4 | Fresh coin slot retest only if dev calibration merits it, 10 gain +10 guard pairs | 40 | 6.7–13.3 | 3.3–6.7 | Ilia; +2 net wins required |
+| 4 | Defer coin camera booking pending the existing disc_hold_evidence protocol | 0 booked | separate 60–120 | separate 30–60 | Ilia; existing stronger registration is 360 jobs, not a 40-job substitute |
 | 5 | Skill-blocked image-basket, egg, pen: 5 G3 dev jobs per task before rendered work | 15 | 2.5–5.0 | 1.25–2.5 | Ilia; physics first, no automatic promotion |
 | Parallel owner handoff | Misha may prioritize yaw/dolls/union/pack/ubg/afix; Ilia supplies perceiver | not booked | separate | separate | Do not occupy Ilia task lanes on Misha-owned skills |
 
-Priorities 1–5 total **215 jobs = 35.8–71.7 lane-hours**, plus imitation guards (provisionally 40 jobs = 6.7–13.3 lane-hours; **42.5–85 total**, 21.25–42.5 two-lane wall-hours). At 15 minutes/job: 63.75 lane-hours / 31.88 wall-hours including guards. Run sequential gates, stop failed families, and revise later allocations after each result. The lane-hours are a budget ceiling, not an instruction to launch all 255 jobs. No historical five-pair screen promotes under the new default; no already-rejected block is replayed on its original ids.
+Booked priorities total **175 jobs = 29.2–58.3 lane-hours**, plus imitation guards (provisionally 40 jobs = 6.7–13.3 lane-hours; **35.8–71.7 total**, 17.9–35.8 two-lane wall-hours). At 15 minutes/job: 53.75 lane-hours / 26.88 wall-hours including guards. The separate 360-job coin protocol is not in this booking. Run sequential gates, stop failed families, and revise later allocations after each result. The lane-hours are a budget ceiling, not an instruction to launch all 215 booked jobs. No historical five-pair screen promotes under the new default; no already-rejected block is replayed on its original ids.
 
 Old queue split: pack 20, ubg 18, twin-union 50, afix 50, A1 34, coverage/rebaseline 138 = **310**. Pack/ubg/union/afix are Misha tasks; A1 spans bottles (Misha) and organize (Ilia). Resolve paired ownership before the stack/swap/press refreshes. Rebaseline rows may fix stale coverage, but cannot be advertised as controller improvements.
 
