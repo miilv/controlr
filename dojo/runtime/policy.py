@@ -504,6 +504,8 @@ class RuntimeConfig:
     # grasp-place pairs" for the rest). "on": (a) re-pick only when a second read (``RuntimeProvider.recheck``)
     # confirms the judgment; (b) after a re-pick that slips, re-read the piece and keep its measured pose. off | on
     peg_stuck_confirm: str = "off"
+    # Request a held-ring measurement at the peg hover; retain blind guarded threading on a rejected read.
+    peg_held_read: str = "off"
     # insert_key's rest handover (``regrasp.plan_rest_handover``, ``Skills.key_handover``): v1 (today) | v2 (all four
     # lengthwise giver picks, an upright handover pass when the as-lifted one finds none, 16 taker places checked, vias
     # 8 / 5 / 3 / 12 cm over the receptacle). v15 dev layouts 100030-49, G3 mode A: 7/20 failed in the handover search
@@ -644,6 +646,7 @@ class RuntimePolicy:
                 or self.cfg.nest_verify not in ("target", "support") or self.cfg.search_identity not in ("first", "unknown")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3") or self.cfg.peg_base_refine not in ("off", "local")
                 or self.cfg.peg_stuck_confirm not in ("off", "on")
+                or self.cfg.peg_held_read not in ("off", "on")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
@@ -966,6 +969,7 @@ class RuntimePolicy:
             sk_.kong_draw_read = cfg.kong_draw_read
             sk_.peg_base_refine = cfg.peg_base_refine
             sk_.peg_stuck_confirm = cfg.peg_stuck_confirm
+            sk_.peg_held_read = cfg.peg_held_read
             sk_.key_handover = cfg.key_handover
             sk_.key_lean = cfg.key_lean
             sk_.stack_reach = cfg.stack_reach

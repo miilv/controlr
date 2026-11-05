@@ -9,7 +9,7 @@ the grasp-time metric needs (``dojo.perception.grasp_metric``, stream M, PERCEPT
 ``--every`` steps, the state before and after every action that changes a gripper command (so every grasp / release
 of ``grasp_metric.grip_events``, at its step k - 1) and the end; ``reward`` at the end (compare with the episode row: the replay reproduces a proxy episode bit for bit; a
 genuine-5.1 rendered episode only approximately, see replay_kits.py). Episodes already in DIR are skipped. Dev layouts
-only (the runner's asset firewall).
+only (the runner's asset firewall). Optional ``snapshot_steps`` in each job adds exact diagnostic frames.
 """
 
 from __future__ import annotations
@@ -80,7 +80,8 @@ def main(argv=None) -> None:
         # nothing after the last gripper change is scored: stop there (a loaded box replays ~2 steps/s); the final
         # reward then is the one at the stop (``stopped_at``): compare it with the episode's only when it ran out
         stop = len(acts) if a.full else min(len(acts), max(need | {0}) + 2)
-        want = {0, stop} | need | set(range(0, stop + 1, max(1, a.every)))
+        # Optional exact diagnostic snapshots (e.g. consume/hover steps) without sampling every physics step.
+        want = {0, stop} | need | set(range(0, stop + 1, max(1, a.every))) | {int(k) for k in j.get("snapshot_steps", [])}
         info = run.load(json.loads(Path(j["layout"]).read_text()))
         frames = {}
         if 0 in want:

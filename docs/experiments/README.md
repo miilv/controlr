@@ -65,3 +65,4 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 | 2026-11-05 | [COIN disc-hold evidence A/B](2026-11-05-coin-disc-hold-evidence-prereg.md) | disc-only held-opening evidence | pre-registered; not run |
 | 2026-11-05 | [dojo-route-replay](2026-11-05-dojo-route-replay.md) | can cx/gpt-6-sol replace agentic Sonnet requests? | 13 dev request replays: 0 HTTP errors, 7 immediate answers / 6 tool continuations, 4 exact geometry matches; keep default pending dev A/B |
 | 2026-11-05 | [CONV waist-first camera A/B](2026-11-05-conv-waist-camera-prereg.md) | waist before shallow grasps on wide belt riders; veto stays on | pre-registered, fresh salted dev layouts; not run; G3 blocked by compute3 CUDA driver unavailability |
+| 2026-11-05 | [TOY held-ring read A/B](2026-11-05-toy-held-read-ab.md) | measure ring attachment at the peg hover | pre-registered; not run |

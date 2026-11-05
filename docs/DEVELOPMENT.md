@@ -498,3 +498,13 @@ tries mesh waist grasps before shallow slice/rim grasps when the rider has no to
 An unreachable waist falls back to the existing surface search. Narrow top grasps retain
 their search. This changes grasp selection, not tracking or identity; keep `belt_wrist_veto`
 independently configured. Both conveyor skills share this interception planner.
+
+### Stacking-toy held-ring read
+
+`RuntimeConfig.peg_held_read: on` (default `off`; G3 `--skill-attr peg_held_read=on`) asks the existing held-pose protocol
+for a ring-to-TCP measurement at the peg hover in mode B. It requires lateral uncertainty <= 0.5 mm and axis uncertainty
+<= 7.5 degrees, may use the existing bounded look/show protocol, and retains guarded threading on an accepted transform.
+A rejected/missing read uses the original predicted transform. It does not enable seating or change stuck-piece retries.
+Use with `held_pose: request` and the adopted base refinement; validate camera scores and belief writes before adoption.
+The dev-only `scripts/skills/toy_release_audit.py` compares hover attachment and pre-release hole/peg errors against a
+physics replay captured with `m95_replay.py --every 1`; its GT is never used by a policy.
