@@ -80,21 +80,30 @@ reproduces the supplied 8.8 using o2owait. The counted eight have 7 perception_g
 The complete o2owait attempt family has 2 infra / 11 and 1 unstable / 11. `perception_gross` is a coarse scorer
 category, not a diagnosis of each episode's causal failure.
 
-The checked-in journals explain historical families and v15 replacement at n>=5
-(`2026-10-29-dojo-imitate-twins.md`, `2026-10-29-dojo-v15-measurement-layouts.md`), but do **not** contain the current
-board selector or a rule choosing o2owait over o2owaitlook. Asked the lead for that source. Consequently the exact
-external selector remains unverified; the numerical reconstruction is strong evidence for the counted family, not
-proof of the board's general selection rule. No forbidden coordination files were used to fill this gap.
+The lead supplied the board source: local `~/dojo-state-backup/m95/cells.md` (30 Oct 19:48Z) and `cells.py`.
+Read the selector as code only, never executed it or loaded its input datasets. Lines 348-409 reject dev/renamed/
+invalid-code rows, infra and unstable results, then keep the newest valid attempt per layout/family. Lines 614-638
+exclude the unstable imitate layout explicitly, select **o2owait**, retire the other historical imitate suffixes and
+rank the candidate at n>=5. This verifies the family and exclusions; `cells.md:3` confirms 0/8 / 8.8.
+
+Crucially, an aggregate join by directory layout key finds **9 distinct o2owait layouts in 11 attempts**. Both infra
+attempts have a later noninfra attempt; **zero infra-only layouts remain**. Eight distinct usable rows plus one
+unstable layout explain n=8 completely. This join projects the same authorized four fields and emits counts only,
+never per-id diagnoses. The census tool includes these distinct-layout counts to avoid mistaking retried attempts
+for lost score coverage.
 
 ## Expected effect
 
-Removing infra zeros from the reconstructed counted mean has **zero effect**: they are already absent. Infra can
-bias sample coverage, but does not arithmetically explain 8.8 vs 82. A pure fix to these missing attempts has no
-measured gain yet. As a sensitivity calculation only, if two newly completed, distinct samples both scored 82,
-(8 * 8.75 + 2 * 82) / 10 = 23.4; delta 14.65 cell points, ~0.49 board points at Memory weight 1/30. If both scored
-100 the mean would be 27.0 (~0.61 board points). These assume both attempts are distinct missing samples and the
-selector includes both; retries/overlap or different outcomes invalidate that calculation. They are not forecasts.
-Achieving 82 on the existing counted sample would instead need ~2.44 board points of policy/perception improvement.
+**Zero direct board effect from fixing the two observed historical watchdog/infra attempts:** their completed
+retries already supply the counted results. Dropping infra zeros cannot raise 8.8 because those zeros are already
+absent. The 44.4% dev attempt rate and the candidate's 18.2% attempt rate measure operational cost, not missing
+counted samples. There is no evidence here that watchdogs explain the 73.25-point cell gap. This does not rule out
+unobserved future infrastructure failures or infrastructure-induced changes in completed runs.
+
+No measured score gain is claimed for this reporting PR. A robustness fix may save latency and duplicate GPU work,
+but cannot be scored as recovering the existing 8.8-to-82 gap. Matching the G3 ceiling on the eight counted rows would
+still require ~73.25 / 30 = **2.44 board points** of improvement in completed episodes; camera and G3 references use
+different layout sets, so that ceiling is an opportunity estimate, not a paired causal effect.
 
 ## Validation
 
@@ -106,3 +115,7 @@ stdin on compute4 and reproduced the aggregate table without writes. Focused cen
 then was excluded as unstable_layout (0 departures seen). No 300-s reset stall reproduced; this is not a success or
 a render validation. Process returned rc=0 and the shared lock was available afterward. No persistent server started.
 No motion/perception fix is offered without a causal reproducer.
+
+Compute3 positive control: dev 100002 with one_to_one / wait home / keep_sides completed successfully, score 100,
+1408 steps, wall 80.3 s, no infra/instability. Explicit disk guard passed (123 GB free); process rc=0 and shared lock
+available after exit. This validates the physics/demo path only; it neither exercises nor repairs RTX capture.

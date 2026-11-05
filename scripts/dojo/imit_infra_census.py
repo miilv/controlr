@@ -39,14 +39,25 @@ def census(root: Path) -> list[dict]:
                         raw = json.loads(line)
                         # Do not retain scores, reasons, trajectories, identities, or report bodies.
                         groups[match[1], match['archive'] or 'active'].append(
-                            {key: raw.get(key) for key in FIELDS})
+                            (lid, {key: raw.get(key) for key in FIELDS}))
     result = []
-    for (family, archive), rows in sorted(groups.items()):
+    for (family, archive), entries in sorted(groups.items()):
+        rows = [row for _, row in entries]
+        by_layout = defaultdict(list)
+        for lid, row in entries:
+            by_layout[lid].append(row)
+        infra_layouts = [rs for rs in by_layout.values()
+                         if any(r['category'] == 'infra_failure' for r in rs)]
         n = len(rows)
         categories = Counter(str(row['category']) for row in rows)
         infra = categories.get('infra_failure', 0)
         result.append(dict(family=family, archive=archive, attempts=n,
                            categories=dict(sorted(categories.items())),
+                           unique_layouts=len(by_layout),
+                           infra_only_layouts=sum(all(r['category'] == 'infra_failure' for r in rs)
+                                                  for rs in infra_layouts),
+                           infra_layouts_with_noninfra_attempt=sum(
+                               any(r['category'] != 'infra_failure' for r in rs) for rs in infra_layouts),
                            infra=infra, infra_rate=round(infra / n, 4),
                            successes=sum(row['success'] is True for row in rows),
                            rc=dict(sorted(Counter(str(row['rc']) for row in rows).items())),

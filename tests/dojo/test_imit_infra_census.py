@@ -25,6 +25,8 @@ def test_only_aggregate_fields_escape_and_archived_attempts_stay_separate(tmp_pa
     rows = CENSUS.census(tmp_path)
     active = next(r for r in rows if r['archive'] == 'active')
     assert active['attempts'] == 2 and active['infra_rate'] == 0.5
+    assert active['unique_layouts'] == 1 and active['infra_only_layouts'] == 0
+    assert active['infra_layouts_with_noninfra_attempt'] == 1
     assert active['categories'] == {'infra_failure': 1, 'perception_gross': 1}
     assert active['rc'] == {'None': 2} and active['zero_steps'] == 1
     assert len(rows) == 2
