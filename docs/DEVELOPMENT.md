@@ -475,3 +475,10 @@ come only from the named `AGENTIC_ENV_FILE` or OMNIROUTE environment source.
 Saved rows include historical replies, new replies, latency and token usage.
 The probe compares single decisions conditioned on the stored Sonnet history;
 it cannot measure a new model's full tool trajectory or episode success.
+
+### Aggregate-only imitation infrastructure census
+
+`scripts/dojo/imit_infra_census.py ROOT` summarizes old `c4b_imitatesg` candidate attempts using only category,
+success, rc and steps_used. It restricts reads to measurement ids 100005-09 / 100020-29 and known suffixes,
+separates archived rows, and emits no episode ids or diagnostics. Pipe it over SSH to inspect a read-only host
+without copying a script there. It does not select the board's counted family or diagnose scoring episodes.

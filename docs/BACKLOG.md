@@ -117,6 +117,11 @@
   hang_mugs_random, make_toast_random, store_laptop_random, sweep_blocks_random rigid2 (sweep_blocks' two brooms are
   `KNOWN_UNSHIPPED`, not a gap). Before a rendered round on a box: compare `index.json` md5 with compute3's and
   list the gap labels (stream W is adding a per-box coverage check). Journal 2026-10-28-dojo-integ-c4-round2.
+- [ ] **dojo infra: imitate rendered Kit stalls need causal stacks.** Dev camera failures repeat zenity display
+  errors during reset/initial capture and mid-episode; the Integration watchdog ends them at 300 s. Archived logs
+  have no stacks, so OOM / capture / step / RPC causality remains unresolved. Reproduce on dev ids only after a
+  rendering host is released, capture bounded Python/native stacks and per-process Kit/VRAM diagnostics. A
+  physics-only pass cannot qualify a render fix. See journal `2026-11-05-dojo-imit-watchdog-audit.md`.
 - [ ] **dojo infra (landmine): store_laptop 100000 freezes Isaac 5.1's Kit on compute2.** No env step after step
   ~20, then Kit's zenity "cannot open display" every 2 min until the integ_eval watchdog kills the scope
   (infra_failure). It happened in 4 of 4 runs of the default-perception arms on compute2 (bbc9b3a,
