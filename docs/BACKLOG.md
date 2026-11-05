@@ -838,6 +838,10 @@
     files; PhysicalRSI's own docstring: "no historical evaluation layout supplies board/basket transforms"), so
     perception should find the board by appearance in whatever view shows it, not at a pinned pose (journal
     2026-10-27-dojo-perception3).
+- [ ] **dojo imitation: validate tie-aware wrist looks on dev cameras.** `imitate_tie_look` is default off;
+  equal-cost two-pair swaps include same-asset matches skipped by `imitate_look=ambiguous` (dev home 100001:
+  watch read as garage). Missing detections and unreachable phantom twins remain separate. Pre-registration:
+  [IMIT camera A/B](experiments/2026-11-05-imit-tie-look-ab.md). Do not adopt from G3 alone.
 - [ ] **dojo perception: imitate twin pairing by appearance (B1 `twin_pairing`, default off; legal under D-C17).**
   No gain on the 6 allowed demo layouts (plan right 4/6 either way). Its uncertainty rule is too strict: a Hungarian
   override marked a physically right pair uncertain (100002). Revisit with more demo layouts, and a margin taken from

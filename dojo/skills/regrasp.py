@@ -724,13 +724,14 @@ def _let_go(sk: Skills, arm: str, label: str) -> None:
     sk.held[arm] = None
 
 
-def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = LOOK_HEIGHT):
+def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = LOOK_HEIGHT,
+               read_kind: str = "look"):
     """Mode B: a hand straight down ``height`` over the receptacle (``arm`` first, then the other; lower when out of
     reach), one still step, the refine hook on it (kind "look"; ``_look_read``); the target moved by however the
     receptacle's believed pose changed (the target is fixed in its frame); the arm that looked in ``sk.looked_with``
     (it stays over the receptacle: ``rest_handover`` sends it home during the giver's carry). Returns (target,
-    yaw_source): perception's
-    ``yaw_source`` of the read ("top_feature": a keyhole's full-turn yaw and xy; "top_feature_axis": its axis, the side
+    yaw_source). ``read_kind`` selects the refine hook (ordinary pose look by default; imitation can request an
+    identity read). Perception's ``yaw_source`` of the read ("top_feature": a keyhole's full-turn yaw and xy; "top_feature_axis": its axis, the side
     unsure; None: none read), the target unchanged when no look plans or nothing changed."""
     rec = sk.world.obj(receptacle)
     T_rec0 = rec.T.copy()
@@ -751,7 +752,7 @@ def _look_over(sk: Skills, arm: str, receptacle: str, T_target, height: float = 
     sk.looked_with = arm
     try:
         sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)}, name=f"look at {receptacle}")
-        ys = _look_read(sk, arm, receptacle, hgt)
+        ys = _look_read(sk, arm, receptacle, hgt, read_kind=read_kind)
     except (BudgetExceeded, EpisodeEnded):
         return T_target, None
     T_rec1 = sk.world.obj(receptacle).T
@@ -775,11 +776,11 @@ def _look_move(sk: Skills, arm: str, xy, z: float):
     return None
 
 
-def _look_read(sk: Skills, arm: str, receptacle: str, hgt: float):
+def _look_read(sk: Skills, arm: str, receptacle: str, hgt: float, read_kind: str = "look"):
     """The refine at the look, and once more straight over the receptacle when the first read gave a re-hover hint or
     no yaw (``sk.last_refine["yaw_source"]`` None: the keyhole not in view; B1 put the lock 18-25 mm off in 3 of 25
     5.1 frames). Returns the yaw source of the last read."""
-    hint = sk._refine(receptacle, arm, "look")
+    hint = sk._refine(receptacle, arm, read_kind)
     ys = (getattr(sk, "last_refine", None) or {}).get("yaw_source")
     if ys is not None:
         return ys
@@ -791,7 +792,7 @@ def _look_read(sk: Skills, arm: str, receptacle: str, hgt: float):
     sk.log(f"[look_over] {receptacle}: re-hover over {np.round(xy, 3).tolist()} ({'hint' if hint is not None else 'no yaw read'})")
     sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).move(mv).hold(1)},
               name=f"look at {receptacle} again")
-    sk._refine(receptacle, arm, "look")
+    sk._refine(receptacle, arm, read_kind)
     return (getattr(sk, "last_refine", None) or {}).get("yaw_source")
 
 

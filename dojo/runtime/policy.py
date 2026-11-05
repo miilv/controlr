@@ -407,6 +407,9 @@ class RuntimeConfig:
     # objects in pairs whose believed assets differ, then the assignment again; camera: frame-0 category misreads on
     # both sides in 6 of 6 runs)
     imitate_look: str = "off"
+    # Look at our objects in equal-cost twin swaps too, even when their believed assets match.
+    # At most MAX_TWIN_LOOKS after the demo wait, under the existing copy budget guard.
+    imitate_tie_look: bool = False
     # ``copy_demonstration``'s puts (``Skills.imitate_repair``): False (today: a twin that cannot be put after 3 tries
     # stops the copy) | True (after REPAIR_TRIES it is dropped as a misread, the next candidate like the demonstrated object
     # is tried and the rest are paired again among ours; dev 100001: our watch read as a garage took the garage's slot)
@@ -939,6 +942,7 @@ class RuntimePolicy:
             sk_.imitate_pairing = cfg.imitate_pairing
             sk_.imitate_wait = cfg.imitate_wait
             sk_.imitate_look = cfg.imitate_look
+            sk_.imitate_tie_look = bool(cfg.imitate_tie_look)
             sk_.row_size_read = cfg.row_size_read
             sk_.row_stage = bool(cfg.row_stage)
             sk_.row_home_clear = bool(cfg.row_home_clear)
@@ -1360,7 +1364,8 @@ class RuntimePolicy:
             if done is not None:
                 return done
         idv = None
-        if self.cfg.refine_identity and kind in ("pick", "size"):
+        if self.cfg.refine_identity and (kind in ("pick", "size")
+                                         or (kind == "imitate" and self.cfg.imitate_tie_look)):
             # perception's instruction-ranked candidates for this label (general_pickup's target), else the
             # vocabulary's distinct shapes (85 classes for a target-category vocabulary: slow and noisy)
             rank = (((getattr(self, "_last_record", None) or {}).get("_perception") or {}).get("target_ranking")
