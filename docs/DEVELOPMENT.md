@@ -445,6 +445,19 @@ asset. This kind is gated by the switch, and uses the existing identity/pose acc
 three or more pairs and unassigned objects are outside this tie detector. Camera validation must audit the existing
 look writer and budget costs before adoption; G3's perfect identities only test the no-tie path.
 
+### Stacking-toy held-ring read
+
+`RuntimeConfig.peg_held_read: on` (default `off`; G3 `--skill-attr peg_held_read=on`) asks the existing held-pose protocol
+for a ring-to-TCP measurement at the peg hover in mode B. It requires lateral uncertainty <= 0.5 mm and axis uncertainty
+<= 7.5 degrees, may use the existing bounded look/show protocol, and retains guarded threading on an accepted transform.
+A rejected/missing read uses the original predicted transform. It does not enable seating or change stuck-piece retries.
+Use with `held_pose: request` and the adopted base refinement; validate camera scores and belief writes before adoption.
+The dev-only `scripts/skills/toy_release_audit.py` compares hover attachment and pre-release hole/peg errors against a
+physics replay captured with `m95_replay.py --every 1`; its GT is never used by a policy.
+The provider can reanchor belief on an ok read before the tail's uncertainty gate. For this lever, explicit
+`belief_write` events with writer `held_pose` capture those changes, including tail-rejected reads; include them in the
+harmful-write audit. The safe tail fallback alone does not establish harmless belief writes.
+
 ## 5. What lives where
 
 | What | Where | Rule |
