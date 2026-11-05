@@ -1,0 +1,489 @@
+{
+ "Dynamic": {
+  "conveyor": [
+   {
+    "category": "conveyor",
+    "category_idx": 0,
+    "group": null,
+    "xlim": [
+     -2.08,
+     -2.08
+    ],
+    "ylim": [
+     0.175,
+     0.175
+    ],
+    "zlim": [
+     0.0,
+     0.0
+    ],
+    "qpos": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "rotate_deg": 0,
+    "rotate_rand": true,
+    "relative_plane": "Ground",
+    "place_tag": null,
+    "margin": 0.01,
+    "check_mode": "bbox",
+    "need_check_stable": true,
+    "label": "conveyor",
+    "default_pos": [
+     -2.08,
+     0.175,
+     0.05
+    ],
+    "default_ori": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "size": [
+      3.6012,
+      1.1764,
+      0.924
+     ],
+     "mass": 0.0,
+     "friction": 0.0,
+     "type": "dynamic"
+    },
+    "visual": {}
+   }
+  ]
+ },
+ "Geometry": {
+  "camera_stand": [
+   {
+    "category": "camera_stand",
+    "category_idx": 0,
+    "group": null,
+    "xlim": [
+     0.0,
+     0.0
+    ],
+    "ylim": [
+     -0.47,
+     -0.47
+    ],
+    "zlim": [
+     0.715,
+     0.715
+    ],
+    "qpos": [
+     0.707,
+     -0.707,
+     0.0,
+     0.0
+    ],
+    "rotate_deg": 0,
+    "rotate_rand": false,
+    "relative_plane": "Ground",
+    "place_tag": null,
+    "margin": 0.01,
+    "check_mode": "bbox",
+    "need_check_stable": true,
+    "label": "camera_stand",
+    "default_pos": [
+     0.0,
+     -0.47,
+     0.765
+    ],
+    "default_ori": [
+     0.7071067811865476,
+     -0.7071067811865476,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "type": "geometry"
+    },
+    "visual": {}
+   }
+  ]
+ },
+ "Rigid": {
+  "game_machine": [
+   {
+    "category": "game_machine",
+    "category_idx": 0,
+    "group": null,
+    "xlim": [
+     [
+      -0.3,
+      -0.3
+     ],
+     [
+      -0.14,
+      -0.14
+     ],
+     [
+      0.02,
+      0.02
+     ],
+     [
+      0.2,
+      0.2
+     ]
+    ],
+    "ylim": [
+     -0.3,
+     -0.2
+    ],
+    "zlim": null,
+    "qpos": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "rotate_deg": 35,
+    "rotate_rand": true,
+    "relative_plane": "conveyor",
+    "place_tag": null,
+    "margin": 0.03,
+    "check_mode": "point",
+    "need_check_stable": true,
+    "label": "target1",
+    "default_pos": [
+     -1.6200243460852193,
+     -0.050794076144512826,
+     0.7784257348141962
+    ],
+    "default_ori": [
+     -0.697121259455324,
+     0.697121259455324,
+     0.11841431338914614,
+     0.11841431338914614
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "mass": 0.05,
+     "friction": 0.38,
+     "type": "rigid"
+    },
+    "visual": {}
+   },
+   {
+    "category": "game_machine",
+    "category_idx": 0,
+    "group": null,
+    "xlim": [
+     1.88,
+     1.88
+    ],
+    "ylim": [
+     -0.13,
+     -0.13
+    ],
+    "zlim": null,
+    "qpos": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "rotate_deg": 35,
+    "rotate_rand": true,
+    "relative_plane": "conveyor",
+    "place_tag": null,
+    "margin": 0.03,
+    "check_mode": "point",
+    "need_check_stable": true,
+    "label": "target0",
+    "default_pos": [
+     0.25002347521114193,
+     0.04189999999999998,
+     0.7784261544590055
+    ],
+    "default_ori": [
+     -0.6794162387368357,
+     0.6794162387368357,
+     -0.19594278384439479,
+     -0.19594278384439479
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "mass": 0.05,
+     "friction": 0.38,
+     "type": "rigid"
+    },
+    "visual": {}
+   }
+  ],
+  "phone": [
+   {
+    "category": "phone",
+    "category_idx": 0,
+    "group": null,
+    "xlim": [
+     [
+      -0.3,
+      -0.3
+     ],
+     [
+      -0.14,
+      -0.14
+     ],
+     [
+      0.02,
+      0.02
+     ],
+     [
+      0.2,
+      0.2
+     ]
+    ],
+    "ylim": [
+     -0.3,
+     -0.2
+    ],
+    "zlim": null,
+    "qpos": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "rotate_deg": 35,
+    "rotate_rand": true,
+    "relative_plane": "conveyor",
+    "place_tag": null,
+    "margin": 0.03,
+    "check_mode": "point",
+    "need_check_stable": true,
+    "label": "other0",
+    "default_pos": [
+     -1.7762181267800357,
+     -0.16893502465945553,
+     0.7773991178332145
+    ],
+    "default_ori": [
+     0.7043456639874168,
+     -0.7052426450292041,
+     -0.05717664323943627,
+     -0.05710366645152806
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "type": "rigid"
+    },
+    "visual": {}
+   }
+  ],
+  "puppet": [
+   {
+    "category": "puppet",
+    "category_idx": 0,
+    "group": null,
+    "xlim": [
+     [
+      -0.3,
+      -0.3
+     ],
+     [
+      -0.14,
+      -0.14
+     ],
+     [
+      0.02,
+      0.02
+     ],
+     [
+      0.2,
+      0.2
+     ]
+    ],
+    "ylim": [
+     -0.3,
+     -0.2
+    ],
+    "zlim": null,
+    "qpos": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "rotate_deg": 35,
+    "rotate_rand": true,
+    "relative_plane": "conveyor",
+    "place_tag": null,
+    "margin": 0.03,
+    "check_mode": "point",
+    "need_check_stable": true,
+    "label": "other1",
+    "default_pos": [
+     -1.9470140585384008,
+     -0.08403886005714134,
+     0.7920338037999212
+    ],
+    "default_ori": [
+     -0.7513791153250542,
+     0.6088346384634469,
+     0.1918419863697997,
+     0.1671719483828333
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "type": "rigid"
+    },
+    "visual": {}
+   }
+  ],
+  "headset": [
+   {
+    "category": "headset",
+    "category_idx": 7,
+    "group": null,
+    "xlim": [
+     [
+      -0.3,
+      -0.3
+     ],
+     [
+      -0.14,
+      -0.14
+     ],
+     [
+      0.02,
+      0.02
+     ],
+     [
+      0.2,
+      0.2
+     ]
+    ],
+    "ylim": [
+     -0.3,
+     -0.2
+    ],
+    "zlim": null,
+    "qpos": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "rotate_deg": 35,
+    "rotate_rand": true,
+    "relative_plane": "conveyor",
+    "place_tag": null,
+    "margin": 0.03,
+    "check_mode": "point",
+    "need_check_stable": true,
+    "label": "other2",
+    "default_pos": [
+     -1.4315435169756618,
+     -0.0748186766995733,
+     0.8020111156854582
+    ],
+    "default_ori": [
+     0.6484245255941239,
+     -0.7596914574351367,
+     0.03737472080892282,
+     0.031900695173747946
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "mass": 0.32,
+     "friction": 0.45,
+     "type": "rigid"
+    },
+    "visual": {}
+   }
+  ]
+ },
+ "Room": {
+  "default": "Simple_Room",
+  "default_pos": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "default_rot": [
+   1.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "scale": [
+   0.5,
+   0.5,
+   0.5
+  ]
+ },
+ "Ground": {
+  "geometry": "cube",
+  "thickness": 0.1,
+  "axis": "Z",
+  "default_pos": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "materials": {
+   "type": "mdl",
+   "default": "material_0564",
+   "random": false
+  },
+  "physics_material": {
+   "static_friction": 1.0,
+   "dynamic_friction": 1.0,
+   "restitution": 0.0,
+   "friction_combine_mode": "multiply",
+   "restitution_combine_mode": "multiply",
+   "compliant_contact_stiffness": 0.0,
+   "compliant_contact_damping": 0.0
+  }
+ },
+ "Background": {
+  "intensity": 1000,
+  "category_name": "brown_photostudio_02_4k.hdr"
+ },
+ "_simlab": {
+  "task": "match_and_pick_from_conveyor",
+  "id": 100001,
+  "seed": 1149004926,
+  "attempt": 4,
+  "generator": "simlab/v15",
+  "n_clutter": 0,
+  "clutter_wanted": 0,
+  "robot_keepout": true,
+  "seed_salt": "sha256:f0f4aa26d17071b8"
+ }
+}

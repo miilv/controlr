@@ -482,3 +482,11 @@ it cannot measure a new model's full tool trajectory or episode success.
 success, rc and steps_used. It restricts reads to measurement ids 100005-09 / 100020-29 and known suffixes,
 separates archived rows, and emits no episode ids or diagnostics. Pipe it over SSH to inspect a read-only host
 without copying a script there. It does not select the board's counted family or diagnose scoring episodes.
+
+### Wide conveyor interceptions
+
+`RuntimeConfig.belt_waist_first` (`off` by default; G3 `--skill-attr belt_waist_first=on`)
+tries mesh waist grasps before shallow slice/rim grasps when the rider has no top grasp.
+An unreachable waist falls back to the existing surface search. Narrow top grasps retain
+their search. This changes grasp selection, not tracking or identity; keep `belt_wrist_veto`
+independently configured. Both conveyor skills share this interception planner.
