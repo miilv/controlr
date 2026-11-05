@@ -6,6 +6,8 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Durable board exact replay:** pin `PYTHONHASHSEED` as well as inputs/history; hash iteration can change drift audit selections. Native Python 3.11/3.12 `sum()` differs in low-order float digits in `northstar.json`; define a stable summation/serialization policy before promising cross-version byte identity.
+
 - [ ] **dojo D-C19: agree the sealed-block mode with Misha's side.** `official_eval.sh --sealed-block DIR --manifest FILE
   --lock FILE` exists (`dojo.simlab.sealed`):
   - it runs manifest ids only (>= 100100), each md5-verified before staging and again in RoboDojo's process;
@@ -966,6 +968,11 @@
 - [ ] **Ideas from Waddle Labs** ([research/sources/waddle-labs.md](../research/sources/waddle-labs.md)): a recovery rule (when already out of bounds, accept a command that reduces one violation without worsening others — generalises the straight-elbow fix); tag every executed action by source (model / safety clamp / human) and log holds and e-stops (needed for the real UR3); success-vs-cost curves across effort levels with n and CIs; a cross-episode "lessons" appendix in the cached prefix as an ablation; their 32 MuJoCo task environments (Apache-2.0) as a task catalogue.
 - [ ] **Export runs to LeRobotDataset** — data for a future light action head.
 - [ ] **Action head** (transformer/diffusion) closing the ~1 s between model turns.
+
+- [ ] **Research board historical input recovery:** the durable board reproduces the strict checkpoint,
+  but raw gt/proxy/breadth/other-system ledgers were missing from the backup. Recover only permitted
+  historical inputs if needed; never substitute proxy or dev results for strict camera evidence.
+  See [board README](../scripts/dojo/board/README.md).
 
 ## compute3 infrastructure
 
