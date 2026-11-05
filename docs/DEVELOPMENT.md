@@ -461,3 +461,14 @@ look writer and budget costs before adoption; G3's perfect identities only test 
 | literature | `research/` | `research/repos/` are clones, not in git |
 | images / videos for docs | `docs/img/`, `docs/video/` | only what a report links to |
 | runs | `runs/` | not in git; reports reference the run dir name |
+
+### Segmenter dev gate
+
+`scripts/perception/seg/bake_seg.py run` selects frame 0 on dev / training ids
+100000–04 and 100030–49 only, including the w51 / p60 gate sets when selected.
+Use `scripts/perception/seg/dev_gate.py cut SOURCE OUT` to archive that slice of
+an existing bake with provenance hashes; this reuses predictions, not inference.
+`dev_gate.py compare BASE CANDIDATE` requires matching frame/object keys, unique
+objects and no errored frames, and reports identity and 10 mm position separately.
+`--diagnostic` can inspect errored archives but marks them invalid for adoption.
+The genuine-dev new-class hitcheck remains a separate required gate.

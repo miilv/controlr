@@ -1,0 +1,43 @@
+{
+  "source": "/home/physicalai/dojo-data/s-v2c/bake/v2cn",
+  "kind": "archived prediction dev cut",
+  "files": {
+    "objects": {
+      "source_sha256": "f9d04466047ed6991892f084427aa39d94daf0a8da34ebfa00df1cdbb6225670",
+      "cut_sha256": "887d6ab718486b6f0359b9ee8e65e4613bff25a520f8763c01f1f29f29c22430",
+      "kept": 975,
+      "discarded": 1241
+    },
+    "frames": {
+      "source_sha256": "9b2347cd6139c1170b592670c9ac00f800c3de8b8fd7d63cb0e11882d0c2ef4a",
+      "cut_sha256": "7eb41075f61a6152d5248444415001d46d82c0218cefc16786b4632c1207d303",
+      "kept": 162,
+      "discarded": 187
+    }
+  },
+  "source_config": {
+    "cfg": "{\"series_count\": \"seg\", \"seg_propose\": \"add\", \"seg_add_move_weak\": true, \"seg_add_refit_poor\": true}",
+    "sets": [
+      "d0_51",
+      "d0_ext",
+      "series",
+      "w51",
+      "p60"
+    ],
+    "tasks": null,
+    "n_frames": 349,
+    "sam_addr": "",
+    "argv": [
+      "/tmp/s_v2c_bake_w.py",
+      "run",
+      "--out",
+      "/home/physicalai/dojo-data/s-v2c/bake/v2cn",
+      "--cfg",
+      "{\"series_count\": \"seg\", \"seg_propose\": \"add\", \"seg_add_move_weak\": true, \"seg_add_refit_poor\": true}",
+      "--sets",
+      "d0_51,d0_ext,series,w51,p60",
+      "--workers",
+      "6"
+    ]
+  }
+}

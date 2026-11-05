@@ -228,6 +228,10 @@
   loss to the object, with no new class in common: the incremental recipe on v2b looks like the cause.
   Landmine: the frame-0 bake sets (d0_51, d0_ext, series, w51, p60) mix 35 measurement ids with 29 dev ids. Re-cut
   them to dev / training ids only (100000-04, 100030-49) before the next segmenter gate.
+  The dev-only selector / archived cuts are implemented (journal 2026-11-05-dojo-seg-v2e), but a fresh baseline is
+  still required: five dev press_by_number frames in every archive have OpenGL errors. Never adopt from these cuts.
+  v2d has 140 old classes with zero training-image support (all 29 number classes); audit rehearsal coverage before
+  the next fine-tune. compute3 GPU/driver availability blocks rendering and training.
 - [ ] **dojo perception: classify_objects_by_language drops the watches after the segmenter.** On p60, watch 4-7 come
   out right 1 of 12 on the dev ids 100000-04 with any segmenter (v2b, v3ep6, v2cn). The other 11 have no prediction
   closer than 77 mm, though v2b's YOLO fires a watch on the head frame (0.97 on 100000). The loss is in the bake's
