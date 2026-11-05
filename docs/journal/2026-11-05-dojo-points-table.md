@@ -4,11 +4,13 @@
 
 ## Provenance and limits
 
-Checkpoint/main at initial audit: `20903bc2f8e4f94714240afff6679ce3d86afcd5`; final main relevance check: `c04335990e2b36c06fa5642998c4c2908d5f59b5` (#382). Ownership: robot-harness `coord/LANES.md` at `846c4216ea4ad90824b0d0646a940f551d8943d9` (shallow, sparse read-only clone, deleted). `_random` inherits its standard task owner; paired ownership remains unresolved, never silently claimed as ours.
+Checkpoint/main at initial audit: `20903bc2f8e4f94714240afff6679ce3d86afcd5`; later main relevance checks: `c04335990e2b36c06fa5642998c4c2908d5f59b5` (#382) and `42a6dc2c` (#384). Ownership: robot-harness `coord/LANES.md` at `846c4216ea4ad90824b0d0646a940f551d8943d9` (shallow, sparse read-only clone, deleted). `_random` inherits its standard task owner; paired ownership remains unresolved, never silently claimed as ours.
 
 The 31 Oct 02:00Z backup is copied to `~/dojo-board` (11 MB). Its selected rows + G3 inputs are checked into `scripts/dojo/board/snapshot` with SHA-256 manifest. `ceil/` in the backup contains no surviving files. Missing raw historical `gt_rows`, proxy, breadth and other-system ledgers are explicitly omitted; strict still reproduces 51.53. G3 provenance comes from surviving `g3c_rows.json`, embedded references and the journals. No new ceiling measurements were run. Refreshed rows are not a measurement of current main: candidate selection and frozen historical rules remain unchanged.
 
 Only read-only SSH Python against the permitted `~/dojo-data/integ-c4/runs2` and `cat ~/dojo-integ-c4-state/queue_after_dc19.txt` were used. Directory ids are checked before report/episode opening; ids >=100100, unknown-id and D-C19-named directories are skipped, then rows are filtered again before transfer and board ingestion. No forbidden compute4 paths, GPU jobs, remote writes or LLM calls. Calls/tokens/spend: **0 / 0 / 0**.
+
+**Route update (#384):** current main also fixes agentic transport retry handling and adds a request-only cx replay probe. It changes neither task ownership nor measured board rows. Request replay is not a camera episode A/B; keep route/config frozen in all proposed tests, and do not charge logical calls as transport attempts. Existing queue commands must still be checked for route compatibility and must not call Claude routes.
 
 ## Dimension view
 
