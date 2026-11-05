@@ -261,3 +261,9 @@ Old queue split: pack 20, ubg 18, twin-union 50, afix 50, A1 34, coverage/rebase
 - [2026-10-29-dojo-twin-union-pool](2026-10-29-dojo-twin-union-pool.md)
 
 Decision protocol: [EXPERIMENTS — Camera A/B decision rule](../EXPERIMENTS.md#camera-ab-decision-rule-dojo-levers). Known landmines: [BACKLOG](../BACKLOG.md). Code/replication: [board README](../../scripts/dojo/board/README.md).
+
+## Validation and handoff
+
+Full local unit suite: **1,746 passed, 187 skipped**, 18m05s, zero failures. It started before concurrent main merges; after rebasing those additions, focused board + coin tests passed (17), board + route tests passed (15), and the final hardened fetcher board tests passed (5). Snapshot hashes, changed-file pyflakes, compileall, whitespace and secret-pattern checks pass. CI is separate and must finish before any merge; this PR remains open for the lead.
+
+Final read-only fetch still returned 1,467 permitted rows and zero new configs. Board strict remains 51.53; the shallow robot-harness clone is deleted. Local additions, including the 97 MB dev environment and 11 MB durable state copy, remain below the 1 GB budget. No camera/G3 experiment or router call was performed by STRAT.

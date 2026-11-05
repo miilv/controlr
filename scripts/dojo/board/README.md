@@ -13,6 +13,9 @@ python scripts/dojo/board/fetch_rows.py --state-dir ~/dojo-board
 python scripts/dojo/board/cells.py --state-dir ~/dojo-board
 ```
 
+If running a recovered copy of the scripts from `~/dojo-board`, also pass
+`--repo /path/to/controlr` so ancestry checks use the intended checkout.
+
 Outputs: `cells.json`, `cells.md`, `northstar.json`, `cells_noceil.md`, `v15_state.json`.
 Fetch errors exit nonzero and preserve the previous rows; inspect the fetch log before
 claiming freshness. Run the board after a successful fetch. Reports are parsed remotely
