@@ -988,3 +988,5 @@
   calibrated sigma a test tube's read is almost never ok (sigma about 3x its error, perception-held's report), so the
   tubes stay on the fallback; a coin's own-camera read under-covers (perception-held: never adopt it without a second
   view), which the protocol does not enforce yet (`disc_into_slot` places pass no `held_tol`).
+
+- [ ] **dojo coin: validate disc_hold_evidence in strict CAMERA.** Isolated default-off disc scope of held_thin; historical dev rows have 12 opening-negative belief drops in six handover failures, but one has no demonstrated lift. No camera gain claimed. See journal/2026-11-05-dojo-coin-disc-hold-evidence.md and experiments/2026-11-05-coin-disc-hold-evidence-prereg.md. slot_read remains parked.
