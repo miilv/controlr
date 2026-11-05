@@ -63,8 +63,18 @@ and runtime identity-vocabulary routing. Synthetic identity corrections test plu
 Isolated deployment: compute3 `~/controlr-imit-ties`; outputs `~/dojo-data/imit-ties`. Shared `~/dojo-gpu.lock`,
 normal disk guard (123 GB free at start), one Isaac job at a time. G3 dev 100002, pairing one_to_one, wait home,
 keep_sides on: tie candidate scored 100, 1408 steps, wall 79.3 s. Perfect identities produce no ties; this validates
-execution only, not the new camera classifier or any score increase. No camera runs were justified before a paired
+execution only, not the new camera classifier or any score increase. The off baseline also scored 100 at 1408 steps
+(wall 82.1 s). Final code head `0ea46d8b`, clean deployment recorded in `.deployed.json`, scored 100 at 1408 steps
+(wall 78.6 s), with no infrastructure failure or instability; each process exited and released the lock. All three
+were physics-only, no rendering service or persistent server started. Focused imitation/skills/runtime tests:
+212 passed, 1 skipped; regrasp tests: 5 passed. Changed-file pyflakes is clean (the pre-existing unused import in
+`skills.py` is unchanged). Full-suite validation is recorded on [PR #383](https://github.com/miilv/controlr/pull/383).
+No camera runs were justified before a paired
 rendered experiment; flags remain off pending the [pre-registered A/B](../experiments/2026-11-05-imit-tie-look-ab.md).
+
+The switch is a limited candidate: it neither repairs missing detections nor changes the conservative identity
+classifier's IoU/margin thresholds. The 27-row audit does not identify the cause of every current board failure;
+its historical rows contain superseded configs, repeated ids and generator/infra failures.
 
 The A/B uses dev 100030-49 × 2 repeats, A existing ambiguous looks vs B plus tie flag, genuine 5.1 cameras,
 cx/gpt-6-luna, frozen demos/config, guard imitation successes and two unrelated cells. It requires a >=10-point gain
