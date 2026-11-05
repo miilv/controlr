@@ -98,7 +98,7 @@ or nonce. `OmniChat(max_retries=0)` prevented hidden automatic retries. Source d
 October 28; cx/ replies were collected November 5 from compute3 using OMNIROUTE keys from
 `~/controlr/.env`. **13 live cx/ HTTP calls; 0 Claude/cc calls.** No aborted paid runs or probes.
 151,325 input tokens (93,696 cached), 5,388 output tokens including 3,913 reported reasoning
- tokens. Dollar billing is not exposed by these replies; no dollar estimate is inferred.
+tokens. Dollar billing is not exposed by these replies; no dollar estimate is inferred.
 
 Command (with the repository on PYTHONPATH and AGENTIC_ENV_FILE set):
 
@@ -143,6 +143,17 @@ This is 13 decisions from 9 eligible episode rows, 2 tasks, one draw per request
 within-episode dependence. It conditions on Sonnet's history rather than cx/'s own trajectory.
 Timing compares different dates, cache states and routes; it cannot establish a latency win.
 There is no held_look accuracy test, ground-truth scoring or episode-success measurement.
+
+## Existing broader evidence
+
+The repository's [October 28 cx/ availability and quality audit](../journal/2026-10-28-dojo-cx-availability.md)
+already measured **cx/gpt-6.1-sol** on 94 scenes: 24 fixed / 2 broken versus Sonnet's
+36 / 4 and 37 / 3, failing its pre-registered adoption gate (fixed >=34). It also recorded
+backend-wide cx/ outages, including gpt-6-sol probes, and resets of minutes that quick
+retries could not bridge. This is a different model and full perception benchmark, not
+part of the 13 new calls or a fresh availability claim. Its recorded evidence strengthens
+the recommendation against assuming either a direct switch or cx/ fallback is safe.
+No files at its remote data locations were opened during this task.
 
 ## Smallest useful next dev A/B
 
