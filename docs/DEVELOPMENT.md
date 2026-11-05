@@ -461,3 +461,17 @@ look writer and budget costs before adoption; G3's perfect identities only test 
 | literature | `research/` | `research/repos/` are clones, not in git |
 | images / videos for docs | `docs/img/`, `docs/video/` | only what a report links to |
 | runs | `runs/` | not in git; reports reference the run dir name |
+
+## Replaying agentic route requests
+
+`scripts/perception/route_request_replay.py ROOT --out rows.jsonl` reconstructs
+teacher-forced answer requests from copied dev workspaces (`ROOT/<name>-<layout>/call_*/*`).
+It runs no tools, renderer or robot. It requires the original prompt pin, saved
+PNGs, untruncated tool output and historical request byte counts. It rejects
+repeated tool-image filenames (the stored image may have been overwritten).
+Only ids 100000–04 / 100030–49 are accepted. `--live --model cx/gpt-6-sol`
+permits at most 200 cx/ requests, with automatic retries disabled; credentials
+come only from the named `AGENTIC_ENV_FILE` or OMNIROUTE environment source.
+Saved rows include historical replies, new replies, latency and token usage.
+The probe compares single decisions conditioned on the stored Sonnet history;
+it cannot measure a new model's full tool trajectory or episode success.
