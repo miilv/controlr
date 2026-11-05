@@ -462,6 +462,14 @@ look writer and budget costs before adoption; G3's perfect identities only test 
 | images / videos for docs | `docs/img/`, `docs/video/` | only what a report links to |
 | runs | `runs/` | not in git; reports reference the run dir name |
 
+## RoboDojo research board
+
+The durable 54-cell research board lives in [scripts/dojo/board](../scripts/dojo/board/README.md).
+It replays a hashed recovery checkpoint and can refresh only the permitted compute4 integration
+rows over read-only SSH. State defaults to `~/dojo-board`; `--state-dir` changes it.
+Sealed measurement ids are excluded before report reads and at ingestion; sealed scoring is unsupported.
+Historical pre-registered decisions are preserved; new experiments follow the Camera A/B rule.
+
 ## Replaying agentic route requests
 
 `scripts/perception/route_request_replay.py ROOT --out rows.jsonl` reconstructs

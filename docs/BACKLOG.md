@@ -962,6 +962,11 @@
 - [ ] **Export runs to LeRobotDataset** — data for a future light action head.
 - [ ] **Action head** (transformer/diffusion) closing the ~1 s between model turns.
 
+- [ ] **Research board historical input recovery:** the durable board reproduces the strict checkpoint,
+  but raw gt/proxy/breadth/other-system ledgers were missing from the backup. Recover only permitted
+  historical inputs if needed; never substitute proxy or dev results for strict camera evidence.
+  See [board README](../scripts/dojo/board/README.md).
+
 ## compute3 infrastructure
 
 - [x] ~~**Slow VPN on compute3**~~ — Happ/AmneziaVPN/OpenVPN removed, machine-wide `controlr-vpn` (sing-box tun, router direct: 740 KB in 0.43–0.48 s) (journal/2026-10-04-compute3-network.md). Remaining: ethernet on `eno1` (Ilia).
