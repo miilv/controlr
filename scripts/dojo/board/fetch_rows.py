@@ -12,13 +12,24 @@ REMOTE = r'''
 import json, glob, os, gzip, sys, re
 SKIP = json.loads(sys.argv[2]); KEYS = json.loads(sys.argv[3])   # {run: report mtime already parsed}
 out, cfgs = [], {}
-for f in glob.glob(os.path.expanduser(sys.argv[1])):
+def permitted_episode_files(pattern):
+    root = os.path.expanduser(pattern).split("/*/")[0]
+    for entry in os.scandir(root):
+        # Reject before traversing the run directory; never follow symlink aliases.
+        if not entry.is_dir(follow_symlinks=False):
+            continue
+        run = entry.name
+        ids = [int(x) for x in re.findall(r"(?<![0-9])([0-9]{6,})(?![0-9])", run)]
+        if not ids or any(x >= 100100 for x in ids) or "dc19" in run.lower():
+            continue
+        for path in sorted(glob.glob(entry.path + "/*_episodes.jsonl")):
+            if not os.path.islink(path):
+                yield path
+
+
+for f in permitted_episode_files(sys.argv[1]):
     d = os.path.dirname(f); run = os.path.basename(d)
-    # Check directory names BEFORE reading any episode or report. Unknown ids fail closed.
-    ids = [int(x) for x in re.findall(r"(?<![0-9])([0-9]{6,})(?![0-9])", run)]
-    if not ids or any(x >= 100100 for x in ids) or "dc19" in run.lower():
-        continue
-    rep = sorted(glob.glob(d + "/*_report.json.gz"))
+    rep = sorted(p for p in glob.glob(d + "/*_report.json.gz") if not os.path.islink(p))
     if rep and SKIP.get(run) != os.path.getmtime(rep[0]):     # a re-queued run reuses its dir name: re-parse on change
         if rep:
             try:
@@ -87,7 +98,7 @@ for f in glob.glob(os.path.expanduser(sys.argv[1])):
                 # W: the imitate skill log lives in the report's "log" list (not the run dir's *.log)
                 cfgs[run]["imitate_repair_drops"] = sum("dropped after 2 tries" in str(l_) for l_ in (R.get("log") or []))
                 try:      # the run's catalogue: <runs2>/<run>.catalog sidecar (index_md5)
-                    cfgs[run]["catalog_index_md5"] = json.load(open(d + ".catalog")).get("index_md5")
+                    cfgs[run]["catalog_index_md5"] = json.load(open(d + ".catalog")).get("index_md5") if not os.path.islink(d + ".catalog") else None
                 except Exception:
                     cfgs[run]["catalog_index_md5"] = None
             except Exception:

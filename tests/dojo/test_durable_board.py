@@ -36,6 +36,7 @@ def test_fetch_rejects_directory_before_open(tmp_path):
             {'layout_id': 100005, 'success': True, 'score': 1.0}) + '\n')
         with gzip.open(folder / 'x_report.json.gz', 'wt') as report:
             json.dump({'config': {'must_never_read': True}}, report)
+    (tmp_path / 'c4b_alias_100005').symlink_to(tmp_path / 'c4b_sealed_100100', target_is_directory=True)
     result = subprocess.run([sys.executable, '-c', remote, str(tmp_path / '*/*_episodes.jsonl'), '{}', '[]'],
                             capture_output=True, text=True, check=True)
     assert json.loads(result.stdout) == {'rows': [], 'cfgs': {}, 'norow': []}

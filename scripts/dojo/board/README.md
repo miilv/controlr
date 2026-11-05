@@ -21,7 +21,8 @@ fetch has no report cache and may take longer. `snapshot/manifest.json` hashes t
 inputs; these are a small, sanitized recovery checkpoint, not sealed results.
 
 The fetcher reads only `~/dojo-data/integ-c4/runs2` on compute4. Directory ids are checked
-before opening reports/episodes; unknown ids, D-C19 names and ids >=100100 are excluded.
+before opening reports/episodes; unknown ids, D-C19 names and ids >=100100 are excluded. Run directories, episode
+files, reports and catalogue sidecars cannot redirect reads through symlinks.
 Rows are filtered again before transfer and at board ingestion. Sealed scoring is
 intentionally unsupported (`--dc19` fails argument parsing). No poller or remote writes.
 
