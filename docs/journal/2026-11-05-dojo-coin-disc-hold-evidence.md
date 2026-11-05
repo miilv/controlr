@@ -16,7 +16,8 @@ These are historical diagnostic rows, not current-candidate measurements.
 The repository has no tracked CANDIDATE.txt; the read-only copy at
 `compute4:~/dojo-integ-c4-state/CANDIDATE.txt` was checked instead. It uses submit_v3,
 DOJO_GRIP_SOURCE=v2, grip_check on, held_pose=request via preset, and does not enable
-held_thin or slot_read. It additionally sets ported routes, classify p2, peg base
+held_thin or slot_read. Its SHA256 is
+`5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e`. It additionally sets ported routes, classify p2, peg base
 refinement and belt_wrist_veto, among other task-specific options. No claim that
 these older rows reproduce the candidate's score of 20 is made.
 
@@ -61,7 +62,7 @@ This deliberately isolates the disc portion of the older, broader held_thin swit
 it is not a new perception algorithm or a re-test of the rejected slot_read bundle.
 Keys and rectangular tools keep today's path. Disc classification uses asset
 geometry, never task names or layout ids. Only an opening-only negative with a
-measured opening below the sensor resolution is made unknown. Colour negatives
+measurement present and disc thickness below the sensor resolution is made unknown. Colour negatives
 and missing measurements keep the baseline path. No new belief pose is written.
 The real-slip risk is explicit: an unresolved empty disc grasp can be retained;
 closed-loop camera scoring must decide whether that costs successes or time.
@@ -69,3 +70,33 @@ closed-loop camera scoring must decide whether that costs successes or time.
 Unit tests cover both disc axis conventions, a rectangular thin tool, a thick
 block, colour evidence, missing measurements, default off and invalid values.
 Validation results and run paths are recorded below after execution.
+
+
+## Validation
+
+PR [#382](https://github.com/miilv/controlr/pull/382), implementation head
+`d8acf5c2d8ff80fdac04b59d967870a392436e47`.
+
+- Focused tests: 14 passed locally (Python 3.14) and on compute3 (Python 3.12).
+  compileall and pyflakes passed for both changed runtime files.
+- Deployed with `scripts/skills/deploy_skills2.sh controlr-coin-evidence`.
+- Physics smoke: `DOJO_STREAM=COIN G3_LOCK_WAIT_S=120 timeout -k 60 1700
+  scripts/skills/g3.sh run --task deposit_coin --seeds 100000-100004
+  --out ~/dojo-data/coin-evidence/g3-d8acf5c2`, after the normal 10 GB disk guard.
+  The shared GPU lock was held by g3.sh. No concurrent Isaac job was started.
+- compute3 data: `~/dojo-data/coin-evidence/g3-d8acf5c2/deposit_coin_summary.json`.
+  Five episodes, 2/5 successes, mean score 0.44, steps median/max 88/135;
+  three grasp_slip outcomes, zero unstable or infrastructure failures. 100002 and
+  100004 succeeded. This is a smoke test, not a paired improvement measurement.
+  G3 uses GT and does not exercise the camera held-negative branch; the focused
+  RuntimeProvider tests exercise that branch instead.
+- NVIDIA driver was unavailable (`NVML_ERROR_DRIVER_NOT_LOADED`, no CUDA device).
+  Isaac nevertheless completed physics on CPU. This run does not reproduce the
+  earlier GPU G3 ceiling and is not evidence of a changed ceiling. No drivers,
+  services, packages or other users' processes were changed. Our Isaac process
+  exited normally; no persistent server was started.
+- Actual model calls/tokens: **0 / 0**. No fresh camera episodes.
+
+The closed-loop camera A/B and paired belief-write audit remain prospective;
+this PR is not an adopt-candidate until those pass. See the pre-registration in
+`docs/experiments/2026-11-05-coin-disc-hold-evidence-prereg.md`.
