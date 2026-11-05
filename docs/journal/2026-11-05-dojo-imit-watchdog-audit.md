@@ -119,3 +119,8 @@ No motion/perception fix is offered without a causal reproducer.
 Compute3 positive control: dev 100002 with one_to_one / wait home / keep_sides completed successfully, score 100,
 1408 steps, wall 80.3 s, no infra/instability. Explicit disk guard passed (123 GB free); process rc=0 and shared lock
 available after exit. This validates the physics/demo path only; it neither exercises nor repairs RTX capture.
+
+Full local suite: **1745 passed, 187 skipped**, 1095.65 s (`uv sync --extra dev`, then
+`uv run python -m pytest -q`). Initial bare `uv run pytest` used the system pytest before the dev extra was installed
+and failed collection; the properly provisioned full run above passed. Changed-file pyflakes and diff whitespace
+checks pass. Final reporting code `ae17b122` was redeployed in isolation and its two census tests passed on compute3.
