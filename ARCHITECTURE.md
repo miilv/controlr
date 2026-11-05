@@ -480,3 +480,9 @@ in error/llm_error/interrupted. Pin `planner.plan_file` for control-side ablatio
 Code runs on **compute3** (`physicalai`, RTX 5090, Ubuntu 24.04, py3.12, Isaac Sim 6.0) under
 `~/controlr` with a uv venv; the Isaac server runs under Isaac's own python. `scripts/deploy.sh` rsyncs the repo (no
 `.env` in git — copied separately).
+
+The dojo runtime's `disc_hold_evidence` switch (default `off`) scopes the
+opening-resolution guard to thin disc geometry. An opening-only negative that
+cannot resolve the disc's thickness is unknown; other held evidence retains its
+normal interpretation. The existing `held_thin` switch applies the same guard to
+all unresolved thin objects. Neither switch measures a pose or guarantees a grasp.

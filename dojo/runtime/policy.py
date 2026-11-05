@@ -302,6 +302,8 @@ class RuntimeConfig:
     # (unknown: the object stays in the jaws; the place / post-place checks decide). 5.1 deposit_coin 100000 / 03: the
     # 1.9 mm coin held at the handover pose read "closed on nothing", and the skill opened the jaws
     held_thin: str = "off"
+    # Disc-only scope of the opening-resolution guard; leaves other thin objects on the baseline path.
+    disc_hold_evidence: str = "off"
     held_drop_conf: float = 0.9         # a held_look "not held" at this confidence drops the grasp unless the head check sees
                                         # the object in the jaws (before: only when the head also saw it at the pick pose,
                                         # which kept 51 of 52 truly empty grasps on the proxy); > 1 = the old rule
@@ -644,6 +646,7 @@ class RuntimePolicy:
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
                 or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
+                or self.cfg.disc_hold_evidence not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
@@ -849,6 +852,7 @@ class RuntimePolicy:
             prov.held_checker = lambda obs, arm, lab: self._held_look(obs, arm, lab)
             prov.held_drop_conf = float(cfg.held_drop_conf)
             prov.held_thin = cfg.held_thin
+            prov.disc_hold_evidence = cfg.disc_hold_evidence
             prov.held_confirm = lambda obs, arm, lab: self._held_head_confirm(prov, obs, arm, lab)
         prov.confirm_wrists = bool(cfg.confirm_wrists)
         prov.fallen_check = bool(cfg.fallen_check)
