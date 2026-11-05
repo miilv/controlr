@@ -10,6 +10,20 @@ The 31 Oct 02:00Z backup is copied to `~/dojo-board` (11 MB). Its selected rows 
 
 Only read-only SSH Python against the permitted `~/dojo-data/integ-c4/runs2` and `cat ~/dojo-integ-c4-state/queue_after_dc19.txt` were used. Directory ids are checked before report/episode opening; ids >=100100, unknown-id and D-C19-named directories are skipped, then rows are filtered again before transfer and board ingestion. No forbidden compute4 paths, GPU jobs, remote writes or LLM calls. Calls/tokens/spend: **0 / 0 / 0**.
 
+## Dimension view
+
+Every dimension is 20% of Average; the 24 Generalization cells do not carry 24/54 of the board.
+
+| Dimension | Strict mean | Contribution to Average | Points to 100 |
+|---|---:|---:|---:|
+| Generalization | 25.20 | 5.04 | 14.96 |
+| Long-Horizon | 34.06 | 6.81 | 13.19 |
+| Open | 46.90 | 9.38 | 10.62 |
+| Memory | 74.62 | 14.92 | 5.08 |
+| Precision | 76.88 | 15.38 | 4.62 |
+
+These are theoretical deficits, not attainable-gain forecasts. High-weight memory imitation alone has a recorded G3–camera difference of 2.44 Average points; each Generalization cell carries only 1/120.
+
 ## Per-cell points table
 
 Weights are fractions of Average: Gen 1/120, Memory 1/30, others 1/40. Camera is strict-valid score, otherwise 0. Gap columns are exactly w×(G3−camera) and w×(100−G3), including negative values. Negative gaps mean reference mismatch/staleness, not recoverable points. G3 is a recorded estimate, not a universal upper bound. `thin` (<5), `proxy`, old generators and dated commits are disclosed; zero Plan-none rows do not prove the task impossible. Where only proxy evidence exists, the G3 ceiling is **unknown**, and both gaps are unknown.
