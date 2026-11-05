@@ -508,3 +508,6 @@ A rejected/missing read uses the original predicted transform. It does not enabl
 Use with `held_pose: request` and the adopted base refinement; validate camera scores and belief writes before adoption.
 The dev-only `scripts/skills/toy_release_audit.py` compares hover attachment and pre-release hole/peg errors against a
 physics replay captured with `m95_replay.py --every 1`; its GT is never used by a policy.
+The provider can reanchor belief on an ok read before the tail's uncertainty gate. For this lever, explicit
+`belief_write` events with writer `held_pose` capture those changes, including tail-rejected reads; include them in the
+harmful-write audit. The safe tail fallback alone does not establish harmless belief writes.

@@ -69,6 +69,8 @@ def audit(root):
             target = pose_T(ev["pose7_used"][:3], ev["pose7_used"][3:]) @ np.r_[hole, 1]
             peg = min(geos, key=lambda p: np.linalg.norm(p["p"][:2] - target[:2]))
             xy = (R @ np.r_[hole, 1])[:2] - peg["p"][:2]
+            release_tcp = kin.tcp_from_flange(pose_T(rf["flange"][arm][:3], rf["flange"][arm][3:]))
+            release_delta = (np.linalg.inv(release_tcp) @ R @ np.r_[hole, 1])[:3] * 1000 - predicted
             low = (asset.mesh[0] @ R[:3, :3].T + R[:3, 3])[:, 2].min()
             rows.append(dict(id=lid, label=ev["label"], gt_label=gt["label"], hover_step=step, release_step=release,
                              peg=peg["tag"], hover_hole_tcp_mm=actual.round(3).tolist(),
@@ -76,6 +78,8 @@ def audit(root):
                              hover_hole_delta_tcp_mm=delta.round(3).tolist(),
                              hover_hole_error_mm=round(float(np.linalg.norm(delta)), 3),
                              release_xy_mm=round(float(np.linalg.norm(xy) * 1000), 3),
+                             release_hole_error_mm=round(float(np.linalg.norm(release_delta)), 3),
+                             release_hole_delta_tcp_mm=release_delta.round(3).tolist(),
                              release_bottom_below_top_mm=round(float(peg["top"] - low) * 1000, 3)))
     return rows
 

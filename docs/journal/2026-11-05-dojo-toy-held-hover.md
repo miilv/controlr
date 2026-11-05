@@ -60,3 +60,51 @@ its own PID after its first saved row; remaining jobs use logged-event snapshots
 
 [Camera A/B pre-registration](../experiments/2026-11-05-toy-held-read-ab.md): ten fresh gain pairs, default +5-point /
 flip-ratio decision rule plus guard and write audit. No adoption from G3. Camera execution waits for D-C19 release.
+
+### First exact replay (100000)
+
+Ten hover/release pairs in `compute3:~/dojo-data/toy-held/replay/pbr_100000.json.gz`. Hole attachment errors at hover:
+0.408, 3.697, 3.096, 0.227, 0.266, 0.343, 0.473, 0.398, 0.719, 8.986 mm. The corresponding true peg-relative xy errors
+immediately before release: 1.265, 1.178, 1.810, 0.893, 0.733, 1.295, 0.915, 1.079, 0.786, 8.373 mm. The last ring's
+actual-minus-predicted hole offset in TCP coordinates is [+3.847, +0.103, −8.120] mm; it is only 1.848 mm below the
+peg top at release. The two 3 mm-class hover errors are [+1.648, −3.029, −1.335] and [+1.242, −2.719, −0.806] mm.
+This confirms nonzero carry attachment error, not that every camera miss is a physically stuck ring.
+
+**Audit limitation found and instrumented:** the runtime provider reanchors its belief on any ok held-pose read before
+the skill's tail-sigma gate. A tail-rejected ok read can therefore still change belief. With this switch on for
+`stack_on_pegs`, each such reattachment now logs a `belief_write` with world before7/after7 and writer `held_pose`, even
+when the tail will reject it. The camera adoption gate must count those writes too. A dedicated test covers this case;
+it is not valid to report only adopted tail reads as belief writes. This logging does not alter the provider's
+pre-existing reattachment semantics.
+
+### Five-row physics replay classification
+
+All five original camera scores were 0.60. Replays: **0.60 / 0.60 / 0.30 / 0.60 / 0.60**. All loaded stable; no early
+checker termination. The 100002 divergence prevents treating these as exact reconstructions of camera outcomes.
+
+| id | matched transfers | hover hole error median / max (mm) | release hole-to-peg xy median / max (mm) | hover error >1 mm |
+|---|---:|---:|---:|---:|
+| 100000 | 10 | 0.441 / 8.986 | 1.128 / 8.373 | 3 |
+| 100001 | 8 | 0.376 / 3.019 | 1.211 / 1.338 | 1 |
+| 100002 | 8 | 0.405 / 4.122 | 1.577 / 54.360 | 1 |
+| 100003 | 8 | 0.331 / 2.791 | 1.483 / 2.673 | 1 |
+| 100004 | 7 | 0.323 / 3.614 | 1.387 / 3.426 | 1 |
+
+Of 41 matched transfers, 7 have >1 mm attachment error at hover; all seven exceed 2 mm. 35 have >1 mm true peg-relative
+xy error immediately before opening. Only one grows its attachment error by >2 mm between hover and release: 100002
+block4, 4.122 -> 56.929 mm, ending 54.360 mm from the peg (on the diverging replay). This is later slip/displacement,
+not something a one-time hover read can guarantee against. The held-read lever targets the 7/41 carry outliers, not all
+35 release offsets. Local-refine failure in three of these historical two-try rows remains a confound for the peg error.
+
+For 100000 block7, the predicted hole at hover is TCP [16.085, 0.001, 7.476] mm, actual [19.932, 0.104, −0.644] mm.
+100000 block1: predicted [15.100, −2.953, 0.023], actual [16.748, −5.981, −1.312] mm. These are hole locations in the
+TCP frame, not bbox centres; TCP x is approach, y closing, z across. The release-time attachment errors are 8.867 and
+1.468 mm respectively: pad/contact motion can reduce or grow the offset during descent.
+
+[All per-transfer numbers](data/2026-11-05-toy-release-audit.json) include both predicted and true TCP hole coordinates,
+release attachment delta, true peg-relative error, depth, step indices and the nearest-same-asset instance association.
+This is dev-only derived data. Reproduce with `scripts/skills/toy_release_audit.py --root ~/dojo-data/toy-held` under
+rdpy with `SIMLAB_GPU=0`, `RD_HOME=~/dojo-robodojo`, `DOJO_CATALOG=~/dojo-data/skills3/catalog:~/dojo-data/skills2/catalog:~/dojo-perception-data/catalog`.
+
+Local full suite (initial code snapshot): **1743 passed, 187 skipped**, 1143 s. Six new switch/audit tests pass on the
+rebased code. PR code CI: **1769 passed, 186 skipped**, 419 s; compileall, shell syntax and secret scan green.
