@@ -874,8 +874,14 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
     arms = list(arms) if arms else list(ARMS)
     # grasps in the object's frame, once per arm (a pure translation along the belt keeps them valid)
     rel = {}
+    waist_rel = {}
     for a in arms:
         cands = G.candidates(o, sk.kin, a, "top")
+        if not cands and getattr(sk, "belt_waist_first", "off") == "on":
+            # A shallow scoop/rim grasp can be reachable yet slide off a wide object. Try the
+            # mesh's narrow waist before accepting those surface grasps. Narrow tops keep their path.
+            waist_rel[a] = [(g, g.T[:3, 3] - o.pos, -g.T[:3, 0])
+                            for g in waist_grasps(sk, o, a) if g.method not in skip_methods][:12]
         if not cands and getattr(sk, "belt_container", "off") == "on":
             # a rectangular container's real rim (``G.box_rim_grasps``), then a narrow top (a basket's handle,
             # ``G.top_band_grasps``): the round-rim fallback below sat 7 cm above this basket's rim
@@ -890,11 +896,18 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
         cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.6 and g.method not in skip_methods],
                        key=lambda g: g.score)[:12]
         rel[a] = [(g, g.T[:3, 3] - o.pos, UP) for g in cands]
-    best = _intercept_search(sk, label, o, v3, rel, arms, t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull)
+    best = None
+    if any(waist_rel.values()):
+        best = _intercept_search(sk, label, o, v3, {a: waist_rel.get(a, []) for a in arms}, arms,
+                                 t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull)
+    if best is None:
+        best = _intercept_search(sk, label, o, v3, rel, arms, t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull)
     if best is None:
         # wider than the hand at the top (an ice cream's 104 mm scoop on a 69 mm cone): a level grasp of its waist,
         # approached along the hand's axis while tracking the belt
-        rel = {a: [(g, g.T[:3, 3] - o.pos, -g.T[:3, 0]) for g in waist_grasps(sk, o, a)][:12] for a in arms}
+        rel = {a: [(g, g.T[:3, 3] - o.pos, -g.T[:3, 0]) for g in waist_grasps(sk, o, a)
+                   if getattr(sk, "belt_waist_first", "off") != "on" or g.method not in skip_methods][:12]
+               for a in arms}
         best = _intercept_search(sk, label, o, v3, rel, arms, t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull)
     return best
 

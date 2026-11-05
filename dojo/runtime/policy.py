@@ -451,6 +451,8 @@ class RuntimeConfig:
     # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
     # match: compute4 camera rows, every pick after such a look missed)
     belt_wrist_veto: str = "off"
+    # Wide belt objects: try a mesh waist before shallow surface/rim interception grasps.
+    belt_waist_first: str = "off"
     # pick_from_conveyor_by_image (``interactive.pick_into_held``; ``Skills.belt_container`` / ``Skills.belt_deposit``):
     # belt_container off (today) | on (a rectangular container by its real rim, ``grasps.box_rim_grasps``);
     # belt_deposit off | on (with belt_container on: the container by its handle, held up toward the robot's middle,
@@ -638,6 +640,7 @@ class RuntimePolicy:
                 or self.cfg.row_size_read not in ("off", "look", "look_union")
                 or self.cfg.series_labels not in ("keep", "numbered") or self.cfg.place_verdict not in ("belief", "measured")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
+                or self.cfg.belt_waist_first not in ("off", "on")
                 or self.cfg.nest_verify not in ("target", "support") or self.cfg.search_identity not in ("first", "unknown")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3") or self.cfg.peg_base_refine not in ("off", "local")
                 or self.cfg.peg_stuck_confirm not in ("off", "on")
@@ -956,6 +959,7 @@ class RuntimePolicy:
             sk_.imitate_keep_sides = bool(cfg.imitate_keep_sides)
             sk_.imitate_repair = bool(cfg.imitate_repair)
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
+            sk_.belt_waist_first = cfg.belt_waist_first
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
             sk_.disc_handover_read = cfg.disc_handover_read

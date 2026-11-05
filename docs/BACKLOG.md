@@ -1007,3 +1007,9 @@
   Track attempts/status (also held checks), and dev-A/B a cx/ route or explicit 429 fallback
   before adoption. Request-only replay is insufficient: 6/13 cx/gpt-6-sol replies requested
   more tools where Sonnet answered (experiments/2026-11-05-dojo-route-replay.md).
+- [ ] **dojo conveyor: validate the default-off waist-first intercept candidate.**
+  `belt_waist_first` prioritizes mesh waist grasps over shallow surface grasps on riders with
+  no graspable top. Historical dev G3 has a cone slip; there are no surviving post-veto camera
+  dev rows. Run the fresh-variant G3 pair after compute3 CUDA is restored, then the prospective
+  camera protocol (journal `2026-11-05-conv-waist-intercept`, experiment
+  `2026-11-05-conv-waist-camera-prereg`). Keep wrist veto on; no adoption from old pre-veto rows.
