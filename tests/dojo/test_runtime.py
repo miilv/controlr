@@ -3048,7 +3048,9 @@ def test_post_place_adopts_a_height_only_correction():
     assert ev[0]["z_dropped_mm"] == 56.0 and ev[0].get("to")
 
 
-def test_pick_refine_identity_is_restricted_to_the_labels_own_group(tmp_path, monkeypatch):
+@pytest.mark.parametrize("kind,tie_look,identity", [("pick", False, True), ("look", True, False),
+                                                  ("imitate", False, False), ("imitate", True, True)])
+def test_pick_refine_identity_is_restricted_to_the_labels_own_group(tmp_path, monkeypatch, kind, tie_look, identity):
     import json as _json
 
     from dojo.runtime import vocab
@@ -3064,14 +3066,15 @@ def test_pick_refine_identity_is_restricted_to_the_labels_own_group(tmp_path, mo
             seen["idv"] = identity_vocabulary
             o = objects[0]
             return {o["label"]: {"ok": True, "pos": list(o["pos"]), "quat": o["quat"], "shift_mm": 0.0, "iou": 0.9}}
-    pol = RuntimePolicy(RuntimeConfig(mode="perception", refine=True), assets=FakeAssets(), perception_client=R())
+    cfg = RuntimeConfig(mode="perception", refine=True, imitate_tie_look=tie_look)
+    pol = RuntimePolicy(cfg, assets=FakeAssets(), perception_client=R())
     pol.reset(FakeEpisode(env).info())
     b = pol.bridge
     b.obs, b.fresh = FakeEpisode(env).observe(), True
     prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
     prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
-    pol._refine_hook(prov, None, "block_1", "left", "pick")
-    assert seen["idv"] == ["Rigid/block/00005"]                       # its own group, not the whole vocabulary
+    pol._refine_hook(prov, None, "block_1", "left", kind)
+    assert seen["idv"] == (["Rigid/block/00005"] if identity else None)  # own group, not whole vocabulary
 
 
 def test_a_failed_recentre_reverts_the_correction():

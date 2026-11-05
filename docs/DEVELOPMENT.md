@@ -433,6 +433,18 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   semantics (all four tiles and no missing slot, on which RoboDojo's `run_reward` crashes); generator v15 has them
   again. Its other tasks' draws are byte-identical to v14 (journal 2026-10-28-dojo-newskill-tiles-align).
 
+### Imitation twin look
+
+`RuntimeConfig.imitate_tie_look` (default false; G3 `--skill-attr imitate_tie_look=on`) extends the
+one-to-one imitation pairing look to equal-cost two-pair swaps, including same-asset matches. It enables the existing
+mismatched-asset look pass too, after the demonstration wait, with at most three looks under its copy-budget guard.
+It uses observed identities only. Run it with `imitate_pairing=one_to_one` and `imitate_wait=home`; it has no effect
+on greedy pairing. Reassignment follows the looks. Their explicit `imitate` refine kind enables the existing identity classifier
+(`refine_identity` must be on) over the label's normal candidate group; ordinary `look` reads only refit its current
+asset. This kind is gated by the switch, and uses the existing identity/pose acceptance and logging path. Cycles requiring
+three or more pairs and unassigned objects are outside this tie detector. Camera validation must audit the existing
+look writer and budget costs before adoption; G3's perfect identities only test the no-tie path.
+
 ## 5. What lives where
 
 | What | Where | Rule |

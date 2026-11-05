@@ -103,3 +103,129 @@ def test_the_wait_and_the_looks_run_on_the_real_executor_interface(monkeypatch):
     sk = SimpleNamespace(refresh=lambda: w, ex=ex, log=lambda *a: None, kin=SimpleNamespace(base=lambda a: np.eye(4)),
                          home=lambda **k: None)
     assert ia.look_twins(sk, {"aim0": "t0"}) == ["t0"]
+
+
+def test_equal_cost_swap_finds_duplicate_same_asset_pairs():
+    from dojo.skills.interactive import tied_twins
+    objs = {"demo_g": _o("Rigid/garage/00014"), "demo_w": _o("Rigid/watch/00000"),
+            "misread_watch": _o("Rigid/garage/00014"), "garage": _o("Rigid/garage/00014")}
+    w = _w(objs)
+    twins = {"demo_g": "misread_watch", "demo_w": "garage"}
+    assert tied_twins(w, twins) == ["misread_watch", "garage"]
+    # A row-local tie is insufficient: the watch's unique match must not be stolen.
+    objs["garage"] = _o("Rigid/watch/00000")
+    assert tied_twins(w, twins) == []
+    # Missing labels are harmless; labels themselves do not carry identity.
+    assert tied_twins(w, dict(twins, vanished="absent")) == []
+
+
+def test_tie_look_corrects_same_asset_misread_then_reassigns(monkeypatch):
+    import numpy as np
+    from dojo.skills import interactive as ia, regrasp
+
+    objs = {"demo_g": _o("Rigid/garage/00014"), "demo_w": _o("Rigid/watch/00000"),
+            "misread_watch": _o("Rigid/garage/00014"), "garage": _o("Rigid/garage/00014")}
+    for o in objs.values():
+        o.center_w = np.zeros(3)
+    w = _w(objs)
+    looked = []
+
+    def look(sk, arm, label, target, **kw):
+        assert kw.get("read_kind") == ("imitate" if sk.imitate_tie_look else None)
+        looked.append(label)
+        if label == "misread_watch":
+            objs[label].asset.key = "Rigid/watch/00000"
+            objs[label].category = "watch"
+        return target, None
+
+    monkeypatch.setattr(regrasp, "_look_over", look)
+    sk = SimpleNamespace(refresh=lambda: w, ex=SimpleNamespace(steps_left=900), log=lambda *a: None,
+                         kin=SimpleNamespace(base=lambda a: np.eye(4)), home=lambda **k: None,
+                         imitate_tie_look=True)
+    twins = {"demo_g": "misread_watch", "demo_w": "garage"}
+    assert ia.look_twins(sk, twins) == ["misread_watch", "garage"]
+    assert ia.twin_assignment(w, list(twins), list(twins.values())) == {
+        "demo_g": "garage", "demo_w": "misread_watch"}
+    # Default off preserves the existing look policy, including its same-asset blind spot.
+    looked.clear()
+    objs["misread_watch"].asset.key = "Rigid/garage/00014"
+    objs["misread_watch"].category = "garage"
+    sk.imitate_tie_look = False
+    assert ia.look_twins(sk, twins) == ["garage"]
+    sk.imitate_tie_look = True
+    sk.ex.steps_left = 200
+    assert ia.look_twins(sk, twins) == []
+
+
+def test_tie_look_is_capped_and_reads_no_hidden_relations(monkeypatch):
+    import numpy as np
+    from dojo.skills import interactive as ia, regrasp
+
+    objs = {l: _o("Rigid/watch/00000") for l in ["a", "b", "c", "d", "w", "x", "y", "z"]}
+    for o in objs.values():
+        o.center_w = np.zeros(3)
+    w = _w(objs)
+    twins = dict(zip("abcd", "wxyz"))
+    looked = []
+    monkeypatch.setattr(regrasp, "_look_over", lambda sk, arm, l, T, **kw: looked.append(l))
+    sk = SimpleNamespace(refresh=lambda: w, ex=SimpleNamespace(steps_left=1000), log=lambda *a: None,
+                         kin=SimpleNamespace(base=lambda a: np.eye(4)), home=lambda **k: None,
+                         imitate_tie_look="on")
+    for hidden in ({"a": "w"}, {"a": "z"}):
+        w.hidden_relation = hidden
+        looked.clear()
+        assert ia.look_twins(sk, twins) == list("wxy")
+        assert looked == list("wxy")
+
+
+def test_copy_routes_tie_flag_after_wait_and_reassigns_before_pick(monkeypatch):
+    import numpy as np
+    from dojo.skills import interactive as ia, regrasp
+
+    objs = {"demo_g": _o("Rigid/garage/00014"), "demo_w": _o("Rigid/watch/00000"),
+            "misread_watch": _o("Rigid/garage/00014"), "garage": _o("Rigid/garage/00014"),
+            "basket0": _o("Geometry/basket/00005"), "basket1": _o("Geometry/basket/00005")}
+    for label, o in objs.items():
+        o.pos = np.array([0., 0.3 if label.startswith("demo") else -0.2, 0.8])
+        o.quat = np.array([1., 0., 0., 0.])
+        o.center_w = o.pos
+    w = _w(objs)
+    w.step, w.notes = 0, {}
+    phases, puts, placed = [], [], set()
+    sk = SimpleNamespace(refresh=lambda: w, ex=SimpleNamespace(steps_left=1500, steps_used=5, hold=lambda n: None),
+                         kin=SimpleNamespace(base=lambda a: np.eye(4)), log=lambda *a: None, bank=lambda: None,
+                         home=lambda **kw: None, imitate_pairing="one_to_one", imitate_tie_look=True,
+                         held={"left": None, "right": None})
+    # Far half relative to our arms: the two demonstrator objects.
+    monkeypatch.setattr(ia, "watch", lambda *a: {"gone": [{"label": l, "asset": objs[l].asset.key}
+                                                          for l in ("demo_g", "demo_w")]})
+    monkeypatch.setattr(ia, "wait_demo_done", lambda *a: phases.append("wait") or "home")
+
+    def look(sk, arm, label, T, **kw):
+        assert kw.get("read_kind") == "imitate"
+        assert phases[0] == "wait"
+        phases.append("look")
+        if label == "misread_watch":
+            objs[label].asset.key, objs[label].category = "Rigid/watch/00000", "watch"
+
+    def put(sk, label, container):
+        puts.append(label)
+        placed.add(label)
+        return SimpleNamespace(note="")
+
+    monkeypatch.setattr(regrasp, "_look_over", look)
+    monkeypatch.setattr(ia, "inside_xy", lambda o, c: any(o is objs[l] for l in placed))
+    monkeypatch.setattr(ia, "put_in_open", put)
+    r = ia.copy_demonstration(sk, "basket0", "basket1", list(objs))
+    assert r["ok"] and puts == ["garage", "misread_watch"]
+    assert phases == ["wait", "look", "look"]
+
+
+def test_look_read_passes_explicit_identity_kind_without_changing_default():
+    from dojo.skills.regrasp import _look_read
+    seen = []
+    sk = SimpleNamespace(last_refine={"yaw_source": "test"},
+                         _refine=lambda label, arm, kind: seen.append(kind))
+    assert _look_read(sk, "left", "obj", 0.18) == "test"
+    assert _look_read(sk, "left", "obj", 0.18, read_kind="imitate") == "test"
+    assert seen == ["look", "imitate"]

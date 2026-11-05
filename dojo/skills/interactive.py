@@ -574,6 +574,28 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
     return transfer(near[:1])
 
 
+def twin_cost(a, b) -> float:
+    """Appearance-only assignment cost, shared by pairing and its tie check."""
+    return 0.0 if a.asset.key == b.asset.key else (0.5 if a.category == b.category else 1.0)
+
+
+def tied_twins(w, twins: dict[str, str]) -> list[str]:
+    """Our objects in equal-cost two-pair swaps, including pairs with identical believed assets.
+
+    A row-local tie can steal another row's unique match; require the whole swap to tie instead.
+    Only observed identities are read, never layout relations, GT labels or expected asset quotas.
+    """
+    pairs = [(d, o) for d, o in twins.items() if d in w.objects and o in w.objects]
+    tied = set()
+    for i, (d, o) in enumerate(pairs):
+        for e, p in pairs[i + 1:]:
+            before = twin_cost(w.obj(d), w.obj(o)) + twin_cost(w.obj(e), w.obj(p))
+            after = twin_cost(w.obj(d), w.obj(p)) + twin_cost(w.obj(e), w.obj(o))
+            if before == after:
+                tied.update((o, p))
+    return [o for _, o in pairs if o in tied]
+
+
 def twin_assignment(w, demo: list[str], ours: list[str]) -> dict[str, str]:
     """``Skills.imitate_pairing`` "one_to_one": each of the demonstrator's objects to one of ours, the assignment of least
     total cost (believed asset: same 0, same category 0.5, else 1). Each side holds one twin of each (the instruction's
@@ -587,11 +609,7 @@ def twin_assignment(w, demo: list[str], ours: list[str]) -> dict[str, str]:
     if not demo or not ours:
         return {}
 
-    def cost(a, b):
-        oa, ob = w.obj(a), w.obj(b)
-        return 0.0 if oa.asset.key == ob.asset.key else (0.5 if oa.category == ob.category else 1.0)
-
-    C = np.array([[cost(a, b) for b in ours] for a in demo])
+    C = np.array([[twin_cost(w.obj(a), w.obj(b)) for b in ours] for a in demo])
     try:
         from scipy.optimize import linear_sum_assignment
         ri, ci = linear_sum_assignment(C)
@@ -610,14 +628,20 @@ MAX_TWIN_LOOKS = 3   # imitate_look "ambiguous": wrist looks before the copy (ea
 def look_twins(sk: Skills, twins: dict) -> list[str]:
     """``Skills.imitate_look`` "ambiguous": a wrist look (``regrasp._look_over``, the refine hook of kind "look", which
     re-reads the identity) at each of our objects whose assigned demonstrator twin has another believed asset, up to
-    ``MAX_TWIN_LOOKS`` while the budget keeps one copy per pair. Returns the labels looked at."""
+    ``MAX_TWIN_LOOKS`` while the budget keeps one copy per pair. ``imitate_tie_look`` also enables this pass and
+    prioritizes objects in equal-cost two-pair swaps, including same-asset pairs. Returns the labels looked at."""
     from dojo.skills.regrasp import _look_over
     w = sk.refresh()
     looked = []
-    for d, o in twins.items():
+    ties = tied_twins(w, twins) if getattr(sk, "imitate_tie_look", False) in (True, "on") else []
+    candidates = ties + [o for d, o in twins.items() if d in w.objects and o in w.objects
+                         and w.obj(d).asset.key != w.obj(o).asset.key and o not in ties]
+    if ties:
+        sk.log(f"[imitate] equal-cost twin swaps: looking at {ties}")
+    for o in candidates:
         if len(looked) >= MAX_TWIN_LOOKS:
             break
-        if d not in w.objects or o not in w.objects or w.obj(d).asset.key == w.obj(o).asset.key:
+        if o not in w.objects:
             continue
         left = _steps_left(sk)
         if left is not None and left < COPY_STEPS_PER_OBJECT * (len(twins) + 1):
@@ -625,7 +649,10 @@ def look_twins(sk: Skills, twins: dict) -> list[str]:
         ob = w.obj(o)
         arm = min(("left", "right"), key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - ob.center_w[:2])))
         try:
-            _look_over(sk, arm, o, np.eye(4))
+            if getattr(sk, "imitate_tie_look", False) in (True, "on"):
+                _look_over(sk, arm, o, np.eye(4), read_kind="imitate")
+            else:
+                _look_over(sk, arm, o, np.eye(4))
         except Exception as e:  # noqa: BLE001 (a look that cannot run leaves the identity as it was)
             sk.log(f"[imitate] look at {o} failed: {type(e).__name__}: {e}")
         looked.append(o)
@@ -724,7 +751,8 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
         ours = [m for m in movers if m not in demo_side]
         st["twins"] = twin_assignment(w, demo_side, ours)
         sk.log(f"[imitate] one-to-one twins {st['twins']}")
-        if getattr(sk, "imitate_look", "off") == "ambiguous":
+        if (getattr(sk, "imitate_look", "off") == "ambiguous"
+                or getattr(sk, "imitate_tie_look", False) in (True, "on")):
             # a wrist look at each of OUR objects in a pair whose believed assets differ (a misread on either side),
             # then the assignment again: with our side read right, one misread demonstrator object pairs by elimination
             looked = look_twins(sk, st["twins"])
