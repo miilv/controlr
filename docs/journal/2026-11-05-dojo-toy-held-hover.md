@@ -1,5 +1,9 @@
 # 2026-11-05 — TOY: measure the ring in the hand before threading
 
+**GPU validation blocked:** compute3 has no usable NVIDIA driver. Every newly executed simulation below ran without a usable CUDA device;
+its numbers are diagnostic smoke only, not valid GPU/G3 performance evidence. No camera improvement is established.
+The paired GPU screen remains required before this candidate can advance. No driver or system change was attempted.
+
 Base: `20903bc2`. The points table on PR #386 reports strict camera 62 vs historical G3 96; no scoring rows were opened
 for this work. The table is on `feat/dojo-durable-board`, not yet on main. Prior diagnosis and A/B/C outcome:
 [stacking toy camera gap](2026-10-29-dojo-stacking-toy-camera-gap.md). Base refine remains the adopted lever;
@@ -34,6 +38,44 @@ proposed 82–94 mm in-hand shifts outside the jaws and kept the prior. In the f
 one proposed 94 mm and was rejected. `held_pose: request` is set, but `pegs._one_piece` never asks. Thus its predicted
 attachment survives the carry without an in-hand pose measurement on this path.
 
+## Historical pre-outage replay measurements (existing data only)
+
+Used `~/dojo-data/s-pst/replay/pst_dev_100000-02.json.gz` and their original dev camera reports/actions. Their saved
+logs contain no `cudaErrorNoDevice` / `No CUDA devices found`; the environment device was already CPU, as expected for
+these single-env physics tasks. The current outage adds failed CUDA context creation/cooking, so the new smoke cannot
+silently substitute for these old records. Historical replay score provenance is in the earlier camera-gap journal.
+No new simulator was started to obtain these numbers.
+
+29 exact pre-opening snapshots survive. Sparse hover snapshots are missing for 27; no interpolation. Physical identity
+is fixed from the nearest same-asset GT at the first consumed pick, with exact-hover association where that frame exists.
+It is an association assumption, not a labelled-instance measurement from the camera.
+
+| id | releases | attachment error median / max (mm) | true peg-relative xy median / max (mm) |
+|---|---:|---:|---:|
+| 100000 | 10 | 0.882 / 8.809 | 2.148 / 6.460 |
+| 100001 | 9 | 0.601 / 99.821 | 1.608 / 172.189 |
+| 100002 | 10 | 0.675 / 3.421 | 1.414 / 3.623 |
+
+The gross 100001 block6 case is **not a small held offset**: the associated physical piece is 99.8 mm from its predicted
+attachment and 172.2 mm from its peg; treat it as lost/unheld or an association failure. Excluding it, 9/28 releases have
+>1 mm attachment error, 6/28 exceed 3 mm. Across all 29, 28 have >1 mm pre-opening peg-relative error. Release error is
+not final settled checker error: 100002 is a successful historical camera row despite its pre-release offsets.
+
+100000 block7: predicted TCP hole [16.085, 0.001, 7.476] mm, actual [17.854, 0.117, −1.152] mm at release; attachment
+error **8.809 mm**, true peg-relative xy **6.460 mm**. 100000 block1: predicted [15.100, −2.953, 0.023], actual
+[13.358, −5.675, −0.079] mm; attachment **3.233 mm**, peg xy **4.550 mm**. These support measuring the held object;
+they do not diagnose every no-pair cascade as a physical jam.
+
+The only two exact hover samples are 100002 block9 / block6: **0.234 / 0.358 mm** attachment error, growing to
+0.761 / 0.812 mm at release, with peg-relative release errors 1.334 / 1.248 mm. There is insufficient surviving
+pre-outage hover coverage to quantify the full carry distribution. The dense new software-only traces below are
+hypothesis evidence, not a replacement for that missing validation.
+
+[Historical per-release data](data/2026-11-05-toy-historical-release-audit.json). Reproduce using the committed scorer
+with `--family dev`, reports/actions under `~/dojo-data/toy-held` and replay symlinks `replay/dev_<id>.json.gz` to the
+original three saved records. The 29 release xy values were checked against a separate one-off first-pick association
+calculation. `--family dev_pbr` selects the new dense/snapshot records. Neither mode starts Isaac or calls an LLM.
+
 ## Implementation
 
 `RuntimeConfig.peg_held_read: off|on` (default off), wired to Skills and the G3 switch allowlist. On mode B's peg path,
@@ -61,7 +103,7 @@ its own PID after its first saved row; remaining jobs use logged-event snapshots
 [Camera A/B pre-registration](../experiments/2026-11-05-toy-held-read-ab.md): ten fresh gain pairs, default +5-point /
 flip-ratio decision rule plus guard and write audit. No adoption from G3. Camera execution waits for D-C19 release.
 
-### First exact replay (100000)
+### First new replay (100000; software PhysX, not validation)
 
 Ten hover/release pairs in `compute3:~/dojo-data/toy-held/replay/pbr_100000.json.gz`. Hole attachment errors at hover:
 0.408, 3.697, 3.096, 0.227, 0.266, 0.343, 0.473, 0.398, 0.719, 8.986 mm. The corresponding true peg-relative xy errors
@@ -77,7 +119,7 @@ when the tail will reject it. The camera adoption gate must count those writes t
 it is not valid to report only adopted tail reads as belief writes. This logging does not alter the provider's
 pre-existing reattachment semantics.
 
-### Five-row physics replay classification
+### Five-row software-PhysX replay classification (not validation)
 
 All five original camera scores were 0.60. Replays: **0.60 / 0.60 / 0.30 / 0.60 / 0.60**. All loaded stable; no early
 checker termination. The 100002 divergence prevents treating these as exact reconstructions of camera outcomes.
@@ -108,3 +150,29 @@ rdpy with `SIMLAB_GPU=0`, `RD_HOME=~/dojo-robodojo`, `DOJO_CATALOG=~/dojo-data/s
 
 Local full suite (initial code snapshot): **1743 passed, 187 skipped**, 1143 s. Six new switch/audit tests pass on the
 rebased code. PR code CI: **1769 passed, 186 skipped**, 419 s; compileall, shell syntax and secret scan green.
+
+
+### Compute3 hardware blocker and stopped screen
+
+The concurrent [CONV journal](2026-11-05-conv-waist-intercept.md) records the same unavailable NVIDIA driver.
+TOY logs contain `cudaErrorNoDevice`, `No CUDA devices found`, and `Environment device : cpu`. I initially treated
+the progressing physics-only episodes as validation; inspecting the startup logs invalidated that interpretation.
+The existing KitLogWatch did not flag the hardware failure in the completed rows (`infra_failure` absent), so an
+absent row-level infra flag is insufficient here. This is a runtime landmine, not evidence the GPU was healthy.
+
+Stopped the treatment simulator and queued baseline by their own PIDs. No driver/reboot/package operation, no other
+process stopped. The completed software-only smoke rows were A 100000 score 1.0 / 1043 steps; B 100000 score 1.0 /
+1087 steps (12 reads, 7 adopted, 2 look reads, 52 look steps), B 100001 score 1.0 / 1077 steps (14 reads, 9 adopted,
+4 look reads, 132 look steps). They exercise the code but do **not** qualify as a sim gain or valid paired screen.
+
+After driver recovery by the machine owner, rerun A/B on dev 100000–04 under the normal GPU lock and disk guard:
+`g3.sh run --task play_stacking_toy --seeds 100000-100004 --mode-b --held-pose noise --held-pose-request
+--belief-offset stack_base:0.0016,0.0015 --skill-attr peg_base_refine=local --skill-attr peg_held_read=off|on
+--out <fresh-own-dir>`. Use the same catalogue and PR head for both arms, no Claude route, no measurement ids.
+The fixed base error is the earlier camera diagnostic's measured offset; G3's mode-B refine observes nothing,
+so this is a retained-base-error stress screen, not a simulation of the eight-try camera refine's success rate.
+
+The executed pegs/G3/Skills/heldsim files matched the initial implementation. Later main rebases add unrelated conveyor
+allowlist entries to the G3 driver; healthy validation of the final head is still blocked. Executed snapshot hashes:
+`pegs.py` SHA-256: `c442342f3f9620af8ae321088cb88d4110c4c52613d32741da747cbff13bea1e`;
+`g3.py`: `c0b93f8d4588fbf75249248cda6aeea688f2a50b160eb231ed7794f1bc40d030`.

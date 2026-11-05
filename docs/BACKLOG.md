@@ -942,6 +942,8 @@
   measurement at the hover, like plug_in_charger's.
   Candidate `peg_held_read` requests the existing held-pose protocol with a 0.5 mm gate; camera adoption remains open
   ([TOY diagnosis](journal/2026-11-05-dojo-toy-held-hover.md), [pre-registration](experiments/2026-11-05-toy-held-read-ab.md)).
+  GPU validation is blocked by the compute3 driver outage. KitLogWatch omitted the CUDA-unavailable failure while
+  the environment ran software PhysX; require hardware/startup-log checks before accepting those rows as G3 evidence.
   - Seated blind (v4.6), a ring pushed 30-50 mm down the peg on a predicted pose binds and tilts: 0/5, 0.30. v4.7 threads
     4 mm blind instead: 1/3, 0.73.
   - ~~Open gap for the insertion-tail stream: the seat target ran blind when the `held_pose` read failed.~~ Closed
