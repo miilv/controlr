@@ -990,3 +990,8 @@
   view), which the protocol does not enforce yet (`disc_into_slot` places pass no `held_tol`).
 
 - [ ] **dojo coin: validate disc_hold_evidence in strict CAMERA.** Isolated default-off disc scope of held_thin; historical dev rows have 12 opening-negative belief drops in six handover failures, but one has no demonstrated lift. No camera gain claimed. See journal/2026-11-05-dojo-coin-disc-hold-evidence.md and experiments/2026-11-05-coin-disc-hold-evidence-prereg.md. slot_read remains parked.
+- [ ] **Agentic transport accounting / quota fallback:** `ChatReply` drops httpx attempt counts;
+  runtime `agentic.calls` is logical calls, so retries are invisible in the request budget.
+  Track attempts/status (also held checks), and dev-A/B a cx/ route or explicit 429 fallback
+  before adoption. Request-only replay is insufficient: 6/13 cx/gpt-6-sol replies requested
+  more tools where Sonnet answered (experiments/2026-11-05-dojo-route-replay.md).

@@ -136,6 +136,25 @@ class LLMClient:
   `id` / `model` / `provider` are safe labels. Request bytes and the reply text are untouched (cache invariants).
 * Idle connections are kept 120 s (`KEEPALIVE_S`; httpx's 5 s default re-handshakes between slow turns).
 
+### Dojo agentic perception transport
+
+The perception service's `agentic_estimate` and `held_look` share
+`dojo.perception.agentic.j1._cfg()["model"]`: explicit `model=` overrides
+`AGENTIC_MODEL`, whose default is `claude/claude-sonnet-5-5`. Candidate files can
+pin it with `--setenv AGENTIC_MODEL=cx/gpt-6-sol`. It is independent of
+`controlr.config.LLMConfig.model` and `dojo.agent.loop.AgentConfig.model`.
+`RuleSupervisor` makes no model calls.
+
+`make_chat()` uses `OmniChat` / `LLMClient` (240 s read timeout, two extra attempts,
+exponential backoff with jitter, `Retry-After` seconds/date capped at 60 s).
+Without httpx, or with `AGENTIC_HTTP=urllib`, `UrllibChat` uses the same attempt
+limit, 2/4/... s exponential delays capped at 20 s and `Retry-After` capped at
+60 s for 429 / 5xx (also 408). Neither client sleeps after its last attempt;
+`max_retries=0` disables transport retries. Exhaustion returns an error, after
+which the perceiver runner can retry the logical turn once before B1 fallback;
+held looks return unknown if neither of their two logical calls yields yes/no.
+Transport attempts and logical agent calls are distinct accounting units.
+
 ### Decision head (`controlr/llm/decisions.py`, `llm.backend=decisions`)
 A decision model (`openai/gpt-6-luna-decisions`) writes no text: it reads a `state` and returns
 probabilities for named, typed questions — `score` (ordered levels), `choice`, `noul` (yes/no).
