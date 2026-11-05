@@ -1949,9 +1949,17 @@ class RuntimePolicy:
                                       **{k: r.get(k) for k in ("ok", "why", "shift_mm", "turn_deg", "lead_shift_mm", "sigma")}})
         if r.get("ok") and r.get("T_tcp_obj") is not None and arm in prov.belief.attached:
             lab, _ = prov.belief.attached[arm]
+            audit_held = self.cfg.peg_held_read == "on" and self.report.get("skill") == "stack_on_pegs"
+            before = prov.belief.objects[lab].T.copy() if audit_held else None
             prov.belief.attached[arm] = (lab, np.asarray(r["T_tcp_obj"], float))
             prov.belief.sync_robot(self.bridge.observe()["state"])
             prov.stats["held_pose"] = prov.stats.get("held_pose", 0) + 1
+            if before is not None:
+                from dojo.skills.geometry import T_to_pose7
+                self.report["events"].append({"kind": "belief_write", "writer": "held_pose", "label": lab,
+                                              "step": self.bridge.steps_used,
+                                              "before7": T_to_pose7(before).tolist(),
+                                              "after7": T_to_pose7(prov.belief.objects[lab].T).tolist()})
         return r
 
     def _watch_read(self, region: dict, prior: dict | None, scene: str) -> dict:

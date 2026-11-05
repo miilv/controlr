@@ -65,3 +65,24 @@ def test_config_and_g3_validate_the_switch():
     assert SKILL_ATTRS["peg_held_read"] == ("off", "on")
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(peg_held_read="maybe"))
+
+
+def test_runtime_logs_every_held_reattachment_even_before_tail_sigma_gate():
+    from dojo.skills.geometry import T_from
+
+    pol = RuntimePolicy(RuntimeConfig(peg_held_read="on"))
+    pol.report = {"events": [], "skill": "stack_on_pegs"}
+    pol.bridge = SimpleNamespace(steps_used=10, observe=lambda: {"state": {}})
+    obj = SimpleNamespace(T=np.eye(4))
+    attachment = T_from([0.003, 0, 0])
+    belief = SimpleNamespace(objects={"ring": obj}, attached={"left": ("ring", np.eye(4))},
+                             held_labels=lambda: ["ring"], movable=lambda: [],
+                             sync_robot=lambda state: setattr(obj, "T", attachment.copy()))
+    prov = SimpleNamespace(belief=belief, stats={})
+    pol.perception = lambda: SimpleNamespace(held_pose=lambda *a: {
+        "ok": True, "T_tcp_obj": attachment.tolist(), "sigma": {"lead_lat_mm": 0.8}})
+    pol._held_pose(prov, "left", np.eye(4), "Rigid/stackingblocks/00000")
+    writes = [e for e in pol.report["events"] if e["kind"] == "belief_write"]
+    assert len(writes) == 1 and writes[0]["writer"] == "held_pose"
+    assert writes[0]["before7"][:3] == [0, 0, 0]
+    assert writes[0]["after7"][:3] == [0.003, 0, 0]  # audit includes an ok read above the tail's 0.5 mm gate
