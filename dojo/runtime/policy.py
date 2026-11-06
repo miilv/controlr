@@ -360,6 +360,8 @@ class RuntimeConfig:
     slot_approach: str = "off"
     # Lower the matching-slot hover while retaining checked approach clearance.
     slot_hover: str = "off"
+    # Matching-slot measured servo tail, without insertion probing.
+    slot_place: str = "off"
     # ``library.arrange``'s place order (``Skills.arrange_order``): near (today: nearest the arms first) | big_first (the
     # largest object first, while the table is emptiest) | push_big_first (the pushes first, then big_first)
     arrange_order: str = "near"
@@ -637,6 +639,7 @@ class RuntimePolicy:
                 or self.cfg.press_repeat not in ("off", "cross")
                 or self.cfg.slot_approach not in ("off", "linear")
                 or self.cfg.slot_hover not in ("off", "low")
+                or self.cfg.slot_place not in ("off", "servo")
                 or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
                 or self.cfg.hang_cradle not in ("strict", "straddle") or self.cfg.artic_geom not in ("authored", "measured")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
@@ -948,6 +951,7 @@ class RuntimePolicy:
             sk_.press_repeat = cfg.press_repeat
             sk_.slot_approach = cfg.slot_approach
             sk_.slot_hover = cfg.slot_hover
+            sk_.slot_place = cfg.slot_place
             sk_.arrange_order = cfg.arrange_order
             sk_.push_stroke = cfg.push_stroke
             sk_.hang_cradle = cfg.hang_cradle

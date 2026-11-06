@@ -539,3 +539,9 @@ held-pose measurements and all non-slot places retain their existing settings.
 height to 15 mm and support clearance to 3 mm. It retains collision-checked approaches;
 the container top and tool's lowest corner still set the minimum hover. G3 uses
 `--skill-attr slot_hover=low`. Do not combine it with Cartesian approaches without a separate comparison.
+
+`RuntimeConfig.slot_place=servo` (default `off`) uses the existing measured placement tail
+for matching slots, disables insertion probes, and requests the existing held-pose protocol
+at the hover. G3 re-measures the tool between tail moves; perception mode can only use the
+provider's accepted held transform. Configure a held-pose provider to test the camera effect;
+this switch does not turn on a perception service or supply ground truth.

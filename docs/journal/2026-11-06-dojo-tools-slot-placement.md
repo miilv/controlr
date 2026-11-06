@@ -84,3 +84,15 @@ Next independent lever: `slot_hover=low` (default off), pre_h 15 mm / pre_clear 
 40 mm / 15 mm. Approach stays collision-checked and joint-space by default. The minimum is still computed
 from the container top and tool geometry; this is not permission to traverse its wall. Hypothesis: a lower
 hover admits more stable grasp/place pairs and shortens the fall when a corrected descent is refused.
+
+### Lower-hover screen and measured-tail hypothesis
+
+`slot_hover=low`, physics `4f6f2fef`, 100030 v1: **0.50**, versus baseline 0.75.
+The pliers miss after a 31 mm hover shift; the hammer's new wide slice grasp fails to lift at all.
+The first ten paired layouts are being completed, including this pilot row once (no duplicate rerun).
+
+Third independent lever: `slot_place=servo` (default off). Matching slots use the existing servo tail,
+with insertion probes disabled and the existing held-pose protocol requested. No lower hover or Cartesian
+approach is bundled into this trial. Screen on 100033, whose wrench moves 38 mm in the open-loop tail.
+G3 supplies measured object poses between tail moves; in camera mode this is limited to the accepted
+held transform at hover, not repeated oracle measurements. Camera adoption requires its own gate.

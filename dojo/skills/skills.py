@@ -340,6 +340,7 @@ class Skills:
         self.press_repeat = "off"
         self.slot_approach = "off"
         self.slot_hover = "off"
+        self.slot_place = "off"
         # pour_p1's way back to upright (stream H; ``RuntimeConfig.ported_pour_untilt``): "direct" (today) | "staged" | "capped"
         self.ported_pour_untilt = "direct"
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
