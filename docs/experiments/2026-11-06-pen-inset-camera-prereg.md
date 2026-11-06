@@ -1,5 +1,9 @@
 # PEN: inset-packing camera A/B pre-registration
 
+**Superseded and still parked.** Round 2 proposes the separately registered
+[conditional profile](2026-11-06-pen-conditional-camera-prereg.md); the historical
+broad arm below remains unchanged and has never been run on camera.
+
 This supersedes the earlier centered-fit specification for the proposed camera run; neither specification has been run. It specifies a future rendered validation; no camera job is authorized or run by
 this stream. G3 tuning uses only 100000–04 and private variant-2 draws 100030–39.
 The frozen candidate is the combination below, not either rejected historical

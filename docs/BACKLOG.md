@@ -829,6 +829,9 @@
 - [ ] **dojo skills: fill_pen_holder, what tips the holder after `fill_move_lift`** (journal
   2026-10-30-dojo-h95-fill-pen-lift).
   - A pen drop knocks the standing holder over late (2 of 20 G3 v15 rows, both after their tier was scored).
+  - PEN’s broad inset profile also tips original dev 100004 during left-arm parking, despite a tied score.
+    Check final pose and tip onset as well as banked score; the conditional profile preserves that baseline route
+    (journal/2026-11-06-dojo-pen-conditional.md).
   - A tilted side grasp of the holder ("box close 1 approach +2 tilt -25", 100031) stalls 43 mm above the table and
     lets go there. The holder stays hooked on the fingers and falls when the arm moves off.
 - [ ] **dojo skills: fill_pen's leaning drops** (journal 2026-10-30-dojo-h95-fill-pen-j5). Under `fill_joint_limits`

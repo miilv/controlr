@@ -536,6 +536,13 @@ pens-in counts: reducing slip alone can still lose reachable transfers. Keep
 raw variant records and their presettled records together under a private data
 root; pass that layout directory explicitly to both paired G3 arms.
 
+`--skill-attr fill_guard=geometry` screens the conditional profile; leave the four
+independent fill switches off (mixed settings are rejected). Runtime uses the same
+field. It selects the profile from holder position, arm reach and flat slender
+shaft geometry, then restores the scoped switches. Inspect the per-episode
+`fill_guard` measurements alongside scores and holder orientation: a score tie
+can hide a new tip after a reward tier has already been banked.
+
 ### Matching-slot Cartesian approaches
 
 `RuntimeConfig.slot_approach` is `off` by default. `linear` makes matching-slot transfers use

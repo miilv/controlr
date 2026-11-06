@@ -522,3 +522,13 @@ fit, retaining occupied-space constraints in both attempts;
 it even on exceptions, and uses the existing low-hover and 4 mm xy-correction
 servo options. The grasp filter and collision model retain finger clearance. They consume the same world/provider as the
 original skill; none introduces a task-name route or a new perception read.
+
+`fill_guard=geometry` is a separate default-off conditional profile, used with the
+four independent switches off. It applies `rolled_tilt` + `stay` + `inset` + `safe`
+only to a rigid holder inside the arm bases’ lateral span, outside the shared
+comfortable reach, within the nearest arm’s finger-clearance band or farther,
+and with at least one flat slender shaft. It uses the current world poses and
+asset extents, never layout identifiers. Other scenes follow the baseline path.
+The four scoped switches restore on return or exception; G3 records the decision
+and its geometric measurements. This is a development heuristic, not a stability
+guarantee.
