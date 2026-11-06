@@ -550,3 +550,16 @@ and reports launcher completion/rc and prospective remaining occupancy.
 The shared boot protocol reads only `~/coord/lane_gate.stamp`, waits until its
 epoch is at least 120 seconds old, then writes `<epoch> <iso> ilia-ab`. While the
 other team runs its single Isaac, use one Integration lane (`lane2.caps: 1 4`).
+
+For a matched rehearsal ablation, `narrow_rehearsal.py` derives the control from
+an already labelled full export. It retains every appended-class image and its
+exact full-export RFS repetition count; only old-only rehearsal differs.
+`audit_rehearsal.py --allow-missing-old` is for this diagnostic control only;
+vocabulary and split validation still apply. Candidate training uses strict audit.
+
+`train.py --batch -1 --batch-headroom-gb 8` opts into auto batch sizing and an
+allocator cap from available VRAM minus that reserve. It records the resolved
+integer in `resolved_batch.json` for reuse in matched arms, and stops if free
+VRAM drops below 6 GiB. Without the option, training defaults are unchanged.
+Training extras explicitly marked by `extra_groups` can resolve canonical Rigid
+keys stored under Clutter; ordinary task generation keeps its original lookup.

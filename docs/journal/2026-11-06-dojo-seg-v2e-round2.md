@@ -1,4 +1,4 @@
-# SEG round 2: clean dev baseline repair; genuine training renderer blocked
+# SEG round 2: v2e FAIL despite complete old-class rehearsal support
 
 Continues PR #387 / branch `t3/86744994`. No model promoted. No compute4 access,
 LLM calls or tokens, weight downloads, system changes or real-robot actions.
@@ -46,7 +46,7 @@ an eight-epoch rehearsal candidate with the exact v2b prefix and 32 additions.
 The historical v2d recipe used 8 epochs; a two-epoch result would only be a cheap
 hypothesis check, not a comparison claiming to reproduce its final weights.
 Both candidate and historical narrow arm need re-rendered data: their old
-images/labels were deleted. Both two-epoch ablation models have now been trained; the fixed eight-epoch candidate is training. Both arms share every
+images/labels were deleted. Both two-epoch ablation models and the fixed eight-epoch candidate completed. Both arms share every
 appended-class image and its exact full-export RFS repetition count; the control
 omits only old-class-only rehearsal images. This controls new-class exposure.
 
@@ -101,6 +101,44 @@ arrange failure. This is directional evidence, not proof of the cause of the
 historical v2d losses. Neither short model qualifies. The eight-epoch v2e run
 starts fresh from the same expanded v2b init, as registered before these gates.
 
+## Final candidate: FAIL, parked
+
+| arm | found | identity | pose10 | identity+10 | category / asset losers |
+|---|---:|---:|---:|---:|---:|
+| v2b | 913 | 637 | 767 | 571 | — |
+| v2e (8 epochs) | 912 | 637 | 763 | 569 | **6 / 7** |
+
+162 frames / 975 objects, zero errors. Phantoms 35→37. The shared arrange
+loss remains (number and cube_cushion found 22→20); the missing numeric assets
+are 00006 and 00026. Dev organize_table garage remains 3→3 on identity/pose10.
+[v2e category table](../experiments/data/seg-v2e-dev/v2e-per-class.md),
+[v2e asset table](../experiments/data/seg-v2e-dev/v2e-per-asset.md).
+
+Genuine-dev image-level hitcheck: v2b 0 named / 7 merged / 42 missed; v2e
+**10 named / 3 merged / 36 missed**, all 49 presences in v2e's vocabulary.
+On v2d's common 43-presence subset this is 10/43, versus the historical 13/43
+(not re-run here). Dolls 15–19 remain 0/15 and laptop 1 remains 0/3 despite
+43–52 / 39 training head images respectively. Naming is not localisation.
+[All per-asset counts](../experiments/data/seg-v2e-dev/hitcheck-v2e.json).
+
+The positive naming gain does not override seven asset losers. No camera A/B
+is qualified or specified; v2b remains the default and PR #387 stays draft.
+No later/best checkpoint was selected from these outcomes. Final report:
+[rehearsal experiment](../experiments/2026-11-06-seg-v2e-rehearsal.md).
+
+Weights remain on compute3 at `~/dojo-data/s-v2e-seg/runs/NAME/weights/last.pt`:
+
+| NAME | MD5 |
+|---|---|
+| narrow2 | `23d5ab8ebafff047a16145e0faeda229` |
+| rehearsal2 | `63137e506be837d13b7a6150c7afffcd` |
+| v2e | `9de6416f2e517e1ff91f56cbc5b47237` |
+
+Actual training wall time: ~0.02 + 0.04 + 0.16 h; batch 16 in every arm.
+LLM calls and tokens remain zero. All our servers/jobs have exited; GPU lock
+release and survival of the colleague's original service (PID 3613) / desktop
+were verified after the simulation tests. No compute4 access or system change.
+
 ## Blocker and shared-machine checks
 
 A single genuine Isaac Sim 5.1 rendering smoke test, queued after the first bake
@@ -116,9 +154,8 @@ arrays. A bounded single-worker retry produced valid 640×480 RGB and masks.
 The committed capture wrapper now checks readiness of both buffers, with a
 20-attempt cap; it never accepts empty captures as training data.
 
-Base proxy rehearsal used two workers; focused extras use three on disjoint output
-roots and a four-physical-core CPU affinity reservation. The heavy lock is held;
-G3 light locks are untouched. The supervisor monitors disk and VRAM every two
+Base proxy rehearsal used two workers; focused extras and coverage repair used three on disjoint output
+roots and a four-physical-core CPU affinity reservation. G3 light locks were untouched; the heavy lock is now released. The supervisor monitors disk and VRAM every two
 seconds and can terminate only the subprocess sessions it created.
 
 The all-class extra pool exposed an injector bug: **146 v2b Rigid vocabulary
@@ -144,7 +181,7 @@ Before each job: `who`, `uptime`, `nvidia-smi`; one heavy job under the existing
 `~/dojo-gpu.lock`. The pre-existing GPU service (PID 3613, 2418 MiB), Xorg and
 GNOME were not touched. Available VRAM during the first bake stayed above the
 8 GB requirement in observed checks (22 GB free with its GL workers loaded).
-Disk free: 114 GB; no disk-floor override or data deletion. The simulator probe
+Disk free: initially 114 GB, 110 GB at cleanup. No disk-floor override or pre-existing data deletion; the renderer removes its generated stages, and 50 diagnosed failed-draw markers were reset for retry. The simulator probe
 ended itself; bake servers use the existing wrapper's PID-specific cleanup.
 All requested output/deploy paths are under `~/controlr-seg-v2e` and
 `~/dojo-data/s-v2e-seg`. Weights remain on compute3. Baseline weight MD5:
@@ -159,3 +196,13 @@ Compileall, pyflakes and `git diff --check` pass. Broad suite was bounded at
 900 seconds and did not complete (progress reached 74%, with one observed failure:
 `tests/test_fkagent.py::test_pixel_loop_pick_place_done_and_fold`). That test
 passed independently on retry (1 passed in 8.20 s). No full-suite pass is claimed.
+
+Required simulation validation after isolated deployment: **19 passed in
+313.74 seconds**, private port 17821; server exited and GPU memory returned to
+the colleague/desktop-only baseline. CI passed for code/result commit
+`926bf1d1`; the final documentation push may have a new pending check.
+
+Final provenance checks: 650 baseline source/calibration files re-hashed after
+all candidate gates; none changed. The four baseline inference source files also
+match their frozen hashes. Full training arguments, checkpoint hashes and gate
+output hashes are in [final provenance](../experiments/data/seg-v2e-dev/final-provenance.json).
