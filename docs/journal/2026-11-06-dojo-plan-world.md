@@ -96,7 +96,7 @@ TCP frame before using native belief attachments. A regression test covers
 the 5.1 mm difference. A large in-place rotation does not inherit an unlimited
 initial-touch exemption: full collision checks resume beyond 20 degrees.
 
-GPU validation will use the same 30-layout manifest in both off/on arms,
-from one frozen source snapshot, with plan_solver = curobo fixed and only
-plan_world varying. Separate g3-curobo outputs prevent overwriting the CPU
+GPU validation source freeze: db8daddda4937402f6da1dcd2c19a3b650d4c021.
+Both arms use the same 30-layout manifest, with plan_solver = curobo fixed
+and only plan_world varying. Baselines are rerun from this source too. Separate g3-curobo outputs prevent overwriting the CPU
 comparison. The light-lock/VRAM/resource rules are unchanged. No model calls.
