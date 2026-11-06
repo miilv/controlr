@@ -43,7 +43,7 @@ def test_other_fill_switches_validate(field, value):
     from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
     from dojo.skills.g3 import SKILL_ATTRS
     assert getattr(RuntimeConfig(), field) == "off"
-    assert SKILL_ATTRS[field] == ("off", value)
+    assert SKILL_ATTRS[field][0] == "off" and value in SKILL_ATTRS[field]
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(**{field: "typo"}), assets=None)
 
@@ -145,3 +145,17 @@ def test_tilted_approaches_keep_horizontal_jaws_and_narrow_opening():
     for g in gs:
         assert g.T[2, 1] == pytest.approx(0.)
         assert g.open_gap() == pytest.approx(g.width + .008)
+
+
+def test_inset_drop_keeps_occupied_space_in_both_fit_attempts(monkeypatch):
+    from types import SimpleNamespace
+    from dojo.skills import insertion, library
+    calls = []
+    monkeypatch.setattr(insertion, "fit_insertion", lambda *a, **kw: calls.append(kw))
+    sk = SimpleNamespace(fill_drop="inset", world=SimpleNamespace(objects={"done": 3}, obj=lambda l: l))
+    assert library._fill_drop_target(sk, "p", "h", ["done"]) == (None, None)
+    assert len(calls) == 2
+    assert all(kw["others"] == ["done"] for kw in calls)
+    assert calls[0]["min_clear"] == .007
+    assert calls[0]["pack"] is True
+    assert calls[1]["pack"] is False

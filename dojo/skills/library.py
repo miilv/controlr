@@ -1857,9 +1857,15 @@ def _fill_drop_target(sk: Skills, label: str, container: str, inside: list[str])
     w = sk.world
     o, c = w.obj(label), w.obj(container)
     others = [w.obj(l) for l in inside if l in w.objects]
-    for kw in (({"others_pad": 0.004},) if getattr(sk, "fill_drop", "off") == "center" else
-               ({"pack": True, "min_clear": FILL_PACK_CLEAR, "others_pad": 0.003}, {"others_pad": 0.004},
-               {"others_pad": 0.002}, {"others_pad": 0.0}, {"others": ()})):
+    mode = getattr(sk, "fill_drop", "off")
+    if mode == "center":
+        fits = ({"others_pad": 0.004},)
+    elif mode == "inset":
+        fits = ({"pack": True, "min_clear": 0.007, "others_pad": 0.003}, {"others_pad": 0.004})
+    else:
+        fits = ({"pack": True, "min_clear": FILL_PACK_CLEAR, "others_pad": 0.003}, {"others_pad": 0.004},
+                {"others_pad": 0.002}, {"others_pad": 0.0}, {"others": ()})
+    for kw in fits:
         fit = fit_insertion(o, c, **{"others": others, "res": 0.001, "yaw_step_deg": 15.0, "pack": False,
                                      "others_band": 0.012, **kw})
         if fit is not None and (not kw.get("pack") or fit.clearance >= kw["min_clear"]):
