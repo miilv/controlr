@@ -40,12 +40,12 @@ checkpoint. An enabled request without the extra model fails loudly.
 
 `EstimatorConfig.seg_additive` defaults false; IoU/confidence are explicit config fields.
 Extra masks must match exact public task candidates, never category fallback. Base entries
-have priority during downstream deduplication. Wrist pools and pad extension stay base-only.
+have priority during downstream deduplication, matching and proposal consumption. Wrist pools and pad extension stay base-only.
 Raw preservation does not prove downstream invariance when joint matching/refitting consumes
 additional masks; the complete paired gate remains mandatory.
 
-Local focused tests: 32 passed / 8 optional skips. Compute3's existing perception environment:
-39 passed with no skips, including classifier-row selection, empty-label negatives,
+Local focused tests: 33 passed / 8 optional skips. Compute3's existing perception environment:
+58 passed with no skips (including SAM/proposer consumers), including classifier-row selection, empty-label negatives,
 wire-prefix preservation, default request compatibility and consumer priority.
 
 ## Remote ownership and resource discipline

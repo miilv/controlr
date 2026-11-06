@@ -23,8 +23,13 @@ def main():
     ids = {i: names.index(k) for i, k in enumerate(old['names']) if k in names}
     if len(ids) != len(names):
         raise ValueError('requested class absent from source vocabulary')
-    a.out.mkdir(parents=True, exist_ok=False)
     frames = [json.loads(s) for s in (a.full / 'frames.jsonl').read_text().splitlines()]
+    for frame in frames:
+        seed, sep, variant = frame['layout'].partition('_v')
+        if not (seed.isdigit() and 100030 <= int(seed) <= 100049 and sep and
+                variant.isdigit() and int(variant) > 0):
+            raise ValueError('new-only training accepts training IDs with positive variants only')
+    a.out.mkdir(parents=True, exist_ok=False)
     val = set(old['val_ids'])
     counts, splits, negatives = Counter(), Counter(), Counter()
     train = []

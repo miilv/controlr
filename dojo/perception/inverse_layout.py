@@ -3733,7 +3733,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                 v = _mask_iou(sils[i], d.mask, head.known)
                 if v >= cfg.seg_match_iou:
                     pairs.append((v, i, j))
-    pairs.sort(reverse=True)
+    # Resolve all base matches first; an extra cannot steal a base's chosen member.
+    pairs.sort(key=lambda pair: (getattr(dets[pair[2]], "source", "base") == "base", *pair), reverse=True)
     h_of: dict[int, int] = {}
     d_of: dict[int, int] = {}
     for v, i, j in pairs:
@@ -3834,7 +3835,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                     sils[i] = h.sm().sil(head.cam, h.T())
     # 2. unexplained masks: fit, then add (group short) or move an unexplained member there
     trace = info.setdefault("trace", [])
-    for j in sorted((j for j in range(len(dets)) if j not in h_of), key=lambda j: -dets[j].score):
+    for j in sorted((j for j in range(len(dets)) if j not in h_of),
+                    key=lambda j: (getattr(dets[j], "source", "base") == "extra", -dets[j].score)):
         d = dets[j]
         tr = {"key": d.key, "score": round(float(d.score), 3), "px": int(d.mask.sum()), "groups": det_groups[j]}
         trace.append(tr)
