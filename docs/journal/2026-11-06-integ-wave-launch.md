@@ -146,8 +146,8 @@ RuntimeConfigs and 94 registered pair deltas validated. PREP does not append to
 queue2. Timestamped amendments, chosen salts, exclusions and attempt logs live
 under compute4 `~/dojo-data/wave-1106/`, including
 `prep-lead-amendments.json` and `prep-amendment-journal.md`; these amendments were
-recorded there before amended preparation. Final refill/demo results and
-manifest hashes remain pending.
+recorded there before amended preparation. The final preparation evidence is
+summarized below.
 
 The two authorized key refill blocks each yielded two stable records: gain3
 100000/100003 and gain4 100001/100004. Before any key camera data, the lead then
@@ -156,3 +156,43 @@ four additions, with all ten charger guard pairs unchanged (38 camera jobs).
 The decision rule is unchanged: pooled B at least A + 5 gain-cell points,
 success flips wins at least twice losses with at least two net wins, and the
 existing EXPERIMENTS guard bound. State n=9; no further generation is authorized.
+
+## PREP handoff
+
+Reloc, key and tie are ready in `~/dojo-data/wave-1106/`: their queues contain
+40, 38 and 108 rows. All 186 resolved RuntimeConfigs, 93 registered pair deltas,
+unique names and matching private demo roots validate. PREP never appended to
+queue2; the lead owns dispatch. The selected schedule is `wave-prep-amended.json`.
+
+Across the original blocks and authorized refills, 62 fresh layouts were settled:
+51 passed and 11 unstable key records were excluded. Exclusions by key block are
+gain1: 100000/100001; gain2: 100001/100002/100003; gain3:
+100001/100002/100004; gain4: 100000/100002/100003. All attempted records and their
+raw, loaded and index hashes remain in the family manifests.
+
+All 17 selected fresh demos validate: three retained speed-1.0 demos and fourteen
+at speed 1.5. Tie-guard1/100000 failed validation at 1.5 and is excluded. The one
+authorized five-record tie-refill1 block settled completely; its first candidate,
+100000, produced a valid 1.5 demo and replaces that guard identity in both repeats.
+Generation stopped there. The four remaining refill layouts are unused, without
+generated demos. All 15 existing M15 pkl/layout hashes and nanosecond mtimes were
+reverified unchanged.
+
+Final manifests use immutable amendment/journal snapshots. Early handoff manifests
+are archived; the final revision changes metadata references, with every primary
+layout/demo/index and queue hash unchanged. Final SHA256s:
+
+- `layout-manifest-reloc.json`:
+  `e4655be7971067fdde8bc101c3a5ff2f052a66d4b7a1dde7bb3177d921aeb00e`.
+- `layout-manifest-key.json`:
+  `f39446704ebca35ed5cffd71828958fc6dbb2dd4202a909d80ef4c1b17f2f9f9`.
+- `layout-manifest-tie.json`:
+  `c6ec0687f671772c3fa7f582e682bec6202dacf0926127b02421cdc01963a83e`.
+
+The completion report is `prep-completion-report.json`, SHA256
+`5a5d09a1a3b206c22fc26a430ddf5b07d2dbe96e137962d6cdbb739fe94d13fb`.
+Preparation elapsed 1h49m11s including resource waits; nineteen GPU prep commands
+occupied 52m42s of execution wall time, with admission peaking at 12,319 MiB used
+VRAM. This execution total excludes admission waits while holding the lane lock.
+There were zero LLM calls/tokens. No forbidden paths or other team's processes
+were touched. A final recursive check verified 1,122 referenced file digests.
