@@ -68,7 +68,42 @@ all raw/loaded/index files, logs and operational scripts remain under
 under 1 GB. No compute4/dc19/coord access or independent model calls occurred.
 
 The pinned venv build initially timed out on pypi.nvidia.com. Checked owned
-installer PIDs were stopped; the identical pinned packages are being fetched
-through PyPI plus the torch wheel index. No CUDA/torch version substitution or
-system installation is used. Final package parity and camera START receipts
-must be added before reporting this lane launched.
+installer PIDs were stopped; the identical pinned packages were fetched
+through PyPI plus the torch wheel index. The standard extras script completed,
+including torch 2.11.0+cu128, torchvision 0.26.0+cu128, transformers 5.21.0,
+ultralytics 8.4.191 and timm 1.0.30. Final candidate parity is **true**, diff
+**{}**, with **zero package differences** against the compute4 416a2a03 snapshot.
+No CUDA/torch version substitution or system installation was used.
+
+At **15:41:13Z**, the launch wrapper (PID **1673442**) was released after a final
+input-hash and 160-row queue verification. Active queue SHA256 before dequeue:
+`0a56eeec21f87401253ec3ad9438639fddcafbb46a975106e16261f0fdb60a4e`.
+The wrapper starts one set of owned shared side services and a single heavy1
+manager, and stops those services plus its checked power-logger PID on exit.
+The colleague's desktop sessions were still present; pre-launch GPU used
+3,340 MiB, free 28,749 MiB, power 8.04 W, disk 99 GB free. All subsequent
+jobs retain the 14 GiB used admission gate and existing exclusive heavy lock.
+
+First START: **15:41:19Z**, heavy1,
+`c3b_fill_pen_holder_penAr1_penoriginal_100020`. At **15:41:34Z**, the lane
+validated worker PID **1674392** against the private background path and all
+three shared side-service addresses. Shared wrapper PIDs are seg **1673474**,
+digit **1673718**, kong **1673840**. All model workers use the pinned deployment.
+The first START admitted at **4,461 MiB used / 27,629 MiB free**.
+
+Planning ETA is approximately **03:00–05:00Z on 7 November**, excluding retries,
+resource waits and review barriers; it is not measured throughput. The original
+single-lane estimate exceeds the eight-hour work window. No completed paired
+block or comparative outcome is claimed at launch.
+
+Read-only status command (uses only the registered schedule and lane-log lines):
+
+```bash
+ssh compute3 'python3 ~/dojo-integ-c3-state/status.py'
+```
+
+State: `~/dojo-integ-c3-state`; outputs: `~/dojo-data/integ3-1106/runs`;
+power: `~/dojo-integ-c3-state/power.jsonl`. Create the state's `STOP` file to
+finish the current job then drain; the launch wrapper cleans up its services.
+HTTP 429 also stops dispatch. Missing registered pairs prevent adoption; the
+status helper applies the pre-registered per-cell rule only after full n.
