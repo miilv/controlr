@@ -33,7 +33,7 @@ def test_vertical_switch_defaults_and_validation():
     from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
     from dojo.skills.g3 import SKILL_ATTRS
     assert RuntimeConfig().fill_grasp == "off"
-    assert SKILL_ATTRS["fill_grasp"] == ("off", "vertical", "rolled")
+    assert SKILL_ATTRS["fill_grasp"] == ("off", "vertical", "rolled", "rolled_tilt")
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(fill_grasp="typo"), assets=None)
 
@@ -132,3 +132,16 @@ def test_rolled_mode_preserves_flat_grasps_and_targets_rolled_pen(roll, active):
     if not active:
         assert [g.note for g in gs] == [g.note for g in original]
         assert [g.score for g in gs] == [g.score for g in original]
+
+
+def test_tilted_approaches_keep_horizontal_jaws_and_narrow_opening():
+    half = np.array([.079, .008, .010])
+    R = axis_angle_R(np.array([1., 0, 0]), math.radians(26))
+    o = ObjectState("p", "Rigid", "pen", 0, np.array([-.2, -.2, .779]), R_to_quat(R),
+                    AssetInfo(key="Rigid/pen/00000", bbox_min=-half, bbox_max=half))
+    gs = _fill_vertical_grasps(o, X5Kin(), "left", tilts=(0., 25., 40.))
+    assert len(gs) == 30
+    assert {round(math.degrees(math.acos(-g.approach[2]))) for g in gs} == {0, 25, 40}
+    for g in gs:
+        assert g.T[2, 1] == pytest.approx(0.)
+        assert g.open_gap() == pytest.approx(g.width + .008)

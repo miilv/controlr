@@ -1902,7 +1902,7 @@ def _leaning(sk: Skills, label: str, T: np.ndarray) -> list[np.ndarray]:
     return out
 
 
-def _fill_vertical_grasps(o, kin, arm):
+def _fill_vertical_grasps(o, kin, arm, tilts=(0.0,)):
     """Horizontal jaw pinches from above, at several shaft stations, opened narrowly.
 
     Project the geometry onto the jaws: a rolled pen's body-frame width is not its
@@ -1912,7 +1912,7 @@ def _fill_vertical_grasps(o, kin, arm):
     from dojo.skills import grasps as G
 
     out = []
-    for g in G.top_grasps(o, kin, arm, tilts=(0.0,), along=(0.0, -0.3, 0.3, -0.5, 0.5)):
+    for g in G.top_grasps(o, kin, arm, tilts=tilts, along=(0.0, -0.3, 0.3, -0.5, 0.5)):
         points = o.world_bbox_corners() if o.asset.mesh is None else o.asset.mesh[0] @ o.R.T + o.pos
         span = points @ g.T[:3, 1]
         width = float(np.ptp(span))
@@ -1943,8 +1943,10 @@ def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, b
         mode = getattr(sk, "fill_grasp", "off")
         long = int(np.argmax(o.asset.extents))
         rolled = abs(float(o.R[2, long])) < 0.2 and float(np.max(np.abs(o.R[2, :]))) < math.cos(math.radians(10))
-        if mode == "vertical" or (mode == "rolled" and rolled):
-            cands = (_fill_vertical_grasps(o, sk.kin, arm)
+        if mode == "vertical" or (mode in ("rolled", "rolled_tilt") and rolled):
+            preferred = (_fill_vertical_grasps(o, sk.kin, arm, tilts=(0.0, 25.0, 40.0))
+                         if mode == "rolled_tilt" else _fill_vertical_grasps(o, sk.kin, arm))
+            cands = (preferred
                      + [dataclasses.replace(g, score=g.score + 2.0) for g in cands])
         Tinv = inv_T(o.T)
         k = int(np.argmax(o.asset.extents))
