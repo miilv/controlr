@@ -256,14 +256,15 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
             init = time.perf_counter()
             try:
                 motion._world_gpu = CuroboWorld()
+                event["worker_pid"] = motion._world_gpu.process.pid
                 motion._world_gpu.wait_ready()
             except Exception as error:  # missing optional backend is a logged legacy fallback
                 motion._world_gpu = f"{type(error).__name__}: {error}"
             event["init_s"] = round(time.perf_counter() - init, 6)
+        started = time.perf_counter()
         if isinstance(motion._world_gpu, str):
             event["reason"] = motion._world_gpu
             return None
-        started = time.perf_counter()
         process = getattr(motion._world_gpu, "process", None)
         if process is not None:
             event["worker_pid"] = process.pid

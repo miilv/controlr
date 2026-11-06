@@ -149,3 +149,17 @@ def test_contact_escape_does_not_exempt_a_large_in_place_rotation():
     calls = coll.check.call_args_list
     assert not calls[0].kwargs["obstacles"]
     assert calls[-1].kwargs["obstacles"]  # full checks resume beyond 20 degrees
+
+
+def test_failed_startup_is_not_double_counted_as_query_time(monkeypatch):
+    from dojo.skills import curobo_world
+    worker = SimpleNamespace(process=SimpleNamespace(pid=123),
+                             wait_ready=Mock(side_effect=RuntimeError("startup failed")))
+    monkeypatch.setattr(curobo_world, "CuroboWorld", Mock(return_value=worker))
+    monkeypatch.setattr(curobo_world.time, "perf_counter", Mock(side_effect=[0., 1., 11., 11., 12.]))
+    motion = Motion()
+    assert plan_curobo(motion, "left", np.zeros(6), np.eye(4), .05,
+                       "test", 1., (), None, 2) is None
+    assert motion.world_plans[-1]["init_s"] == 10.
+    assert motion.world_plans[-1]["seconds"] == 1.
+    assert motion.world_plans[-1]["worker_pid"] == 123
