@@ -33,7 +33,7 @@ def test_vertical_switch_defaults_and_validation():
     from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
     from dojo.skills.g3 import SKILL_ATTRS
     assert RuntimeConfig().fill_grasp == "off"
-    assert SKILL_ATTRS["fill_grasp"] == ("off", "vertical", "rolled", "rolled_tilt", "rolled_relay", "rolled_stage")
+    assert SKILL_ATTRS["fill_grasp"] == ("off", "vertical", "rolled", "rolled_tilt")
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(fill_grasp="typo"), assets=None)
 
@@ -159,49 +159,3 @@ def test_inset_drop_keeps_occupied_space_in_both_fit_attempts(monkeypatch):
     assert calls[0]["min_clear"] == .007
     assert calls[0]["pack"] is True
     assert calls[1]["pack"] is False
-
-
-def test_rolled_relay_excludes_original_pinches_only_for_rolled_objects():
-    from types import SimpleNamespace
-    from dojo.skills import library
-    half = np.array([.079, .008, .010])
-    o = ObjectState("p", "Rigid", "pen", 0, np.array([-.2, -.2, .779]),
-                    R_to_quat(axis_angle_R(np.array([1., 0, 0]), math.radians(26))),
-                    AssetInfo(key="Rigid/pen/00000", bbox_min=-half, bbox_max=half))
-    sk = SimpleNamespace(fill_grasp="rolled_relay", world=SimpleNamespace(obj=lambda _: o), kin=X5Kin())
-    gs = library._fingers_above(sk, "p", np.eye(4), -np.inf)("left")
-    assert len(gs) == 30 and all(g.note.startswith("vertical") for g in gs)
-    o.quat = np.array([1., 0, 0, 0])
-    gs = library._fingers_above(sk, "p", np.eye(4), -np.inf)("left")
-    assert gs and any(g.method == "box" for g in gs)
-
-
-@pytest.mark.parametrize("relay_kw", [None, {"release_gap": .020, "drop_ok": True}])
-def test_intermediate_relay_options_reach_planning_and_execution_only(monkeypatch, relay_kw):
-    from types import SimpleNamespace
-    from dojo.skills import library
-    from dojo.skills.skills import SkillResult
-    o = SimpleNamespace(R=np.eye(3), asset=SimpleNamespace(extents=np.array([.15, .01, .01])))
-    sk = SimpleNamespace(refresh=lambda: None, plan_transfer=lambda *a, **k: SkillResult(False, "transfer", "ik_fail"),
-                         world=SimpleNamespace(obj=lambda _: o), log=lambda _: None, bank=lambda: None)
-    monkeypatch.setattr(library, "rests_stably", lambda *a: True)
-    monkeypatch.setattr(library, "free_spots", lambda *a, **k: [(0., 0.)])
-    monkeypatch.setattr(library, "rest_with_R", lambda *a: np.eye(4))
-    seen_plan, seen_run = [], []
-    plan = (SimpleNamespace(arm="left", grasp=SimpleNamespace(note="test")), SimpleNamespace(T_obj_target=np.eye(4)))
-
-    def plan_leg(*a, **kw):
-        seen_plan.append(kw.get("place_kw") if len(a) <= 5 else a[5])
-        return plan
-
-    def run_leg(*a, **kw):
-        # Final leg passes place_kw positionally; intermediate leg uses the new option.
-        seen_run.append(kw.get("place_kw") if len(a) <= 5 else a[5])
-        return SkillResult(True, "place", "ok")
-
-    monkeypatch.setattr(library, "_plan_leg", plan_leg)
-    monkeypatch.setattr(library, "_run_leg", run_leg)
-    final_kw = {"servo": True}
-    assert library.place_oriented(sk, "p", [np.eye(4)], place_kw=final_kw, relay_place_kw=relay_kw).ok
-    assert seen_plan == [relay_kw, final_kw]
-    assert seen_run == [relay_kw, final_kw]

@@ -522,11 +522,3 @@ fit, retaining occupied-space constraints in both attempts;
 it even on exceptions, and uses the existing low-hover and 4 mm xy-correction
 servo options. The grasp filter and collision model retain finger clearance. They consume the same world/provider as the
 original skill; none introduces a task-name route or a new perception read.
-
-For rolled shafts, `fill_grasp=rolled_relay` offers only the tilted horizontal-jaw
-candidates so a slipping original direct pinch does not suppress relay search.
-`rolled_stage` also sets a 20 mm release gap and `drop_ok` on intermediate table
-legs. `place_oriented(relay_place_kw=...)` forwards these settings to both planning
-and execution of those legs; final placement retains its own settings. Other
-objects keep their original grasp source. These strict modes can reduce feasible
-transfers and remain experimental.

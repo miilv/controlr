@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-06 | [pen-inset-camera-prereg](2026-11-06-pen-inset-camera-prereg.md) | Does inset packing transfer to camera belief? | Supersedes centered-fit spec; default decision rule; no camera run |
 | 2026-11-06 | [pen-g3](2026-11-06-pen-g3.md) | Pen grasp and holder/drop skill ceiling | Fresh dev n=10: 6.5→18.0, 6 up/1 down; rolled-only null; 0 full successes |
 | 2026-11-06 | [pen-camera-prereg](2026-11-06-pen-camera-prereg.md) | Do new pen grasps, holder and release geometry transfer to camera belief? | Pre-registration only; camera run gated on paired G3 gain |
 | 2026-10-02 | [smoke-v0](2026-10-02-smoke-v0.md) | does harness v0 work in Isaac; cache and latency per model | waffle 2/4 (Sonnet 5 and Opus 5.5 one each, both seed 1), reach 0/4 (ambiguous target); cache ≈ 95 %, LLM p50 1.4–2.3 s |

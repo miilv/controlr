@@ -154,3 +154,16 @@ planning/execution forwarding tests, including default None.
 
 Local second full-suite run: **1800 passed, 187 skipped, 17m36s**; focused tests
 cover subsequent relay options. The final PR CI must validate the final source.
+
+The short-drop staging probe on 100002 completed a pen0 pick and table relay,
+then missed the final holder drop (53.4 mm final xy error, large post-release
+rotation); score stayed 10. Adding stay + inset + safe to that stage mode scored
+0 on the same development layout: reachable pick candidates still had no complete
+relay-to-holder path. These single-layout probes are rejected, not adoption
+measurements. No further source variants are introduced after e9428765.
+
+Rejected `rolled_relay` / `rolled_stage` and their generic intermediate-place
+option were removed from the final implementation. Their code is reproducible
+from commits 69505043 / e9428765 respectively. The retained production source
+returns to the positive-arm implementation at 42d84ea4; the failed probes remain
+in the results. This cleanup introduces no new experimental behavior.
