@@ -160,10 +160,43 @@ then missed the final holder drop (53.4 mm final xy error, large post-release
 rotation); score stayed 10. Adding stay + inset + safe to that stage mode scored
 0 on the same development layout: reachable pick candidates still had no complete
 relay-to-holder path. These single-layout probes are rejected, not adoption
-measurements. No further source variants are introduced after e9428765.
+measurements. The relay-variant line was closed after e9428765.
 
 Rejected `rolled_relay` / `rolled_stage` and their generic intermediate-place
 option were removed from the final implementation. Their code is reproducible
 from commits 69505043 / e9428765 respectively. The retained production source
 returns to the positive-arm implementation at 42d84ea4; the failed probes remain
 in the results. This cleanup introduces no new experimental behavior.
+
+## Inset combination, ten completed pairs
+
+`rolled_tilt` + stay + inset + safe: **25.0 ± 7.1**, 0/10 success, versus A
+6.5 ± 8.2. Paired gain **18.5 points**, paired-delta SD 5.8, **10 score wins /
+0 losses / 0 ties**. Per-ID B scores 25/25/25/25/25/40/25/10/25/25.
+Holders tipped 4/10 → 0/10. Last fill events: 20 inside, 5 misses (including
+`ok` followed by not-inside), 6 unreachable, 1 slip, 7 no-opening, 1 collision.
+The centered combination's 18.0 remains a separate result. Every arm uses the
+same ten variant-2 layout files; no sealed data influenced selection.
+
+The inset configuration is selected for the future camera comparison in
+[the new pre-registration](../experiments/2026-11-06-pen-inset-camera-prereg.md),
+which supersedes the unrun centered-fit specification. No camera result or
+adoption is claimed. The full-success flip rule is unchanged.
+
+The original-cohort inset guard then completed at **17.0 ± 15.7**, 0/5 success,
+scores 40/25/0/10/10 versus A 25/100/10/25/10 (34.0, 1/5). This loses the
+baseline success and is a material counterexample to a general ceiling claim.
+It reopens insertion geometry exploration within the original time box.
+`fill_insert=deep` (ad2b7c80) holds the leading end 35 mm inside the opening,
+requires the same 20 mm finger clearance, uses measured limits, and adds a
+35-degree tilt fallback. Its pre-place is 60 mm above that target (tip above
+the rim), followed by the existing slow measured servo descent. Probes on
+100001 and private variant-2 100030 test the lost-success and gain cases.
+
+The deep-insertion probes returned 25 on original 100001 (unchanged from the
+inset arm, below A's 100) and 10 on fresh 100030 (below inset's 25, equal to A).
+This branch is rejected and removed from the final source; ad2b7c80 preserves
+its implementation and tests. Final retained source is again byte-identical
+to the tested positive-arm source at 42d84ea4 / 58637618. The general ceiling
+goal remains unproven: fresh variants improve, original development layouts
+regress. Defaults stay off. All launched PEN physics jobs have completed.

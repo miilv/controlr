@@ -7,6 +7,12 @@ lift-only arm. If its final paired G3 mean does not exceed A by 5 points, park t
 specification without spending camera calls. Changing B requires a new spec before
 camera data are inspected.
 
+The completed G3 screen gains on fresh variants but regresses 34→17 on the
+original five development layouts and loses the only baseline success. This
+specification is **parked**, not a recommendation to spend camera calls or adopt
+the candidate. Its rendered acceptance rule is retained unchanged if the lead
+chooses to investigate the same frozen arm.
+
 ## Hypothesis and arms
 
 Narrow horizontal shaft pinches with the original grasp fallback, a stationary
