@@ -83,3 +83,5 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 | 2026-11-06 | [TOOLS measured carry camera A/B](2026-11-06-tools-carry-read-camera-ab.md) | gated attachment reads between checked carry hops | prospective 20 gain + 10 guard pairs; blocked until ten-pair G3 support and lead release; not run |
 | 2026-11-06 | [TOOLS slot G3](2026-11-06-tools-slot-g3.md) | slot approach, hover and measured placement | baseline v1 52.5 (10); lower hover −10 points (10 pairs); linear/carry-read negative, tail servo null; no adoption |
 
+
+- [Compute3 peg/waist once-only re-test registration](2026-11-06-peg-waist-retest-prereg.md) — prospective; fresh salted 20-pair gain panels.

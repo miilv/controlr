@@ -68,3 +68,17 @@ calls/tokens and harmful belief writes. G3 score gains alone never pass this
 rule. A rejected lever with positive pooled delta gets **at most one** fresh
 pre-registered retest on layouts it has never run on; never rerun the same IDs
 to seek adoption. No camera adoption or merge is authorized by this document.
+
+## INTEG3 launch amendment (before collection)
+
+The lead explicitly released the #397 CONDITIONAL arm, not the superseded broad
+inset arm. Both arms will use main `86ad1987`, compute3 deployment
+`~/dojo-integ-c3-86ad1987`, families `c3b_`. The candidate is the captured
+`2026-11-06-candidate.txt` (SHA256
+`5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e`),
+with relocated host paths. The model-route clause above is superseded by the
+lead's explicit `AGENTIC_MODEL=claude/claude-sonnet-5-5` in BOTH arms; no
+separate implementation-agent calls. Default acceptance rule and 100020–29
+panel remain unchanged. No collection begins until route audit and launch
+hash manifest are frozen. Use the single-lane shared-box constraints and offline
+600-second watchdog recipe in the peg/waist registration. No GT/G3 control.
