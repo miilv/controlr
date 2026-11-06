@@ -19,7 +19,7 @@ def summarize(schedule: dict, logs: str, lanes: int = 2) -> list[dict]:
             jobs[name] = pair['family']
     state = {}
     for line in logs.splitlines():
-        match = re.search(r'\b(start|done) (c4b_\S+)(?: rc=(\d+))?', line)
+        match = re.search(r'\b(start|done) (c[346]b_\S+)(?: rc=(\d+))?', line)
         if not match:
             continue
         kind, attempt, rc = match.groups()
