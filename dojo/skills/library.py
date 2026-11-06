@@ -1940,7 +1940,10 @@ def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, b
         cands = G.box_grasps(o, sk.kin, arm, tilts=tuple(box_tilts)) + G.candidates(o, sk.kin, arm)
         if held_box(o, np.eye(4)).points is not None:
             cands += G.slice_grasps(o, sk.kin, arm)
-        if getattr(sk, "fill_grasp", "off") == "vertical":
+        mode = getattr(sk, "fill_grasp", "off")
+        long = int(np.argmax(o.asset.extents))
+        rolled = abs(float(o.R[2, long])) < 0.2 and float(np.max(np.abs(o.R[2, :]))) < math.cos(math.radians(10))
+        if mode == "vertical" or (mode == "rolled" and rolled):
             cands = (_fill_vertical_grasps(o, sk.kin, arm)
                      + [dataclasses.replace(g, score=g.score + 2.0) for g in cands])
         Tinv = inv_T(o.T)

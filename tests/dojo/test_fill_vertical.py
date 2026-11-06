@@ -33,7 +33,7 @@ def test_vertical_switch_defaults_and_validation():
     from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
     from dojo.skills.g3 import SKILL_ATTRS
     assert RuntimeConfig().fill_grasp == "off"
-    assert SKILL_ATTRS["fill_grasp"] == ("off", "vertical")
+    assert SKILL_ATTRS["fill_grasp"] == ("off", "vertical", "rolled")
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(fill_grasp="typo"), assets=None)
 
@@ -114,3 +114,21 @@ def test_stay_holder_bypasses_container_transfer(monkeypatch):
     monkeypatch.setattr(library, "free_spots", lambda *a, **k: pytest.fail("holder moved"))
     monkeypatch.setattr(library, "in_tip_down", lambda *a: True)
     assert library._fill_container(sk, ["p"], "h")["ok"]
+
+
+@pytest.mark.parametrize("roll,active", [(0, False), (26, True), (-26, True)])
+def test_rolled_mode_preserves_flat_grasps_and_targets_rolled_pen(roll, active):
+    from types import SimpleNamespace
+    from dojo.skills import library
+    half = np.array([.079, .008, .010])
+    R = axis_angle_R(np.array([1., 0, 0]), math.radians(roll))
+    o = ObjectState("p", "Rigid", "pen", 0, np.array([-.2, -.2, .779]), R_to_quat(R),
+                    AssetInfo(key="Rigid/pen/00000", bbox_min=-half, bbox_max=half))
+    sk = SimpleNamespace(fill_grasp="off", world=SimpleNamespace(obj=lambda _: o), kin=X5Kin())
+    original = library._fingers_above(sk, "p", np.eye(4), -np.inf)("left")
+    sk.fill_grasp = "rolled"
+    gs = library._fingers_above(sk, "p", np.eye(4), -np.inf)("left")
+    assert any(g.note.startswith("vertical") for g in gs) is active
+    if not active:
+        assert [g.note for g in gs] == [g.note for g in original]
+        assert [g.score for g in gs] == [g.score for g in original]
