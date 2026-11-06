@@ -525,3 +525,12 @@ and reports launcher completion/rc and prospective remaining occupancy.
 The shared boot protocol reads only `~/coord/lane_gate.stamp`, waits until its
 epoch is at least 120 seconds old, then writes `<epoch> <iso> ilia-ab`. While the
 other team runs its single Isaac, use one Integration lane (`lane2.caps: 1 4`).
+
+### Matching-slot Cartesian approaches
+
+`RuntimeConfig.slot_approach` is `off` by default. `linear` makes matching-slot transfers use
+`plan_place(approach_line=True)`: a collision-checked Cartesian path to the placement hover.
+It applies to level carries and the reorienting/relay fallback. An infeasible Cartesian path
+rejects that candidate; it never falls back to a joint-space transit for the same candidate.
+G3 exposes the same switch with `--skill-attr slot_approach=linear`. Pick, descent, release,
+held-pose measurements and all non-slot places retain their existing settings.

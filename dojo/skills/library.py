@@ -1759,6 +1759,8 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
         # the objects already in their slots are ignored for the place (their boxes overlap the next slot's)
         kw = dict(yaw_sym=1, tol_xy=0.02, tol_tilt=10.0, tol_z=0.03, ignore=(container, *done),
                   place_kw={"pre_h": 0.04, "release_gap": 0.004, "drop_ok": True})
+        if getattr(sk, "slot_approach", "off") == "linear":
+            kw["place_kw"]["approach_line"] = True
         r = None
         if level:
             # heavy flat objects swing in the pads on brisk moves (twin: a 0.5 kg hammer at its centre of mass held 4 mm

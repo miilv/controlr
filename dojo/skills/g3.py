@@ -225,7 +225,8 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "slip_shift": ("off", "across"), "sibling_order": ("given", "far"),
                "press_repeat": ("off", "cross"), "ported_pour_untilt": ("direct", "staged", "capped"),
                "kong_read_look": ("fallback", "always"), "key_handover": ("v1", "v2"), "key_lean": ("off", "on"),
-               "peg_base_refine": ("off", "local"), "peg_held_read": ("off", "on")}
+               "peg_base_refine": ("off", "local"), "peg_held_read": ("off", "on"),
+               "slot_approach": ("off", "linear")}
 
 
 def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, trace: bool = False,

@@ -338,6 +338,7 @@ class Skills:
         # ``library.press_joint`` (stream H; ``RuntimeConfig.press_repeat``): "off" (today: one stroke) | "cross" (four
         # more, the press point 4 mm each way: the lever's 85 % has ~0.1 mm of margin at the planned point)
         self.press_repeat = "off"
+        self.slot_approach = "off"
         # pour_p1's way back to upright (stream H; ``RuntimeConfig.ported_pour_untilt``): "direct" (today) | "staged" | "capped"
         self.ported_pour_untilt = "direct"
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
@@ -931,8 +932,10 @@ class Skills:
                    sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None,
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
                    blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None,
-                   held_read: bool | None = None, purpose: str | None = None):
+                   held_read: bool | None = None, purpose: str | None = None, approach_line: bool = False):
         """Approach above the target, descend in a straight line, settle, open, back out.
+        ``approach_line``: collision-checked Cartesian transit to the hover, preserving the interpolated TCP
+        orientation along the carry instead of a joint-space transit. No joint-path fallback.
         ``purpose``: logging only, the consumer event's purpose (``_consume_place``: "hang", "thread"; default "insert"
         for a servo tail, else "place").
         ``yaw_sym``: n-fold symmetry of the object about the vertical (the cheapest equivalent yaw wins).
@@ -1018,8 +1021,9 @@ class Skills:
                                              * o.asset.extents + o.asset.bbox_min).T).T + T_obj[:3, 3]
                 lift = max(pre_h, sup_top + pre_clear - float(corners[:, 2].min()))
             T_pre[2, 3] += release_gap + lift
-            to_pre = self.motion.to_pose(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
-                                         ignore=(h.label,), ease=ease)
+            transit = self.motion.line if approach_line else self.motion.to_pose
+            to_pre = transit(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
+                             ignore=(h.label,), **({} if approach_line else {"ease": ease}))
             if not to_pre.ok:
                 notes.append(f"approach: {to_pre.note}")
                 continue
