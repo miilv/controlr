@@ -82,3 +82,72 @@ all-off versus shell + wide + axis are in `final-base10` / `final-combo10`; both
 same source snapshot and the private `dev10` manifest. No further implementation edits
 are made while those jobs run. The camera specification targets this combination, conditionally
 on a useful G3 result; it does not authorize a run for the rejected raised-pinch lever.
+
+### Failure phases from aligned GT traces (the first ten-layout pair)
+
+These are events/attempts, not mutually exclusive final-episode classes; retries can fail in
+more than one phase. Every logged drop outcome aligns with a completed place-approach event
+in its GT trace. At that event, object-origin to measured-TCP distance >60 mm flags an egg
+already out of the pads (round grasps target its center). A failed release with that flag is
+a carry loss; a failed release without it is a placement/descent/release-tail miss. This is
+an analysis diagnostic, not a runtime threshold or a checker predicate.
+
+| Phase/event | Baseline | Raised |
+|---|---:|---:|
+| No feasible pick after retries/nudge | 20 | 28 |
+| Executed pick failed to lift | 3 | 23 |
+| Carry loss ending in missed placement | 5 | 8 |
+| Pick succeeded, no drop plan | 9 | 9 |
+| Placement/descent/release-tail miss | 2 | 4 |
+| Episode step budget exhausted | 0 | 0 |
+| Carry loss nevertheless landing in a scored hole | 2 | 1 |
+
+The last row is reported separately: a loss during approach can happen to fall into the
+hole and score. Successful release outcomes total 19 -> 16. Raised versus baseline has
+0 score wins / 3 losses / 7 ties; full-success flips are 0/0. Mean score 23.5 -> 19.0,
+sample SD 4.74 -> 7.75 points. No ceiling gain is claimed from any small screen.
+
+## Final confirmation and handoff
+
+The clean `dd9ddca5` pair finished: **A 0/10, 23.5 ±4.74; B 0/10, 23.5 ±4.74** (sample SD).
+All ten score pairs tie; A also reproduces the earlier baseline's ten step counts exactly.
+B median steps 368 vs A 327, maximum 468 vs 425; recorded planning totals 945.6 vs 270.5 s
+(timing load uncontrolled). The [final report](../experiments/2026-11-06-egg-skill-ceiling.md)
+contains the per-id table, phase counts and [machine-readable config/results](../experiments/2026-11-06-egg-g3-results.json).
+**The requested ceiling gain was not achieved. No camera dispatch or default change.**
+
+The restart recovery checked the retained PIDs/logs before continuing. The completed candidate
+was collected without duplication. Its baseline replay spent about 35 minutes waiting for a
+shared light slot: the original polling waiter was starved, a single-lock waiter then waited,
+and finally a checked unstarted waiter was moved to the candidate's released light slot.
+Only the explicitly checked EGG waiter PIDs were stopped; other streams' processes were untouched.
+The final baseline and all other retained GPU job PID receipts have now exited.
+
+Extra diagnosis (not additional ceiling measurements):
+
+- CPU reconstruction of 100000 target2's real held pose at step 258: no full drop route for
+  standing-target tilts 90/80/70/60/45/25/0 deg from vertical. Some goal IKs exist, but the
+  joint transit hits the basket and the fallback vertical lift fails IK near the reach edge.
+- A direct Cartesian transit fallback, hypothetically empty access to all four holes, and
+  short horizontal escape waypoints did not produce a complete drop. Short escapes themselves
+  can plan; that is not evidence of a successful carry/place sequence.
+- Physics shell-aware wall pushes (standalone source probes, not shipped switches): target3
+  still had no nudge; target2 moved 21 mm inward or 28 mm outward, but no next pick planned.
+  Steeper push approaches (35/55/70 deg lean) and two/three inward pushes did not fix it:
+  a second push added about 7 mm, a third had no plan, and both arms still refused the pick.
+  These contact probes reset the private settled 100000 each time and kept the 700-step limit.
+  They did not bypass collision checks or modify physical properties.
+
+Spend: 54 recorded G3 episodes, 50 presettle draws (13 kept), 1.38 recorded lane-hours from
+G3 wall/load + presettle, plus startup/probes and queue wait; **0 LLM calls/tokens/spend**.
+Local writes stayed below 1 GB (workspace about 147 MB plus small temporary data/archive).
+CI implementation validation: **1791 passed, 187 skipped**, compile/shell/secret checks green;
+local full 1789 passed/187 skipped, latest focused 27 passed. Final docs-only CI runs separately.
+The first local suite's two parity failures were caused by changing RuntimeConfig while the
+suite/subprocesses ran; a complete rerun and focused parity checks passed. No test was weakened.
+
+Draft PR [#399](https://github.com/miilv/controlr/pull/399) is for lead review of a negative
+feasibility investigation. All five knobs remain off; it is not an adopt candidate and is not merged.
+The prospective camera spec reserves ten fresh v6 survivors and the repository's default gate;
+its G3 prerequisite failed, so leave it undispatched. Next work needs a demonstrated physical
+grasp/escape construction, not another slower carry or a larger episode budget.

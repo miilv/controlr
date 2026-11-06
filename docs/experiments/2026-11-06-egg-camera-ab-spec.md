@@ -60,3 +60,10 @@ any adoption claim, and the extra lever must be separated or independently regis
 10 gain + 20 guard pairs = 60 rendered episodes. The lead must estimate calls from the frozen
 policy's per-episode cap before booking a camera lane; there are no model calls in this G3 screen.
 The camera run belongs to the lead's queue and is not launched by this PR.
+
+## Dispatch disposition
+
+The frozen ten-layout G3 pair was null (23.5 = 23.5; 0/10 successes both). The prerequisite
+for spending a camera lane is not met. **Leave this specification undispatched.** No camera
+outcome was used to write or revise it. A materially new implementation requires a new
+pre-registration; do not silently substitute it into this frozen candidate.
