@@ -204,6 +204,7 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"),
                "hang_half_turn": ("off", "on"),
                "hang_handle_grasp": ("off", "on"),
+               "hang_carry_slow": ("off", "on"),
                "artic_geom": ("authored", "measured"),
                "align_measure": ("seq", "parallel"), "tile_grasp": ("any", "flat", "prefer"),
                "imitate_pairing": ("greedy", "one_to_one"), "imitate_wait": ("still", "origin", "home"),

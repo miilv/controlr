@@ -147,3 +147,15 @@ G3 must gain >=5 score points in each cell with no full-success decrease,
 in addition to lead review. This is a dispatch prerequisite, not camera
 adoption; the camera default rule remains unchanged. Implementation-source
 CI passed (1842 tests, 187 skipped locally); latest audit/docs CI is separate.
+
+## Independent carry-rate probe
+
+The first new grasp screen selected wall pinches, and generated A/B rows still
+show in-hand/carry failures. A third independent default-off switch,
+`hang_carry_slow`, halves only the threaded-hook pre-hover carry rate from
+0.06 to 0.03 rad/step. It does not alter the pick, slide, release or step
+budget, and does not apply to cradles. Hypothesis: lower angular motion rates
+reduce losses while a wall-held cup turns. It may instead consume budget or
+leave contact/reach failures unchanged. Original dev standard 100002 is the
+first same-source off/on screen. A separate immutable source snapshot will
+keep it independent of the ten-layout bundle pair at `8ff324fd`.

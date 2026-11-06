@@ -10,8 +10,9 @@ from dojo.skills.skills import SkillResult
 from dojo.skills.world import AssetInfo, ObjectState, WorldState
 
 
+@pytest.mark.parametrize('slow,rate', [(False, L.HANG_CARRY), ('on', L.HANG_CARRY / 2)])
 @pytest.mark.parametrize('flag,count', [(False, 1), ('off', 1), (True, 2), ('on', 2)])
-def test_half_turn_fallback_preserves_hole_line(monkeypatch, flag, count):
+def test_half_turn_fallback_preserves_hole_line(monkeypatch, flag, count, slow, rate):
     def obj(label, category):
         return ObjectState(label, 'Rigid', category, 0, np.array([0., 0., .8]), np.array([1., 0, 0, 0]),
                            AssetInfo(key=category, bbox_min=np.full(3, -.03), bbox_max=np.full(3, .03)))
@@ -26,10 +27,12 @@ def test_half_turn_fallback_preserves_hole_line(monkeypatch, flag, count):
     targets = []
 
     def transfer(lab, poses, **kw):
+        assert kw["place_kw"]["approach_rad"] == rate
+        assert kw["place_kw"]["release"] is False
         targets.append(poses[0])
         return SkillResult(False, 'transfer', 'ik_fail', 0, None, note='0 grasp-place pairs')
 
-    sk = SimpleNamespace(world=w, refresh=lambda: w, log=lambda m: None, hang_half_turn=flag,
+    sk = SimpleNamespace(world=w, refresh=lambda: w, log=lambda m: None, hang_half_turn=flag, hang_carry_slow=slow,
                          coll=SimpleNamespace(include=set(), parts={}, held_skip={}), plan_transfer=transfer)
     L.hang_on_hooks(sk, ['mug'], 'rack', 'handle_support_point')
     assert len(targets) == count  # A failed original orientation must not suppress the alternate.
@@ -48,3 +51,10 @@ def test_half_turn_defaults_off():
     from dojo.skills.g3 import SKILL_ATTRS
     assert RuntimeConfig().hang_half_turn is False
     assert SKILL_ATTRS['hang_half_turn'] == ('off', 'on')
+
+
+def test_slow_carry_defaults_off():
+    from dojo.runtime.policy import RuntimeConfig
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert RuntimeConfig().hang_carry_slow is False
+    assert SKILL_ATTRS['hang_carry_slow'] == ('off', 'on')

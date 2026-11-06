@@ -663,3 +663,8 @@ from saved true poses. It reconstructs current action intervals from trajectory
 segment lengths because frame `seg` names the previously completed segment.
 Its post-hoc phase bins and continuous coordinates are diagnostics only; no
 policy consumes them.
+
+`RuntimeConfig.hang_carry_slow` (default false; G3 `hang_carry_slow=on`)
+halves the threaded-hook reorienting carry rate to 0.03 rad/step. Cradle,
+pick, slide, lower and release behavior retain their existing settings. The
+switch changes carry pacing only; the episode step budget stays fixed.

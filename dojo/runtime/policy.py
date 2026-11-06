@@ -391,6 +391,8 @@ class RuntimeConfig:
     hang_half_turn: bool = False
     # Mesh-confirmed pinches on the handle outer bar before body-wall pinches.
     hang_handle_grasp: bool = False
+    # Halve only the reorienting carry rate for threaded-hook placements.
+    hang_carry_slow: bool = False
     # articulated objects' geometry for collision and grasps (``Skills.artic_geom``): authored (today: the asset as
     # authored, e.g. an open laptop) | measured (the measured joint position's: the lid turned about its hinge)
     artic_geom: str = "authored"
@@ -999,6 +1001,7 @@ class RuntimePolicy:
             sk_.hang_wide = bool(cfg.hang_wide)
             sk_.hang_half_turn = bool(cfg.hang_half_turn)
             sk_.hang_handle_grasp = bool(cfg.hang_handle_grasp)
+            sk_.hang_carry_slow = bool(cfg.hang_carry_slow)
             sk_.artic_geom = cfg.artic_geom
             sk_.align_measure = cfg.align_measure
             sk_.tile_grasp = cfg.tile_grasp

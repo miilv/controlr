@@ -3547,6 +3547,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
     # a handle (a loop) is threaded over a hook's arm; any other point (a headband's bridge) is lowered onto its support
     # from above and let go 2 cm over it (it settles; the point need only end within a few cm)
     thread = "handle" in handle_tag.lower()
+    carry_rad = HANG_CARRY * (0.5 if thread and getattr(sk, "hang_carry_slow", False) in (True, "on") else 1.0)
     if not thread:
         hooks = [(i, H, None) for i, H, _ in hooks]
     hooks_by = {h[0]: h for h in hooks}
@@ -3629,7 +3630,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
             r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=8, pair_rank=wide_rank,
                                  grasps=(lambda a, o=o: [g for g in G_hang(sk, o, a)
                                                          if g.method not in slipped.get(o.label, ())]),
-                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY, "purpose": "hang"}, q_start=q_start,
+                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": carry_rad, "purpose": "hang"}, q_start=q_start,
                                  lift_to_pre=high)
             if isinstance(r, SkillResult) and not re.search(r"[1-9]\d* grasp-place pairs", r.note):
                 no_pairs.add((fi, turn))
