@@ -82,3 +82,9 @@ separate implementation-agent calls. Default acceptance rule and 100020–29
 panel remain unchanged. No collection begins until route audit and launch
 hash manifest are frozen. Use the single-lane shared-box constraints and offline
 600-second watchdog recipe in the peg/waist registration. No GT/G3 control.
+
+## Lead amendment (2026-11-06, before any valid PEN episode)
+
+- **What happened to 100020.** On compute3, the 100020 A / B attempts crashed at Isaac startup and produced no valid episode (PR #405). They used up compute3's retries, and the rows dropped out of the queue moved to compute4 (PR #406).
+- **The amendment.** Because no valid episode and no verdict exist, the 100020 pair is re-queued ONCE on compute4, as a disclosed box-move re-run with identical inputs (the moved, hash-verified layout files), named `..._100020__rerun_c4`. That restores the registered 10-pair panel.
+- **If it fails again on compute4:** an infra failure leaves the panel at 9 pairs, and the verdict is reported with n = 9 under the unchanged rule.
