@@ -703,3 +703,10 @@ policy consumes them.
 halves the threaded-hook reorienting carry rate to 0.03 rad/step. Cradle,
 pick, slide, lower and release behavior retain their existing settings. The
 switch changes carry pacing only; the episode step budget stays fixed.
+
+For the opt-in egg endpoint-search experiment, use G3
+`--skill-attr egg_reach=search` (runtime `egg_reach: search`). The default is `off`.
+`tests/dojo/test_egg_reach.py` covers scoped practical bounds and endpoint rejection;
+`test_egg_grasp_height.py` covers unchanged baseline geometry. Its endpoint screen
+must never bypass the subsequent collision and motion planner. Clear the IK cache
+when entering and leaving a scoped joint envelope: cache keys omit joint limits.

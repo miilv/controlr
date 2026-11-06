@@ -1030,7 +1030,7 @@
 - [ ] **dojo skills: planning time with mesh-box obstacles.** `hang_on_hooks` plans 200-450 s per episode: rack and hung mugs
   as `Collision.parts`, two handle frames x two lift heights per hook, and the relay search. The batched parts check
   (3 ms) made it about 10x faster; most of the time left is IK screening.
-- [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range.
+- [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range. The default-off `egg_reach=search` scopes fill-holes drops/picks to a practical envelope; see [EGG2 evidence](experiments/2026-11-06-egg2-reach-g3.md). Other picks and handovers remain open.
 - [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; the legacy shim's cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).
   The optional Skills object-world proposer does not change this envelope or add other-arm avoidance
   ([PLAN journal](journal/2026-11-06-dojo-plan-world.md)).

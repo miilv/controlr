@@ -229,7 +229,7 @@ SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "lo
                "fill_insert": ("off", "safe"), "fill_holder": ("off", "stay"), "fill_drop": ("off", "center", "inset"),
                "egg_grasp_height": ("off", "raised"), "egg_grasp_angles": ("off", "wide"),
                "egg_drop_approach": ("off", "low"), "egg_wall_model": ("off", "shell"),
-               "egg_drop_spin": ("off", "axis"),
+               "egg_drop_spin": ("off", "axis"), "egg_reach": ("off", "search"),
                "fill_joint_limits": ("inherit", "measured"), "rehover_siblings": ("follow", "keep"),
                "slip_shift": ("off", "across"), "sibling_order": ("given", "far"),
                "press_repeat": ("off", "cross"), "ported_pour_untilt": ("direct", "staged", "capped"),

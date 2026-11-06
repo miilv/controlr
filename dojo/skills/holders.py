@@ -370,7 +370,7 @@ def egg_grasps(sk: Skills, label: str, arm: str, wall_clear: float = EGG_WALL_CL
         cands += [g for g in round_grasps(o, sk.kin, arm, rolls=(0.0,), tilts=(0.0,), ends=True) if g.method == "ends"]
     if not cands:                                   # standing on its end, or not round: the usual generators
         cands = G.box_grasps(o, sk.kin, arm, tilts=(0.0, 25.0, -25.0)) + G.candidates(o, sk.kin, arm)
-    if getattr(sk, "egg_grasp_angles", "off") == "wide":
+    if getattr(sk, "egg_grasp_angles", "off") == "wide" or getattr(sk, "egg_reach", "off") == "search":
         cands += round_grasps(o, sk.kin, arm, rolls=(0.0, 25.0, -25.0, 40.0, -40.0, 55.0, -55.0, 70.0, -70.0),
                               tilts=(0.0, 40.0, -40.0, 55.0, -55.0), ends=False)
     if getattr(sk, "egg_grasp_height", "off") == "raised":
@@ -449,7 +449,7 @@ def egg_drop_candidates(sk, o, hole, plate_top):
     The long axis stays lying: this changes the feasible hand orientation without
     requiring the upright turn that makes an egg pivot out of the pads.
     """
-    if getattr(sk, "egg_drop_spin", "off") != "axis":
+    if getattr(sk, "egg_drop_spin", "off") != "axis" and getattr(sk, "egg_reach", "off") != "search":
         yield from egg_drop_targets(o, hole, plate_top, o.R)
         return
     spins = (0.0, 25.0, -25.0, 55.0, -55.0, 90.0, -90.0)
@@ -791,7 +791,15 @@ def _container_obstacle(sk: Skills, c, on: bool) -> None:
         sk.coll.include.discard(c.label)
 
 
-def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, ignore: tuple, st: dict,
+def _fill_drop(sk, *args, **kwargs):
+    if getattr(sk, "egg_reach", "off") != "search":
+        return _fill_drop_impl(sk, *args, **kwargs)
+    from dojo.skills.egg_reach import practical_limits
+    with practical_limits(sk.kin):
+        return _fill_drop_impl(sk, *args, **kwargs)
+
+
+def _fill_drop_impl(sk: Skills, objects: list[str], holder: str, H, holes: list, ignore: tuple, st: dict,
                tries: int = 3) -> list[str]:
     """``FILL_MODE`` "drop": each object picked top-down (``egg_grasps``), lifted over its container's rim, carried as
     held and let go lying over a free hole, its centre ``EGG_DROP_OFFSETS`` off the hole's centre along its long axis
@@ -818,6 +826,9 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             pp = None
             for a in arms:
                 gs = [g for g in egg_grasps(sk, lab, a) if g.note not in bad]
+                if getattr(sk, "egg_reach", "off") == "search":
+                    from dojo.skills.egg_reach import grasp_candidates
+                    gs = grasp_candidates(sk, lab, a, gs, lift_z)
                 if not gs:
                     continue
                 r = sk.plan_pick(lab, a, grasps=gs, lift=0.06, lift_to_z=lift_z, max_eval=60)
@@ -846,7 +857,11 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             o = w.obj(lab)
             pl, last = None, ""
             for h in free:                 # front holes first (``holes`` order)
-                for off, yd, side, T in egg_drop_candidates(sk, o, h, plate_top):
+                drops = egg_drop_candidates(sk, o, h, plate_top)
+                if getattr(sk, "egg_reach", "off") == "search":
+                    from dojo.skills.egg_reach import drop_candidates
+                    drops = drop_candidates(sk, a, drops)
+                for off, yd, side, T in drops:
                     q = sk.plan_place(a, T, yaw_sym=1, release_gap=0.0,
                                       pre_h=0.02 if getattr(sk, "egg_drop_approach", "off") == "low" else 0.05,
                                       ignore=ignore, descend_rad=0.03,

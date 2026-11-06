@@ -584,6 +584,15 @@ The four scoped switches restore on return or exception; G3 records the decision
 and its geometric measurements. This is a development heuristic, not a stability
 guarantee.
 
+The default-off `egg_reach=search` fill-holes profile expands round grasp
+orientations and axial-spin drop candidates. Before normal collision/path planning,
+it screens grasp, pre-grasp, lift, release and hover endpoints for native IK and
+0.60 m planar reach. The drop operation temporarily intersects the current joint
+bounds with measured j5 bounds, |j4| <= 1.6 and |j6| <= 3.0; bounds and the IK cache
+are restored/invalidated even on exceptions. Both arms retain their ordinary
+nearest-first ordering. Endpoint clearance does not certify a carry path. JSON
+`[egg-reach]` logs retain bounded-search failures, distances and per-joint margins.
+
 ### Arrange approach experiments
 
 The runtime and G3 expose independent switches `push_approach=tilted` and
