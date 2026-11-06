@@ -96,3 +96,51 @@ Include success and typical-failure videos from these dev panels. Passing makes
 the scoped switch an adopt-candidate for lead review; no default or candidate
 promotion is authorized here. Failing parks it; no retroactive reinterpretation
 of the previous global relocation verdict.
+
+## Lead-authorized preparation amendment (before camera collection)
+
+The lead released compute6 preparation after merging #410 and the separate
+logging/audit PR #411. Both camera arms are pinned to merged main
+`ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e`, deployed as
+`/home/robotics/dojo-integ-c6-kong-ffb2c151`. This prospective amendment
+supersedes the instrumentation blocker above; it changes no decision rule,
+salt, layout identity, sample size, treatment or task skill parameter.
+
+The instrumentation records exact copied pre/post poses for both the initial
+`watch_lay` and each accepted `watch_relocate` write. The audit retains these
+writes alongside canonical version events and removes their duplicate coarse
+endpoints. Failed reads are not counted as writes. Sub-5-mm relocations remain
+covered. The updated reader recognizes `c6b_` names and uppercase arm tags.
+Seventeen focused scoping/audit tests and PR #411 CI pass.
+
+The new managed Python 3.12.13 venv reproduces SEGAB's package freeze;
+candidate/package parity has `diff={}` and the catalogue gate passes. Every
+existing resolved RuntimeConfig field equals the prior compute6 deployment;
+new fields retain inactive/legacy defaults. Existing accepted simulation Python
+3.11.18/msgpack 1.2.4, offline Kit overlay and 600-second watchdog recipe are
+retained without system or RoboDojo environment changes. Candidate absolute
+calibration paths are mapped from `/home/haptics/` to `/home/robotics/`.
+Preparation evidence is under `compute6:~/dojo-data/kong-1107/`.
+
+The lead amended queue placement: let tie continue during prep. When all 40
+KONG rows are ready, insert them at the queue head under `queue2.txt.lock`,
+after any queued mate/retry of an already started pair. Never hold tie waiting
+for prep or split a pair. Remaining tie follows KONG. The insertion also takes
+the existing admission lock first, preventing the queue-pop-before-START race.
+If any SEGAB rows remain, they retain precedence. Preserve AB/BA parity from
+the frozen design within the new block. Every new row explicitly pins
+`AGENTIC_MODEL=cx/gpt-6-luna`; existing unrelated rows are untouched.
+
+Write-audit replays use the same salted settled layout and imitation demo as
+the corresponding recorded arm. They execute the original action prefix through
+the final logged write plus one step, preserving the original action/report
+hashes and the prefix provenance. Exact snapshots are requested at every write
+step (plus the next step), with every-four-step sampling alongside. Prefix
+replay final scores are not episode-fidelity or camera-score evidence. Audit
+coverage compares the number of logged writes with the scored write rows;
+missing/uncertain coverage cannot be represented as a passing audit. Harmful
+and helpful counts remain per writer and arm under the unchanged >2 mm rule.
+No camera verdict may be issued before audit results are recorded here.
+
+**Write-audit results:** pending recorded camera actions and physics-only replays.
+No audit pass or camera adoption is claimed by this preparation amendment.
