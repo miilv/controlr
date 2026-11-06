@@ -81,3 +81,16 @@ def hand_spheres(kin, gripper, capacity=256):
     if len(result)>capacity:
         raise ValueError(f"hand cover requires {len(result)} spheres (capacity {capacity})")
     return result
+
+
+def world_penetrations(spheres, boxes):
+    """Per-sphere geometric penetration (metres) into the believed cuboids."""
+    from dojo.skills.geometry import quat_to_R
+    spheres=np.asarray(spheres).reshape(-1,4)
+    worst=np.zeros(len(spheres))
+    for box in boxes:
+        pose=box["pose"]
+        distance=np.abs((spheres[:,:3]-pose[:3])@quat_to_R(pose[3:]))-np.asarray(box["dims"])/2
+        signed=np.linalg.norm(np.maximum(distance,0),axis=1)+np.minimum(distance.max(axis=1),0)-spheres[:,3]
+        worst=np.maximum(worst,np.where(spheres[:,3]>0,-signed,0.))
+    return worst

@@ -142,16 +142,23 @@ class _GPUBackend:
             original = getattr(owner, method)
             def observed(*args, _original=original, _stage=stage, **kwargs):
                 self.emit({"stage": _stage})
-                if _stage == "ik" and self.profile == "recover" and self.goal_hint is not None:
+                if _stage == "ik" and self.profile == "recover":
                     import torch
-                    hint = torch.as_tensor(self.goal_hint, device=self.device.device, dtype=torch.float32)
                     count = self.planner.ik_solver.config.num_seeds
                     rng = torch.Generator(device=self.device.device).manual_seed(0)
-                    seeds = hint.reshape(1, 1, -1)+.04*torch.randn((1, count, len(hint)),
-                        generator=rng, device=self.device.device)
-                    seeds[:, 0] = hint
                     bounds = torch.as_tensor(self.query_limits, device=self.device.device, dtype=torch.float32)
-                    kwargs["seed_config"] = torch.maximum(bounds[:, 0], torch.minimum(bounds[:, 1], seeds))
+                    seeds = bounds[:, 0]+torch.rand((1, count, len(bounds)),generator=rng,
+                        device=self.device.device)*(bounds[:, 1]-bounds[:, 0])
+                    # Preserve global branch exploration; only a quarter of the
+                    # seeds are biased toward the nearby native solution.
+                    if self.goal_hint is not None:
+                        hint = torch.as_tensor(self.goal_hint,device=self.device.device,dtype=torch.float32)
+                        local=max(1,count//4)
+                        seeds[:,:local]=hint+.04*torch.randn((1,local,len(hint)),generator=rng,device=self.device.device)
+                        seeds[:,0]=hint
+                    else:
+                        seeds[:,0]=torch.as_tensor(self.query_q0,device=self.device.device,dtype=torch.float32)
+                    kwargs["seed_config"] = torch.maximum(bounds[:, 0],torch.minimum(bounds[:, 1],seeds))
                 result = _original(*args, **kwargs)
                 from dojo.skills.plan_diagnostics import result_flags
                 self.diagnostics[_stage] = result_flags(result)
@@ -234,8 +241,25 @@ class _GPUBackend:
         except Exception as error:
             self.diagnostics["start"] = {"diagnostic_error": f"{type(error).__name__}: {error}"}
         self.emit({"stage": "start", "diagnostics": self.diagnostics})
+        repair_path = None
         if self.profile == "recover" and any(v > 0 for v in self.diagnostics.get("start", {}).get("constraints", {}).values()):
-            return {"q": None, "diagnostics": self.diagnostics}
+            from dojo.skills.plan_repair import repair_coordinates
+            from dojo.skills.plan_geometry import world_penetrations
+            def joint_state(q):
+                return JointState.from_position(torch.as_tensor(q,device=device,dtype=full.dtype).reshape(1,-1),joint_names=names)
+            def evaluate(q):
+                return self._constraints(joint_state(q))
+            def penetrations(q):
+                spheres=p.compute_kinematics(joint_state(q)).robot_spheres.detach().cpu().numpy()
+                return world_penetrations(spheres,payload["boxes"])
+            repair_path, repair = repair_coordinates(payload["q0"],payload["limits"],evaluate,penetrations)
+            self.diagnostics["repair"] = repair
+            self.emit({"stage":"repair","diagnostics":self.diagnostics})
+            if repair_path is None:
+                return {"q": None, "diagnostics": self.diagnostics}
+            self.diagnostics["initial_start"] = self.diagnostics["start"]
+            state=joint_state(repair_path[-1])
+            self.diagnostics["start"]={"constraints":self._constraints(state)}
         p.reset_seed()
         result = p.plan_pose(goal_tool_poses=goal, current_state=state,
                              max_attempts=4 if self.profile == "recover" else 2, enable_graph_attempt=1)
@@ -246,8 +270,10 @@ class _GPUBackend:
         while q.ndim > 2:
             q = q[0]
         trajectory_names = list(trajectory.joint_names)
-        return {"q": q[:, [trajectory_names.index(f"joint{i}") for i in range(1, 7)]],
-                "diagnostics": self.diagnostics}
+        q=q[:,[trajectory_names.index(f"joint{i}") for i in range(1,7)]]
+        if repair_path is not None:
+            q=np.vstack([repair_path,q])
+        return {"q":q,"diagnostics":self.diagnostics}
 
 
 
