@@ -162,7 +162,7 @@ def cmd_audit(a) -> None:
     import re
     by = defaultdict(list)
     for x in rows:
-        m = re.match(r"c[46]b_[a-z0-9]+_([a-z0-9]+)_\d+", x["run"])
+        m = re.match(r"c[46]b_[a-z0-9]+_([A-Za-z0-9]+)_\d+", x["run"])
         arm = m.group(1) if m else "-"
         key = {"task": (x["task"], x["writer"]), "arm": (arm, x["writer"]),
                "task,arm": (f"{x['task']} {arm}", x["writer"])}[a.by]
