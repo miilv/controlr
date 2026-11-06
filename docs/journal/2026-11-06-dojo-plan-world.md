@@ -354,3 +354,90 @@ Compute3 code/data writes stay inside ~/controlr-plan; copy results back to the
 PLAN data root on compute6. Use one light job, `who`/GPU checks before launch,
 >=24 GiB free at admission and leave >=16 GiB free. Tools and egg final timings
 will be host-specific and not pooled as a latency comparison.
+
+The initial compute3 launch exited before any episode: only the two frozen
+`.settled.json` files were copied, and without a settled index the G3 entrypoint
+looked for raw `.json` names. Preserve that setup log and its admission receipt;
+set `SIMLAB_DEV_LAYOUT_SUFFIX=.settled` explicitly and relaunch the unchanged
+source/inputs. No completed or partially measured episode was discarded.
+
+The selector edit in the first relaunch did not reach the remote script because
+of shell quoting. Both setup attempts completed no episode; keep both logs and
+receipts. Copy the corrected local wrapper instead, verify the selector exists
+in its deployed source, then launch. The shared-account wrapper samples free
+VRAM throughout and can stop only checked descendants of its owned driver if
+the 16 GiB floor is breached. It never signals other jobs.
+
+The final source also closes a worker/cached failure when an existing Skills
+instance switches profile, so legacy settings cannot masquerade as recover.
+This lifecycle-only change does not alter a frozen-profile G3 episode. The
+GPU measurements retain their explicitly frozen ab2fa47c controller source.
+Focused planner tests now pass 47; the preceding complete local-suite snapshot
+passed 1952 tests / 191 skipped before the final two regression tests were added.
+Current-head CI covers those and the final source.
+
+## Round 2 outcome: coverage gate still fails
+
+The strict final ab2fa47c panel completes with tools on compute6 and egg on
+compute3, using the same frozen two layouts in each cell. Tools: 4/31 fallbacks
+(12.9%), all IK failures. Egg: 240/276 (87.0%): 199 IK failures, 37 goal
+collisions, three native validation rejects, one start/prefix rejection. No
+actual deadlines or cached failures in either final panel. Five tools and
+twelve egg accepted requests use a bounded start repair. Two egg failure labels
+cross between IK/goal-collision versus v5, but fallback totals, recorded steps
+and scores match; do not treat cross-host timing as a controlled speed test.
+
+Tools' objects-only pilot is 1/2 successes, 75 score, mean 430 steps; egg 0/2,
+10 score, mean 404.5 steps. These are tuning outcomes, not a comparison to the
+historical ten-layout controls. Total planning/query/startup seconds are
+352.0/29.82/9.84 (tools) and 263.7/223.20/18.35 (egg). Preserve all six pilots,
+including v4 egg 40.4% and the v5/v6 regression to 87.0%, without selecting the
+best pilot as the final result. The new ten-pair tools/egg/HANG/stack study was
+not dispatched because the registered <20%-in-each-cell gate failed. No new
+camera A/B is triggered; the existing CPU-only prospective spec stays parked.
+
+Endpoint evidence explains why merely rerouting does not reach the requested
+coverage: on the hard egg layout, 129 failed endpoints have no converged native
+IK, 95 collide in native hand/held checks and eleven pass native endpoint checks.
+Actual legacy routing also fails 232/235 fallbacks there. The scene-free
+counterfactual's refreshed four-seed native hints and distinct GPU retries still
+fail eleven of twelve tested requests, with 7–42 mm residuals. This is evidence
+under the tested bounds/search, not proof of global unreachability. Goal choice
+and native/GPU proxy agreement are the remaining landmines, recorded in BACKLOG.
+
+The corrected five-cell legacy diagnostic classifies all 132 fallbacks in its
+175-request, one-layout-per-cell panel: 114 cached, five actual timeouts, four
+start collisions, three graph failures, one goal collision and five native
+rejects. Historical 1442 no_plan failures cannot recover discarded flags and
+remain unknown. Earlier recovery labels with zero placeholder tolerances are
+recomputed from retained flags and known configured tolerances; original labels
+are retained in raw data. In particular, first-pilot tools failures were seven
+actual timeouts, five native joint-bound rejects and four goal collisions;
+this corrects the earlier informal description of remaining graph failure.
+
+[Round 2 report](../experiments/2026-11-06-plan-coverage-round2.md) and
+[stage-count data](../experiments/2026-11-06-plan-coverage-round2-results.json)
+include all six two-layout pilots, diagnostic episodes, source/input hashes,
+request/fallback counts, native endpoint evidence and host-specific timing.
+There are 34 engineering G3 episodes, separate from the earlier 160 paired-study
+episodes; numeric request replays and two empty compute3 setup starts are excluded.
+Zero model calls, tokens or spend throughout.
+
+Cleanup receipts verify all forty compute6 and two compute3 recorded workers
+have exited, no PLAN GPU process remains on either host, and every job/driver
+receipt is gone. The only manual signal was to checked own unadmitted waiter
+499273, under the admission lock; normal worker lifecycle stops only owned
+children. Compute3 returns to ~3.4 GiB baseline GPU use. Its measured job starts
+with >27 GiB free and stays above 24 GiB; its protective floor never triggers.
+All 28 compute6 admissions satisfy <=20 GiB used VRAM, >=12 GiB available RAM
+and load <=26 (observed maxima 20422 MiB / 17.08, minimum RAM 37283 MiB).
+All nine checked egg/robot geometry files match across boxes, as do URDF,
+cuRobo source hashes and RoboDojo/cuRobo commits; YAML paths differ by home only.
+Code/data writes on compute3 are inside ~/controlr-plan and completed artifacts
+are mirrored into compute6's PLAN data root. No system or vendor-source changes,
+compute4/dc19 access or foreign-process signals. Local footprint remains <1 GB.
+
+47 focused checks pass, plus the preceding full-suite snapshot's 1952 passed /
+191 skipped. The final two regression tests and latest controller source are
+covered by CI; the final report commit's CI is checked before handing back
+updated draft PR #401. Defaults remain off and the PR is not merged.

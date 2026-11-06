@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-06 | [plan-coverage-round2](2026-11-06-plan-coverage-round2.md) | Can typed failures and bounded recovery activate object planning? | Six two-layout pilots: final tools fallback 12.9%, egg 87.0%; gate fails, no new score A/B; stage-count diagnostic and scene-free IK evidence |
 | 2026-11-06 | [pen-conditional-g3](2026-11-06-pen-conditional-g3.md) | Can geometry retain PEN gains without baseline regressions? | 20 pairs: 14.75→20.75, 7 up/0 down; original 34 retained; added five all ties |
 | 2026-11-06 | [pen-conditional-camera-prereg](2026-11-06-pen-conditional-camera-prereg.md) | Does the conditional profile transfer to camera belief? | Parked; default decision rule; no camera run |
 | 2026-11-06 | [pen-inset-camera-prereg](2026-11-06-pen-inset-camera-prereg.md) | Does inset packing transfer to camera belief? | Supersedes centered-fit spec; default decision rule; no camera run |
