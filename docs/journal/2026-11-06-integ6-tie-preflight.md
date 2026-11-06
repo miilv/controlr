@@ -221,9 +221,50 @@ none exceeded 700 W. The released dispatch metadata, source manifest SHA,
 full queue SHA, hand-over receipt and accepted environment are frozen in
 `~/dojo-data/wave-1106-c6/dispatch-released.json`.
 
-Planning ETA is approximately **19:10Z**, based on the pre-registered 14.64
+The initial planning ETA was approximately **19:10Z**, based on the pre-registered 14.64
 lane-hours and two camera lanes, their observed start stagger and this first
 infrastructure retry's extra occupancy.
-This remains an occupancy estimate: resource waits, cold starts and infrastructure
-retries can extend it. The batch and power monitor remain running for the lead's
-supervision; the 108-row family has not yet completed.
+This was an occupancy estimate, not a measured completion forecast. It is
+withdrawn following the blocked dispatch described below.
+
+## Dispatch blocked and resources released
+
+B's original attempt also ended rc=4 at **11:55:14Z**, after 766 seconds and
+observed step 963. Its one retry started **11:56:14Z**. A's retry failed again
+at **12:00:24Z**, after 766 seconds and observed step 922. At **12:00:45Z**,
+STOP was set to prevent pulling more of the family into this recurring
+rendered-driver/no-progress symptom. The pending queue stayed at **106 rows**.
+The already-running B retry was allowed to finish under its original cap;
+it ended rc=4 at **12:12:30Z**, after 976 seconds and observed step 1084.
+
+Final state: **four infrastructure attempts, zero valid comparison rows, 106
+unstarted rows under STOP**. Both arms exhausted their one permitted retry.
+All 54 pairs remain assigned to compute6, with no rows restored to compute4
+and no split pair. A follow-up entry in compute4's `lead-notes.log` records
+the hold so its queue is not silently refilled. See the
+[incident record](../incidents/2026-11-06-compute6-tie-watchdog.md).
+
+Both lane managers exited normally after STOP. At **12:14:34Z** the three
+owned shared services were stopped through their recorded PID/unit checks,
+and the owned power logger was stopped after command-line validation.
+All owned job scopes were subsequently checked and contain zero PIDs;
+failed scope metadata and every attempt's artifacts remain for audit.
+Other streams and light locks were untouched. State/queues, the frozen input
+copy, parity receipts and accepted per-job provenance remain on compute6.
+
+Final recorded spend: **14 completed logged camera calls**, **222,060 prompt /
+15,993 completion tokens**, including **11,318 reasoning / 167,992 cache-read
+tokens**. This includes failed-attempt transcripts rather than accepting the
+synthetic infrastructure rows' zero-call placeholders. No separate implementation
+or parity model calls were made. There was no HTTP 429.
+
+Eight five-minute power samples ranged **49.03–168.75 W**; no power-triggered
+lane reduction occurred. The post-cleanup query was **15.61 W / 4,348 MiB**;
+other streams still own the remaining workload. No system, driver, power,
+controller or watchdog change was made to work around these failures.
+
+**There is no reliable completion ETA while dispatch is blocked.** The original
+two-lane budget is about 7.3 hours after a validated release, excluding retries
+and waits. A separately released dev-only infrastructure reproducer and a lead
+decision are needed before further measured retries or resuming this booking;
+no scoring-frame diagnosis, timeout change or extra retry was attempted here.
