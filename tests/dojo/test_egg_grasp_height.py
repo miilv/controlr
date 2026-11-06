@@ -57,8 +57,29 @@ def test_wide_angles_are_opt_in_and_retain_the_round_grasp_geometry(monkeypatch)
     sk.egg_grasp_angles = "wide"
     calls.clear()
     H.egg_grasps(sk, "egg", "left")
-    assert calls[-1]["tilts"] == (40.0, -40.0, 55.0, -55.0)
+    assert calls[-1]["tilts"] == (0.0, 40.0, -40.0, 55.0, -55.0)
     assert calls[-1]["ends"] is False
     assert RuntimeConfig().egg_grasp_angles == "off"
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(egg_grasp_angles="typo"), assets=None)
+
+
+def test_side_entry_checks_its_whole_corridor_and_keeps_the_wall_threshold(monkeypatch):
+    from dojo.skills.kinematics import down_R
+    T = np.eye(4)
+    T[:3, :3] = H._rot([0, 1, 0], np.deg2rad(70)) @ down_R(0.0)
+    g = Grasp("round", T, 0.042, note="side")
+    assert -0.5 < g.approach[2] < -0.2
+    monkeypatch.setattr(H, "round_grasps", lambda *a, **kw: [g])
+    monkeypatch.setattr(H, "container_of", lambda *a: SimpleNamespace(R=np.eye(3), pos=np.zeros(3)))
+    monkeypatch.setattr(H, "wall_profile", lambda c: {"center": [0, 0], "rim": 0.1})
+    monkeypatch.setattr(H, "finger_samples", lambda kin, T, go: T[:3, 3][None])
+    monkeypatch.setattr(H, "wall_clearance_v", lambda c, prof, P: 0.0)
+    sk = SimpleNamespace(kin=SimpleNamespace(flange_from_tcp=lambda T: T),
+                         world=SimpleNamespace(obj=lambda label: None))
+    assert not H.egg_grasps(sk, "egg", "left")
+    sk.egg_grasp_angles = "wide"
+    gs = H.egg_grasps(sk, "egg", "left")
+    assert gs and all(x.pre_dist == g.pre_dist for x in gs)
+    monkeypatch.setattr(H, "wall_clearance_v", lambda c, prof, P: -0.02 if np.linalg.norm(P[0]) > 0.02 else 0.0)
+    assert not H.egg_grasps(sk, "egg", "left")

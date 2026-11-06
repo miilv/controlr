@@ -349,8 +349,8 @@ def egg_grasps(sk: Skills, label: str, arm: str, wall_clear: float = EGG_WALL_CL
     if not cands:                                   # standing on its end, or not round: the usual generators
         cands = G.box_grasps(o, sk.kin, arm, tilts=(0.0, 25.0, -25.0)) + G.candidates(o, sk.kin, arm)
     if getattr(sk, "egg_grasp_angles", "off") == "wide":
-        cands += round_grasps(o, sk.kin, arm, rolls=(0.0, 25.0, -25.0, 40.0, -40.0),
-                              tilts=(40.0, -40.0, 55.0, -55.0), ends=False)
+        cands += round_grasps(o, sk.kin, arm, rolls=(0.0, 25.0, -25.0, 40.0, -40.0, 55.0, -55.0, 70.0, -70.0),
+                              tilts=(0.0, 40.0, -40.0, 55.0, -55.0), ends=False)
     if getattr(sk, "egg_grasp_height", "off") == "raised":
         # The pad is 30 mm long: an upper-shell pinch can clear the rim with the
         # root block while keeping its lower half against the egg. Keep the
@@ -371,10 +371,15 @@ def egg_grasps(sk: Skills, label: str, arm: str, wall_clear: float = EGG_WALL_CL
     for g in cands + [G.narrowed(x) for x in cands if x.method in ("round", "ends")]:
         go = gap_to_grip(g.open_gap())
         a = g.approach
-        if a[2] > -0.5:
+        side_entry = getattr(sk, "egg_grasp_angles", "off") == "wide" and -0.5 < a[2] <= -0.2
+        if a[2] > -0.5 and not side_entry:
             continue
         # the pre-grasp above the rim (fingertips 2 cm over it), the descent a straight line from there
         d_pre = max(g.pre_dist, (rim_w + 0.02 + TIP_BEYOND_TCP - float(g.T[2, 3])) / max(-float(a[2]), 0.3))
+        if side_entry:
+            # A table egg under the flared rim can be approached from outside.
+            # Its entire corridor still has to clear the dense wall profile.
+            d_pre = g.pre_dist
         ok = True
         for d in np.linspace(0.0, d_pre, 6):
             T = g.T.copy()
