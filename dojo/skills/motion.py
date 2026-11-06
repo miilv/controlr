@@ -468,6 +468,26 @@ class Motion:
             last = out.note
         return MoveResult("collision", arm, [], T0, note=f"{mv.note}; via failed: {last}")
 
+    def lateral(self, arm: str, q0, T_goal, *args, **kwargs) -> MoveResult:
+        """Legacy transit, then four checked lateral detours after a collision failure.
+
+        An unreachable endpoint is refused directly. No partial detour executes.
+        All segments retain the caller's held geometry, exclusions, rate and easing.
+        """
+        direct = self.to_pose(arm, q0, T_goal, *args, **kwargs)
+        if direct.ok or direct.status != "collision":
+            return direct
+        for dx, dy in ((-0.08, -0.10), (-0.15, -0.10), (-0.10, -0.20), (0.08, -0.10)):
+            mid = np.asarray(T_goal, float).copy()
+            mid[:2, 3] += (dx, dy)
+            first = self.to_pose(arm, q0, mid, *args, **kwargs)
+            if not first.ok:
+                continue
+            last = self.to_pose(arm, first.q_end, T_goal, *args, **kwargs)
+            if last.ok:
+                return first.then(last)
+        return direct
+
     def _via(self, arm, q0, T0, T_goal, z, step_rad, name, gripper, ignore, held, check, ease) -> MoveResult:
         up = T0.copy()
         up[2, 3] = max(z, T0[2, 3])
