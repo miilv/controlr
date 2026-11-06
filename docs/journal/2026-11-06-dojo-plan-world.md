@@ -570,5 +570,6 @@ Environment qualification: both GPUs are RTX 5090, but installed drivers differ
 (compute3 595.99.02, compute6 580.178.04). Keep their provenance explicit. HANG
 and sweep coverage pilots run on compute3, comparisons mainly on compute6, so
 their pilot-to-panel coverage shift cannot be attributed entirely to layouts.
-All performance pairs stay on one host/driver; tools pilot and full panel share
-compute3. No system/software changes are made to reconcile hosts.
+All performance pairs stay on one host/driver. The earlier tools tuning panel
+runs on compute6 and this full tools panel on compute3, so that coverage shift
+also includes a host/driver change. No system/software changes reconcile hosts.
