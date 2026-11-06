@@ -42,9 +42,14 @@ def test_boot_stamp_only_authorized_coord_file(tmp_path):
     stamp = tmp_path / 'coord/lane_gate.stamp'
     stamp.write_text('9999999999 future other\n')
     # A future or recent stamp waits; STOP exits before overwriting it.
-    script = f'HOME={tmp_path}\nlog() {{ :; }}\nstopped() {{ return 0; }}\n{gate}\nboot_gate'
+    script = f'HOME={tmp_path}\nlog() {{ :; }}\ncap_ok() {{ return 0; }}\nstopped() {{ return 0; }}\n{gate}\nboot_gate'
     assert subprocess.run(['bash', '-c', script]).returncode == 1
     assert stamp.read_text() == '9999999999 future other\n'
     stamp.write_text('1 old other\n')
     assert subprocess.run(['bash', '-c', script]).returncode == 0
     assert stamp.read_text().split()[-1] == 'ilia-ab'
+    # Memory can rise during the 120 s wait: recheck at actual admission.
+    stamp.write_text('1 old other\n')
+    blocked = script.replace('cap_ok() { return 0; }', 'cap_ok() { return 1; }')
+    assert subprocess.run(['bash', '-c', blocked]).returncode == 1
+    assert stamp.read_text() == '1 old other\n'

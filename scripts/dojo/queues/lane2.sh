@@ -58,7 +58,7 @@ boot_gate() {
       [[ "$epoch" =~ ^[0-9]+$ ]] || { log "invalid lane_gate.stamp: waiting"; sleep 15; continue; }
     fi
     now=$(date +%s)
-    if (( now - epoch >= 120 )); then
+    if (( now - epoch >= 120 )) && cap_ok; then
       printf '%s %s ilia-ab\n' "$now" "$(date -u +%FT%TZ)" > "$HOME/coord/lane_gate.stamp"
       log "boot gate claimed: $now ilia-ab"
       return 0
