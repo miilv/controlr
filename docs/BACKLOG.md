@@ -773,6 +773,10 @@
   regress on ten paired v6 dev layouts. The radial top envelope also fills the empty air beneath the flare;
   a lower/upper envelope unlocks plans but can still yield zero-rise physical grasps. Preserve that distinction
   when diagnosing a no-pick exit versus a blocked execution.
+  The shell variant's inherited -10 mm allowance can accept an entire <=20 mm material band
+  (26/29 basket bins); six path samples can alias the thin shell. A strict 1 mm-clearance /
+  1 mm-step probe still had no clear-and-reachable grasp for the two trapped eggs. Do not
+  promote a radial-envelope plan count as physical grasp feasibility.
 
 - [ ] **dojo skills: put_bottles, what is left after unblock + gentle** (stream H, journal
   2026-10-29-dojo-h95-put-bottles-v15; G3 v15 dev draws 13/16).

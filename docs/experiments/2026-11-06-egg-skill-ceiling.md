@@ -113,3 +113,10 @@ ran on compute6 from the frozen implementation. No robot/, safety or core loop c
 The blocking evidence is a grasp and post-pick route problem, not lack of perception or robot
 step budget. Further work needs a physically demonstrated grasp/escape sequence for eggs
 under the flare before another skill rollout or camera batch is warranted.
+
+A final geometry audit found why shell-only feasibility is especially weak evidence:
+26/29 sampled radial bands are <=20 mm thick (median 2.28 mm), so the inherited -10 mm
+band allowance can accept all of their material, and the six-sample descent can alias a
+thin wall. A +1 mm-clearance, <=1 mm-step diagnostic in the recorded post-baseline state
+left no target3 candidates; target2's two candidates per arm both failed IK. This is not
+an impossibility proof, but no newly proposed grasp survived both strict clearance and IK.

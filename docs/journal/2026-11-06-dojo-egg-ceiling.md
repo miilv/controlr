@@ -151,3 +151,19 @@ feasibility investigation. All five knobs remain off; it is not an adopt candida
 The prospective camera spec reserves ten fresh v6 survivors and the repository's default gate;
 its G3 prerequisite failed, so leave it undispatched. Next work needs a demonstrated physical
 grasp/escape construction, not another slower carry or a larger episode budget.
+
+### Shell-model landmine checked before final handoff
+
+The sampled basket profile has 29 finite radial bands; 26 are <=20 mm thick, median
+2.28 mm. With a signed band clearance and the inherited -10 mm allowance, every point
+inside such a thin band can pass. Moreover, six descent samples can step over a thin
+shell. The shell envelope is not a conservative swept-collision test under those settings;
+its extra planned grasps must not be mistaken for physically viable entries.
+
+A standalone strict probe used a +1 mm clearance and <=1 mm path spacing, with wide and
+raised candidates, in the reconstructed recorded post-baseline 100000 state (two eggs
+already placed). target3 had **zero** clear candidates in either arm. target2 had two
+candidates per arm (the same pose at different opening widths); **both failed IK** in each
+arm. No new grasp was executed or ceiling gain established. This stricter probe is not a
+shipped switch. Its script/log is `~/dojo-data/egg/strict-probe.py` / `strict-probe.log`.
+All EGG diagnostic CPU/GPU processes and retained waiters have now finished.
