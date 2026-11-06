@@ -651,3 +651,9 @@ line stay fixed, while the wrist gets another approach. Original orientations
 are tried first within each lift strategy. Cradle placements are unaffected.
 This expands geometric candidates without changing hook eligibility, collision
 checks, release motion or scoring. Camera adoption requires a paired experiment.
+
+`RuntimeConfig.hang_handle_grasp` (default false; G3 `hang_handle_grasp=on`)
+adds pinches across the handle's outer bar before the body-wall candidates.
+The catalogue's handle frame proposes the location; opposed mesh faces must
+confirm a 4–84 mm width. Missing meshes or unsuitable frames add no candidates.
+The ordinary pick and transfer planners retain their collision checks.

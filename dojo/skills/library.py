@@ -3847,7 +3847,11 @@ def G_hang(sk: Skills, o, arm: str) -> list:
     if held_box(o, np.eye(4)).points is not None:          # irregular (a headset): its real slices
         return G.box_grasps(o, sk.kin, arm) + G.slice_grasps(o, sk.kin, arm) + G.antipodal_grasps(o, sk.kin, arm)
     # deep wall pinches only (twin: an 8 mm deep pinch slid 46 mm in the hand while the mug turned 90 deg)
-    return G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.02, 0.026, 0.032))
+    extra = []
+    if getattr(sk, "hang_handle_grasp", False) in (True, "on"):
+        from dojo.skills.hanging import handle_grasps
+        extra = handle_grasps(o)
+    return extra + G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.02, 0.026, 0.032))
 
 
 # pieces threaded onto pegs: skills-7 (dojo/skills/pegs.py)
