@@ -361,6 +361,12 @@ class CuroboWorld:
             hint = motion.kin.ik(arm, target, q0, n_random=0)
             payload["goal_hint"] = hint.q.tolist() if hint.ok else None
             payload["limits"] = motion.kin.limits.tolist()
+        if profile == "recover" and getattr(motion, "plan_capture", "off") == "requests":
+            from dojo.skills.plan_diagnostics import native_goal_evidence
+            try:
+                payload["native_goal"] = native_goal_evidence(motion, coll, arm, hint, gripper, ignore, held)
+            except Exception as error:
+                payload["native_goal"] = {"diagnostic_error": f"{type(error).__name__}: {error}"}
         if getattr(motion, "plan_capture", "off") == "requests":
             payload["source_model"] = {"profile": profile, "ignore": list(ignore), "gripper": float(gripper),
                 "heightmaps": list(getattr(coll, "heightmaps", {})), "parts": list(getattr(coll, "parts", {})),
@@ -433,10 +439,17 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
                 # partial prefix executes unless the entire joined path validates.
                 from dojo.skills.motion import Motion
                 pose = motion.kin.tcp(arm, q0)
-                for dz in (.03, .06, .10):
+                offsets = [np.array([0., 0., z]) for z in (.03, .06, .10)]
+                offsets += [-pose[:3, 0]*d for d in (.03, .06)]
+                inward = motion.kin.base(arm)[:3, 3]-pose[:3, 3]
+                inward[2] = 0
+                norm = np.linalg.norm(inward)
+                if norm > 1e-6:
+                    offsets += [inward/norm*d+np.array([0., 0., .02]) for d in (.03, .06)]
+                for offset in offsets:
                     if time.perf_counter()-started >= budget:
                         break
-                    lift = pose.copy(); lift[2, 3] += dz
+                    lift = pose.copy(); lift[:3, 3] += offset
                     prefix = Motion(motion.kin, coll).line(arm, q0, lift, step_rad=step_rad,
                         name=name, gripper=gripper, ignore=ignore, held=held)
                     if not prefix.ok:
@@ -449,7 +462,7 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
                     attempts.append(getattr(motion._world_gpu, "last_diagnostics", {}))
                     if tail is not None:
                         q = np.vstack([s.q for s in prefix.segments]+[tail])
-                        event["retract_m"] = dz
+                        event["retract_offset"] = offset.tolist()
                         break
         event["attempts"] = attempts
         event["routes"] = len(attempts)

@@ -258,3 +258,15 @@ def test_recovery_request_has_a_nearby_numeric_goal_seed_and_current_hand():
     assert np.max(np.abs(hint-q0))<.2
     assert len(payload["hand"])<=256
     assert np.array_equal(payload["limits"],motion.kin.limits)
+
+
+def test_goal_diagnostic_identifies_hand_collision_without_pruning_request():
+    from dojo.skills.plan_diagnostics import native_goal_evidence
+    from dojo.skills.kinematics import IKResult
+    kin=X5Kin();q=np.array([0.,1.,1.,0.,0.,0.])
+    point=kin.finger_points(kin.flange("left",q),1.)[0]
+    coll=Collision(kin,SimpleNamespace(objects={}))
+    coll.obstacles=Mock(return_value=[(point,np.eye(3),np.ones(3)*.005,"wall")])
+    evidence=native_goal_evidence(Motion(kin,coll),coll,"left",IKResult(True,q,0.,0.),1.,(),None)
+    assert not evidence["ok"] and not evidence["hand_held_ok"]
+    assert evidence["hand_held_reason"]=="hits wall"

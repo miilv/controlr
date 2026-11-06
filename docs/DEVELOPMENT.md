@@ -66,6 +66,14 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 G3 uses --skill-attr plan_world=objects and optionally
 --skill-attr plan_solver=curobo. The corresponding dojo RuntimeConfig fields
 have defaults table and routes. Table retains the legacy skill behavior.
+plan_profile=legacy (default) retains the two-second GPU/caching settings;
+recover opts into coverage recovery with a ten-second request budget, nearby IK
+seeds, geometry proxies and checked retracts. plan_capture=requests (default off)
+adds numeric belief payloads, native goal checks and proposed joints for diagnosis.
+Keep captured request replays separate from fully validated path coverage, and
+report actual queries, inherited cached failures and native validation rejects.
+The installed v2 has raw stage success/feasibility flags rather than MotionGenStatus
+codes; do not relabel discarded historical no_plan records as known causes.
 
 tests/dojo/test_world_plan.py covers CPU dispatch, geometry, attachments and
 the port's belief-only/native-TCP conversion. tests/dojo/test_curobo_world.py

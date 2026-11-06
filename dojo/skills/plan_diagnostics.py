@@ -70,3 +70,21 @@ def failure_category(diagnostics):
     if diagnostics.get("trajopt"):
         return "trajopt_fail"
     return "unclassified"
+
+
+def native_goal_evidence(motion, coll, arm, hint, gripper, ignore, held):
+    """Diagnose a requested pose against the unchanged validator; never prune it."""
+    if not hint.ok:
+        return {"ik_ok": False, "note": hint.note}
+    import copy
+    ok, reason = coll.check(arm, hint.q, gripper, ignore=ignore, held=held)
+    class HandModel:
+        def __getattr__(self, name):
+            return getattr(motion.kin, name)
+        def link_points(self, *args, **kwargs):
+            return np.empty((0, 3))
+    hand = copy.copy(coll)
+    hand.kin = HandModel()
+    hand_ok, hand_reason = hand.check(arm, hint.q, gripper, ignore=ignore, held=held)
+    return {"ik_ok": True, "ok": ok, "reason": reason,
+            "hand_held_ok": hand_ok, "hand_held_reason": hand_reason}

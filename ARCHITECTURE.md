@@ -522,11 +522,23 @@ skill model's margins (normally 6 mm); held spheres cover the box with another
 6 mm. The fixed mounting base is omitted from the GPU model's collision links;
 the existing skill Collision model still validates all returned paths.
 
-A request has a two-second GPU deadline, plus bounded worker shutdown. Cold
+The default plan_profile=legacy has a two-second GPU deadline, plus bounded worker shutdown. Cold
 startup has a separate 60-second budget. A failed worker is stopped and its
 failure cached for that Motion instance; legacy planning remains available.
 Workers are closed on Skills replacement, runtime reset/finalization and G3
 episode completion. The CPU route search has a cooperative 0.75-second budget.
+
+The opt-in recover profile uses a ten-second request budget, more IK/graph
+search and a nearby native IK seed, with deterministic perturbations. It adds
+a current-opening native finger proxy and existing height-field/mesh proxies.
+An initially colliding request can try checked upward, tool-axis or inward
+retraction before the GPU tail. The complete joined path must pass the same
+validator; no prefix executes separately. Timeouts close their owned worker
+and permit a fresh worker on the next query. Other backend failures stay cached.
+plan_capture=requests (default off) records numeric belief requests, native goal
+diagnostics and proposed joints for development replay. Stage flags and configured
+tolerances supplement cuRobo v2 results, which expose no MotionGenStatus enum.
+
 
 Every GPU path is checked for finite/current-limit joints, endpoint accuracy
 and the original Collision model at <=0.04 rad intervals, with the limited
