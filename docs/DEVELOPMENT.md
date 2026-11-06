@@ -525,3 +525,11 @@ and reports launcher completion/rc and prospective remaining occupancy.
 The shared boot protocol reads only `~/coord/lane_gate.stamp`, waits until its
 epoch is at least 120 seconds old, then writes `<epoch> <iso> ilia-ab`. While the
 other team runs its single Isaac, use one Integration lane (`lane2.caps: 1 4`).
+
+For egg-holder feasibility screens, `RuntimeConfig.egg_grasp_height` (`off` / `raised`)
+adds upper-shell pinch candidates, and `egg_grasp_angles` (`off` / `wide`) adds steeper
+round grasps. `egg_wall_model` (`off` / `shell`) tests the lower/upper radial mesh envelope;
+`egg_drop_approach` (`off` / `low`) lowers the preapproach; `egg_drop_spin` (`off` / `axis`)
+adds spins about the round object's long axis. All default off and map to G3 `--skill-attr` switches. Dense wall checks,
+collision planning, pick verification and the episode budget still apply. Pair settled
+layouts from the same generator; v6 egg records must not be mixed with v15 records.

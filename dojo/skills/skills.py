@@ -343,6 +343,11 @@ class Skills:
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
         # episode's ``joint_limits``) | "measured" (joint 5 inside the sim's stop for that skill only)
         self.fill_joint_limits = "inherit"
+        self.egg_grasp_height = "off"
+        self.egg_grasp_angles = "off"
+        self.egg_drop_approach = "off"
+        self.egg_wall_model = "off"
+        self.egg_drop_spin = "off"
         # ``library.arrange`` (stream N): the places' order, "near" (today: nearest the arms first) | "big_first" |
         # "push_big_first" (the pushes first, then the places largest first)
         self.arrange_order = "near"
