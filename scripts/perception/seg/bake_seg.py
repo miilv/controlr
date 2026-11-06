@@ -27,6 +27,18 @@ CPU_GL_ENV = {"LIBGL_ALWAYS_SOFTWARE": "1", "EGL_DEVICE_ID": "1", "PYOPENGL_PLAT
               "__EGL_VENDOR_LIBRARY_FILENAMES": "/usr/share/glvnd/egl_vendor.d/50_mesa.json", "LP_NUM_THREADS": "1"}
 
 
+def init_gl_arrays():
+    """Register ctypes output pointers explicitly for the bake's PyOpenGL workers.
+
+    Older PyOpenGL plugin lists omit Python 3.12's _ctypes.CArgObject. Textured
+    meshes then fail at glGenTextures even though EGL and CUDA work. Use the
+    installed handler; this changes argument conversion, not render settings.
+    """
+    from OpenGL.arrays.ctypesparameters import CtypesParameterHandler
+
+    CtypesParameterHandler().register(CtypesParameterHandler.HANDLED_TYPES)
+
+
 def held_out(i: int) -> bool:
     return 100000 <= i <= 100004 or 100030 <= i <= 100049
 
@@ -103,7 +115,8 @@ def main(argv=None):
                                                    "gl": a.gl}))
     print(len(jobs), "frames", flush=True)
     t0 = time.time()
-    with ProcessPoolExecutor(max_workers=a.workers) as ex, open(a.out / "objects.jsonl", "w") as fo, \
+    with ProcessPoolExecutor(max_workers=a.workers,
+                             initializer=init_gl_arrays if a.gl != "none" else None) as ex, open(a.out / "objects.jsonl", "w") as fo, \
             open(a.out / "frames.jsonl", "w") as ff:
         for i, res in enumerate(ex.map(bake.run_frame, jobs)):
             ff.write(json.dumps(res["frame"]) + "\n")

@@ -68,3 +68,21 @@ def test_live_bake_selects_only_dev_ids():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert {i for i in range(99999, 100151) if module.held_out(i)} == set(range(100000, 100005)) | set(range(100030, 100050))
+
+
+def test_gl_worker_supports_ctypes_output_pointer(monkeypatch):
+    # No context or GPU needed: glGenTextures uses this output-pointer conversion.
+    import ctypes
+
+    monkeypatch.setenv('PYOPENGL_PLATFORM', 'egl')
+    pytest.importorskip('OpenGL.arrays.ctypesparameters')
+    from OpenGL.arrays.arraydatatype import ArrayDatatype
+
+    spec = importlib.util.spec_from_file_location('seg_bake_gl', Path(__file__).resolve().parents[2] /
+                                                 'scripts/perception/seg/bake_seg.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.init_gl_arrays()
+    ptr = ctypes.byref(ctypes.c_uint())
+    handler = ArrayDatatype.getHandler(ptr)
+    assert handler.from_param(ptr) is ptr

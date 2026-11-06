@@ -1,0 +1,114 @@
+{
+  "kind": "pre-registration; execution contingent on genuine Isaac 5.1 render smoke check",
+  "baseline": {
+    "weights": "~/dojo-w-ext/seg_v2b.pt",
+    "md5": "2f546196145fc424f76a5e2e47dd3210",
+    "n_classes": 511
+  },
+  "render": {
+    "engine": "Isaac 5.1 physics-only states + Isaac 6.0 proxy RGB and instance masks; NO genuine-5.1 claim",
+    "train_ids": "100030-100048",
+    "val_ids": [
+      100049
+    ],
+    "variants": [
+      1
+    ],
+    "poses": 4,
+    "views": [
+      "cam_head",
+      "cam_left_wrist",
+      "cam_right_wrist"
+    ],
+    "old_classes": "all v2b assets, nonzero training support required",
+    "focus_tasks": [
+      "arrange_largest_number",
+      "organize_table",
+      "classify_objects",
+      "sort_nesting_dolls_by_size_random",
+      "store_laptop_and_headphones_random"
+    ],
+    "hard_negatives": "garage, toy_car and car labelled together; no excluded visible assets taught as background",
+    "rehearsal": "general_pickup variants 1-5, 6 extra assets per draw cycling all 543 classes",
+    "tasks": [
+      "general_pickup",
+      "hang_mugs_random",
+      "sort_nesting_dolls_by_size_random",
+      "make_toast_random",
+      "store_laptop_and_headphones_random",
+      "pour_liquid_into_cup_random",
+      "arrange_largest_number",
+      "organize_table",
+      "classify_objects"
+    ],
+    "empty_capture_retries": 20,
+    "clutter_extras": "Resolve Rigid vocabulary keys through Clutter only for explicit training extras when no task-object asset exists; retry missing-asset generator errors."
+  },
+  "cheap_ablation": {
+    "arms": [
+      "v2d-equivalent narrow export",
+      "same export plus old-class rehearsal"
+    ],
+    "initialization": "same expanded v2b checkpoint",
+    "epochs": 2,
+    "purpose": "directional rehearsal-starvation check, not adoption or causal proof versus historical v2d",
+    "seed": 0,
+    "imgsz": 960,
+    "batch": "auto-profile first arm with 8 GiB headroom; freeze its resolved integer for the matched arm",
+    "workers": 4,
+    "close_mosaic": 0,
+    "rfs_t": 0.02,
+    "optimizer": "Ultralytics auto (record resolved optimizer and LR)",
+    "gate_weights": "last.pt"
+  },
+  "candidate": {
+    "classes": "exact v2b prefix + v2d 30 names + Rigid/brick/00002 + Rigid/paper_ball/00000",
+    "epochs": 8,
+    "seed": 0,
+    "imgsz": 960,
+    "batch": "largest profiled batch with 8 GiB headroom",
+    "workers": 4,
+    "close_mosaic": 3,
+    "rfs_t": 0.02,
+    "gate_weights": "last.pt"
+  },
+  "gate": {
+    "sets": [
+      "d0_51",
+      "d0_ext",
+      "series",
+      "w51",
+      "p60"
+    ],
+    "ids": "100000-100004,100030-100049",
+    "frame": 0,
+    "per_class_regressions_allowed": 0,
+    "metrics": [
+      "found",
+      "identity",
+      "pose10",
+      "identity+10"
+    ],
+    "errors_allowed": 0,
+    "pairing": "identical frame and object keys",
+    "hitcheck": {
+      "conf": 0.25,
+      "imgsz": 960,
+      "required": "positive naming gain versus v2b; per-asset hit/merged/missed with vocabulary denominators"
+    }
+  },
+  "resources": {
+    "machine": "compute3",
+    "lock": "~/dojo-gpu.lock",
+    "one_heavy_job": true,
+    "min_free_disk_gb": 10,
+    "min_vram_headroom_gb": 6,
+    "local_disk_limit_gb": 2,
+    "llm_calls": 0,
+    "compute4_access": false,
+    "reserved_physical_cpu_cores": 4,
+    "parallel_render_workers": 2,
+    "light_locks": "never held; reserved for G3 skill streams"
+  },
+  "amendment": "Lead requested full utilization after genuine 5.1 startup failure; freeze proxy-domain ablation before rendering or training. Historical recipe and genuine hitcheck remain separate."
+}

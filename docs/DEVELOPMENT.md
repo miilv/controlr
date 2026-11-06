@@ -472,3 +472,16 @@ an existing bake with provenance hashes; this reuses predictions, not inference.
 objects and no errored frames, and reports identity and 10 mm position separately.
 `--diagnostic` can inspect errored archives but marks them invalid for adoption.
 The genuine-dev new-class hitcheck remains a separate required gate.
+
+Before incremental segmenter training, run `audit_rehearsal.py --base-classes
+BASE/classes.json --export EXPORT --out support.json`. It checks the exact old
+class prefix, variant training ids, unique-image support and the validation split;
+exit 1 means at least one old class has zero training support. RFS repeats and
+validation images cannot satisfy rehearsal. This audits manifests, not whether
+image files still exist. Keep the support report and source hashes with the recipe.
+
+GPU / software-GL bake workers explicitly register PyOpenGL's installed ctypes
+parameter handler. Older PyOpenGL plugin lists can omit Python 3.12's output
+pointer type, causing `glGenTextures` to fail on textured assets even with working
+CUDA / EGL. Changing this setup requires a fresh paired baseline, not dropping
+failed frames from the gate.
