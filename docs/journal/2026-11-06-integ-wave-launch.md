@@ -47,3 +47,69 @@ pre-registered camera comparison. This is smoke validation, not camera adoption.
 The interrupted first A attempt is preserved separately as
 `toy-off.partial-pre-amendment`; it was stopped solely because the original plan
 incorrectly rejected the normal CPU environment device. It is not pooled.
+
+## Conveyor physics head review
+
+All four jobs completed rc=0, five records each. In both blocks A and B each
+scored 4/5 successes and mean 0.80; pooled A=8/10, B=8/10. There is one B-only
+success and one A-only success in block 1; block 2 has identical paired outcomes.
+All jobs report zero instability, infrastructure failures, CUDA errors and missing
+meshes. Waist interception log counts are block 1 A=0/B=2 and block 2 A=1/B=1
+(later attempts can use waist even with the first-choice switch off).
+
+The lead approved conveyor camera eligibility: rare waist activation, no G3 gain,
+no systematic new physical failure. Run the 30 pre-registered camera jobs; camera
+adoption remains subject to its paired decision rule and write audit.
+
+The lead then authorized immediate one-lane camera dispatch after merged #392,
+in plan order while skipping families whose preparation is incomplete, to revisit
+later. Conveyor measurement RAW checks take priority; the other salted records
+remain generated and hashed while their settling/demos await their own booking.
+
+Before any waist camera data, required original RAW checking rejected gain id
+100008 as `dropped: raw record not at rest`. The lead prospectively amended the
+family: exclude 100008; try unused measurement ids 100025 through 100029 in that
+order with the same raw check, and take the first passing record. Record all tried
+ids and results. If none passes, run nine gain pairs with the same +5-point score
+and wins/losses rule, stating n=9. No waist outcomes have been collected, and no
+threshold or physics setting changes. Launch the next ready family (peg) meanwhile.
+
+The first replacement candidate, 100025, has no prior waist A/B name in our
+camera registry and passed the unchanged RAW check (`raw ok`). No later candidate
+was tried. Gain n remains ten. The derived dispatch schedule replaces only the
+100008 pair, retaining its queue position and applying the existing parity arm
+order to 100025. The original pre-registration files remain unchanged; the amended
+schedule and queue are `~/dojo-data/wave-1106/wave-amended.json` and
+`camera-amended.txt` on compute4. No waist camera episodes existed at amendment.
+
+## First camera dispatch
+
+Merged runner PRs #391/#392 are deployed at
+`~/dojo-integ-c4-416a2a03`, SHA `416a2a0374e06628350816a019862caf5156e730`.
+Catalogue and full candidate/package parity pass. The prior sealed deployments
+were not modified. Sixty peg rows were appended under queue2's existing lock;
+no old deferred rows were appended. One lane started
+`c4b_playstackingtoysg_pegAr1_100005` at 05:22:19Z, using Claude Sonnet 5.5,
+the frozen calibration/backgrounds and healthy shared v2b/digit_v2/kong_v1b
+services. The first job completed rc=0 at 05:28:04Z (346-second occupancy),
+success, strict score 1.0; this single arm is not comparative evidence.
+Its actual spend is four Claude calls, 51,201 prompt / 3,022 completion tokens
+(1,489 reasoning, 44,475 cache reads). No 429 occurred.
+
+The complete peg manifest freezes 30 input identities and verifies both arms'
+loaded/raw hashes before dispatch:
+`~/dojo-data/wave-1106/layout-manifest-peg.json`, SHA256
+`5fbbf5522c69f1656477fcaa889a3855c6148382b4439ff52ff57b1d59b47036`.
+The lane pauses after its first job for the serial conveyor preflight reservation,
+then resumes its unchanged queue unless global 429 STOP is present.
+
+All 57 prospective salted records were generated and hashed: ten physics RAW
+records validated and the 47 fresh camera records remain unsettled, with their
+17 fresh demos still pending. Per the lead's skip-unready amendment, relocate,
+key and tie are deferred until that preparation is booked; no replacement layout
+selection or synthetic settled/demo records are used.
+
+Conveyor's five image guard records all passed RAW validation. Peg B resumed at
+05:33:33Z with unchanged inputs and queue order. Ready waist/disc manifests and
+queues are frozen separately; the full launch evidence and preparation shortfall
+are recorded in [the launch report](../experiments/2026-11-06-dojo-ab-wave-launch.md).

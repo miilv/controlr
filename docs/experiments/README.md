@@ -68,3 +68,4 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 | 2026-11-05 | [CONV waist-first camera A/B](2026-11-05-conv-waist-camera-prereg.md) | waist before shallow grasps on wide belt riders; veto stays on | pre-registered, fresh salted dev layouts; not run; G3 blocked by compute3 CUDA driver unavailability |
 
 | 2026-11-06 | [dojo-ab-wave](2026-11-06-dojo-ab-wave.md) | post-D-C19 four new switches and two fresh salted re-tests | Prospective: six physics head jobs, 316 camera jobs; lead release and validation required |
+| 2026-11-06 | [dojo-ab-wave-launch](2026-11-06-dojo-ab-wave-launch.md) | physics gates and safe camera-wave dispatch after D-C19 | toy A3/5 B4/5; conveyor A8/10 B8/10; lead approved smoke gates; peg camera block launched on one lane, adoption pending |
