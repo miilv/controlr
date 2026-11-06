@@ -512,9 +512,12 @@ all unresolved thin objects. Neither switch measures a pose or guarantees a gras
 `fill_grasp=vertical` adds narrow horizontal jaw pinches at five shaft stations and
 penalizes the original candidates by two score units, retaining them when the new
 ones cannot plan. `fill_grasp=rolled` applies that preference only to horizontal
-shafts whose body axes are more than 10 degrees from flat; `fill_holder=stay` bypasses the receptacle relocation;
+shafts whose body axes are more than 10 degrees from flat; `rolled_tilt` also
+tries 25/40-degree approach tilts while keeping the closing axis horizontal; `fill_holder=stay` bypasses the receptacle relocation;
 `fill_drop=center` uses only the maximum-clearance opening fit with occupied-space
 padding, refusing a fit rather than relaxing the occupied-space constraint;
+`fill_drop=inset` first tries wall packing at 7 mm clearance, then the centered
+fit, retaining occupied-space constraints in both attempts;
 `fill_insert=safe` scopes the measured joint range to the fill operation, restores
 it even on exceptions, and uses the existing low-hover and 4 mm xy-correction
 servo options. The grasp filter and collision model retain finger clearance. They consume the same world/provider as the

@@ -95,3 +95,31 @@ scripts/simlab/rdpy.sh -u -m dojo.skills.g3 run --task fill_pen_holder \
 Rendered validation is separately pre-registered in
 [the camera specification](../experiments/2026-11-06-pen-camera-prereg.md).
 No camera adoption is claimed from G3.
+
+## Further diagnostics after baseline replication
+
+The rolled-only screen on 100000–04 is exactly null: 25/100/10/25/10,
+34.0 mean, 1/5 success. Retaining the original candidates prevented the
+vertical-only reach regressions, but did not fix pen0.
+
+A CPU IK probe at the recorded pre-pick pose of pen0 on 100002 explains why.
+Of ten horizontal-jaw, straight-down candidates, 0/10 reach with either arm.
+Tilting the approach while keeping its closing axis horizontal gives left
+10/10 at 25 degrees and 10/10 at 40; right 4/10 at 25 and 10/10 at 40.
+These counts are IK feasibility only, not collision checks or physical grasps.
+`fill_grasp=rolled_tilt` adds those approaches, still only for rolled horizontal
+shafts, with the original candidate fallback. The flat-object behavior and
+all previous arms are unchanged. First physical probe: development ID 100002.
+The probe code and logs live in `~/controlr-pen/pen-grasp-diag.py` on compute6.
+
+The grasp-plus-insertion screen (`precision5`) completed 100000–02 at
+40/10/25 versus A 25/100/10. It was stopped during the next episode after
+checking its exact module/output-directory PID; no unfinished episode is counted.
+This is a rejected exploratory screen, not a completed five-layout comparison.
+
+Local full suite: 1795 passed, 187 skipped (18m48s); additional rolled/tilted
+focused cases pass. Initial parity failures came from adding configuration
+fields while a suite was already running (old in-process module versus new
+subprocess source); all 36 affected/focused tests passed on rerun. CI passed
+on the first pushed PR head. Pyflakes reports only the pre-existing unused
+imports and placeholder-free f-string in library.py, no new undefined names.
