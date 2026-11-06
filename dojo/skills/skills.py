@@ -522,6 +522,48 @@ class Skills:
             pass
 
     # ------------------------------------------------------------------ world
+    @property
+    def plan_profile(self):
+        return self.motion.plan_profile
+
+    @plan_profile.setter
+    def plan_profile(self, value):
+        if value not in ("legacy", "recover"):
+            raise ValueError(f"unknown plan_profile: {value}")
+        if value != self.motion.plan_profile:
+            self.motion.close()  # Worker settings and cached failures belong to a profile.
+        self.motion.plan_profile = value
+
+    @property
+    def plan_capture(self):
+        return self.motion.plan_capture
+
+    @plan_capture.setter
+    def plan_capture(self, value):
+        if value not in ("off", "requests"):
+            raise ValueError(f"unknown plan_capture: {value}")
+        self.motion.plan_capture = value
+
+    @property
+    def plan_solver(self):
+        return self.motion.plan_solver
+
+    @plan_solver.setter
+    def plan_solver(self, value):
+        if value not in ("routes", "curobo"):
+            raise ValueError(f"unknown plan_solver: {value}")
+        self.motion.plan_solver = value
+
+    @property
+    def plan_world(self):
+        return self.motion.plan_world
+
+    @plan_world.setter
+    def plan_world(self, value):
+        if value not in ("table", "objects"):
+            raise ValueError(f"unknown plan_world: {value}")
+        self.motion.plan_world = value
+
     def refresh(self) -> WorldState:
         self.world = self.provider.refresh({a: (h.label if h else None) for a, h in self.held.items()})
         if getattr(self, "artic_geom", "authored") == "measured":

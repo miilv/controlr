@@ -1,0 +1,75 @@
+{
+  "source_commit": "ab2fa47c36e754f5a1307e530c55d5ba3a73779e",
+  "phase": "strict egg recheck moved before any compute6 admission to authorized compute3 physics lane",
+  "config": {
+    "plan_world": "objects",
+    "plan_solver": "curobo",
+    "plan_profile": "recover",
+    "plan_capture": "requests"
+  },
+  "layouts": {
+    "fill_egg_holder": [
+      100001,
+      100000
+    ]
+  },
+  "input_sha256": {
+    "store_tools_in_toolbox/100000": "591e3b4c97fbf606434eb93dd7254bb94dac8ab68bfd3f078a3369b0ef4d064f",
+    "store_tools_in_toolbox/100001": "7902526fafa9e1bf7015d79c7cbc941db86b1be1c2b114011f49e86bbcaf8a4e",
+    "fill_egg_holder/100000": "16fab329d32fd420401d65a6ad7e8d613453e145de7e1afa3a7e103388260272",
+    "fill_egg_holder/100001": "b0682eaae0b9dcb39be6c09de2c56ce0b082f80d25354d8e875ad02d94ec523a"
+  },
+  "gate": "Every requested plan counts, including speculative candidates and parent validation rejects. Fallback <20% separately on tools and egg; no weakened validation, step rates or contact semantics.",
+  "next_if_gate_passes": "Freeze source and repeat ten paired layouts each for tools, egg, HANG and stack, keeping profile recover fixed and varying only plan_world.",
+  "timeout_s": 10,
+  "startup_timeout_s": 60,
+  "ik_seeds": 64,
+  "trajopt_seeds": 1,
+  "max_attempts": 4,
+  "graph_iterations": 16,
+  "host": "compute3",
+  "admission": {
+    "max_jobs": 1,
+    "min_free_vram_mib_before_start": 24576,
+    "min_free_vram_mib_during_job": 16384,
+    "min_available_ram_mib": 16384,
+    "max_load1": 26,
+    "who_and_nvidia_smi_before_each_job": true
+  },
+  "LLM_calls": 0,
+  "prior_pilot": {
+    "source": "385ab1df",
+    "tools_fallbacks": 4,
+    "tools_requests": 31,
+    "egg_fallbacks": 240,
+    "egg_requests": 276,
+    "gate_passed": false
+  },
+  "output_root": "compute6:~/dojo-data/plan/round2/coverage-v6-egg (copied after completion; original compute3 receipt retained)",
+  "repair": {
+    "max_initial_penetration_m": 0.015,
+    "max_joint_departure_rad": 0.3,
+    "max_joint_increment_rad": 0.03,
+    "max_iterations": 12,
+    "budget_s": 3,
+    "monotone_per_sphere_penetration": true,
+    "allows_new_contacts": false,
+    "self_collision_repair": false,
+    "contact_identity": "each sphere-obstacle pair, not maximum depth over obstacles"
+  },
+  "ik_seed_mix": "one quarter local to native seed, remainder deterministic global native-limit samples",
+  "gpu_limits": "intersection of URDF limits and current native envelope, applied before solver/cost construction",
+  "extra_checks": [
+    "Native IK uses the same four random seeds as legacy routing; record actual legacy fallback status.",
+    "Retries use distinct deterministic banks, not repeated identical samples.",
+    "Retraction prefixes also pass GPU proxy monotonic penetration/self-contact checks.",
+    "Regular held objects with native height fields add the 27 native box guard samples without removing mesh coverage."
+  ],
+  "temporary_data_root": "compute3:~/controlr-plan/plan-data",
+  "compute6_waiter": {
+    "pid": 499273,
+    "admitted": false,
+    "termination": "SIGTERM after cmdline/empty-log check while holding own admission lock"
+  },
+  "geometry_fingerprint_difference": "curobo.yml absolute home paths only; URDF and cuRobo planner/attachment source hashes identical"
+}

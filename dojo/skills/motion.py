@@ -150,6 +150,8 @@ class HeldBox:
     # mesh points (object frame) checked against ``Collision.parts`` obstacles (a rack's thin arms pass between the box
     # corners of a held mug); None = the box corners
     dense: np.ndarray | None = None
+    label: str | None = None
+    mesh: tuple | None = None
 
     def dense_w(self, T_tcp: np.ndarray) -> np.ndarray:
         T = T_tcp @ self.T_tcp_obj
@@ -343,6 +345,19 @@ class Motion:
     def __init__(self, kin: X5Kin | None = None, coll: Collision | None = None):
         self.kin = kin or X5Kin()
         self.coll = coll or Collision(self.kin)
+        self.plan_world = "table"
+        self.plan_solver = "routes"
+        self.plan_capture = "off"
+        self.plan_profile = "legacy"
+        self.world_plans = []
+
+    def close(self):
+        """Release only this motion instance's optional planner worker."""
+        worker = getattr(self, "_world_gpu", None)
+        if worker is not None and not isinstance(worker, str):
+            worker.close()
+        if hasattr(self, "_world_gpu"):
+            del self._world_gpu
 
     # ---- IK
     def ik(self, arm: str, T_tcp, q_current, **kw):
@@ -420,6 +435,19 @@ class Motion:
                 ease: int = EASE) -> MoveResult:
         """Free-space move to a TCP pose: a straight joint move to the closest IK solution if it is
         collision-free; otherwise up to ``safe_z`` (line), across in joint space, down (line)."""
+        if self.plan_world == "objects" and check and self.coll.world is not None:
+            from dojo.skills.world_plan import plan_objects
+            result = plan_objects(self, arm, q0, T_goal, step_rad, name, gripper, ignore, held, ease)
+            if result is not None:
+                return result
+            legacy = self._legacy_to_pose(arm, q0, T_goal, step_rad, name, gripper, ignore, held, check, safe_z, ease)
+            if self.world_plans:
+                self.world_plans[-1]["legacy_status"] = legacy.status
+                self.world_plans[-1]["legacy_note"] = legacy.note
+            return legacy
+        return self._legacy_to_pose(arm, q0, T_goal, step_rad, name, gripper, ignore, held, check, safe_z, ease)
+
+    def _legacy_to_pose(self, arm, q0, T_goal, step_rad, name, gripper, ignore, held, check, safe_z, ease):
         r = self.kin.ik(arm, T_goal, q0)
         if not r.ok:
             return MoveResult("ik_fail", arm, [], self.kin.tcp(arm, q0), r.pos_err, r.rot_err,
@@ -520,7 +548,8 @@ def below_height_map(hm: dict, loc: np.ndarray, margin: float) -> np.ndarray:
 def held_box(o, T_tcp_obj) -> HeldBox:
     """``HeldBox`` for object ``o`` held at ``T_tcp_obj``; irregular meshes (horizontal slices filling
     under 60 % of the bbox footprint on average: figurines, tools, keys) carry sparse mesh points."""
-    hb = HeldBox(np.asarray(T_tcp_obj, float), o.asset.center, o.asset.extents / 2)
+    hb = HeldBox(np.asarray(T_tcp_obj, float), o.asset.center, o.asset.extents / 2,
+                 label=getattr(o, "label", None), mesh=getattr(o.asset, "mesh", None))
     mesh = getattr(o.asset, "mesh", None)
     if mesh is None or len(mesh[0]) < 60:
         return hb

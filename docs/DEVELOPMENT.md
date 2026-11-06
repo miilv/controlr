@@ -61,6 +61,41 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 | cache / router / timings | `llm/` | `test_llm_*`; live `bench-cache` |
 | an experiment axis | field in `config.py` + `configs/base.yaml` | `test_cli` / `test_loop`; the default must not change behaviour |
 
+### Testing belief-object routing
+
+G3 uses --skill-attr plan_world=objects and optionally
+--skill-attr plan_solver=curobo. The corresponding dojo RuntimeConfig fields
+have defaults table and routes. Table retains the legacy skill behavior.
+plan_profile=legacy (default) retains the two-second GPU/caching settings;
+recover opts into coverage recovery with a ten-second request budget, diverse
+IK retry banks inside current native limits, geometry proxies and bounded,
+monotone start-contact proposals. Retracts/repairs execute only after the complete
+path passes the original validator. plan_capture=requests (default off)
+adds numeric belief payloads, native goal checks, actual legacy fallback results
+and proposed joints for diagnosis.
+Keep captured request replays separate from fully validated path coverage, and
+report actual queries, inherited cached failures and native validation rejects.
+The installed v2 has raw stage success/feasibility flags rather than MotionGenStatus
+codes; do not relabel discarded historical no_plan records as known causes.
+
+tests/dojo/test_world_plan.py covers CPU dispatch, geometry, attachments and
+the port's belief-only/native-TCP conversion. tests/dojo/test_curobo_world.py
+mocks GPU proposals and checks box/sphere transforms, limits, collisions,
+deadline fallback and owned-worker cleanup; it needs no GPU dependencies.
+
+The optional GPU worker requires the deployed cuRobo v2 and its public X5
+configuration in the current Python environment. Its process isolation keeps a
+fatal CUDA failure from poisoning Isaac. The installed MotionPlanner attachment
+accessor refers to a missing solver property, so the adapter binds managers to
+the available trajectory/IK/graph models. Mesh rendering links are excluded
+from IK tool targets; one trajectory seed avoids invalid graph-seed batches.
+
+Validate on paired settled dev layouts. Report success/score, spread, steps,
+overall plan_s, added-search/startup time and fallback reasons. Request counts
+include speculative skill candidates. Do not treat shared-machine timing as
+a controlled latency benchmark. The GPU request deadline and CPU cooperative
+deadline have different startup/overrun semantics; report them explicitly.
+
 ## 4. Pitfalls (already stepped on)
 
 - **Camera lane profiles:** `scripts/dojo/queues/lane2.sh` retains compute4 defaults.
