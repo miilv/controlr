@@ -1,5 +1,12 @@
 """The diagnostic must not mistake a release's delayed trace name for its current action."""
-from scripts.skills.hang_phase_report import annotate_segments
+import importlib.util
+from pathlib import Path
+
+_spec = importlib.util.spec_from_file_location(
+    "hang_phase_report", Path(__file__).resolve().parents[2] / "scripts/skills/hang_phase_report.py")
+_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_module)
+annotate_segments = _module.annotate_segments
 
 
 def test_segment_boundaries_use_trajectory_lengths():
