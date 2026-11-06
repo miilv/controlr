@@ -632,7 +632,7 @@ class RuntimePolicy:
                 or self.cfg.fill_insert not in ("off", "safe")
                 or self.cfg.fill_holder not in ("off", "stay")
                 or self.cfg.fill_drop not in ("off", "center", "inset")
-                or self.cfg.fill_grasp not in ("off", "vertical", "rolled", "rolled_tilt", "rolled_relay")
+                or self.cfg.fill_grasp not in ("off", "vertical", "rolled", "rolled_tilt", "rolled_relay", "rolled_stage")
                 or self.cfg.fill_move_lift not in ("off", "clear")
                 or self.cfg.fill_joint_limits not in ("inherit", "measured")
                 or self.cfg.rehover_siblings not in ("follow", "keep")

@@ -1299,7 +1299,8 @@ def run_air_handover(sk: Skills, h: dict, tol=(0.004, 7.0, 0.01)) -> SkillResult
 def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_xy: float = 0.012,
                    tol_tilt: float = 8.0, tol_z: float = 0.02, ignore=(), place_kw: dict | None = None,
                    max_spots: int = 3, relay_near=(0.0, -0.28), air_handover: bool = True,
-                   transfer_kw: dict | None = None, spot_avoid=(), as_is_lying: bool = False) -> SkillResult:
+                   transfer_kw: dict | None = None, spot_avoid=(), as_is_lying: bool = False,
+                   relay_place_kw: dict | None = None) -> SkillResult:
     """Put ``label`` at one of ``targets`` (object poses: position AND orientation), re-orienting it in
     the hand. One arm when a grasp fits both ends (``Skills.plan_transfer``); otherwise a relay chain
     through free table spots, the shortest that plans end to end:
@@ -1314,6 +1315,7 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
     Every leg picks its arm; all legs are planned before the first moves, and each later leg is
     re-planned from the world as it is then (same intermediate pose). ``transfer_kw``: extra ``plan_transfer``
     arguments for every leg (grasp tilts, lift height). ``spot_avoid``: fixtures the relay spots must clear (``free_spots``).
+    ``relay_place_kw``: optional place settings for intermediate table legs only; final placement keeps ``place_kw``.
     ``as_is_lying``: an object lying on the table (``lies_on_table``) may be put down as it is on a relay spot although
     its lowest points are a line (a tube: ``rests_stably`` wants a footprint)."""
     sk.refresh()
@@ -1362,7 +1364,7 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
                 if key not in cache:
                     mids, ys = (([rest_with_R(sk, label, sp, R) for R in Rs], yaw_sym) if kind == "target"
                                 else ([rest_with_R(sk, label, sp, R_now)], 4))
-                    cache[key] = (mids, ys, _plan_leg(sk, label, mids, ys, at=at, transfer_kw=tkw))
+                    cache[key] = (mids, ys, _plan_leg(sk, label, mids, ys, at=at, place_kw=relay_place_kw, transfer_kw=tkw))
                 mids, ys, rl = cache[key]
                 if isinstance(rl, SkillResult):
                     notes.append(f"{kind} {np.round(sp, 2).tolist()}: {rl.note[:90]}")
@@ -1381,7 +1383,8 @@ def place_oriented(sk: Skills, label: str, targets: list, yaw_sym: int = 1, tol_
                 + f" -> target {rf[0].arm} ({rf[0].grasp.note})")
             for i, (kind, sp, rl) in enumerate(legs):
                 tgt = [rl[1].T_obj_target]
-                res = _run_leg(sk, label, tgt, 1, first=rl if i == 0 else None, transfer_kw=tkw)
+                res = _run_leg(sk, label, tgt, 1, first=rl if i == 0 else None,
+                               place_kw=relay_place_kw, transfer_kw=tkw)
                 if not res.ok and res.status in ("step_budget", "ended", "grasp_slip", "ik_fail", "collision", "logic"):
                     return res
                 sk.bank()
@@ -1949,10 +1952,10 @@ def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, b
         mode = getattr(sk, "fill_grasp", "off")
         long = int(np.argmax(o.asset.extents))
         rolled = abs(float(o.R[2, long])) < 0.2 and float(np.max(np.abs(o.R[2, :]))) < math.cos(math.radians(10))
-        if mode == "vertical" or (mode in ("rolled", "rolled_tilt", "rolled_relay") and rolled):
+        if mode == "vertical" or (mode in ("rolled", "rolled_tilt", "rolled_relay", "rolled_stage") and rolled):
             preferred = (_fill_vertical_grasps(o, sk.kin, arm, tilts=(0.0, 25.0, 40.0))
-                         if mode in ("rolled_tilt", "rolled_relay") else _fill_vertical_grasps(o, sk.kin, arm))
-            cands = (preferred if mode == "rolled_relay" else
+                         if mode in ("rolled_tilt", "rolled_relay", "rolled_stage") else _fill_vertical_grasps(o, sk.kin, arm))
+            cands = (preferred if mode in ("rolled_relay", "rolled_stage") else
                      preferred + [dataclasses.replace(g, score=g.score + 2.0) for g in cands])
         Tinv = inv_T(o.T)
         k = int(np.argmax(o.asset.extents))
@@ -2102,7 +2105,9 @@ def _fill_container(sk: Skills, objects: list[str], container: str, drop: float 
                                      "hover_clear": 0.01, "grip_only": (container, *st["inside"]),
                                      **({"hover_clear": 0.003, "servo_xy_tol": 0.004}
                                         if getattr(sk, "fill_insert", "off") == "safe" else {})},
-                           transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min, skip=tuple(bad))}, air_handover=False)
+                           transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min, skip=tuple(bad))}, air_handover=False,
+                           relay_place_kw=({"release_gap": 0.020, "drop_ok": True}
+                                           if getattr(sk, "fill_grasp", "off") == "rolled_stage" else None))
         finally:
             sk.log = log0
         if r.status == "grasp_slip":
