@@ -1,6 +1,6 @@
 """Explicit compute3 proxy-domain rehearsal render; run under the heavy GPU lock.
 
-Two workers, disjoint output roots, four physical CPU cores reserved. Stops only
+Two base workers / three focused workers, disjoint roots, four physical CPU cores reserved. Stops only
 its own subprocess groups if free VRAM drops below 6 GiB or disk below 10 GiB.
 """
 from concurrent.futures import ThreadPoolExecutor
@@ -80,6 +80,8 @@ def main():
     def worker(i):
         root = d / (f'extras{i}' if a.phase == 'extras' else f'render{i}')
         ids = '100030-100039' if i == 0 else '100040-100049'
+        if a.phase == 'extras':
+            ids = ['100030-100036', '100037-100043', '100044-100049'][i]
         tasks = ['general_pickup', 'hang_mugs_random', 'sort_nesting_dolls_by_size_random',
                  'make_toast_random', 'store_laptop_and_headphones_random', 'pour_liquid_into_cup_random',
                  'arrange_largest_number', 'organize_table', 'classify_objects']
@@ -105,8 +107,8 @@ def main():
     watcher = threading.Thread(target=guard, daemon=True)
     watcher.start()
     try:
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            futures = [pool.submit(worker, i) for i in (0, 1)]
+        with ThreadPoolExecutor(max_workers=3 if a.phase == 'extras' else 2) as pool:
+            futures = [pool.submit(worker, i) for i in range(3 if a.phase == 'extras' else 2)]
             for future in futures:
                 future.result()
     finally:

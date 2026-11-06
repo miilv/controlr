@@ -117,7 +117,11 @@
     "llm_calls": 0,
     "compute4_access": false,
     "reserved_physical_cpu_cores": 4,
-    "parallel_render_workers": 2,
+    "parallel_render_workers": {
+      "initial_and_repair": 2,
+      "focused_extras": 3,
+      "stop_below_free_vram_gib": 6
+    },
     "light_locks": "never held; reserved for G3 skill streams"
   },
   "amendment": "Lead requested full utilization after genuine 5.1 startup failure; freeze proxy-domain ablation before rendering or training. Historical recipe and genuine hitcheck remain separate."
