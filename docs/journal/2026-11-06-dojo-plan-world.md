@@ -218,3 +218,25 @@ Capture under compute6:~/dojo-data/plan/round2. Same strict light admission:
 Only after measuring coverage below 20% fallback on tools and egg will the
 requested paired 10-layout tools/egg/HANG/stack score study start. If the gate
 cannot be met, report why and retain the failure evidence instead.
+
+
+Coverage recovery profile is opt-in: plan_profile=legacy|recover, default legacy.
+Source 1f186059 adds a ten-second request budget, 64 IK seeds, four planning
+attempts / 16 graph iterations (still one trajectory seed), 2 mm / .03 rad GPU
+goal tolerance inside the unchanged 3 mm / .035 rad validator, and 2 mm optimizer
+activation. A timed-out owned worker is stopped, but recover retries a fresh
+worker on the next query. Legacy retains its earlier budget/caching settings.
+
+Recover explicitly removes the accepted held label from world obstacles,
+uses covering mesh-surface spheres when the belief already has the mesh, and
+converts the existing native height fields into bounded conservative columns.
+No simulator access is added. An initially colliding request can try a native
+checked vertical retract (3/6/10 cm), then cuRobo. The joined path must still pass
+the full original validator and requested rates/easing; a partial prefix never
+executes. All stage flags and attempts remain logged.
+
+The [coverage pilot config](../experiments/2026-11-06-plan-round2-coverage-config.json)
+fixes tools and egg layouts 100000/01 before outcomes. Every speculative request
+and validation rejection stays in the denominator. Require <20% fallback in
+each cell before the four-cell paired score study. Raw request-only diagnostic
+replays are distinct from usable, fully validated G3 paths.
