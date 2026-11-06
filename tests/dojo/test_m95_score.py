@@ -151,3 +151,23 @@ def test_x2_split_by_run_group():
     assert rows(lambda r: "_gcon_" in r) == "| J | 1 | 1 | 0 | 0 | 1 | 0 | 0 |"
     assert rows(lambda r: "_gcoff_" in r) == "| J | 1 | 0 | 1 | 1 | 0 | 0 | 0 |"
     assert rows(None) == "| J | 2 | 1 | 1 | 1 | 1 | 0 | 0 |"
+
+
+def test_relocation_exact_writes_survive_version_log_without_double_counting():
+    a = [0.12345678, 0, 0.8, 1, 0, 0, 0]
+    b = [0.13, 0, 0.8, 1, 0, 0, 0]
+    c = [0.133, 0, 0.8, 1, 0, 0, 0]  # 3 mm update is below the version threshold
+    reloc = [{"kind": "watch_relocate", "label": "tile", "step": 10, "before7": a, "after7": b},
+             {"kind": "watch_relocate", "label": "tile", "step": 14, "before7": b, "after7": c},
+             {"kind": "watch_relocate", "label": "tile", "step": 18, "ok": False}]
+    coarse = [{"kind": "belief_write", "label": "tile", "step": 10, "writer": "perception", "version": 2,
+               "before7": [round(v, 5) for v in a], "after7": b},
+              {"kind": "belief_write", "label": "other", "step": 10, "writer": "a1",
+               "before7": a, "after7": b}]
+    exact = ms.belief_writes({"events": reloc})
+    assert len(exact) == 2 and exact[0]["before"][0] == a[0]
+    mixed = ms.belief_writes({"events": reloc + coarse})
+    assert [(w["writer"], w["label"]) for w in mixed] == [("a1", "other"),
+                                                               ("watch_relocate", "tile"),
+                                                               ("watch_relocate", "tile")]
+    assert mixed[1:] == exact

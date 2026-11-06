@@ -66,11 +66,19 @@ def belief_writes(rep: dict) -> list[dict]:
     from dojo.perception.grasp_metric import _applied
     evs = [e for e in rep.get("events") or [] if e.get("label") and isinstance(e.get("step"), (int, float))]
     if any(e.get("kind") == "belief_write" for e in evs):
+        # Exact relocation writes include sub-5-mm updates omitted by the coarse version log.
+        # Replace the matching version event (its pose is rounded to 5 decimals), rather than count twice.
+        reloc = [e for e in evs if e.get("kind") == "watch_relocate" and e.get("before7") and e.get("after7")]
+        covered = {(e["step"], e["label"], tuple(round(v, 5) for v in e["after7"])) for e in reloc}
+        writes = [e for e in evs if e.get("kind") == "belief_write" and e.get("before7") and e.get("after7")
+                  and not (e.get("writer") == "perception" and "version" in e
+                           and (e["step"], e["label"], tuple(round(v, 5) for v in e["after7"])) in covered)]
         # runs with A1's write log: every semantic pose change (> 5 mm / 5 deg or an asset change, not held) is one
-        # belief_write {writer: the object's source, before7, after7}, whoever wrote it: use those alone
-        return [{"writer": str(e.get("writer")), "step": int(e["step"]), "label": e["label"], "before": e["before7"][:3],
+        # belief_write {writer: the object's source, before7, after7}; exact relocations supplement this log
+        return [{"writer": "watch_relocate" if e.get("kind") == "watch_relocate" else str(e.get("writer")),
+                 "step": int(e["step"]), "label": e["label"], "before": e["before7"][:3],
                  "after": e["after7"][:3], "q_before": e["before7"][3:7], "q_after": e["after7"][3:7]}
-                for e in evs if e.get("kind") == "belief_write" and e.get("before7") and e.get("after7")]
+                for e in writes + reloc]
     out = []
     for i, e in enumerate(evs):
         k, lab, st = e.get("kind"), e["label"], int(e["step"])
@@ -154,7 +162,7 @@ def cmd_audit(a) -> None:
     import re
     by = defaultdict(list)
     for x in rows:
-        m = re.match(r"c4b_[a-z0-9]+_([a-z0-9]+)_\d+", x["run"])
+        m = re.match(r"c[46]b_[a-z0-9]+_([a-z0-9]+)_\d+", x["run"])
         arm = m.group(1) if m else "-"
         key = {"task": (x["task"], x["writer"]), "arm": (arm, x["writer"]),
                "task,arm": (f"{x['task']} {arm}", x["writer"])}[a.by]
