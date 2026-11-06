@@ -74,3 +74,5 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | 2026-11-06 | [dojo-ab-wave](2026-11-06-dojo-ab-wave.md) | post-D-C19 four new switches and two fresh salted re-tests | Prospective: six physics head jobs, 316 camera jobs; lead release and validation required |
 | 2026-11-06 | [dojo-ab-wave-launch](2026-11-06-dojo-ab-wave-launch.md) | physics gates and safe camera-wave dispatch after D-C19 | toy A3/5 B4/5; conveyor A8/10 B8/10; lead approved smoke gates; peg camera block launched on one lane, adoption pending |
+| 2026-11-06 | [PLAN CPU object routes](2026-11-06-plan-world-g3.md) | bounded belief/attachment-aware free-space search | 10 pairs each: tools 77.5→75; egg 23.5→28.5 (0 full successes); stack 100→100; defaults off |
+| 2026-11-06 | [PLAN routes camera spec](2026-11-06-plan-routes-camera-ab.md) | transfer the partial-score egg signal to camera belief | prospective 10 gain + 20 guard pairs, standard score/flip gate; no camera dispatch |

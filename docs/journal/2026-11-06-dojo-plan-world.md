@@ -56,5 +56,19 @@ RAM / 600% CPU scopes, 30-minute job bound with KILL grace. Admission takes one
 of light locks 1/2 and checks used VRAM <=22528 MiB; no heavy lock, system changes,
 or other-process signals. Inputs from other streams are read/copied only.
 
-Results pending; see the experiment report once collected. No camera dispatch
-or adoption is justified before the paired result.
+CPU route comparison complete: [report](../experiments/2026-11-06-plan-world-g3.md),
+[compact results](../experiments/2026-11-06-plan-world-results.json).
+Tools 77.5→75 (4/10 successes both); egg 23.5→28.5 (0/10 both);
+stack 100→100 (10/10 both). Egg has five score wins / one loss, paired SD
+12.91 points. A prospective camera specification keeps the standard
+full-success flip rule unchanged. Nothing is adopted or dispatched.
+
+The candidate's second tool batch initially waited on slots 1/2. Only its checked,
+unstarted waiter PID 229815 was stopped; the chain resumed after the completed
+batch, using light wildcard slots and still at most two PLAN jobs. Receipt:
+~/dojo-data/plan/waiter-recovery.txt. No other stream's process was signalled.
+
+Initial full unit suite: 1837 passed / 187 skipped. A port review added an
+unknown-attachment guard (52 focused tests passed): a closed ported gripper
+without an accepted attachment retains legacy routing. Native cells above do
+not use that port path. Full tests are being rerun with the GPU adapter.
