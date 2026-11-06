@@ -6,6 +6,17 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Gate camera dispatch on a genuine-render startup smoke.** CUDA availability,
+  package parity and a passing physics-only settle do not certify Isaac RTX.
+  Require a bounded dev render on the exact deployment before consuming a
+  measurement panel ([incident](incidents/2026-11-06-integ3-camera-startup.md)).
+
+- [ ] **Fail closed when the Isaac driver crashes before an episode row.**
+  `integ_eval.sh` can return zero after a native startup crash; lane no-row
+  retries prevent false scores but can consume registered attempts across
+  multiple pairs. Propagate driver failure and stop the family after repeated
+  startup failures ([incident](incidents/2026-11-06-integ3-camera-startup.md)).
+
 - [ ] **Distinguish slow active perception from a rendered-driver hang.** The
   300-second GUI-warning watchdog can fire while inverse-layout fitting is
   actively computing. Add a bounded, observable perception-progress signal
