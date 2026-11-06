@@ -13,6 +13,8 @@ The new HANG table baseline is 61.5 / 4 successes, compared with the earlier
 layout 100038 (100→40). Its cause is not established. Use the new same-source
 control, and do not pool or substitute the historical baseline.
 
+[Machine-readable results and provenance](2026-11-06-plan-extension-results.json).
+
 ## Aggregate
 
 Score is 0–100, with sample SD. Times are observed wall seconds on a shared machine, not a controlled latency benchmark. Planning time includes all candidate search; query/validation and cold startup are subsets.

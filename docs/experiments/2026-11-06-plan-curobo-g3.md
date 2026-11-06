@@ -6,6 +6,8 @@
 
 The native skill planner already checks objects and held geometry; this experiment changes the free-space proposer. cuRobo receives believed OBBs/container parts and attached-box covering spheres, then the existing Collision model validates its proposals. See the [journal](../journal/2026-11-06-dojo-plan-world.md) and [worker incident](../incidents/2026-11-06-plan-curobo-worker.md).
 
+[Machine-readable results and provenance](2026-11-06-plan-curobo-results.json).
+
 ## Aggregate
 
 Score is 0–100, with sample SD. Times are observed wall seconds on a shared machine, not a controlled latency benchmark. Planning time includes all candidate search; query/validation and cold startup are subsets.

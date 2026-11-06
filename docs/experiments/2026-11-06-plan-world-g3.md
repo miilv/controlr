@@ -6,6 +6,8 @@
 
 This is a bounded CPU skill-planner extension. It does not implement a dynamic cuRobo world or change simlab Mover. Existing skill collision models already include many objects in A. The added search includes Geometry, uses the existing held attachment, and tries Cartesian/midpoint routes before legacy fallback.
 
+[Machine-readable results and provenance](2026-11-06-plan-world-results.json).
+
 ## Aggregate
 
 Score is on a 0–100 scale; spread is sample SD. Planning totals include all candidate planning; added-search time is a subset. Fallback counts are speculative requests, including rejected candidates, not executed moves.
