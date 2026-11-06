@@ -62,3 +62,53 @@ def test_runtime_config_validation():
     assert RuntimeConfig().plan_world == "table"
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(plan_world="oops"))
+
+
+def test_failed_line_uses_checked_via(monkeypatch):
+    from dojo.skills import world_plan
+    m = fixture()
+    outcomes = [MoveResult("collision", "left"),
+                MoveResult("reached", "left", [Segment(np.ones((2, 6)), .05)]),
+                MoveResult("reached", "left", [Segment(np.ones((2, 6))*2, .05)])]
+    checked = Mock(side_effect=outcomes)
+    monkeypatch.setattr(Motion, "line", checked)
+    monkeypatch.setattr(world_plan, "BUDGET_S", 100.)
+    result = world_plan.plan_objects(m, "left", np.zeros(6), np.eye(4), .05,
+                                    "carry", 0., ("tool",), None, 2)
+    assert result.ok and len(result.segments) == 2
+    assert checked.call_count == 3
+    assert m.world_plans[0]["route"].startswith("via:")
+
+
+def test_belief_geometry_added_without_mutating_caller(monkeypatch):
+    from dojo.skills import world_plan
+    m = fixture()
+    m.coll.world.objects["basket"] = SimpleNamespace(label="basket", obj_type="Geometry")
+    def line(self, *a, **kw):
+        assert "basket" in self.coll.include
+        assert self.coll.obj_margin == .006
+        return MoveResult("reached", "left")
+    monkeypatch.setattr(Motion, "line", line)
+    world_plan.plan_objects(m, "left", np.zeros(6), np.eye(4), .05, "x", 1., (), None, 2)
+    assert not m.coll.include
+
+
+def test_port_attachment_comes_only_from_belief(monkeypatch):
+    from dojo.skills import world_plan
+    from dojo.skills.ported.harness_robot import HarnessRobot
+    from dojo.skills.world import AssetInfo
+    robot = object.__new__(HarnessRobot)
+    obj = SimpleNamespace(asset=AssetInfo("tool", np.zeros(3), np.ones(3)*.01))
+    rel = np.eye(4)
+    belief = SimpleNamespace(attached={"left": ("tool", rel)})
+    robot.sk = SimpleNamespace(refresh=lambda: None, held={"left": None},
+                               provider=SimpleNamespace(belief=belief),
+                               world=SimpleNamespace(objects={"tool": obj}), motion=object())
+    robot.ex = SimpleNamespace(g={"left": 0.})
+    robot.env = SimpleNamespace()  # no truth accessors exist
+    def plan(*args):
+        assert args[7] == ("tool",)
+        assert np.array_equal(args[8].T_tcp_obj, rel)
+        return None
+    monkeypatch.setattr(world_plan, "plan_objects", plan)
+    assert robot.object_path("left", [0, 0, 1, 1, 0, 0, 0], np.zeros(6)) is None

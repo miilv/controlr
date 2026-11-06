@@ -560,3 +560,13 @@ round grasps. `egg_wall_model` (`off` / `shell`) tests the lower/upper radial me
 adds spins about the round object's long axis. All default off and map to G3 `--skill-attr` switches. Dense wall checks,
 collision planning, pick verification and the episode budget still apply. Pair settled
 layouts from the same generator; v6 egg records must not be mixed with v15 records.
+
+### Testing belief-object routing
+
+Use `--skill-attr plan_world=objects` in G3, or `plan_world: objects` in
+the dojo RuntimeConfig. Default `table` retains legacy skill behavior.
+`tests/dojo/test_world_plan.py` covers dispatch, held transforms, obstacle
+inclusion, checked detours, deadline fallback and the port's belief-only input.
+Compare paired settled dev layouts; aggregate G3 `world_plans` alongside
+`plan_s` and steps. The cooperative deadline can overrun one in-flight IK call.
+The module uses the skill Collision model, not a dynamic cuRobo world.

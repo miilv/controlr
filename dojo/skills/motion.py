@@ -20,7 +20,6 @@ the joint waypoints by segment, the exact env-step cost, the TCP pose reached, a
 from __future__ import annotations
 
 import math
-import time
 from dataclasses import dataclass, field
 
 import numpy as np

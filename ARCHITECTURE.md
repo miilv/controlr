@@ -505,3 +505,15 @@ opening-resolution guard to thin disc geometry. An opening-only negative that
 cannot resolve the disc's thickness is unknown; other held evidence retains its
 normal interpretation. The existing `held_thin` switch applies the same guard to
 all unresolved thin objects. Neither switch measures a pose or guarantees a grasp.
+
+### Belief-object free-space routing
+
+Dojo `RuntimeConfig.plan_world` defaults to `table` (legacy skill routing,
+which retains its existing object checks). `objects` adds checked Cartesian
+and bounded lateral/height detours in `dojo/skills/world_plan.py`, using the
+current Collision world and TCP-relative held geometry. It includes static
+Geometry obstacles, preserves the caller's container/contact models and margins,
+and falls back to legacy routing after a cooperative search budget. It does
+not change contact-line or explicit-joint semantics, execution step rates,
+the safety envelope, or simlab's cuRobo Mover. G3 `world_plans` records time,
+attempts and fallback per speculative plan request.
