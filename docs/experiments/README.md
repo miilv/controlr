@@ -6,6 +6,8 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-06 | [pen-conditional-g3](2026-11-06-pen-conditional-g3.md) | Can geometry retain PEN gains without baseline regressions? | 20 pairs: 14.75→20.75, 7 up/0 down; original 34 retained; added five all ties |
+| 2026-11-06 | [pen-conditional-camera-prereg](2026-11-06-pen-conditional-camera-prereg.md) | Does the conditional profile transfer to camera belief? | Parked; default decision rule; no camera run |
 | 2026-11-06 | [pen-inset-camera-prereg](2026-11-06-pen-inset-camera-prereg.md) | Does inset packing transfer to camera belief? | Supersedes centered-fit spec; default decision rule; no camera run |
 | 2026-11-06 | [pen-g3](2026-11-06-pen-g3.md) | Pen grasp and holder/drop skill ceiling | Fresh dev n=10: 6.5→25.0, 10 up/0 down; rolled-only null; 0 full successes |
 | 2026-11-06 | [pen-camera-prereg](2026-11-06-pen-camera-prereg.md) | Do new pen grasps, holder and release geometry transfer to camera belief? | Pre-registration only; camera run gated on paired G3 gain |

@@ -78,7 +78,7 @@ providers may perform tracking or belief writes on refresh. Before any of the
 five added layouts produced scores, the intermediate `final_A20` / `final_B20`
 jobs were stopped by their checked module/output PIDs 252091 / 252092. Their
 partial results are not the final panel. B's intermediate code stamp was stale
-(0bb9348a); source hashes retained under the stream root identified its actual
+(0bb9348a); the source files were verified against the actual
 0fc83e8f source. This metadata issue is corrected for the final launch.
 
 **Final source freeze: 3fda84cd.** The condition consumes the world already at
@@ -108,6 +108,75 @@ SIMLAB_DEV_LAYOUT_SUFFIX=.settled scripts/simlab/rdpy.sh -u -m dojo.skills.g3 ru
 B uses `guard_B20` and the single switch above. Resource wrappers use light3/4,
 check used VRAM <=24576 MiB before starting, and constrain each job to 10G RAM /
 600% CPU with single-thread BLAS. Replays finished on light3 before the final launches;
-B uses light4. At most two PEN jobs hold locks. No camera lock, system changes,
-Claude route, or live LLM calls. Results and final verification follow in the
-linked experiment report once both arms finish.
+B uses light4. At most two PEN jobs hold locks. A single broad-profile 100001 diagnostic
+rerun with read-only pick-planner logging is queued on the same light4, after
+the final B panel; it cannot occupy a third lock. It is excluded from the paired
+comparison. No camera lock, system changes,
+Claude route, or live LLM calls. Results and verification are in the
+linked experiment report below.
+
+The final implementation CI passed **1871 tests / 187 skipped** in 9m31s; the
+prior local full run passed **1864 / 187** in 17m39s and final focused tests
+passed **48**. The final PR-head check is recorded separately after the report.
+Runtime: RTX 5090, driver 580.178.04, Isaac Sim 5.1.0.0, Python 3.11.18,
+Torch 2.7.0+cu128, NumPy 1.26.0. All five original final pairs reproduce
+34.0 mean and one success; their actions match each other and the round-1
+baseline exactly. All original holders end within 0.1 degrees of upright.
+
+
+## Completed final comparison
+
+All 20 pairs complete: **14.75 ± 22.85 → 20.75 ± 22.44**, paired gain **6.0 ±
+8.97** points (sample SD), **7 wins / 0 losses / 13 ties**. Original-five
+**34→34**, previous fresh-ten **6.5→18.5**, added fresh-five **12→12**, all five
+ties. Full successes **1/20→1/20**, no success flips. Holders tipped **5→2**:
+three fixes and no new tips. Remaining tips 100031/100042 have the condition
+off. The added five support no-regression only, not a new-draw gain. The profile
+was selected using the previous fifteen; there is no camera/board adoption claim.
+
+All eleven inactive trajectories equal their paired A exactly. All fifteen old
+A trajectories equal round 1; every old B trajectory equals its selected earlier
+baseline or inset branch. Both final jobs exit 0; all episodes stable, no missing
+meshes, matching code stamps. Final A/B wall totals **2924.3/3030.4 seconds**,
+planning **2284.9/2393.1 seconds**, excluding reset/startup. Calls/tokens **0/0**.
+
+The [report and per-layout table](../experiments/2026-11-06-pen-conditional-g3.md)
+and its JSON hold condition measurements, 40 layout hashes, action hashes,
+runtime/source provenance, last per-pen events and replay scores. The conditional
+camera proposal remains parked under the default rule; no camera jobs were run.
+
+Merged main at 68a71238 for the SEG/perception additions without changing the four
+PEN production file hashes. Combined local full-suite attempt: **1890 passed,
+191 skipped, 1 failed** (18m37s), an unchanged SO-101 fake-arm reset false stop.
+The fake-arm file rerun passes **14/14** (18.13s). The final combined-tree full
+rerun passes **1891 tests / 191 skipped** in **19m25s**. No SO-101 code is changed.
+
+
+## Exact 100001 pickup obstruction and cleanup
+
+The instrumented broad-profile rerun on 100001 exits 0, reproducing **25 points,
+365 steps and exactly the round-1 action sequence**. All 57 target0 pick-plan
+calls occur at **step 74**. The first top-axis-0 candidate’s joint approach hits
+`pen_holder` at interpolation t=0.18; its fallback via-pose z=1.078 is unreachable
+with measured joint limits. Other approaches hit the inserted target3 oil pen.
+There are 14 collision-refused / 12 IK-refused / 31 feasible pick plans across
+the direct and relay search; even feasible picks do not yield an executable
+whole transfer. This is why a screened pick/drop IK pair is insufficient. The
+original full note records 330 screened direct pairs. Internal calls and failed
+motion retries are not independent pick trials. This is an exact action-sequence
+match under diagnostic logging, not the approximate CPU replan at a later pose.
+The final JSON includes the logged full refusals.
+
+All paired jobs, saved-action replays and the supplementary diagnostic have
+completed. No PEN physics job remains; no heavy lock was used. The final pair
+panel has no score loss or new holder tip, and all five added draws are ties.
+
+
+## Final verification
+
+The local combined-tree full suite passes **1891 / 191 skipped** (19m25s), after
+the disclosed transient fake-arm failure and successful file recheck. The four
+PEN production SHA256s still match freeze 3fda84cd. Report, JSON evidence, camera
+pre-registration and index are in PR #397; final-head CI is published in its
+checks. Defaults remain off; the camera specification is parked and this PR is
+not merged. All PEN compute6 jobs have exited and no owned physics process remains.
