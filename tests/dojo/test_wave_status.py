@@ -48,3 +48,8 @@ def test_boot_stamp_only_authorized_coord_file(tmp_path):
     stamp.write_text('1 old other\n')
     assert subprocess.run(['bash', '-c', script]).returncode == 0
     assert stamp.read_text().split()[-1] == 'ilia-ab'
+    # Memory can rise during the 120 s wait: recheck at actual admission.
+    stamp.write_text('1 old other\n')
+    blocked = script.replace('cap_ok() { return 0; }', 'cap_ok() { return 1; }')
+    assert subprocess.run(['bash', '-c', blocked]).returncode == 1
+    assert stamp.read_text() == '1 old other\n'
