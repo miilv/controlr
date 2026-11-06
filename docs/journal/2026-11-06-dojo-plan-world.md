@@ -257,3 +257,18 @@ hits after GPU-successful paths. Neither change weakens final validation.
 The same two layouts per cell, full denominator and <20% gate are frozen in
 [the v2 config](../experiments/2026-11-06-plan-round2-v2-coverage-config.json).
 No paired score comparison has begun.
+
+
+Second pilot: tools 4/31 (12.9%) now passes, egg 29/54 (53.7%) does not.
+The egg first layout is 3/18; second is 26/36. No score comparison is dispatched.
+GPU inspection finds 21 model handles sharing one sphere buffer: attachments
+already propagate, so that suspected cause is ruled out. Actual start and goal
+constraint queries now run without the earlier incomplete-state diagnostic error.
+
+Third probe source 59c48ccf adds native goal evidence (full and hand/held-only),
+without pruning any requests, plus checked tool-axis and inward retracts.
+[The same coverage gate/layouts](../experiments/2026-11-06-plan-round2-v3-coverage-config.json)
+remain fixed. In parallel, five one-layout legacy-profile diagnostic episodes
+(tools/egg/stack/sweep 100000, HANG 100031) collect complete stage classifications
+on the corrected instrumentation. Their scores are not a paired performance
+comparison. Historical missing result codes remain unknown, not fabricated.

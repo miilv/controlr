@@ -1,0 +1,51 @@
+{
+  "source_commit": "59c48ccfefbb24cd8fb6efb0f8cd956fe8aafc06",
+  "phase": "third coverage pilot: native goal diagnostics and additional checked retract directions",
+  "config": {
+    "plan_world": "objects",
+    "plan_solver": "curobo",
+    "plan_profile": "recover",
+    "plan_capture": "requests"
+  },
+  "layouts": {
+    "store_tools_in_toolbox": [
+      100000,
+      100001
+    ],
+    "fill_egg_holder": [
+      100000,
+      100001
+    ]
+  },
+  "input_sha256": {
+    "store_tools_in_toolbox/100000": "591e3b4c97fbf606434eb93dd7254bb94dac8ab68bfd3f078a3369b0ef4d064f",
+    "store_tools_in_toolbox/100001": "7902526fafa9e1bf7015d79c7cbc941db86b1be1c2b114011f49e86bbcaf8a4e",
+    "fill_egg_holder/100000": "16fab329d32fd420401d65a6ad7e8d613453e145de7e1afa3a7e103388260272",
+    "fill_egg_holder/100001": "b0682eaae0b9dcb39be6c09de2c56ce0b082f80d25354d8e875ad02d94ec523a"
+  },
+  "gate": "Every requested plan counts, including speculative candidates and parent validation rejects. Fallback <20% separately on tools and egg; no weakened validation, step rates or contact semantics.",
+  "next_if_gate_passes": "Freeze source and repeat ten paired layouts each for tools, egg, HANG and stack, keeping profile recover fixed and varying only plan_world.",
+  "timeout_s": 10,
+  "startup_timeout_s": 60,
+  "ik_seeds": 64,
+  "trajopt_seeds": 1,
+  "max_attempts": 4,
+  "graph_iterations": 16,
+  "host": "compute6",
+  "admission": {
+    "max_jobs": 4,
+    "max_used_vram_mib": 20480,
+    "min_available_ram_mib": 12288,
+    "max_load1": 26
+  },
+  "LLM_calls": 0,
+  "prior_pilot": {
+    "source": "9eeb7756",
+    "tools_fallbacks": 4,
+    "tools_requests": 31,
+    "egg_fallbacks": 29,
+    "egg_requests": 54,
+    "gate_passed": false
+  },
+  "output_root": "compute6:~/dojo-data/plan/round2/coverage-v3-{tools,egg}"
+}
