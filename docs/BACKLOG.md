@@ -580,6 +580,11 @@
 
 ## P2 — harness and infrastructure
 
+- [ ] **Record camera drain reasons separately.** `power_watch.py` reports
+  `lane2_draining` whenever `STOP.heavy2` exists, including a manual maintenance
+  drain. Preserve a reason/owner so supervisors do not mistake maintenance for
+  a power-triggered reduction ([SEGAB launch](journal/2026-11-06-segab-compute6-launch.md)).
+
 - [ ] **dojo twin: a perturbed-physics margin for verify on container drops (deferred by the lead, 2026-10-28)**
   (experiments/2026-10-28-twin-crossbox). Across box classes (compute3 5090 vs compute2 4090), 30 of 305 independent
   decision points flip (9.8 %, 95 % upper 13.1 %): flat places 0 / 229, container drops 30 / 76 (tools 22 / 39, bottles
