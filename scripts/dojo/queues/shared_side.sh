@@ -2,7 +2,7 @@
 # box-level shared side servers for camera lanes (lead 29 Oct, after #301's locks): seg v2b, glyph digit_v2,
 # glyphk kong_v1b, from LANE_REPO, each in its own stream-owned scope.
 #   shared_side.sh start | stop | status
-S=${LANE_STATE:-$HOME/dojo-integ-c4-state}; R=${LANE_REPO:?set LANE_REPO}; M=$HOME/dojo-data/segtrain/models; D=$S/shared
+S=${LANE_STATE:-$HOME/dojo-integ-c4-state}; R=${LANE_REPO:?set LANE_REPO}; M=${LANE_MODELS:-$HOME/dojo-data/segtrain/models}; D=$S/shared
 STREAM=${LANE_STREAM:-integ-c4}
 mkdir -p "$D"
 start_one() {   # KIND MODEL CMD...

@@ -29,9 +29,10 @@ nvidia-smi() {{ echo "$USED"; }}
 {cap}
 cap_ok
 '''
-    for used, ok in [('16384', True), ('16385', False), ('', False), ('error', False)]:
-        result = subprocess.run(['bash', '-c', 'USED='+repr(used)+'\n'+base])
-        assert (result.returncode == 0) == ok
+    for stream, limit in [('integ-c4', 16384), ('integ-c3', 14336)]:
+        for used, ok in [(str(limit), True), (str(limit + 1), False), ('', False), ('error', False)]:
+            result = subprocess.run(['bash', '-c', f'STREAM={stream}\nUSED='+repr(used)+'\n'+base])
+            assert (result.returncode == 0) == ok
 
 
 def test_boot_stamp_only_authorized_coord_file(tmp_path):

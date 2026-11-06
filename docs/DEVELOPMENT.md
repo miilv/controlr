@@ -661,3 +661,7 @@ adds spins about the round object's long axis. All default off and map to G3 `--
 collision planning, pick verification and the episode budget still apply. Pair settled
 layouts from the same generator; v6 egg records must not be mixed with v15 records.
 
+The `integ-c3` camera profile accepts only heavy1 on `~/dojo-gpu.lock`, skips
+coord, admits at most 14 GiB used VRAM, and logs `who`/GPU status before each
+job. `LANE_ENV_FILE` selects a private box environment without writing a shared
+home-level file; other profiles retain their existing default.

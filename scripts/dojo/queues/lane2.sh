@@ -9,9 +9,10 @@ set -uo pipefail
 LANE=$1 LOCK=$2
 S=${LANE_STATE:-$HOME/dojo-integ-c4-state}; Q=$S/queue2.txt; RUNS=${LANE_RUNS:-$HOME/dojo-data/integ-c4/runs2}; REPO=${LANE_REPO:?set LANE_REPO to the merged deployment}
 STREAM=${LANE_STREAM:-integ-c4}
+MODELS=${LANE_MODELS:-$HOME/dojo-data/segtrain/models}
 JOB_MAX=${LANE_JOB_MAX_S:-1980}   # 33 min: boot + a 25-min episode cap + teardown (28 min while R2 ran)
 mkdir -p "$RUNS"; touch "$Q" "$Q.lock"
-source "$HOME/dojo-env.sh"
+source "${LANE_ENV_FILE:-$HOME/dojo-env.sh}"
 export DOJO_STREAM=$STREAM DOJO_MIN_FREE_GB=50 INTEG_MIN_FREE_MB=16223 INTEG_MIN_MEM_GB=16 INTEG_YIELD_S=0 INTEG_LOCK_WAIT_S=120
 export DOJO_DATA=${LANE_DATA:-$DOJO_DATA}
 # 00:55Z (lead): ~/dojo-perception-data/bg_folds_51 has no scene/ backgrounds (belt, imitate's basket, organize's cushion
@@ -19,7 +20,9 @@ export DOJO_DATA=${LANE_DATA:-$DOJO_DATA}
 export DOJO_BG_FOLDS="${LANE_BG_FOLDS:-$HOME/dojo-data/bg_folds_51_ilia}"
 [[ -d "$DOJO_BG_FOLDS/fold0/scene" ]] || { echo "$(date -u +%FT%TZ) [$1] no $DOJO_BG_FOLDS/fold0/scene: refusing to start"; exit 2; }
 INO=$(stat -L -c %i "$LOCK")
-if [[ "$STREAM" == integ-c6 ]]; then
+if [[ "$STREAM" == integ-c3 ]]; then
+  [[ "$LOCK" == "$HOME/dojo-gpu.lock" && ! -L "$LOCK" && "$LANE" == heavy1 ]] || { echo "compute3 single heavy slot required"; exit 2; }
+elif [[ "$STREAM" == integ-c6 ]]; then
   [[ "$LOCK" == "$HOME/dojo-gpu.lock" || "$LOCK" == "$HOME/dojo-gpu-heavy2.lock" ]] && [[ ! -L "$LOCK" ]] || { echo "compute6 heavy slot required"; exit 2; }
 else
   [[ "$LOCK" == "$HOME/dojo-integ-c4-$LANE.lock" && ! -L "$LOCK" ]] || { echo "private lane lock required"; exit 2; }
@@ -52,11 +55,13 @@ cap_ok() {   # rendered of ours + 1 <= OURS; others + ours + big side servers + 
   local ours=${1:-1}
   local used; used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1 | tr -d ' ')
   [[ "$used" =~ ^[0-9]+$ ]] || return 1
-  (( used <= 16384 && o + m + d + 1 <= ${2:-4} && m + 1 <= ours && ${v:-0} >= 16223 ))
+  local max_used=16384
+  [[ "$STREAM" == integ-c3 ]] && max_used=14336
+  (( used <= max_used && o + m + d + 1 <= ${2:-4} && m + 1 <= ours && ${v:-0} >= 16223 ))
 }
 # The sole allowed coordination file. No other coord paths are accessed.
 boot_gate() {
-  [[ "$STREAM" == integ-c6 ]] && return 0  # ours alone; never accesses compute4's coordination protocol
+  [[ "$STREAM" == integ-c6 || "$STREAM" == integ-c3 ]] && return 0  # ours alone; never accesses compute4's coordination protocol
   local epoch iso who now
   while true; do
     epoch=0 iso= who=
@@ -149,6 +154,9 @@ while true; do
   source "$REPO/scripts/dojo/disk_guard.sh"
   disk_guard "[wave lane]" || { drop_lock; exit 6; }
   boot_gate || { drop_lock; break; }
+  if [[ "$STREAM" == integ-c3 ]]; then
+    log "shared-account preflight"; who; nvidia-smi --query-gpu=memory.used,memory.free,power.draw --format=csv
+  fi
   line=$(flock "$Q.lock" bash -c 'head -1 "$1"; sed -i 1d "$1"' _ "$Q")
   [[ -z "$line" ]] && { drop_lock; log "queue empty"; break; }
   name=${line%% *}; args=${line#* }; repo="$REPO"; sam=""; mv3d=""; seg=""; glyph=""; glyphk=""; jenv=(); toks=(); keep=()
@@ -192,21 +200,21 @@ while true; do
     # run from the JOB's own pinned deploy venv (+ ultralytics), never another stream's dir (lead, 28 Oct 20:20Z)
     side_start seg "$S/seg.$LANE.sock" DOJO_SEG_ADDR 120 env YOLO_CONFIG_DIR="$S/ultra_cfg" \
       "$repo/.venv/bin/python" -u -m dojo.perception.seg_twin serve --sock "$S/seg.$LANE.sock" \
-      --weights "$HOME/dojo-data/segtrain/models/$seg/best.pt" --classes "$HOME/dojo-data/segtrain/models/$seg/classes.json" \
+      --weights "$MODELS/$seg/best.pt" --classes "$MODELS/$seg/classes.json" \
       --conf 0.25 --max-hours 1 \
       || { side_stop; drop_lock; log "seg server not ready (see $name.seg.log): $name put back, lane stops"; front "$line"; touch "$S/STOP.$LANE"; break; }
   fi
   if [[ -n "$glyph" ]]; then       # S's glyph reader (#277, dojo.perception.glyph_read; ~1 GB VRAM) -> DOJO_GLYPH_ADDR, from the job's deploy
     side_start glyph "$S/glyph.$LANE.sock" DOJO_GLYPH_ADDR 120 env PYTHONPATH="$repo" \
       "$repo/.venv/bin/python" -u -m dojo.perception.glyph_read serve --sock "$S/glyph.$LANE.sock" \
-      --model "$HOME/dojo-data/segtrain/models/$glyph/model.pt" --max-hours 1 \
+      --model "$MODELS/$glyph/model.pt" --max-hours 1 \
       || { side_stop; drop_lock; log "glyph server not ready (see $name.glyph.log): $name put back, lane stops"; front "$line"; touch "$S/STOP.$LANE"; break; }
     jenv+=("DOJO_GLYPH_ADDR_DIGIT=$S/glyph.$LANE.sock")   # #284's explicit digit address (DOJO_GLYPH_ADDR stays: older shas)
   fi
   if [[ -n "$glyphk" ]]; then      # W's #284 routing: mahjong tiles -> DOJO_GLYPH_ADDR_KONG only (S's kong_v1b), numerals stay on --glyph
     side_start glyphk "$S/glyphk.$LANE.sock" DOJO_GLYPH_ADDR_KONG 120 env PYTHONPATH="$repo" \
       "$repo/.venv/bin/python" -u -m dojo.perception.glyph_read serve --sock "$S/glyphk.$LANE.sock" \
-      --model "$HOME/dojo-data/segtrain/models/$glyphk/model.pt" --max-hours 1 \
+      --model "$MODELS/$glyphk/model.pt" --max-hours 1 \
       || { side_stop; drop_lock; log "glyph-kong server not ready (see $name.glyphk.log): $name put back, lane stops"; front "$line"; touch "$S/STOP.$LANE"; break; }
   fi
   if [[ -n "$mv3d" ]]; then        # VGGT-1B (bf16 trunk) + DINOv2-base features: DOJO_EMBED_MODELS must hold dinov2-base
