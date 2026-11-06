@@ -641,3 +641,13 @@ The `integ-c3` camera profile accepts only heavy1 on `~/dojo-gpu.lock`, skips
 coord, admits at most 14 GiB used VRAM, and logs `who`/GPU status before each
 job. `LANE_ENV_FILE` selects a private box environment without writing a shared
 home-level file; other profiles retain their existing default.
+
+### Alternate handle orientation on hooks
+
+`RuntimeConfig.hang_half_turn` (default false; G3 `--skill-attr hang_half_turn=on`)
+adds a second handle orientation to threaded-hook transfer planning. It turns the
+handle frame 180 degrees about its upward axis: the hole center and threading
+line stay fixed, while the wrist gets another approach. Original orientations
+are tried first within each lift strategy. Cradle placements are unaffected.
+This expands geometric candidates without changing hook eligibility, collision
+checks, release motion or scoring. Camera adoption requires a paired experiment.
