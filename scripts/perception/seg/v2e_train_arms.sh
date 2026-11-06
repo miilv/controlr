@@ -2,7 +2,7 @@
 # Frozen data -> cheap matched rehearsal ablation -> v2e. Inherit the heavy lock.
 set -euo pipefail
 N=$(cd "$(dirname "$0")/../../.." && pwd)
-D=${SEG_DATA:?stream data root}
+D=${1:?stream data root}
 PY=$HOME/controlr-identity/.venv/bin/python
 source "$HOME/dojo-c/scripts/perception/bgperc/env.sh"
 export PYTHONPATH="$N:$HOME/dojo-w-ext/pylib:$HOME/dojo-w-ext/pyseg"
@@ -31,7 +31,7 @@ fi
 "$PY" scripts/perception/seg/narrow_rehearsal.py --full "$D/yolo_v2e" \
   --base-classes "$HOME/dojo-w-ext/classes_v2b.json" --out "$D/yolo_narrow" > "$D/export_narrow.log" 2>&1
 "$PY" scripts/perception/seg/audit_rehearsal.py --base-classes "$HOME/dojo-w-ext/classes_v2b.json" \
-  --export "$D/yolo_narrow" --out "$D/support_narrow.json" || [[ $? == 1 ]]
+  --export "$D/yolo_narrow" --out "$D/support_narrow.json" --allow-missing-old
 "$PY" scripts/perception/seg/expand_head.py --model "$HOME/dojo-w-ext/seg_v2b.pt" \
   --classes "$D/yolo_v2e/classes.json" --out "$D/v2e_init.pt" > "$D/expand.log" 2>&1
 train() {

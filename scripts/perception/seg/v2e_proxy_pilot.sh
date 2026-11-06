@@ -2,7 +2,7 @@
 # compute3 only: explicit 6.0 proxy-domain pilot, never a genuine 5.1 render.
 set -euo pipefail
 N=$(cd "$(dirname "$0")/../../.." && pwd)
-D=${SEG_DATA:?stream data root}
+D=${1:?stream data root}
 export RD_HOME=${RD_HOME:?} DOJO_DATA=$D/data
 export OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2
 source "$N/scripts/dojo/disk_guard.sh"

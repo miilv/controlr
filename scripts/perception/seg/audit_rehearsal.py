@@ -46,6 +46,8 @@ def main():
     ap.add_argument('--base-classes', required=True, type=Path)
     ap.add_argument('--export', required=True, type=Path)
     ap.add_argument('--out', required=True, type=Path)
+    ap.add_argument('--allow-missing-old', action='store_true',
+                    help='diagnostic ablation control only; still validate split and vocabulary')
     a = ap.parse_args()
     paths = {'base': a.base_classes, 'classes': a.export / 'classes.json', 'frames': a.export / 'frames.jsonl'}
     raw = {k: p.read_bytes() for k, p in paths.items()}
@@ -54,9 +56,10 @@ def main():
                    [json.loads(s) for s in raw['frames'].splitlines() if s.strip()], classes['val_ids'])
     result['sha256'] = {k: hashlib.sha256(v).hexdigest() for k, v in raw.items()}
     result['kind'] = 'manifest support audit; image availability not checked'
+    result['require_all_old'] = not a.allow_missing_old
     a.out.write_text(json.dumps(result, indent=2) + '\n')
     print(f"{len(result['missing_old'])}/{result['old_classes']} old classes lack training images")
-    raise SystemExit(0 if result['all_old_supported'] else 1)
+    raise SystemExit(0 if result['all_old_supported'] or a.allow_missing_old else 1)
 
 
 if __name__ == '__main__':
