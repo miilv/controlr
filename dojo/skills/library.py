@@ -1949,11 +1949,11 @@ def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, b
         mode = getattr(sk, "fill_grasp", "off")
         long = int(np.argmax(o.asset.extents))
         rolled = abs(float(o.R[2, long])) < 0.2 and float(np.max(np.abs(o.R[2, :]))) < math.cos(math.radians(10))
-        if mode == "vertical" or (mode in ("rolled", "rolled_tilt") and rolled):
+        if mode == "vertical" or (mode in ("rolled", "rolled_tilt", "rolled_relay") and rolled):
             preferred = (_fill_vertical_grasps(o, sk.kin, arm, tilts=(0.0, 25.0, 40.0))
-                         if mode == "rolled_tilt" else _fill_vertical_grasps(o, sk.kin, arm))
-            cands = (preferred
-                     + [dataclasses.replace(g, score=g.score + 2.0) for g in cands])
+                         if mode in ("rolled_tilt", "rolled_relay") else _fill_vertical_grasps(o, sk.kin, arm))
+            cands = (preferred if mode == "rolled_relay" else
+                     preferred + [dataclasses.replace(g, score=g.score + 2.0) for g in cands])
         Tinv = inv_T(o.T)
         k = int(np.argmax(o.asset.extents))
         out = []

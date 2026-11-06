@@ -33,7 +33,7 @@ def test_vertical_switch_defaults_and_validation():
     from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
     from dojo.skills.g3 import SKILL_ATTRS
     assert RuntimeConfig().fill_grasp == "off"
-    assert SKILL_ATTRS["fill_grasp"] == ("off", "vertical", "rolled", "rolled_tilt")
+    assert SKILL_ATTRS["fill_grasp"] == ("off", "vertical", "rolled", "rolled_tilt", "rolled_relay")
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(fill_grasp="typo"), assets=None)
 
@@ -159,3 +159,18 @@ def test_inset_drop_keeps_occupied_space_in_both_fit_attempts(monkeypatch):
     assert calls[0]["min_clear"] == .007
     assert calls[0]["pack"] is True
     assert calls[1]["pack"] is False
+
+
+def test_rolled_relay_excludes_original_pinches_only_for_rolled_objects():
+    from types import SimpleNamespace
+    from dojo.skills import library
+    half = np.array([.079, .008, .010])
+    o = ObjectState("p", "Rigid", "pen", 0, np.array([-.2, -.2, .779]),
+                    R_to_quat(axis_angle_R(np.array([1., 0, 0]), math.radians(26))),
+                    AssetInfo(key="Rigid/pen/00000", bbox_min=-half, bbox_max=half))
+    sk = SimpleNamespace(fill_grasp="rolled_relay", world=SimpleNamespace(obj=lambda _: o), kin=X5Kin())
+    gs = library._fingers_above(sk, "p", np.eye(4), -np.inf)("left")
+    assert len(gs) == 30 and all(g.note.startswith("vertical") for g in gs)
+    o.quat = np.array([1., 0, 0, 0])
+    gs = library._fingers_above(sk, "p", np.eye(4), -np.inf)("left")
+    assert gs and any(g.method == "box" for g in gs)

@@ -221,7 +221,7 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "ported_pour_pace": ("v1", "lean", "overlap"),
                "nest_verify": ("target", "support"),
                "push_goal": ("centre", "cover", "cover_obb"), "fill_move_lift": ("off", "clear"),
-               "fill_grasp": ("off", "vertical", "rolled", "rolled_tilt"),
+               "fill_grasp": ("off", "vertical", "rolled", "rolled_tilt", "rolled_relay"),
                "fill_insert": ("off", "safe"), "fill_holder": ("off", "stay"), "fill_drop": ("off", "center", "inset"),
                "fill_joint_limits": ("inherit", "measured"), "rehover_siblings": ("follow", "keep"),
                "slip_shift": ("off", "across"), "sibling_order": ("given", "far"),
