@@ -96,7 +96,7 @@ def test_low_drop_changes_only_the_approach_height(monkeypatch, mode, expected):
     monkeypatch.setattr(H, "_hole_free", lambda *a: True)
     monkeypatch.setattr(H, "container_of", lambda *a: None)
     monkeypatch.setattr(H, "egg_grasps", lambda *a: [SimpleNamespace(note="level")])
-    monkeypatch.setattr(H, "egg_drop_targets", lambda *a: [(0.012, 0, 1, np.eye(4))])
+    monkeypatch.setattr(H, "egg_drop_candidates", lambda *a: [(0.012, 0, 1, np.eye(4))])
     def place(arm, target, **kw):
         assert arm == "left"
         assert kw == dict(yaw_sym=1, release_gap=0.0, pre_h=expected, ignore=("holder#body",),
@@ -128,3 +128,26 @@ def test_shell_envelope_frees_air_under_flare_and_still_blocks_material():
     assert RuntimeConfig().egg_wall_model == "off"
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(egg_wall_model="typo"), assets=None)
+
+
+def test_drop_spin_preserves_the_long_axis_and_off_candidates():
+    from dojo.skills.world import AssetInfo, ObjectState
+    from dojo.skills.geometry import R_to_quat
+    info = AssetInfo(key="Rigid/egg/00000", bbox_min=np.array([-.02, -.02, -.03]),
+                     bbox_max=np.array([.02, .02, .03]))
+    R = H._rot([0, 1, 0], np.pi / 2)
+    o = ObjectState("e", "Rigid", "egg", 0, np.zeros(3), R_to_quat(R), info)
+    hole = dict(center=np.array([0.0, 0.0]), radius=.025, top=.81, floor=.76)
+    base = H.egg_drop_targets(o, hole, .81, o.R)
+    off = list(H.egg_drop_candidates(SimpleNamespace(), o, hole, .81))
+    on = list(H.egg_drop_candidates(SimpleNamespace(egg_drop_spin="axis"), o, hole, .81))
+    assert len(on) == 7 * len(base)
+    for a, b in zip(base, off):
+        assert a[:3] == b[:3] and np.allclose(a[3], b[3])
+    for index, (_, _, _, T) in enumerate(on):
+        orig = base[index % len(base)][3]
+        assert np.allclose(T[:3, 2], orig[:3, 2])
+        assert np.allclose(T[:3, 3], orig[:3, 3])
+    assert RuntimeConfig().egg_drop_spin == "off"
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(egg_drop_spin="typo"), assets=None)

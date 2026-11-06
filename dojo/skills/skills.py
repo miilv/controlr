@@ -347,6 +347,7 @@ class Skills:
         self.egg_grasp_angles = "off"
         self.egg_drop_approach = "off"
         self.egg_wall_model = "off"
+        self.egg_drop_spin = "off"
         # ``library.arrange`` (stream N): the places' order, "near" (today: nearest the arms first) | "big_first" |
         # "push_big_first" (the pushes first, then the places largest first)
         self.arrange_order = "near"

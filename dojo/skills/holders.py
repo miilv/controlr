@@ -443,6 +443,19 @@ def egg_drop_targets(o, hole: dict, plate_top: float, R_now, offsets=EGG_DROP_OF
     return out
 
 
+def egg_drop_candidates(sk, o, hole, plate_top):
+    """Yaw candidates, optionally spun about the round object's own long axis.
+
+    The long axis stays lying: this changes the feasible hand orientation without
+    requiring the upright turn that makes an egg pivot out of the pads.
+    """
+    spins = (0.0, 25.0, -25.0, 55.0, -55.0, 90.0, -90.0) if \
+        getattr(sk, "egg_drop_spin", "off") == "axis" else (0.0,)
+    axis = np.eye(3)[int(np.argmax(o.asset.extents))]
+    for spin in spins:
+        yield from egg_drop_targets(o, hole, plate_top, o.R @ _rot(axis, math.radians(spin)))
+
+
 EGG_NUDGE = 0.03              # m: an egg resting against a container's wall is pushed this far towards its middle
 EGG_NUDGE_GAP = 0.0045        # m: the closed fingertips go down this far outside the egg's side facing the wall
 EGG_NUDGE_WALL_CLEAR = -0.020 # m: the push's closed fingertips may graze the wall profile this far (a push, not a pick:
@@ -831,7 +844,7 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             o = w.obj(lab)
             pl, last = None, ""
             for h in free:                 # front holes first (``holes`` order)
-                for off, yd, side, T in egg_drop_targets(o, h, plate_top, o.R):
+                for off, yd, side, T in egg_drop_candidates(sk, o, h, plate_top):
                     q = sk.plan_place(a, T, yaw_sym=1, release_gap=0.0,
                                       pre_h=0.02 if getattr(sk, "egg_drop_approach", "off") == "low" else 0.05,
                                       ignore=ignore, descend_rad=0.03,

@@ -223,6 +223,7 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "push_goal": ("centre", "cover", "cover_obb"), "fill_move_lift": ("off", "clear"),
                "egg_grasp_height": ("off", "raised"), "egg_grasp_angles": ("off", "wide"),
                "egg_drop_approach": ("off", "low"), "egg_wall_model": ("off", "shell"),
+               "egg_drop_spin": ("off", "axis"),
                "fill_joint_limits": ("inherit", "measured"), "rehover_siblings": ("follow", "keep"),
                "slip_shift": ("off", "across"), "sibling_order": ("given", "far"),
                "press_repeat": ("off", "cross"), "ported_pour_untilt": ("direct", "staged", "capped"),
