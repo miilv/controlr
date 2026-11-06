@@ -69,3 +69,31 @@ this paired same-box comparison, never silently described as exact parity.
 140 re-test episodes; historical occupancy predicts about 12 lane-hours before
 prep/retries/waits. Perception calls are adaptive; record actual logged usage.
 No automatic controller adoption follows from this registration.
+
+## MOVE34 pre-collection host amendment
+
+Box moved compute3 → compute4 before any valid episode; reason: Isaac startup
+crashes on compute3. Both arms now use `~/dojo-integ-c4-86ad1987`, exact source
+`86ad1987ac4750dad187a45bf7add1dbcd25b98a`, with `c4b_` names and inputs under
+`~/dojo-data/wave-1106-c3moved/`. Frozen raw, loaded and index bytes, salts,
+configs, pair identities and remaining arm order are preserved. No layouts are
+regenerated and no outcomes are used to select this move.
+
+INTEG3's five failed startup attempts produced zero valid episodes or model
+transcripts: no valid episode or fresh-layout identity was consumed. The
+infrastructure-attempt history remains recorded. This amendment authorizes
+moving the **158 remaining rows exactly**, retaining the existing retry suffix;
+it does not silently refill the absent PEN A/B 100020 rows or reset retries.
+The frozen manifest remains 80 pairs, while the dispatched remainder covers
+79 pairs. PEN cannot pass the full-panel rule with 100020 missing; restoring
+that pair would require an explicit prospective authorization.
+
+The compute4 lane's existing policy supersedes compute3-specific operational
+clauses: one lane, <=16384 MiB used admission, the existing
+`~/coord/lane_gate.stamp` protocol and 50 GB free-disk floor. Keep compute4's
+working renderer/startup recipe and current jobs unchanged; do not carry over
+compute3's offline Kit/watchdog environment. Append after all current wave
+reloc/key rows. Both arms retain the frozen common perception model; MOVE34
+makes no separate Claude-route calls. Existing decision rules and sample
+requirements remain in force. Compute3 remains under STOP, with its queue
+archived as moved to compute4.
