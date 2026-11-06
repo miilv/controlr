@@ -232,6 +232,9 @@ class RuntimeConfig:
     # locations agree within WATCH_RELOCATE_AGREE_MM (make_kong: the discard lies 48 mm off its slot in 25 of 25 dev
     # renders, and the read cropped at the slot saw a standing neighbour's back). False: it stays where it stood
     watch_relocate: bool = False
+    # Optional task-scoped replacement for watch_relocate. Nonempty takes precedence over the global bool;
+    # matched against the instruction-routed vocabulary, never launcher task metadata. Still requires watch.
+    watch_relocate_task: str = ""       # "" = legacy bool; "make_kong" = only that routed task
     # mode perception: perception R&D's agentic perceiver (LLM calls via omniroute, in the perception service).
     # "budget": the first estimate is agentic; then, while fewer than agentic_max estimates ran, perception's
     # needs_agent(record) decides once after the looks / search and at each re-estimate after a confirmed divergence
@@ -603,6 +606,9 @@ class RuntimeConfig:
     extra: dict = field(default_factory=dict)
     preset: str | None = None           # name of the preset these fields came from (dojo/runtime/presets.py), if any
 
+    def watch_relocate_for(self, scene: str) -> bool:
+        return scene == self.watch_relocate_task if self.watch_relocate_task else self.watch_relocate
+
     @classmethod
     def from_env(cls) -> "RuntimeConfig":
         return cls(**json.loads(os.environ.get("DOJO_RUNTIME", "{}") or "{}"))
@@ -650,6 +656,7 @@ class RuntimePolicy:
         still steps, error handling, report) is the same."""
         self.cfg = cfg or RuntimeConfig.from_env()
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
+                or self.cfg.watch_relocate_task not in ("", "make_kong")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
                 or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request") or self.cfg.grip_check not in ("off", "on") or self.cfg.grip_official_key not in ("official_key", "ee_joint_state")
@@ -2072,6 +2079,7 @@ class RuntimePolicy:
         """The provider's watcher: perception's ``watch`` (frame 0 vs now) until it reports a change twice in a row
         (or says the vocabulary has no watch read); a knocked-over object is laid face up in the belief."""
         b, events, st = self.bridge, self.report["events"], {"on": True, "last": None, "prev": None}
+        relocate = self.cfg.watch_relocate_for(scene)
 
         def watch(obs: dict) -> None:
             if not st["on"] or (st["last"] is not None and b.steps_used - st["last"] < self.cfg.watch_every):
@@ -2092,7 +2100,7 @@ class RuntimePolicy:
                 events.append({"kind": "watch", "knocked": list(k), "laid": laid, "step": b.steps_used,
                                "detail": w.get("detail")})
                 st["on"] = False
-                if self.cfg.watch_relocate and laid:
+                if relocate and laid:
                     st["relocate"] = {lab: {"base": np.r_[prov.belief.objects[lab].pos, prov.belief.objects[lab].quat],
                                             "last": None, "tries": 0} for lab in laid}
                     self._relocate_laid(prov, obs0, obs, st)
