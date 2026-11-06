@@ -1584,6 +1584,41 @@ def test_watch_relocate_keeps_the_laid_pose_when_nothing_is_found_and_gives_up()
     assert np.allclose(o.pos, laid) and len(pc.bases) == P.WATCH_RELOCATE_TRIES
 
 
+def test_relocation_pose_logging_preserves_writes_and_convergence():
+    pc = _LaidWatch([(0, -45), None, (1, -47)])
+    pol, prov, watch = _laid_setup(RuntimeConfig(watch=True, watch_every=0, watch_relocate=True), pc)
+    obj = prov.belief.objects["block_0"]
+    obs = pol.bridge.obs
+    watch(obs)
+    watch(obs)
+    before = np.r_[obj.pos, obj.quat].copy()
+    watch(obs)
+    first = np.r_[obj.pos, obj.quat].copy()
+    events = [e for e in pol.report["events"] if e["kind"] == "watch_relocate"]
+    assert np.array_equal(events[0]["after7"], first)
+    lay = next(e for e in pol.report["events"] if e["kind"] == "watch_lay")
+    assert np.array_equal(lay["before7"], before)
+    assert lay["after7"] == events[0]["before7"]
+    # Face-up orientation is applied before relocation; its previous position is unchanged in xy.
+    assert events[0]["before7"][:2] == before[:2].tolist()
+    watch(obs)  # rejected read: no pose write, no audit pair
+    assert np.r_[obj.pos, obj.quat].tobytes() == first.tobytes()
+    watch(obs)
+    final = np.r_[obj.pos, obj.quat].copy()
+    for _ in range(5):
+        watch(obs)
+    events = [e for e in pol.report["events"] if e["kind"] == "watch_relocate"]
+    assert len(events) == 3 and len(pc.bases) == 3 and pc.n == 3
+    assert [e.get("settled") for e in events] == [False, None, True]
+    assert "before7" not in events[1] and "after7" not in events[1]
+    assert np.array_equal(events[2]["before7"], first)
+    assert np.array_equal(events[2]["after7"], final)
+    assert np.array_equal(final[:2], before[:2] + [0.001, -0.047])
+    # Audit lists own their values: later object mutation must not rewrite the log.
+    obj.pos[:] = 0
+    assert np.array_equal(events[2]["after7"], final)
+
+
 def test_watch_relocate_off_by_default_lays_the_tile_where_it_stood():
     assert RuntimeConfig().watch_relocate is False
     pc = _LaidWatch([(0, -45)])

@@ -2096,7 +2096,15 @@ class RuntimePolicy:
                 return
             k = tuple(w.get("knocked") or ())
             if k and k == st["prev"]:
+                before_lay = {lab: [float(v) for v in np.r_[prov.belief.objects[lab].pos,
+                                                         prov.belief.objects[lab].quat]] for lab in k
+                              if prov.belief is not None and lab in prov.belief.objects}
                 laid = [lab for lab in k if self._lay_face_up(prov, lab)]
+                for lab in laid:
+                    events.append({"kind": "watch_lay", "label": lab, "step": b.steps_used,
+                                   "before7": before_lay[lab],
+                                   "after7": [float(v) for v in np.r_[prov.belief.objects[lab].pos,
+                                                                    prov.belief.objects[lab].quat]]})
                 events.append({"kind": "watch", "knocked": list(k), "laid": laid, "step": b.steps_used,
                                "detail": w.get("detail")})
                 st["on"] = False
@@ -2136,12 +2144,14 @@ class RuntimePolicy:
             ev = {"kind": "watch_relocate", "label": lab, "step": self.bridge.steps_used, "ok": bool(res.get("ok")),
                   "iou": res.get("iou"), "shift_mm": res.get("shift_mm"), "why": res.get("why")}
             if res.get("ok"):
+                before7 = [float(v) for v in np.r_[o.pos, o.quat]]
                 pos = np.asarray(res["pos"], float)
                 settled = r["last"] is not None and float(np.linalg.norm(pos[:2] - r["last"][:2])) * 1000 \
                     <= WATCH_RELOCATE_AGREE_MM
                 o.pos, o.quat, o.source = pos, np.asarray(res["quat"], float), "perception"
                 r["last"] = pos
                 ev.update(pos=[round(float(v), 4) for v in pos], settled=settled)
+                ev.update(before7=before7, after7=[float(v) for v in np.r_[o.pos, o.quat]])
                 if settled:
                     st["relocate"].pop(lab)
             if r["tries"] >= WATCH_RELOCATE_TRIES:
