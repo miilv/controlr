@@ -141,14 +141,17 @@ def wall_profile(c, bin_r: float = 0.004) -> dict | None:
     rim = float(V[:, 2].max())
     nb = int(math.ceil(r_out / bin_r)) + 1
     surf = np.full(nb, -np.inf)
+    lower = np.full(nb, np.inf)
     idx = np.minimum((r / bin_r).astype(int), nb - 1)
     np.maximum.at(surf, idx, V[:, 2])
+    np.minimum.at(lower, idx, V[:, 2])
     for i in range(1, nb):                              # empty bins: the inner neighbour's height
         if not np.isfinite(surf[i]):
             surf[i] = surf[i - 1]
+            lower[i] = lower[i - 1]
     if not np.isfinite(surf[0]) or rim - float(surf[0]) < 0.02:
         return None
-    return {"center": ctr, "rim": rim, "r_out": r_out, "bin": bin_r, "surf": surf, "floor": float(surf[0])}
+    return {"center": ctr, "rim": rim, "r_out": r_out, "bin": bin_r, "surf": surf, "lower": lower, "floor": float(surf[0])}
 
 
 def wall_clearance(c, prof: dict, pts_w: np.ndarray) -> float:
@@ -318,6 +321,25 @@ def wall_clearance_v(c, prof: dict, pts_w: np.ndarray) -> float:
     return float((P[m, 2] - s3[i]).min())
 
 
+def wall_shell_clearance(c, prof: dict, pts_w: np.ndarray) -> float:
+    """Clearance to a conservative radial material band, including its underside.
+
+    A flared wall does not fill the air below it. Each radial bin encloses all
+    mesh heights, expanded over neighboring bins exactly as the top envelope.
+    """
+    P = (np.asarray(pts_w, float) - c.pos) @ c.R
+    r = np.linalg.norm(P[:, :2] - prof["center"], axis=1)
+    m = r <= prof["r_out"] + 0.004
+    if not m.any():
+        return float("inf")
+    upper = np.asarray(prof["surf"], float)
+    lower = np.asarray(prof["lower"], float)
+    hi = np.maximum(np.maximum(upper, np.r_[upper[1:], upper[-1]]), np.r_[upper[0], upper[:-1]])
+    lo = np.minimum(np.minimum(lower, np.r_[lower[1:], lower[-1]]), np.r_[lower[0], lower[:-1]])
+    i = np.minimum((r[m] / prof["bin"]).astype(int), len(upper) - 1)
+    return float(np.maximum(P[m, 2] - hi[i], lo[i] - P[m, 2]).min())
+
+
 EGG_WALL_CLEAR = -0.010       # m: dense finger samples at most this far into a container's inner surface profile (grasp
                               # + descent). egg_v6 traces: hands that went down had >= -12.6 mm, blocked ones <= -17 mm
                               # (the profile is the max over 4 mm radius bins of a woven mesh; the collider is leaner)
@@ -348,25 +370,45 @@ def egg_grasps(sk: Skills, label: str, arm: str, wall_clear: float = EGG_WALL_CL
         cands += [g for g in round_grasps(o, sk.kin, arm, rolls=(0.0,), tilts=(0.0,), ends=True) if g.method == "ends"]
     if not cands:                                   # standing on its end, or not round: the usual generators
         cands = G.box_grasps(o, sk.kin, arm, tilts=(0.0, 25.0, -25.0)) + G.candidates(o, sk.kin, arm)
+    if getattr(sk, "egg_grasp_angles", "off") == "wide":
+        cands += round_grasps(o, sk.kin, arm, rolls=(0.0, 25.0, -25.0, 40.0, -40.0, 55.0, -55.0, 70.0, -70.0),
+                              tilts=(0.0, 40.0, -40.0, 55.0, -55.0), ends=False)
+    if getattr(sk, "egg_grasp_height", "off") == "raised":
+        # The pad is 30 mm long: an upper-shell pinch can clear the rim with the
+        # root block while keeping its lower half against the egg. Keep the
+        # original candidates first; raised variants rescue blocked corridors.
+        raised = []
+        for dz in (0.006, 0.010):
+            for g in cands:
+                T = g.T.copy()
+                T[2, 3] += dz
+                raised.append(dataclasses.replace(g, T=T, note=g.note + f" raised {dz * 1000:.0f}mm"))
+        cands += raised
     c = container_of(sk, label)
     prof = wall_profile(c) if c is not None else None
     if prof is None:
         return cands
     rim_w = float((c.R @ np.r_[prof["center"], prof["rim"]] + c.pos)[2])
     out = []
+    clearance = wall_shell_clearance if getattr(sk, "egg_wall_model", "off") == "shell" else wall_clearance_v
     for g in cands + [G.narrowed(x) for x in cands if x.method in ("round", "ends")]:
         go = gap_to_grip(g.open_gap())
         a = g.approach
-        if a[2] > -0.5:
+        side_entry = getattr(sk, "egg_grasp_angles", "off") == "wide" and -0.5 < a[2] <= -0.2
+        if a[2] > -0.5 and not side_entry:
             continue
         # the pre-grasp above the rim (fingertips 2 cm over it), the descent a straight line from there
         d_pre = max(g.pre_dist, (rim_w + 0.02 + TIP_BEYOND_TCP - float(g.T[2, 3])) / max(-float(a[2]), 0.3))
+        if side_entry:
+            # A table egg under the flared rim can be approached from outside.
+            # Its entire corridor still has to clear the dense wall profile.
+            d_pre = g.pre_dist
         ok = True
         for d in np.linspace(0.0, d_pre, 6):
             T = g.T.copy()
             T[:3, 3] -= a * d
             P = finger_samples(sk.kin, sk.kin.flange_from_tcp(T), go)
-            if wall_clearance_v(c, prof, P) < wall_clear:
+            if clearance(c, prof, P) < wall_clear:
                 ok = False
                 break
         if ok:
@@ -399,6 +441,21 @@ def egg_drop_targets(o, hole: dict, plate_top: float, R_now, offsets=EGG_DROP_OF
                 cw = np.r_[np.asarray(hole["center"], float)[:2] + side * off * u[:2], z_c]
                 out.append((float(off), float(yd), side, T_from(cw - R @ o.asset.center, R)))
     return out
+
+
+def egg_drop_candidates(sk, o, hole, plate_top):
+    """Yaw candidates, optionally spun about the round object's own long axis.
+
+    The long axis stays lying: this changes the feasible hand orientation without
+    requiring the upright turn that makes an egg pivot out of the pads.
+    """
+    if getattr(sk, "egg_drop_spin", "off") != "axis":
+        yield from egg_drop_targets(o, hole, plate_top, o.R)
+        return
+    spins = (0.0, 25.0, -25.0, 55.0, -55.0, 90.0, -90.0)
+    axis = np.eye(3)[int(np.argmax(o.asset.extents))]
+    for spin in spins:
+        yield from egg_drop_targets(o, hole, plate_top, o.R @ _rot(axis, math.radians(spin)))
 
 
 EGG_NUDGE = 0.03              # m: an egg resting against a container's wall is pushed this far towards its middle
@@ -789,8 +846,10 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             o = w.obj(lab)
             pl, last = None, ""
             for h in free:                 # front holes first (``holes`` order)
-                for off, yd, side, T in egg_drop_targets(o, h, plate_top, o.R):
-                    q = sk.plan_place(a, T, yaw_sym=1, release_gap=0.0, pre_h=0.05, ignore=ignore, descend_rad=0.03,
+                for off, yd, side, T in egg_drop_candidates(sk, o, h, plate_top):
+                    q = sk.plan_place(a, T, yaw_sym=1, release_gap=0.0,
+                                      pre_h=0.02 if getattr(sk, "egg_drop_approach", "off") == "low" else 0.05,
+                                      ignore=ignore, descend_rad=0.03,
                                       settle=2, retreat=0.04)
                     if not isinstance(q, SkillResult):
                         pl = (h, yd, side, q, off)
