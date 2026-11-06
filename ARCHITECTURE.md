@@ -511,7 +511,8 @@ all unresolved thin objects. Neither switch measures a pose or guarantees a gras
 `RuntimeConfig` and G3 expose four independent, default-off fill-container switches:
 `fill_grasp=vertical` adds narrow horizontal jaw pinches at five shaft stations and
 penalizes the original candidates by two score units, retaining them when the new
-ones cannot plan; `fill_holder=stay` bypasses the receptacle relocation;
+ones cannot plan. `fill_grasp=rolled` applies that preference only to horizontal
+shafts whose body axes are more than 10 degrees from flat; `fill_holder=stay` bypasses the receptacle relocation;
 `fill_drop=center` uses only the maximum-clearance opening fit with occupied-space
 padding, refusing a fit rather than relaxing the occupied-space constraint;
 `fill_insert=safe` scopes the measured joint range to the fill operation, restores

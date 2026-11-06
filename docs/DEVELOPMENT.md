@@ -528,7 +528,7 @@ other team runs its single Isaac, use one Integration lane (`lane2.caps: 1 4`).
 
 ### Pen-holder G3 switches
 
-Use `--skill-attr fill_grasp=vertical`, `fill_holder=stay`, `fill_drop=center`, or
+Use `--skill-attr fill_grasp=vertical` (or `rolled` for rolled shafts only), `fill_holder=stay`, `fill_drop=center`, or
 `fill_insert=safe` to screen fill-container changes independently. Defaults are
 `off`; runtime equivalents live in `RuntimeConfig`. The vertical preference keeps
 the original candidate set as fallback. Check both pick feasibility and final
