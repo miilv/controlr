@@ -11,7 +11,7 @@ S=${LANE_STATE:-$HOME/dojo-integ-c4-state}; Q=$S/queue2.txt; RUNS=${LANE_RUNS:-$
 STREAM=${LANE_STREAM:-integ-c4}
 JOB_MAX=${LANE_JOB_MAX_S:-1980}   # 33 min: boot + a 25-min episode cap + teardown (28 min while R2 ran)
 mkdir -p "$RUNS"; touch "$Q" "$Q.lock"
-source "$HOME/dojo-env.sh"
+source "${LANE_ENV_FILE:-$HOME/dojo-env.sh}"
 export DOJO_STREAM=$STREAM DOJO_MIN_FREE_GB=50 INTEG_MIN_FREE_MB=16223 INTEG_MIN_MEM_GB=16 INTEG_YIELD_S=0 INTEG_LOCK_WAIT_S=120
 export DOJO_DATA=${LANE_DATA:-$DOJO_DATA}
 # 00:55Z (lead): ~/dojo-perception-data/bg_folds_51 has no scene/ backgrounds (belt, imitate's basket, organize's cushion
@@ -19,7 +19,9 @@ export DOJO_DATA=${LANE_DATA:-$DOJO_DATA}
 export DOJO_BG_FOLDS="${LANE_BG_FOLDS:-$HOME/dojo-data/bg_folds_51_ilia}"
 [[ -d "$DOJO_BG_FOLDS/fold0/scene" ]] || { echo "$(date -u +%FT%TZ) [$1] no $DOJO_BG_FOLDS/fold0/scene: refusing to start"; exit 2; }
 INO=$(stat -L -c %i "$LOCK")
-if [[ "$STREAM" == integ-c6 ]]; then
+if [[ "$STREAM" == integ-c3 ]]; then
+  [[ "$LOCK" == "$HOME/dojo-gpu.lock" && ! -L "$LOCK" && "$LANE" == heavy1 ]] || { echo "compute3 single heavy slot required"; exit 2; }
+elif [[ "$STREAM" == integ-c6 ]]; then
   [[ "$LOCK" == "$HOME/dojo-gpu.lock" || "$LOCK" == "$HOME/dojo-gpu-heavy2.lock" ]] && [[ ! -L "$LOCK" ]] || { echo "compute6 heavy slot required"; exit 2; }
 else
   [[ "$LOCK" == "$HOME/dojo-integ-c4-$LANE.lock" && ! -L "$LOCK" ]] || { echo "private lane lock required"; exit 2; }
@@ -52,11 +54,13 @@ cap_ok() {   # rendered of ours + 1 <= OURS; others + ours + big side servers + 
   local ours=${1:-1}
   local used; used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1 | tr -d ' ')
   [[ "$used" =~ ^[0-9]+$ ]] || return 1
-  (( used <= 16384 && o + m + d + 1 <= ${2:-4} && m + 1 <= ours && ${v:-0} >= 16223 ))
+  local max_used=16384
+  [[ "$STREAM" == integ-c3 ]] && max_used=14336
+  (( used <= max_used && o + m + d + 1 <= ${2:-4} && m + 1 <= ours && ${v:-0} >= 16223 ))
 }
 # The sole allowed coordination file. No other coord paths are accessed.
 boot_gate() {
-  [[ "$STREAM" == integ-c6 ]] && return 0  # ours alone; never accesses compute4's coordination protocol
+  [[ "$STREAM" == integ-c6 || "$STREAM" == integ-c3 ]] && return 0  # ours alone; never accesses compute4's coordination protocol
   local epoch iso who now
   while true; do
     epoch=0 iso= who=
@@ -149,6 +153,9 @@ while true; do
   source "$REPO/scripts/dojo/disk_guard.sh"
   disk_guard "[wave lane]" || { drop_lock; exit 6; }
   boot_gate || { drop_lock; break; }
+  if [[ "$STREAM" == integ-c3 ]]; then
+    log "shared-account preflight"; who; nvidia-smi --query-gpu=memory.used,memory.free,power.draw --format=csv
+  fi
   line=$(flock "$Q.lock" bash -c 'head -1 "$1"; sed -i 1d "$1"' _ "$Q")
   [[ -z "$line" ]] && { drop_lock; log "queue empty"; break; }
   name=${line%% *}; args=${line#* }; repo="$REPO"; sam=""; mv3d=""; seg=""; glyph=""; glyphk=""; jenv=(); toks=(); keep=()
