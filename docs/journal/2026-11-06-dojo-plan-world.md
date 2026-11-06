@@ -1,5 +1,17 @@
 # PLAN: belief-object free-space routing
 
+## EGG handoff: fix target poses and reach first
+
+The remaining egg blocker identified in round 2 is fixed-target IK/reach under
+the tested working bounds and search, rather than obstacle routing for these
+requests: **11 of 12 failed egg IK requests still fail with scene obstacles
+removed**, with 7–42 mm residuals. Refreshing four-seed native IK hints and using
+distinct GPU retry banks does not resolve them. The next EGG stream should
+revisit grasp/place approach poses and reachable goal choices before spending
+another round on collision margins. This is not a proof of global
+unreachability, and other egg requests still have goal collisions or native/GPU
+proxy disagreements. Full evidence: [round-two report](../experiments/2026-11-06-plan-coverage-round2.md).
+
 ## Brief and implementation
 
 The TOOLS/EGG investigations motivate a cross-cutting carry/approach route change.
@@ -441,3 +453,29 @@ compute4/dc19 access or foreign-process signals. Local footprint remains <1 GB.
 191 skipped. The final two regression tests and latest controller source are
 covered by CI; the final report commit's CI is checked before handing back
 updated draft PR #401. Defaults remain off and the PR is not merged.
+
+## Round 3 registration
+
+Lead now authorizes the ten-pair tools comparison independently of egg, plus
+ten stack control pairs. Freeze controller source 4dc81fce1e14f39fe4fd8021e8549b4d4fe4e924 and
+the [round-three configuration](../experiments/2026-11-06-plan-round3-config.json)
+before dispatch. A/B varies only plan_world; both fix solver=curobo,
+profile=recover and capture=off. HANG and sweep get two-layout objects-only
+coverage pilots; <25% fallback in a cell triggers a fresh ten-pair comparison
+there, with no controller tuning or removal of speculative goals. Pilot results
+are excluded from performance tables. No egg runs in this round.
+
+Merge the latest main docs to register against the current score-based rule:
+per-pair differences >=10 points define wins/losses, pooled gain >=5 points,
+wins >=2x losses and >=2 net wins. This explicit lead instruction applies to
+this Nov 6 registration despite the document's date-based grandfather clause.
+Existing earlier registrations retain their original rule. Success flips are
+reported separately, with the stack guard's stated bounds preserved.
+
+Prefer compute3 physics for the tools pairs and HANG/sweep pilots, compute6 for
+stack and any conditional comparisons. An unadmitted job/pair may move after
+15 minutes of resource waiting, before either arm starts, based only on capacity.
+Every pair stays on one host, counterbalances A/B order by layout index, and
+retains per-host timing/provenance. Same box rules, no model calls, no compute4
+or dc19 access. Compute3 incident reread; current explicit physics permission
+takes precedence over its older off-limits note.
