@@ -23,6 +23,10 @@ def result_flags(result):
         data = values(getattr(result, name, None))
         if data is not None:
             out[name] = data.reshape(-1).tolist()
+    for name in ("position_tolerance", "orientation_tolerance"):
+        data = values(getattr(result, name, None))
+        if data is not None:
+            out[name] = float(np.max(data))
     metrics = getattr(result, "metrics", None)
     constraints = getattr(metrics, "costs_and_constraints", None)
     if constraints is not None:
@@ -58,7 +62,7 @@ def failure_category(diagnostics):
     ik = diagnostics.get("ik", {})
     if ik and not any(ik.get("success", [])):
         pos, rot = ik.get("position_error", []), ik.get("rotation_error", [])
-        if collision(ik) and any(p < .001 and r < .02 for p, r in zip(pos, rot)):
+        if collision(ik) and any(p < ik.get("position_tolerance", .001) and r < ik.get("orientation_tolerance", .02) for p, r in zip(pos, rot)):
             return "goal_collision"
         return "ik_fail"
     if diagnostics.get("graph") and not any(diagnostics["graph"].get("success", [])):

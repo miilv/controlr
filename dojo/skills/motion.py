@@ -150,6 +150,8 @@ class HeldBox:
     # mesh points (object frame) checked against ``Collision.parts`` obstacles (a rack's thin arms pass between the box
     # corners of a held mug); None = the box corners
     dense: np.ndarray | None = None
+    label: str | None = None
+    mesh: tuple | None = None
 
     def dense_w(self, T_tcp: np.ndarray) -> np.ndarray:
         T = T_tcp @ self.T_tcp_obj
@@ -346,6 +348,7 @@ class Motion:
         self.plan_world = "table"
         self.plan_solver = "routes"
         self.plan_capture = "off"
+        self.plan_profile = "legacy"
         self.world_plans = []
 
     def close(self):
@@ -540,7 +543,8 @@ def below_height_map(hm: dict, loc: np.ndarray, margin: float) -> np.ndarray:
 def held_box(o, T_tcp_obj) -> HeldBox:
     """``HeldBox`` for object ``o`` held at ``T_tcp_obj``; irregular meshes (horizontal slices filling
     under 60 % of the bbox footprint on average: figurines, tools, keys) carry sparse mesh points."""
-    hb = HeldBox(np.asarray(T_tcp_obj, float), o.asset.center, o.asset.extents / 2)
+    hb = HeldBox(np.asarray(T_tcp_obj, float), o.asset.center, o.asset.extents / 2,
+                 label=getattr(o, "label", None), mesh=getattr(o.asset, "mesh", None))
     mesh = getattr(o.asset, "mesh", None)
     if mesh is None or len(mesh[0]) < 60:
         return hb

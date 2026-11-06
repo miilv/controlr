@@ -523,6 +523,16 @@ class Skills:
 
     # ------------------------------------------------------------------ world
     @property
+    def plan_profile(self):
+        return self.motion.plan_profile
+
+    @plan_profile.setter
+    def plan_profile(self, value):
+        if value not in ("legacy", "recover"):
+            raise ValueError(f"unknown plan_profile: {value}")
+        self.motion.plan_profile = value
+
+    @property
     def plan_capture(self):
         return self.motion.plan_capture
 

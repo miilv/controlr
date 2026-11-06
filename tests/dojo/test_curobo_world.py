@@ -214,3 +214,31 @@ def test_progress_does_not_restart_request_deadline(monkeypatch):
                        "left", np.zeros(6), np.eye(4), (), None)
     assert raised.value.diagnostics == {"ik": {"success": [False]}}
     assert [c.args[0] for c in client.connection.poll.call_args_list] == [1.9, .5]
+
+
+def test_recovery_timeout_does_not_disable_subsequent_queries(monkeypatch):
+    from dojo.skills import curobo_world
+    motion=Motion();motion.coll.world=SimpleNamespace(objects={});motion.plan_profile="recover"
+    workers=[SimpleNamespace(process=SimpleNamespace(pid=i),wait_ready=Mock(),
+                            propose=Mock(side_effect=TimeoutError("query exhausted")),close=Mock())
+             for i in (111,222)]
+    factory=Mock(side_effect=workers)
+    monkeypatch.setattr(curobo_world,"CuroboWorld",factory)
+    for _ in range(2):
+        assert plan_curobo(motion,"left",np.zeros(6),np.eye(4),.05,"test",1.,(),None,2) is None
+    assert factory.call_count==2
+    assert all(w.close.call_count==1 for w in workers)
+    assert not any(x.get("cached",False) for x in motion.world_plans)
+
+
+def test_recovery_excludes_attached_object_even_if_caller_omits_it():
+    kin=X5Kin();q0=np.array([0.,1.,1.,0.,0.,0.]);q1=q0.copy();q1[0]+=.1
+    coll=Collision(kin,SimpleNamespace(objects={}))
+    coll.touching=Mock(return_value=set());coll.obstacles=Mock(return_value=[]);coll.check=Mock(return_value=(True,""))
+    motion=Motion(kin,coll);motion.plan_profile="recover"
+    worker=SimpleNamespace(propose=Mock(return_value=np.stack([q0,q1])))
+    motion._world_gpu=worker
+    held=SimpleNamespace(label="hammer")
+    assert plan_curobo(motion,"left",q0,kin.tcp("left",q1),.05,"carry",0.,(),held,2).ok
+    assert "hammer" in worker.propose.call_args.args[5]
+    assert "hammer" in coll.check.call_args.kwargs["ignore"]

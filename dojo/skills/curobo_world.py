@@ -19,6 +19,7 @@ from dojo.skills.geometry import R_to_quat, T_from, angle_between_R, inv_T
 from dojo.skills.kinematics import TABLE_Z
 
 BUDGET_S = 2.0
+RECOVER_BUDGET_S = 10.0
 SPHERES = 256
 MAX_BOXES = 2048
 
@@ -41,11 +42,26 @@ def attachment_spheres(held, tcp_offset):
     return np.c_[centers, np.full(len(centers), radius)]
 
 
-def scene_boxes(kin, coll, arm, ignore):
+def scene_boxes(kin, coll, arm, ignore, profile="legacy"):
     """Current Collision OBBs, including its container parts, in the planner base."""
     base_inv = inv_T(kin.base(arm))
     boxes = [([0., -.05, TABLE_Z - .025], np.eye(3), np.array([.7, .55, .025]), "table")]
-    boxes += coll.obstacles(ignore)
+    obstacles = coll.obstacles(ignore)
+    if profile == "recover":
+        from dojo.skills.plan_geometry import heightmap_boxes
+        expanded, seen = [], set()
+        for obstacle in obstacles:
+            label = obstacle[3]
+            hm = getattr(coll, "heightmaps", {}).get(label)
+            if hm is not None and label not in getattr(coll, "parts", {}):
+                if label not in seen:
+                    expanded.extend(heightmap_boxes(coll.world.objects[label], hm,
+                        coll.margin_of.get(label, coll.obj_margin)))
+                    seen.add(label)
+            else:
+                expanded.append(obstacle)
+        obstacles = expanded
+    boxes += obstacles
     result = []
     for index, (center, rotation, half, label) in enumerate(boxes):
         center = base_inv[:3, :3] @ np.asarray(center) + base_inv[:3, 3]
@@ -58,7 +74,8 @@ def scene_boxes(kin, coll, arm, ignore):
 
 
 class _GPUBackend:
-    def __init__(self):
+    def __init__(self, profile="legacy"):
+        self.profile = profile
         # All optional/GPU imports stay behind the default-off switch.
         import yaml
         import torch
@@ -90,11 +107,12 @@ class _GPUBackend:
             robot=robot, scene_model={"cuboid": {"warmup_floor": {
                 "dims": [.1, .1, .1], "pose": [0, 0, -5, 1, 0, 0, 0]}}},
             collision_cache={"cuboid": MAX_BOXES},
-            device_cfg=self.device, num_ik_seeds=16, num_trajopt_seeds=1,
+            device_cfg=self.device, num_ik_seeds=64 if profile == "recover" else 16, num_trajopt_seeds=1,
             self_collision_check=True, use_cuda_graph=False,
-            position_tolerance=.001, orientation_tolerance=.02,
-            optimizer_collision_activation_distance=.006)
-        cfg.graph_planner_config.max_path_finding_iterations = 4
+            position_tolerance=.002 if profile == "recover" else .001,
+            orientation_tolerance=.03 if profile == "recover" else .02,
+            optimizer_collision_activation_distance=.002 if profile == "recover" else .006)
+        cfg.graph_planner_config.max_path_finding_iterations = 16 if profile == "recover" else 4
         cfg.graph_planner_config.min_finetune_iterations = 1
         self.planner = MotionPlanner(cfg)
         self.planner.warmup(enable_graph=True, num_warmup_iterations=1)
@@ -127,18 +145,26 @@ class _GPUBackend:
             setattr(owner, method, observed)
 
     def _constraints(self, state):
-        import torch
         from curobo.types import JointState
-        from curobo._src.state.state_robot import RobotState
-        from dojo.skills.plan_diagnostics import constraint_flags
-        js = JointState.from_position(state.position.reshape(1, -1, self.planner.action_dim),
+        active = self.planner.kinematics.get_active_js(state)
+        js = JointState.from_position(active.position.reshape(1, -1, self.planner.action_dim),
                                       joint_names=self.planner.joint_names)
-        js.velocity = torch.zeros_like(js.position)
-        js.acceleration = torch.zeros_like(js.position)
-        js.jerk = torch.zeros_like(js.position)
-        robot_state = RobotState(js, cuda_robot_model_state=self.planner.compute_kinematics(js))
-        constraints = self.planner.trajopt_solver.metrics_rollout._compute_costs_and_constraints_metrics_impl(robot_state)
-        return constraint_flags(constraints)
+        model = self.planner.compute_kinematics(js)
+        out = {}
+        rollout = self.planner.trajopt_solver.metrics_rollout
+        # Query only collision terms: cspace costs require trajectory goal/dt
+        # buffers and are not valid for a stand-alone configuration diagnostic.
+        for manager in (rollout.metrics_constraint_manager, rollout.metrics_hybrid_cost_constraint_manager):
+            if manager is None:
+                continue
+            manager.setup_batch_tensors(1, js.position.shape[1])
+            for name in ("self_collision", "scene_collision"):
+                if not manager.has_cost(name):
+                    continue
+                cost = manager.get_cost(name)
+                data = cost.forward(model.robot_spheres) if name == "self_collision" else cost.forward(model)
+                out[name] = float(data.detach().max().cpu())
+        return out
 
     def propose(self, payload):
         import torch
@@ -171,9 +197,11 @@ class _GPUBackend:
         except Exception as error:
             self.diagnostics["start"] = {"diagnostic_error": f"{type(error).__name__}: {error}"}
         self.emit({"stage": "start", "diagnostics": self.diagnostics})
+        if self.profile == "recover" and any(v > 0 for v in self.diagnostics.get("start", {}).get("constraints", {}).values()):
+            return {"q": None, "diagnostics": self.diagnostics}
         p.reset_seed()
         result = p.plan_pose(goal_tool_poses=goal, current_state=state,
-                             max_attempts=2, enable_graph_attempt=1)
+                             max_attempts=4 if self.profile == "recover" else 2, enable_graph_attempt=1)
         if result is None or result.success is None or not bool(result.success.any().item()):
             return {"q": None, "diagnostics": self.diagnostics}
         trajectory = result.get_interpolated_plan()
@@ -206,10 +234,10 @@ def robot_config(raw):
             "load_dynamics": bool(raw.get("load_dynamics", False))}
 
 
-def _worker(connection):
+def _worker(connection, profile="legacy"):
     # Spawned without Isaac. Fatal CUDA errors can poison only this owned process.
     try:
-        backend = _GPUBackend()
+        backend = _GPUBackend(profile)
         backend.emit = lambda event: connection.send({"progress": event})
         connection.send({"ready": True})
         while True:
@@ -234,11 +262,12 @@ def _worker(connection):
 
 class CuroboWorld:
     """A single owned GPU worker; startup is separate from the 2 s request budget."""
-    def __init__(self):
+    def __init__(self, profile="legacy"):
+        self.profile = profile
         self._close_lock = threading.Lock()
         context = mp.get_context("spawn")
         self.connection, child = context.Pipe()
-        self.process = context.Process(target=_worker, args=(child,), daemon=True)
+        self.process = context.Process(target=_worker, args=(child, profile), daemon=True)
         self.process.start()
         child.close()
 
@@ -273,21 +302,37 @@ class CuroboWorld:
     def __del__(self):
         self.close()
 
-    def propose(self, motion, coll, arm, q0, target, ignore, held):
+    def propose(self, motion, coll, arm, q0, target, ignore, held, *, budget_s=None, gripper=1.):
         flange = inv_T(motion.kin.base(arm)) @ motion.kin.flange_from_tcp(target)
+        profile = getattr(motion, "plan_profile", "legacy")
+        spheres = None
+        if held is not None:
+            if profile == "recover":
+                from dojo.skills.plan_geometry import mesh_spheres
+                spheres = mesh_spheres(held, motion.kin.tcp_offset)
+            if spheres is None:
+                spheres = attachment_spheres(held, motion.kin.tcp_offset)
         payload = dict(
-            q0=np.asarray(q0).tolist(), boxes=scene_boxes(motion.kin, coll, arm, ignore),
-            spheres=None if held is None else attachment_spheres(held, motion.kin.tcp_offset).tolist(),
+            q0=np.asarray(q0).tolist(), boxes=scene_boxes(motion.kin, coll, arm, ignore, profile),
+            spheres=None if spheres is None else spheres.tolist(),
             flange=np.r_[flange[:3, 3], R_to_quat(flange[:3, :3])].tolist())
+        if getattr(motion, "plan_capture", "off") == "requests":
+            payload["source_model"] = {"profile": profile, "ignore": list(ignore), "gripper": float(gripper),
+                "heightmaps": list(getattr(coll, "heightmaps", {})), "parts": list(getattr(coll, "parts", {})),
+                "held_label": getattr(held, "label", None)}
         self.last_payload = payload
         self.last_diagnostics = {}
+        self.last_stage = None
         self.connection.send(payload)
-        deadline = time.perf_counter() + BUDGET_S
+        if budget_s is None:
+            budget_s = RECOVER_BUDGET_S if profile == "recover" else BUDGET_S
+        deadline = time.perf_counter() + budget_s
         while True:
             if not self.connection.poll(max(0., deadline-time.perf_counter())):
                 self.close()
-                error = TimeoutError("cuRobo planning budget (2 s)")
+                error = TimeoutError(f"cuRobo planning budget ({budget_s:g} s)")
                 error.diagnostics = self.last_diagnostics
+                error.last_stage = self.last_stage
                 raise error
             reply = self.connection.recv()
             if "progress" in reply:
@@ -304,13 +349,17 @@ class CuroboWorld:
 def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, ease):
     from dojo.skills.motion import MoveResult, Segment
     q0, target = np.asarray(q0, float), np.asarray(target, float)
-    event = dict(arm=arm, name=name, solver="curobo", fallback=True, routes=1)
+    profile = getattr(motion, "plan_profile", "legacy")
+    budget = RECOVER_BUDGET_S if profile == "recover" else BUDGET_S
+    if profile == "recover" and held is not None and getattr(held, "label", None):
+        ignore = tuple(set(ignore) | {held.label})
+    event = dict(arm=arm, name=name, solver="curobo", profile=profile, fallback=True, routes=1)
     started = time.perf_counter()
     try:
         if not hasattr(motion, "_world_gpu"):
             init = time.perf_counter()
             try:
-                motion._world_gpu = CuroboWorld()
+                motion._world_gpu = CuroboWorld(profile)
                 event["worker_pid"] = motion._world_gpu.process.pid
                 motion._world_gpu.wait_ready()
             except Exception as error:  # missing optional backend is a logged legacy fallback
@@ -320,6 +369,7 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
         if isinstance(motion._world_gpu, str):
             event["reason"] = motion._world_gpu
             event["cached"] = True
+            event["cached_from"] = getattr(motion, "_world_gpu_failure_event", None)
             event["failure_category"] = getattr(motion, "_world_gpu_failure", "backend_error")
             return None
         process = getattr(motion._world_gpu, "process", None)
@@ -327,8 +377,38 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
             event["worker_pid"] = process.pid
         coll = copy.copy(motion.coll)
         coll.include = set(coll.include) | {o.label for o in coll.world.objects.values() if o.obj_type == "Geometry"}
-        q = motion._world_gpu.propose(motion, coll, arm, q0, target, ignore, held)
+        q = motion._world_gpu.propose(motion, coll, arm, q0, target, ignore, held,
+                                     budget_s=budget, gripper=gripper)
+        attempts = [getattr(motion._world_gpu, "last_diagnostics", {})]
+        if q is None and profile == "recover":
+            from dojo.skills.plan_diagnostics import failure_category
+            if failure_category(attempts[-1]) == "start_state_collision":
+                # Retract through the original checked Cartesian primitive. No
+                # partial prefix executes unless the entire joined path validates.
+                from dojo.skills.motion import Motion
+                pose = motion.kin.tcp(arm, q0)
+                for dz in (.03, .06, .10):
+                    if time.perf_counter()-started >= budget:
+                        break
+                    lift = pose.copy(); lift[2, 3] += dz
+                    prefix = Motion(motion.kin, coll).line(arm, q0, lift, step_rad=step_rad,
+                        name=name, gripper=gripper, ignore=ignore, held=held)
+                    if not prefix.ok:
+                        continue
+                    remaining = budget-(time.perf_counter()-started)
+                    if remaining <= 0:
+                        break
+                    tail = motion._world_gpu.propose(motion, coll, arm, prefix.q_end, target, ignore, held,
+                                                    budget_s=remaining, gripper=gripper)
+                    attempts.append(getattr(motion._world_gpu, "last_diagnostics", {}))
+                    if tail is not None:
+                        q = np.vstack([s.q for s in prefix.segments]+[tail])
+                        event["retract_m"] = dz
+                        break
+        event["attempts"] = attempts
+        event["routes"] = len(attempts)
         event["diagnostics"] = getattr(motion._world_gpu, "last_diagnostics", {})
+        event["last_stage"] = getattr(motion._world_gpu, "last_stage", None)
         if getattr(motion, "plan_capture", "off") == "requests":
             event["request"] = getattr(motion._world_gpu, "last_payload", None)
         if q is None:
@@ -352,7 +432,7 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
         for a, b in zip(q[:-1], q[1:]):
             count = max(1, int(np.ceil(np.max(np.abs(b-a))/.04)))
             for t in np.linspace(0, 1, count+1)[1:]:
-                if time.perf_counter()-started > BUDGET_S:
+                if time.perf_counter()-started > budget:
                     event["reason"] = "budget"
                     return None
                 qi = a+t*(b-a)
@@ -371,9 +451,16 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
         if getattr(motion, "plan_capture", "off") == "requests":
             event["request"] = getattr(getattr(motion, "_world_gpu", None), "last_payload", None)
         event["failure_category"] = "timeout" if isinstance(error, TimeoutError) else "backend_error"
+        event["last_stage"] = getattr(error, "last_stage", getattr(getattr(motion, "_world_gpu", None), "last_stage", None))
         motion._world_gpu_failure = event["failure_category"]
-        motion._world_gpu = f"{type(error).__name__}: {error}"
-        event["reason"] = motion._world_gpu
+        motion._world_gpu_failure_event = len(motion.world_plans)
+        event["reason"] = f"{type(error).__name__}: {error}"
+        if profile == "recover" and isinstance(error, TimeoutError):
+            # This owned worker was stopped; the next query starts a fresh one.
+            # Never disable an entire episode because one query exhausted time.
+            motion.close()
+        else:
+            motion._world_gpu = event["reason"]
         return None
     finally:
         if event["fallback"] and "failure_category" not in event:

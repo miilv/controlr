@@ -199,7 +199,7 @@ class FrozenGarmentProvider:
 
 
 # ``--skill-attr NAME=VALUE``: Skills switches a G3 run may set (each mirrors a ``RuntimeConfig`` field; first = default)
-SKILL_ATTRS = {"plan_capture": ("off", "requests"), "plan_solver": ("routes", "curobo"), "plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
+SKILL_ATTRS = {"plan_profile": ("legacy", "recover"), "plan_capture": ("off", "requests"), "plan_solver": ("routes", "curobo"), "plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
                "arrange_order": ("near", "big_first", "push_big_first"), "push_stroke": ("face", "press"),
                "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"),
                "hang_half_turn": ("off", "on"),
