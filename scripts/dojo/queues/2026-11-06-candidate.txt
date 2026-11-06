@@ -1,0 +1,10 @@
+# Integration: the exact candidate for NEW queue lines (update on every lead adoption)
+# 15:10Z 29 Oct: + imitate_pairing one_to_one + imitate_wait origin (lead: imitate D 3W/0L over 8 layouts);
+#   only on shas >= 17d97d6d (they only affect copy_demonstration); imitate_look NOT adopted (E parked)
+# 16:35Z 29 Oct: ported_classify p1 -> p2 (lead: adopted; classify-only; boundary sha >= 7a48ac9d)
+# 02:00Z 30 Oct: + lane env DOJO_COLOR_CALIB (frozen set colour map, sha256 c1b5f567; lead: no-op, parity / manifest) from c4b_playstackingtoysg_pbrA_100005 on
+# 05:00Z 30 Oct: + peg_base_refine local + peg_base_tries 8 (lead: pbr B ADOPTED, pooled 62.0 vs 41.0, 2 vs 0 successes; code >= 57dd7f36; only stack_on_pegs / play_stacking_toy); C (peg_stuck_confirm) REJECTED
+# 08:40Z 30 Oct: + belt_wrist_veto on (lead: matchveto ADOPTED, on 5/10 vs off 4/10, 0 losers; validates on c10d7658; reached via interactive.pick_from_belt = match_and_pick, and pick_into_held = pick_from_conveyor_by_image, parked); track_expire stays out
+--preset submit_v3 --setenv DOJO_GRIP_SOURCE=v2 --setenv DOJO_COLOR_CALIB=/home/haptics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49.color_calib.json --seg v2b --glyph digit_v2 --glyph-kong kong_v1b
+--setenv DOJO_PERCEPTION_CFG={"series_count":"seg","glyph_read":"on","pad_row_extend":true}
+--config {"save_look_frames":true,"grip_check":"on","ported_routes":true,"new_routes":["equation","largest_number","align","row_by_size","pour_order"],"ported_swap":"reach","put_into_opts":["spot","patient","sequence"],"drop_verdict":"release","refine_recentre_guard":"vis","ported_drag":"turn","ported_pickup":"library","ported_pour":"full","align_measure":"parallel","vocab_found_needs_score":true,"series_labels":"numbered","ported_classify":"p2","kong_draw_read":"place","ported_pour_aim":"b10","imitate_pairing":"one_to_one","imitate_wait":"origin","peg_base_refine":"local","peg_base_tries":8,"belt_wrist_veto":"on"}

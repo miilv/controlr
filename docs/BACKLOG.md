@@ -1017,3 +1017,5 @@
   dev rows. Run the fresh-variant G3 pair after compute3 CUDA is restored, then the prospective
   camera protocol (journal `2026-11-05-conv-waist-intercept`, experiment
   `2026-11-05-conv-waist-camera-prereg`). Keep wrist veto on; no adoption from old pre-veto rows.
+
+- G3 launch disk floor: `scripts/skills/g3.sh` takes its own lock then sets `SIMLAB_GPU=0`, so child `rdpy.sh` skips its disk guard. Add the existing disk guard to the G3 entrypoint; until then invoke `disk_guard` explicitly before each G3 job. See [QUEUE dispatch notes](experiments/2026-11-06-dojo-ab-wave.md#physics-head-388-and-389-before-camera-dispatch).
