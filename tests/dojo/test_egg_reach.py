@@ -48,3 +48,43 @@ def test_switch_is_default_off_and_validated():
     assert SKILL_ATTRS['egg_reach'] == ('off', 'search')
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(egg_reach='typo'), assets=None)
+
+
+def test_practical_limits_never_widen_existing_envelope():
+    kin = X5Kin()
+    kin.limits[3] = (-1., 1.)
+    with practical_limits(kin):
+        assert kin.limits[3].tolist() == [-1., 1.]
+
+
+def test_reach_rejects_before_ik():
+    kin = X5Kin()
+    def ik(*args, **kwargs):
+        pytest.fail('out-of-workspace target must not invoke IK')
+    kin.ik = ik
+    sk = SimpleNamespace(kin=kin, ex=SimpleNamespace(q={'left': np.zeros(6)}), log=lambda _: None)
+    T = np.eye(4)
+    T[:3, 3] = kin.base('left')[:3, 3] + [0.61, 0., 0.]
+    assert screen(sk, 'left', [T], lambda T: [T], 'test') == []
+
+
+def test_off_wrapper_does_not_touch_limits(monkeypatch):
+    from dojo.skills import holders
+    token = object()
+    monkeypatch.setattr(holders, '_fill_drop_impl', lambda sk, *a, **kw: token)
+    assert holders._fill_drop(SimpleNamespace(), []) is token
+
+
+def test_failed_early_candidates_do_not_starve_later_orientations():
+    kin = X5Kin()
+    def ik(arm, T, q, **kw):
+        return SimpleNamespace(ok=bool(T[2, 3]), q=np.zeros(6), pos_err=.01)
+    kin.ik = ik
+    sk = SimpleNamespace(kin=kin, ex=SimpleNamespace(q={'left': np.zeros(6)}), log=lambda _: None)
+    bad = np.eye(4)
+    bad[:3, 3] = kin.base('left')[:3, 3]
+    bad[2, 3] = 0.
+    good = bad.copy()
+    good[2, 3] = 1.
+    kept = screen(sk, 'left', [bad] * 60 + [good], lambda T: [T], 'test')
+    assert len(kept) == 1 and kept[0] is good
