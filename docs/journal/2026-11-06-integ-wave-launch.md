@@ -148,3 +148,11 @@ under compute4 `~/dojo-data/wave-1106/`, including
 `prep-lead-amendments.json` and `prep-amendment-journal.md`; these amendments were
 recorded there before amended preparation. Final refill/demo results and
 manifest hashes remain pending.
+
+The two authorized key refill blocks each yielded two stable records: gain3
+100000/100003 and gain4 100001/100004. Before any key camera data, the lead then
+authorized **nine gain pairs**, keeping the five original valid records and these
+four additions, with all ten charger guard pairs unchanged (38 camera jobs).
+The decision rule is unchanged: pooled B at least A + 5 gain-cell points,
+success flips wins at least twice losses with at least two net wins, and the
+existing EXPERIMENTS guard bound. State n=9; no further generation is authorized.
