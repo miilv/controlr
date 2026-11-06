@@ -186,3 +186,14 @@ mates/retries to protect. The frozen pair order is preserved. Queue SHA256:
 This is dispatch, not a camera verdict. A no-model-call physics audit worker
 was started to process each recorded arm as its actions become available;
 its measured results remain required before any verdict.
+
+### Preliminary write audit — first completed pair only
+
+At **23:37:10Z**, the first make_kong pair (block 1 / 100000) had completed
+physics replays. [Snapshot](data/kong-scoped-relocate/audit-initial-pair.json):
+A **10 logged / 10 scored** writes, B **14 / 14**, no coverage gap.
+B's four exact `watch_relocate` writes are **2 helpful, 2 neutral, 0 harmful**.
+Other writers' harmful counts match in this pair: perception 4/4, predicted
+2/2, watch_lay 1/1 (A/B). This demonstrates ingestion of the new writer,
+including exact pre/post poses; it is **one pair**, not a passing full-panel
+audit or camera verdict. The worker continues through all 40 registered arms.

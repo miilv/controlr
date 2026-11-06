@@ -1,0 +1,116 @@
+{
+  "time": "2026-11-06T23:38:50Z",
+  "expected_episodes": 40,
+  "audited_episodes": 2,
+  "complete": false,
+  "coverage_ok": true,
+  "counts": [
+    {
+      "arm": "A",
+      "writer": "perception",
+      "neutral": 1,
+      "harmful": 4
+    },
+    {
+      "arm": "A",
+      "writer": "predicted",
+      "helpful": 1,
+      "neutral": 1,
+      "harmful": 2
+    },
+    {
+      "arm": "A",
+      "writer": "watch_lay",
+      "harmful": 1
+    },
+    {
+      "arm": "B",
+      "writer": "perception",
+      "helpful": 1,
+      "harmful": 4
+    },
+    {
+      "arm": "B",
+      "writer": "predicted",
+      "helpful": 1,
+      "neutral": 1,
+      "harmful": 2
+    },
+    {
+      "arm": "B",
+      "writer": "watch_lay",
+      "harmful": 1
+    },
+    {
+      "arm": "B",
+      "writer": "watch_relocate",
+      "neutral": 2,
+      "helpful": 2
+    }
+  ],
+  "episodes": [
+    {
+      "name": "c6b_makekongsg_kongAr1b1_100000",
+      "attempt": "c6b_makekongsg_kongAr1b1_100000",
+      "arm": "A",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "expected_writes": 10,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongAr1b1_100000/writes.jsonl",
+      "relocation_writes": 0,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongAr1b1_100000.provenance.json"
+    },
+    {
+      "name": "c6b_makekongsg_kongBr1b1_100000",
+      "attempt": "c6b_makekongsg_kongBr1b1_100000",
+      "arm": "B",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "expected_writes": 14,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongBr1b1_100000/writes.jsonl",
+      "relocation_writes": 4,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongBr1b1_100000.provenance.json"
+    }
+  ],
+  "pending": [
+    "c6b_makekongsg_kongBr1b1_100001",
+    "c6b_makekongsg_kongAr1b1_100001",
+    "c6b_makekongsg_kongAr1b1_100002",
+    "c6b_makekongsg_kongBr1b1_100002",
+    "c6b_makekongsg_kongBr1b1_100003",
+    "c6b_makekongsg_kongAr1b1_100003",
+    "c6b_makekongsg_kongAr1b1_100004",
+    "c6b_makekongsg_kongBr1b1_100004",
+    "c6b_makekongsg_kongBr1b2_100000",
+    "c6b_makekongsg_kongAr1b2_100000",
+    "c6b_makekongsg_kongAr1b2_100001",
+    "c6b_makekongsg_kongBr1b2_100001",
+    "c6b_makekongsg_kongBr1b2_100002",
+    "c6b_makekongsg_kongAr1b2_100002",
+    "c6b_makekongsg_kongAr1b2_100003",
+    "c6b_makekongsg_kongBr1b2_100003",
+    "c6b_makekongsg_kongBr1b2_100004",
+    "c6b_makekongsg_kongAr1b2_100004",
+    "c6b_imitatesg_kongAr1b1_100000",
+    "c6b_imitatesg_kongBr1b1_100000",
+    "c6b_imitatesg_kongBr1b1_100001",
+    "c6b_imitatesg_kongAr1b1_100001",
+    "c6b_imitatesg_kongAr1b1_100002",
+    "c6b_imitatesg_kongBr1b1_100002",
+    "c6b_imitatesg_kongBr1b1_100003",
+    "c6b_imitatesg_kongAr1b1_100003",
+    "c6b_imitatesg_kongAr1b1_100004",
+    "c6b_imitatesg_kongBr1b1_100004",
+    "c6b_stackblockssg_kongBr1b2_100000",
+    "c6b_stackblockssg_kongAr1b2_100000",
+    "c6b_stackblockssg_kongAr1b2_100001",
+    "c6b_stackblockssg_kongBr1b2_100001",
+    "c6b_stackblockssg_kongBr1b2_100002",
+    "c6b_stackblockssg_kongAr1b2_100002",
+    "c6b_stackblockssg_kongAr1b2_100003",
+    "c6b_stackblockssg_kongBr1b2_100003",
+    "c6b_stackblockssg_kongBr1b2_100004",
+    "c6b_stackblockssg_kongAr1b2_100004"
+  ],
+  "qualification": "Write audit only; no camera verdict. Replays use original action prefixes through the last write plus one step, exact write snapshots, every-4 sampling, same salted layout/demo."
+}
