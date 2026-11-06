@@ -1,0 +1,42 @@
+{
+  "100067": {
+    "file": "100067.settled.json",
+    "sha256": "d619e55cddf5aeb1097c713da099d60f506558dcfc9dd4c99af07c6c58d32746"
+  },
+  "100071": {
+    "file": "100071.settled.json",
+    "sha256": "da2250c8a39d453ec9ec909dd3a2ed0f0e646a43cc860bb275fced7321820bbf"
+  },
+  "100072": {
+    "file": "100072.settled.json",
+    "sha256": "2db69e76bcc9949a0e155ab3f1bb88bc8380dad73a1826d9fc399a5d624a2b82"
+  },
+  "100075": {
+    "file": "100075.settled.json",
+    "sha256": "80242bc1be1ce2b8c5604acad98faad350e3e0a215a703be19a3c2079233ee0f"
+  },
+  "100080": {
+    "file": "100080.settled.json",
+    "sha256": "9cccde85a00a29758c82b4dc0455329a946864a953013db0360d01ab5dfb068b"
+  },
+  "100084": {
+    "file": "100084.settled.json",
+    "sha256": "59b9ad6eb3fcee31b1e8bc7746f55b793984cb1e3466f9062a7b6b38077e1147"
+  },
+  "100091": {
+    "file": "100091.settled.json",
+    "sha256": "b7f14fdbc8503c1d4363373956d2a207036f846cc94ce97c9f7d752875a50d4e"
+  },
+  "100096": {
+    "file": "100096.settled.json",
+    "sha256": "fae6a2bb0d1231b399c170d664ac9301351ed9c235b5596481a44f5f106eb8f2"
+  },
+  "100097": {
+    "file": "100097.settled.json",
+    "sha256": "ecce179951925429835a3af72d9f2cd6c113c4eb530b283a94a930552ebb1287"
+  },
+  "100098": {
+    "file": "100098.settled.json",
+    "sha256": "9af62abd0e214a373e7f221085e0d621af7d98e53dd7f00a7f7f0d25bb3fbb92"
+  }
+}
