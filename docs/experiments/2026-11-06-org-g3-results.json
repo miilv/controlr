@@ -1,0 +1,7318 @@
+{
+ "manifest": {
+  "100030": "242f3f68af027dcf692f6aa844513de677ff9678c02de46751ff8b59fdf66890",
+  "100031": "829a80a8c6160d7ad5dd7af2e0f2a2daec2856230cbbf9f068e4d953729d85da",
+  "100036": "e504956e9df174d709c361add57acfe971b8a28857104a09d0e97fd0a292780d",
+  "100037": "10ec2d15cba484290f2cfbe11693cb4da8c83be711446609445caf9d895f511c",
+  "100038": "eec1420ac84c39251d580e8fb0b4d1dee807e6d2873de2f153674266b80ad9b4",
+  "100039": "2d7040e7b576d655db94bad1b1b6b5a66c34ecd6d83ca484bedfbf14464e3266",
+  "100040": "1dc38dbd322f9b446d7563e1edd8618f2e99b1c11a010ec1979d1b135f6d049e",
+  "100042": "3714182da0c48d69be344cdd2a991368d20d07fe8cb652181cfe1ff2a456b705",
+  "100043": "f779430f8fefb98c62bbcc4d9f5ef56967f9e1a215d7c440c637c836e96e43f5",
+  "100044": "b12a11fda1097c61e0ceea475dba9e16adf1cdcc8d36db045e5d02fd1a53a117"
+ },
+ "runs": {
+  "low0": [
+   {
+    "task": "organize_table",
+    "seed": 100000,
+    "load_s": 4.04,
+    "stable": true,
+    "layout_file": "100000.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 213,
+    "step_lim": 1000,
+    "wall_s": 58.5,
+    "sim_s": 9.5,
+    "plan_s": 49.0,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['alarm', 'garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 213,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 32,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 25,
+      "arm": "right",
+      "note": "xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 39,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.2 mm"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 38,
+      "arm": "left",
+      "note": "xy err 16.5 mm, dz -19.3 mm (centre 1.0128 vs 1.0321), rel tilt 14.4 deg; in-hand shift 2.9 mm (re-plan failed: )"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 114/114 grasps reachable, 12 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z ; no in-air handover for a 191 mm object"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 51,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 21,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4771,
+      0.0018,
+      0.7844,
+      -0.7064,
+      -0.0051,
+      -0.0007,
+      0.7078
+     ],
+     "alarm": [
+      -0.3533,
+      0.062,
+      1.0091,
+      1.0,
+      -0.001,
+      -0.0001,
+      0.0085
+     ],
+     "keyboard": [
+      -0.053,
+      0.0057,
+      0.7715,
+      0.9836,
+      0.0,
+      -0.0,
+      0.1804
+     ],
+     "garage": [
+      -0.3155,
+      -0.1245,
+      0.8605,
+      0.9328,
+      0.002,
+      -0.0001,
+      -0.3603
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3773,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1439,
+      0.2417,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4774,
+      0.0019,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "place_miss",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=32 top axis 1 tilt 0, in-hand drift 0.3 mm",
+     "[skill] place right ok steps=25 xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=39 top axis 0 tilt 40, in-hand drift 0.2 mm",
+     "[skill] place left place_miss steps=38 xy err 16.5 mm, dz -19.3 mm (centre 1.0128 vs 1.0321), rel tilt 14.4 deg; in-hand shift 2.9 mm (re-plan failed: )",
+     "[arrange] place alarm -> drawer: place_miss xy err 16.5 mm, dz -19.3 mm (centre 1.0128 vs 1.0321), rel tilt 14.4 deg; in-hand shift 2.9 mm (re-plan failed: )",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 114/114 grasps reachable, 12 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z 0.091 dir 0 w 39mm tilt 40: approach: target unreachable (no seed converged); place slice z 0.091 dir 0 w 39mm tilt 40: ); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 114/114 grasps reachable, 12 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z ; no in-air handover for a 191 mm object",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 114/114 grasps reachable, 12 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z ",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=51 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=21 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   }
+  ],
+  "base5": [
+   {
+    "task": "organize_table",
+    "seed": 100000,
+    "load_s": 3.12,
+    "stable": true,
+    "layout_file": "100000.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 223,
+    "step_lim": 1000,
+    "wall_s": 60.5,
+    "sim_s": 10.8,
+    "plan_s": 49.7,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse', 'alarm'], failed ['garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 223,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 32,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 32,
+      "arm": "right",
+      "note": "xy err 0.1 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 39,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.2 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 42,
+      "arm": "left",
+      "note": "xy err 12.7 mm, dz -21.9 mm (centre 1.0102 vs 1.0321), rel tilt 4.3 deg; in-hand shift 3.5 mm (re-plan failed: )"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 114/114 grasps reachable, 2 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z 0; no in-air handover for a 191 mm object"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 50,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 21,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4772,
+      0.0019,
+      0.7844,
+      -0.7062,
+      -0.0051,
+      -0.0007,
+      0.7079
+     ],
+     "alarm": [
+      -0.2447,
+      0.0535,
+      1.009,
+      1.0,
+      0.0009,
+      0.0008,
+      -0.0054
+     ],
+     "keyboard": [
+      -0.0524,
+      0.0019,
+      0.7715,
+      0.9862,
+      0.0,
+      -0.0,
+      0.1658
+     ],
+     "garage": [
+      -0.3155,
+      -0.1245,
+      0.8605,
+      0.9328,
+      0.002,
+      -0.0001,
+      -0.3603
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3773,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1439,
+      0.2417,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4774,
+      0.0019,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "ik_fail",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=32 top axis 1 tilt 0, in-hand drift 0.3 mm",
+     "[skill] place right ok steps=32 xy err 0.1 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.1 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=39 top axis 0 tilt 40, in-hand drift 0.2 mm",
+     "[skill] place left ok steps=42 xy err 12.7 mm, dz -21.9 mm (centre 1.0102 vs 1.0321), rel tilt 4.3 deg; in-hand shift 3.5 mm (re-plan failed: )",
+     "[arrange] place alarm -> drawer: ok xy err 12.7 mm, dz -21.9 mm (centre 1.0102 vs 1.0321), rel tilt 4.3 deg; in-hand shift 3.5 mm (re-plan failed: )",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 114/114 grasps reachable, 2 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z 0.091 dir 0 w 39mm tilt 40: approach: target unreachable (no seed converged); place slice z 0.091 dir 0 w 39mm tilt 40: a); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 114/114 grasps reachable, 2 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z 0; no in-air handover for a 191 mm object",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 114/114 grasps reachable, 2 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z 0",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=50 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=21 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org",
+     "commit": "ebcbca"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100001,
+    "load_s": 3.88,
+    "stable": true,
+    "layout_file": "100001.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 235,
+    "step_lim": 1000,
+    "wall_s": 54.7,
+    "sim_s": 11.6,
+    "plan_s": 43.1,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse', 'alarm'], failed ['garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 235,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 37,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 24,
+      "arm": "right",
+      "note": "xy err 0.8 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 35,
+      "arm": "left",
+      "note": "object rose -41 mm (planned 80), in-hand drift 224 mm [slice slice z 0.091 dir 22 w 57mm tilt 40]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 26,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 28,
+      "arm": "left",
+      "note": "xy err 0.1 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.0 deg; in-hand shift 0.2 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 58,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 19,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4643,
+      -0.0424,
+      0.7844,
+      -0.705,
+      -0.0052,
+      -0.0006,
+      0.7092
+     ],
+     "alarm": [
+      -0.3924,
+      0.0559,
+      1.0091,
+      1.0,
+      -0.0001,
+      0.0,
+      -0.0024
+     ],
+     "keyboard": [
+      0.009,
+      0.011,
+      0.7772,
+      1.0,
+      -0.0038,
+      0.0001,
+      0.0063
+     ],
+     "garage": [
+      -0.6008,
+      -0.4231,
+      0.8122,
+      0.5714,
+      0.6924,
+      -0.3806,
+      -0.2219
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4217,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1442,
+      0.2669,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4649,
+      -0.0418,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=37 top axis 1 tilt 0, in-hand drift 0.3 mm",
+     "[skill] place right ok steps=24 xy err 0.8 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.8 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.091 dir 22 w 57mm tilt 40)",
+     "[skill] pick left grasp_slip steps=35 object rose -41 mm (planned 80), in-hand drift 224 mm [slice slice z 0.091 dir 22 w 57mm tilt 40]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose -41 mm (planned 80), in-hand drift 224 mm [slice slice z 0.091 dir 22 w 57mm tilt 40]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=26 top axis 0 tilt 40, in-hand drift 0.3 mm",
+     "[skill] place left ok steps=28 xy err 0.1 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.0 deg; in-hand shift 0.2 mm, re-planned",
+     "[arrange] place alarm -> drawer: ok xy err 0.1 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.0 deg; in-hand shift 0.2 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=58 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=19 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org",
+     "commit": "ebcbca"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100002,
+    "load_s": 4.17,
+    "stable": true,
+    "layout_file": "100002.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 326,
+    "step_lim": 1000,
+    "wall_s": 83.7,
+    "sim_s": 15.2,
+    "plan_s": 68.5,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['alarm', 'garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 326,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 34,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.0 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 81,
+      "arm": "right",
+      "note": "xy err 1.6 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 29,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.2 mm"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 42,
+      "arm": "left",
+      "note": "xy err 6.0 mm, dz -10.9 mm (centre 1.0212 vs 1.0321), rel tilt 17.8 deg; in-hand shift 2.3 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 94/102 grasps reachable, 172 grasp-place pairs; right: 0/102 grasps reachable, 0 grasp-place pairs; pick slice z 0; no in-air handover for a 191 mm object"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 112,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 20,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.3614,
+      -0.0411,
+      0.7844,
+      -0.7063,
+      -0.003,
+      0.0045,
+      0.7078
+     ],
+     "alarm": [
+      -0.3081,
+      -0.0048,
+      0.8047,
+      0.3583,
+      0.6062,
+      -0.3723,
+      0.6046
+     ],
+     "keyboard": [
+      0.054,
+      0.0244,
+      0.7761,
+      1.0,
+      0.0,
+      0.0,
+      -0.0056
+     ],
+     "garage": [
+      -0.4421,
+      -0.0629,
+      0.8605,
+      0.9916,
+      0.002,
+      0.0004,
+      -0.1291
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4172,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1431,
+      0.2434,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.363,
+      -0.0411,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "place_miss",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +5mm)",
+     "[skill] pick right ok steps=34 box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.0 mm",
+     "[skill] place right ok steps=81 xy err 1.6 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 1.6 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=29 top axis 0 tilt 40, in-hand drift 0.2 mm",
+     "[skill] place left place_miss steps=42 xy err 6.0 mm, dz -10.9 mm (centre 1.0212 vs 1.0321), rel tilt 17.8 deg; in-hand shift 2.3 mm, re-planned",
+     "[arrange] place alarm -> drawer: place_miss xy err 6.0 mm, dz -10.9 mm (centre 1.0212 vs 1.0321), rel tilt 17.8 deg; in-hand shift 2.3 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 94/102 grasps reachable, 172 grasp-place pairs; right: 0/102 grasps reachable, 0 grasp-place pairs; pick slice z 0.048 dir 68 w 45mm tilt 40: left: 0 feasible of 1 (ik 0, collision 1); pick slice z 0.048 dir 68 w 45mm tilt 40: left: 0); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 94/102 grasps reachable, 172 grasp-place pairs; right: 0/102 grasps reachable, 0 grasp-place pairs; pick slice z 0; no in-air handover for a 191 mm object",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 94/102 grasps reachable, 172 grasp-place pairs; right: 0/102 grasps reachable, 0 grasp-place pairs; pick slice z 0",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=112 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=20 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org",
+     "commit": "ebcbca"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100003,
+    "load_s": 3.37,
+    "stable": true,
+    "layout_file": "100003.settled.json",
+    "success": false,
+    "score": 0.25,
+    "steps": 255,
+    "step_lim": 1000,
+    "wall_s": 39.0,
+    "sim_s": 11.9,
+    "plan_s": 27.1,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['alarm', 'garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 255,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 30,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.2 mm"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 44,
+      "arm": "left",
+      "note": "xy err 9.2 mm, dz -13.9 mm (centre 1.0182 vs 1.0321), rel tilt 17.0 deg; in-hand shift 3.0 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 33,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.5 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 56,
+      "arm": "right",
+      "note": "xy err 0.3 mm, dz -7.0 mm (centre 0.7843 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 36/36 grasps reachable, 62 grasp-place pairs; right: 0/36 grasps reachable, 0 grasp-place pairs; place slice z 0.0; no in-air handover for a 191 mm object"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 50,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 25,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4663,
+      -0.0521,
+      0.7843,
+      0.7083,
+      -0.0003,
+      0.0052,
+      -0.7059
+     ],
+     "alarm": [
+      -0.2674,
+      -0.0394,
+      0.7876,
+      0.7268,
+      0.6772,
+      -0.0809,
+      -0.0812
+     ],
+     "keyboard": [
+      -0.0242,
+      0.0249,
+      0.7715,
+      0.9927,
+      0.0,
+      -0.0,
+      -0.1204
+     ],
+     "garage": [
+      -0.3641,
+      -0.1181,
+      0.8605,
+      0.9995,
+      0.0,
+      0.0,
+      -0.0304
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4346,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.052,
+      0.2442,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4665,
+      -0.0518,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "place_miss",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=30 top axis 0 tilt 40, in-hand drift 0.2 mm",
+     "[skill] place left place_miss steps=44 xy err 9.2 mm, dz -13.9 mm (centre 1.0182 vs 1.0321), rel tilt 17.0 deg; in-hand shift 3.0 mm, re-planned",
+     "[arrange] place alarm -> drawer: place_miss xy err 9.2 mm, dz -13.9 mm (centre 1.0182 vs 1.0321), rel tilt 17.0 deg; in-hand shift 3.0 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +0mm)",
+     "[skill] pick right ok steps=33 box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.5 mm",
+     "[skill] place right ok steps=56 xy err 0.3 mm, dz -7.0 mm (centre 0.7843 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.3 mm, dz -7.0 mm (centre 0.7843 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 36/36 grasps reachable, 62 grasp-place pairs; right: 0/36 grasps reachable, 0 grasp-place pairs; place slice z 0.047 dir 112 w 73mm tilt 25: approach: target unreachable (no seed converged); place slice z 0.047 dir 112 w 73mm tilt 25:); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 36/36 grasps reachable, 62 grasp-place pairs; right: 0/36 grasps reachable, 0 grasp-place pairs; place slice z 0.0; no in-air handover for a 191 mm object",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 36/36 grasps reachable, 62 grasp-place pairs; right: 0/36 grasps reachable, 0 grasp-place pairs; place slice z 0.0",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=50 keyboard: no push stroke along axis 0",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=25 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org",
+     "commit": "ebcbca"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100004,
+    "load_s": 3.26,
+    "stable": true,
+    "layout_file": "100004.settled.json",
+    "success": false,
+    "score": 0.75,
+    "steps": 368,
+    "step_lim": 1000,
+    "wall_s": 81.1,
+    "sim_s": 16.4,
+    "plan_s": 64.7,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['garage', 'alarm', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 368,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 34,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 78,
+      "arm": "right",
+      "note": "xy err 0.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 30,
+      "arm": "left",
+      "note": "object rose -15 mm (planned 80), in-hand drift 127 mm [slice slice z 0.047 dir 112 w 69mm tilt 25]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 32,
+      "arm": "left",
+      "note": "box close 0 approach +2 tilt -25 off +0mm, in-hand drift 0.9 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 28,
+      "arm": "left",
+      "note": "xy err 2.8 mm, dz -0.1 mm (centre 0.8049 vs 0.8050), rel tilt 0.0 deg; in-hand shift 9.0 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 39,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 29,
+      "arm": "left",
+      "note": "xy err 16.5 mm, dz -19.2 mm (centre 1.0130 vs 1.0321), rel tilt 15.2 deg; in-hand shift 2.9 mm (re-plan failed: )"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 56,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 20,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.3608,
+      -0.0517,
+      0.7844,
+      -0.7069,
+      -0.0031,
+      0.0044,
+      0.7073
+     ],
+     "alarm": [
+      -0.3581,
+      0.0614,
+      1.0091,
+      0.9998,
+      -0.0009,
+      -0.0001,
+      0.0192
+     ],
+     "keyboard": [
+      0.0535,
+      0.0188,
+      0.7761,
+      0.9996,
+      -0.0,
+      0.0,
+      -0.0277
+     ],
+     "garage": [
+      -0.4501,
+      -0.1071,
+      0.8088,
+      -0.6343,
+      0.7424,
+      0.1608,
+      -0.1436
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3824,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0954,
+      0.2532,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.3603,
+      -0.0516,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +5mm)",
+     "[skill] pick right ok steps=34 box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm",
+     "[skill] place right ok steps=78 xy err 0.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.047 dir 112 w 69mm tilt 25)",
+     "[skill] pick left grasp_slip steps=30 object rose -15 mm (planned 80), in-hand drift 127 mm [slice slice z 0.047 dir 112 w 69mm tilt 25]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose -15 mm (planned 80), in-hand drift 127 mm [slice slice z 0.047 dir 112 w 69mm tilt 25]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] alarm: no direct transfer (left: 32/324 grasps reachable, 12 grasp-place pairs; right: 4/324 grasps reachable, 0 grasp-place pairs; pick axis 1 tilt 40: left: 0 feasible of 1 (ik 0, collision 1); pick axis 1 tilt 40: left: 0 feasible of 1 (ik 0, collision 1); place a); relay",
+     "[place_oriented] alarm: relay target@[-0.22, -0.28] left (close 0 approach +2 tilt -25 off +0mm) -> target left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=32 box close 0 approach +2 tilt -25 off +0mm, in-hand drift 0.9 mm",
+     "[skill] place left ok steps=28 xy err 2.8 mm, dz -0.1 mm (centre 0.8049 vs 0.8050), rel tilt 0.0 deg; in-hand shift 9.0 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[skill] pick left ok steps=39 top axis 0 tilt 40, in-hand drift 0.1 mm",
+     "[skill] place left place_miss steps=29 xy err 16.5 mm, dz -19.2 mm (centre 1.0130 vs 1.0321), rel tilt 15.2 deg; in-hand shift 2.9 mm (re-plan failed: )",
+     "[arrange] place alarm -> drawer: place_miss xy err 16.5 mm, dz -19.2 mm (centre 1.0130 vs 1.0321), rel tilt 15.2 deg; in-hand shift 2.9 mm (re-plan failed: )",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=56 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=20 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org",
+     "commit": "ebcbca"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   }
+  ],
+  "base1": [
+   {
+    "task": "organize_table",
+    "seed": 100039,
+    "load_s": 3.24,
+    "stable": true,
+    "layout_file": "100039.settled.json",
+    "success": false,
+    "score": 0.25,
+    "steps": 379,
+    "step_lim": 1000,
+    "wall_s": 96.9,
+    "sim_s": 18.7,
+    "plan_s": 78.2,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['garage', 'alarm', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 379,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 33,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 23,
+      "arm": "right",
+      "note": "xy err 1.6 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.8 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 42/42 grasps reachable, 0 grasp-place pairs; right: 0/42 grasps reachable, 0 grasp-place pairs; no in-air handover for a 191 mm object"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 38,
+      "arm": "right",
+      "note": "box close 0 approach -1 tilt -25 off -28mm, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "handover",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": "left",
+      "note": "alarm right -> left (close 0 approach +1 tilt +25 off +0mm), carry drift 6.2 mm, take drift 0.1 mm / 0.0 deg"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": "left",
+      "note": "after the handover: approach: joint move at t=0.55: hits drawer; via failed: lift: ik_fail: line waypoint 7/10 unreachable (err 19.3 mm / 6.7 deg)"
+     },
+     {
+      "skill": "regrasp",
+      "ok": true,
+      "status": "ok",
+      "steps": 21,
+      "arm": "left",
+      "note": "alarm put down to re-grasp"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 164,
+      "arm": "left",
+      "note": "138 mm left"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 18,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4809,
+      -0.0719,
+      0.7844,
+      -0.704,
+      -0.003,
+      0.0045,
+      0.7102
+     ],
+     "alarm": [
+      0.0686,
+      -0.2715,
+      0.805,
+      0.9902,
+      -0.0003,
+      0.0001,
+      -0.1394
+     ],
+     "keyboard": [
+      0.0746,
+      -0.1364,
+      0.7761,
+      0.9852,
+      0.0,
+      0.0,
+      -0.1712
+     ],
+     "garage": [
+      -0.3845,
+      -0.0835,
+      0.8605,
+      0.9785,
+      -0.0,
+      0.0,
+      0.2063
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3786,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0903,
+      0.2605,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4824,
+      -0.0721,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "ik_fail",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +5mm)",
+     "[skill] pick right ok steps=33 box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm",
+     "[skill] place right ok steps=23 xy err 1.6 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.8 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 1.6 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.8 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 42/42 grasps reachable, 0 grasp-place pairs; right: 0/42 grasps reachable, 0 grasp-place pairs); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 42/42 grasps reachable, 0 grasp-place pairs; right: 0/42 grasps reachable, 0 grasp-place pairs; no in-air handover for a 191 mm object",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 42/42 grasps reachable, 0 grasp-place pairs; right: 0/42 grasps reachable, 0 grasp-place pairs; no in-air handover",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: no direct transfer (left: 10/324 grasps reachable, 8 grasp-place pairs; right: 2/324 grasps reachable, 0 grasp-place pairs; place axis 0 tilt 40: approach: target unreachable (no seed converged); place axis 0 tilt 40: approach: target unreachable (no seed conv); relay",
+     "[place_oriented] alarm: in-air handover right (close 0 approach -1 tilt -25 off -28mm) -> left (close 0 approach +1 tilt +25 off +0mm) at [0.0, -0.24, 0.95]",
+     "[skill] pick right ok steps=38 box close 0 approach -1 tilt -25 off -28mm, in-hand drift 0.1 mm",
+     "[skill] handover left ok steps=0 alarm right -> left (close 0 approach +1 tilt +25 off +0mm), carry drift 6.2 mm, take drift 0.1 mm / 0.0 deg",
+     "[skill] place left ik_fail steps=0 after the handover: approach: joint move at t=0.55: hits drawer; via failed: lift: ik_fail: line waypoint 7/10 unreachable (err 19.3 mm / 6.7 deg)",
+     "[arrange] place alarm -> drawer: ik_fail after the handover: approach: joint move at t=0.55: hits drawer; via failed: lift: ik_fail: line waypoint 7/10 unreachab",
+     "[skill] regrasp left ok steps=21 alarm put down to re-grasp",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push left place_miss steps=164 138 mm left",
+     "[arrange] push keyboard -> frame: place_miss 138 mm left",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=18 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100040,
+    "load_s": 4.48,
+    "stable": true,
+    "layout_file": "100040.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 286,
+    "step_lim": 1000,
+    "wall_s": 66.3,
+    "sim_s": 13.5,
+    "plan_s": 52.8,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['alarm', 'garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 286,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 30,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.5 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 23,
+      "arm": "right",
+      "note": "xy err 0.5 mm, dz -7.0 mm (centre 0.7844 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 34,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.7 mm"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 40,
+      "arm": "left",
+      "note": "xy err 16.3 mm, dz -23.8 mm (centre 1.0083 vs 1.0321), rel tilt 18.4 deg; in-hand shift 0.9 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 61,
+      "arm": "left",
+      "note": "object rose 8 mm (planned 80), in-hand drift 93 mm [slice slice z 0.048 dir 158 w 42mm tilt 40]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 67,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 23,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.3727,
+      -0.0029,
+      0.7844,
+      0.7079,
+      -0.0005,
+      0.0049,
+      -0.7063
+     ],
+     "alarm": [
+      -0.3582,
+      -0.0495,
+      0.79,
+      0.7067,
+      -0.7066,
+      0.0258,
+      -0.0257
+     ],
+     "keyboard": [
+      0.0056,
+      0.0177,
+      0.7715,
+      0.9952,
+      0.0,
+      -0.0,
+      0.098
+     ],
+     "garage": [
+      -0.0873,
+      0.1647,
+      0.7954,
+      -0.6321,
+      0.7173,
+      -0.2187,
+      0.1951
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4212,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0997,
+      0.2612,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.3728,
+      -0.0023,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "place_miss",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +0mm)",
+     "[skill] pick right ok steps=30 box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.5 mm",
+     "[skill] place right ok steps=23 xy err 0.5 mm, dz -7.0 mm (centre 0.7844 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.5 mm, dz -7.0 mm (centre 0.7844 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=34 top axis 0 tilt 40, in-hand drift 0.7 mm",
+     "[skill] place left place_miss steps=40 xy err 16.3 mm, dz -23.8 mm (centre 1.0083 vs 1.0321), rel tilt 18.4 deg; in-hand shift 0.9 mm, re-planned",
+     "[arrange] place alarm -> drawer: place_miss xy err 16.3 mm, dz -23.8 mm (centre 1.0083 vs 1.0321), rel tilt 18.4 deg; in-hand shift 0.9 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.048 dir 158 w 42mm tilt 40)",
+     "[skill] pick left grasp_slip steps=61 object rose 8 mm (planned 80), in-hand drift 93 mm [slice slice z 0.048 dir 158 w 42mm tilt 40]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose 8 mm (planned 80), in-hand drift 93 mm [slice slice z 0.048 dir 158 w 42mm tilt 40]",
+     "[skill] bank  ok steps=2 ",
+     "[skill] push  ik_fail steps=67 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=23 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100042,
+    "load_s": 3.45,
+    "stable": true,
+    "layout_file": "100042.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 323,
+    "step_lim": 1000,
+    "wall_s": 69.3,
+    "sim_s": 15.6,
+    "plan_s": 53.7,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse', 'alarm'], failed ['garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 323,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 33,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 74,
+      "arm": "right",
+      "note": "xy err 0.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 31,
+      "arm": "left",
+      "note": "object rose -0 mm (planned 80), in-hand drift 79 mm [slice slice z 0.178 dir 90 w 65mm tilt 40]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 43,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.4 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 55,
+      "arm": "left",
+      "note": "xy err 3.4 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.1 deg; in-hand shift 0.2 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 56,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 24,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4475,
+      -0.0907,
+      0.7844,
+      -0.707,
+      -0.0031,
+      0.0045,
+      0.7072
+     ],
+     "alarm": [
+      -0.3805,
+      0.0548,
+      1.0091,
+      0.9999,
+      -0.0,
+      0.0001,
+      -0.0111
+     ],
+     "keyboard": [
+      0.0515,
+      0.0312,
+      0.7772,
+      0.9866,
+      -0.0037,
+      0.0008,
+      -0.1628
+     ],
+     "garage": [
+      -0.4293,
+      -0.239,
+      0.8605,
+      0.9285,
+      0.0001,
+      0.0,
+      0.3713
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4038,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0871,
+      0.2462,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4471,
+      -0.0906,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +5mm)",
+     "[skill] pick right ok steps=33 box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm",
+     "[skill] place right ok steps=74 xy err 0.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.178 dir 90 w 65mm tilt 40)",
+     "[skill] pick left grasp_slip steps=31 object rose -0 mm (planned 80), in-hand drift 79 mm [slice slice z 0.178 dir 90 w 65mm tilt 40]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose -0 mm (planned 80), in-hand drift 79 mm [slice slice z 0.178 dir 90 w 65mm tilt 40]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=43 top axis 0 tilt 40, in-hand drift 0.4 mm",
+     "[skill] place left ok steps=55 xy err 3.4 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.1 deg; in-hand shift 0.2 mm, re-planned",
+     "[arrange] place alarm -> drawer: ok xy err 3.4 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.1 deg; in-hand shift 0.2 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=56 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=24 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100043,
+    "load_s": 3.94,
+    "stable": true,
+    "layout_file": "100043.settled.json",
+    "success": false,
+    "score": 0.25,
+    "steps": 224,
+    "step_lim": 1000,
+    "wall_s": 51.6,
+    "sim_s": 9.6,
+    "plan_s": 41.9,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['alarm', 'garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 224,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 26/324 grasps reachable, 6 grasp-place pairs; right: 2/324 grasps reachable, 0 grasp-place pairs; pick axis 1 tilt; left pick: left: 0 feasible of 100 (ik 48, collision 52); right pick: right: 0 feasible of 100 (ik 80, collision 20)"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 33,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.2 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 52,
+      "arm": "right",
+      "note": "xy err 0.9 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.5 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 60/60 grasps reachable, 26 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; place slice z 0.0; no in-air handover for a 191 mm object"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 114,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 19,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4956,
+      -0.0695,
+      0.7844,
+      0.7089,
+      0.0053,
+      0.0005,
+      -0.7053
+     ],
+     "alarm": [
+      -0.3002,
+      -0.2535,
+      0.805,
+      1.0,
+      -0.0004,
+      0.0001,
+      0.0
+     ],
+     "keyboard": [
+      0.1221,
+      0.0296,
+      0.7715,
+      0.9661,
+      -0.0,
+      -0.0,
+      -0.2582
+     ],
+     "garage": [
+      -0.4095,
+      -0.1374,
+      0.8606,
+      0.9878,
+      0.0001,
+      -0.0,
+      -0.156
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4016,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0842,
+      0.2648,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4962,
+      -0.0687,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "ik_fail",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] alarm: no direct transfer (left: 26/324 grasps reachable, 6 grasp-place pairs; right: 2/324 grasps reachable, 0 grasp-place pairs; pick axis 1 tilt 40: left: 0 feasible of 1 (ik 0, collision 1); pick axis 1 tilt 40: left: 0 feasible of 1 (ik 1, collision 0); pick axi); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 26/324 grasps reachable, 6 grasp-place pairs; right: 2/324 grasps reachable, 0 grasp-place pairs; pick axis 1 tilt; left pick: left: 0 feasible of 100 (ik 48, collision 52); right pick: right: 0 feasible of 100 (ik 80, collision 20)",
+     "[arrange] place alarm -> drawer: ik_fail left: 26/324 grasps reachable, 6 grasp-place pairs; right: 2/324 grasps reachable, 0 grasp-place pairs; pick axis 1 tilt",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=33 top axis 1 tilt 0, in-hand drift 0.2 mm",
+     "[skill] place right ok steps=52 xy err 0.9 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.5 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.9 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.5 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 60/60 grasps reachable, 26 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; place slice z 0.091 dir 90 w 77mm tilt 40: approach: joint move at t=0.32: hits drawer; via failed: via-pose z=1.; place slice z 0.091 di); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 60/60 grasps reachable, 26 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; place slice z 0.0; no in-air handover for a 191 mm object",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 60/60 grasps reachable, 26 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; place slice z 0.0",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=114 keyboard: no push stroke along axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=19 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100044,
+    "load_s": 3.9,
+    "stable": true,
+    "layout_file": "100044.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 308,
+    "step_lim": 1000,
+    "wall_s": 95.6,
+    "sim_s": 14.7,
+    "plan_s": 80.9,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['garage', 'alarm', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 308,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 31,
+      "arm": "left",
+      "note": "object rose 8 mm (planned 80), in-hand drift 72 mm [slice slice z 0.049 dir 112 w 64mm tilt 40]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 31,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 24,
+      "arm": "right",
+      "note": "xy err 0.5 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.2 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 26,
+      "arm": "right",
+      "note": "box close 1 approach +0 tilt +25 off +28mm, in-hand drift 7.9 mm"
+     },
+     {
+      "skill": "handover",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": "left",
+      "note": "alarm right -> left (close 2 approach -1 tilt +25 off -28mm), carry drift 22.9 mm, take drift 12.8 mm / 38.0 deg"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 25,
+      "arm": "left",
+      "note": "xy err 253.0 mm, dz -244.4 mm (centre 0.7877 vs 1.0321), rel tilt 86.1 deg; in-hand shift 364.1 mm (re-plan failed: )"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 52,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 22,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.409,
+      -0.0004,
+      0.7844,
+      0.7102,
+      0.0052,
+      0.0006,
+      -0.704
+     ],
+     "alarm": [
+      -0.1265,
+      0.1404,
+      0.7876,
+      -0.0977,
+      -0.0851,
+      0.6772,
+      0.7243
+     ],
+     "keyboard": [
+      0.0491,
+      0.0265,
+      0.7715,
+      1.0,
+      0.0,
+      -0.0,
+      0.0055
+     ],
+     "garage": [
+      -0.2665,
+      -0.1942,
+      0.7959,
+      -0.6375,
+      0.7547,
+      -0.1426,
+      0.0607
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3813,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1401,
+      0.2408,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4092,
+      0.0001,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] garage: direct, left (slice z 0.049 dir 112 w 64mm tilt 40)",
+     "[skill] pick left grasp_slip steps=31 object rose 8 mm (planned 80), in-hand drift 72 mm [slice slice z 0.049 dir 112 w 64mm tilt 40]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose 8 mm (planned 80), in-hand drift 72 mm [slice slice z 0.049 dir 112 w 64mm tilt 40]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=31 top axis 1 tilt 0, in-hand drift 0.3 mm",
+     "[skill] place right ok steps=24 xy err 0.5 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.2 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.5 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.2 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: no direct transfer (left: 70/324 grasps reachable, 8 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; pick axis 0 tilt 40: left: 0 feasible of 1 (ik 0, collision 1); pick axis 0 tilt 40: left: 0 feasible of 1 (ik 0, collision 1); pick axi); relay",
+     "[place_oriented] alarm: in-air handover right (close 1 approach +0 tilt +25 off +28mm) -> left (close 0 approach -1 tilt +0 off +0mm) at [-0.0, -0.2, 1.0]",
+     "[skill] pick right ok steps=26 box close 1 approach +0 tilt +25 off +28mm, in-hand drift 7.9 mm",
+     "[skill] handover left ok steps=0 alarm right -> left (close 2 approach -1 tilt +25 off -28mm), carry drift 22.9 mm, take drift 12.8 mm / 38.0 deg",
+     "[skill] place left place_miss steps=25 xy err 253.0 mm, dz -244.4 mm (centre 0.7877 vs 1.0321), rel tilt 86.1 deg; in-hand shift 364.1 mm (re-plan failed: )",
+     "[arrange] place alarm -> drawer: place_miss xy err 253.0 mm, dz -244.4 mm (centre 0.7877 vs 1.0321), rel tilt 86.1 deg; in-hand shift 364.1 mm (re-plan failed: )",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=52 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=22 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   }
+  ],
+  "combo0": [
+   {
+    "task": "organize_table",
+    "seed": 100030,
+    "load_s": 3.86,
+    "stable": true,
+    "layout_file": "100030.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 506,
+    "step_lim": 1000,
+    "wall_s": 133.1,
+    "sim_s": 21.2,
+    "plan_s": 111.9,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['garage', 'alarm', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 506,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 30,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.4 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 47,
+      "arm": "right",
+      "note": "xy err 0.4 mm, dz -7.0 mm (centre 0.7843 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 26,
+      "arm": "left",
+      "note": "object rose -51 mm (planned 80), in-hand drift 139 mm [slice slice z 0.045 dir 135 w 73mm tilt 25]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 29,
+      "arm": "right",
+      "note": "object rose 11 mm (planned 100), in-hand drift 87 mm [box close 0 approach -1 tilt -25 off +28mm]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 332,
+      "arm": "right",
+      "note": "34 mm left"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 22,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4433,
+      -0.0923,
+      0.7843,
+      0.7082,
+      -0.0003,
+      0.0052,
+      -0.7059
+     ],
+     "alarm": [
+      -0.1549,
+      0.0143,
+      0.805,
+      0.999,
+      -0.0012,
+      0.0001,
+      0.0451
+     ],
+     "keyboard": [
+      0.0725,
+      -0.0222,
+      0.7715,
+      0.9984,
+      0.0,
+      -0.0,
+      0.0568
+     ],
+     "garage": [
+      -0.3924,
+      -0.1542,
+      0.7915,
+      0.1566,
+      -0.5035,
+      -0.5883,
+      0.6131
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4347,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0747,
+      0.2557,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4438,
+      -0.0921,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +0mm)",
+     "[skill] pick right ok steps=30 box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.4 mm",
+     "[skill] place right ok steps=47 xy err 0.4 mm, dz -7.0 mm (centre 0.7843 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.4 mm, dz -7.0 mm (centre 0.7843 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.045 dir 135 w 73mm tilt 25)",
+     "[skill] pick left grasp_slip steps=26 object rose -51 mm (planned 80), in-hand drift 139 mm [slice slice z 0.045 dir 135 w 73mm tilt 25]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose -51 mm (planned 80), in-hand drift 139 mm [slice slice z 0.045 dir 135 w 73mm tilt 25]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] alarm: no direct transfer (left: 70/324 grasps reachable, 12 grasp-place pairs; right: 4/324 grasps reachable, 0 grasp-place pairs; place axis 0 tilt 40: approach: target unreachable (no seed converged); place axis 0 tilt 40: approach: target unreachable (no seed con); relay",
+     "[place_oriented] alarm: in-air handover right (close 0 approach -1 tilt -25 off +28mm) -> left (close 0 approach +1 tilt +25 off +0mm) at [0.0, -0.24, 0.95]",
+     "[skill] pick right grasp_slip steps=29 object rose 11 mm (planned 100), in-hand drift 87 mm [box close 0 approach -1 tilt -25 off +28mm]",
+     "[arrange] place alarm -> drawer: grasp_slip object rose 11 mm (planned 100), in-hand drift 87 mm [box close 0 approach -1 tilt -25 off +28mm]",
+     "[skill] bank  ok steps=2 ",
+     "[skill] push right place_miss steps=332 34 mm left",
+     "[arrange] push keyboard -> frame: place_miss 34 mm left",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=22 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100031,
+    "load_s": 3.44,
+    "stable": true,
+    "layout_file": "100031.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 572,
+    "step_lim": 1000,
+    "wall_s": 126.2,
+    "sim_s": 23.9,
+    "plan_s": 102.3,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['garage', 'alarm', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 572,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 32,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 22,
+      "arm": "right",
+      "note": "xy err 1.6 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.7 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 29,
+      "arm": "left",
+      "note": "object rose -57 mm (planned 80), in-hand drift 191 mm [slice slice z 0.045 dir 135 w 75mm tilt 40]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 51,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.5 mm"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 24,
+      "arm": "left",
+      "note": "xy err 14.2 mm, dz -23.4 mm (centre 1.0087 vs 1.0321), rel tilt 18.0 deg; in-hand shift 0.7 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 374,
+      "arm": "right",
+      "note": "32 mm left"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 20,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.467,
+      -0.0734,
+      0.7844,
+      -0.7044,
+      -0.003,
+      0.0045,
+      0.7097
+     ],
+     "alarm": [
+      -0.408,
+      -0.0999,
+      0.79,
+      0.6982,
+      -0.6981,
+      0.1122,
+      -0.1122
+     ],
+     "keyboard": [
+      0.0639,
+      0.0186,
+      0.7761,
+      0.9968,
+      0.0,
+      0.0,
+      -0.0804
+     ],
+     "garage": [
+      -0.5574,
+      -0.2427,
+      0.7989,
+      -0.6022,
+      -0.3797,
+      0.622,
+      0.326
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.447,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0642,
+      0.2631,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4685,
+      -0.0736,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +5mm)",
+     "[skill] pick right ok steps=32 box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm",
+     "[skill] place right ok steps=22 xy err 1.6 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.7 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 1.6 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.7 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.045 dir 135 w 75mm tilt 40)",
+     "[skill] pick left grasp_slip steps=29 object rose -57 mm (planned 80), in-hand drift 191 mm [slice slice z 0.045 dir 135 w 75mm tilt 40]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose -57 mm (planned 80), in-hand drift 191 mm [slice slice z 0.045 dir 135 w 75mm tilt 40]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=51 top axis 0 tilt 40, in-hand drift 0.5 mm",
+     "[skill] place left place_miss steps=24 xy err 14.2 mm, dz -23.4 mm (centre 1.0087 vs 1.0321), rel tilt 18.0 deg; in-hand shift 0.7 mm, re-planned",
+     "[arrange] place alarm -> drawer: place_miss xy err 14.2 mm, dz -23.4 mm (centre 1.0087 vs 1.0321), rel tilt 18.0 deg; in-hand shift 0.7 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push right place_miss steps=374 32 mm left",
+     "[arrange] push keyboard -> frame: place_miss 32 mm left",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=20 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100036,
+    "load_s": 3.6,
+    "stable": true,
+    "layout_file": "100036.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 280,
+    "step_lim": 1000,
+    "wall_s": 104.4,
+    "sim_s": 12.5,
+    "plan_s": 91.8,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse', 'alarm'], failed ['garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 280,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 37,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 18,
+      "arm": "right",
+      "note": "xy err 0.4 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 27,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 41,
+      "arm": "left",
+      "note": "xy err 0.3 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.4 deg; in-hand shift 0.4 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 120/120 grasps reachable, 24 grasp-place pairs; right: 0/120 grasps reachable, 0 grasp-place pairs; pick slice z 0; target [-0.27, -0.28]: left: 120/120 grasps reachable, 3276 grasp-place pairs; right: 0/120 grasps reachable, 0 g; as_is [-0.27, -0.28]: left: 120/120 grasps reachable, 276 grasp"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 133,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 18,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4622,
+      -0.0915,
+      0.7844,
+      -0.7046,
+      -0.0051,
+      -0.0007,
+      0.7095
+     ],
+     "alarm": [
+      -0.3579,
+      0.0563,
+      1.0091,
+      1.0,
+      0.0,
+      0.0001,
+      0.0017
+     ],
+     "keyboard": [
+      0.0142,
+      0.023,
+      0.7761,
+      0.9945,
+      0.0,
+      -0.0,
+      -0.1043
+     ],
+     "garage": [
+      -0.432,
+      -0.0996,
+      0.8604,
+      0.9377,
+      -0.0006,
+      -0.0001,
+      0.3474
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3809,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1478,
+      0.2373,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4627,
+      -0.0915,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "ik_fail",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=37 top axis 1 tilt 0, in-hand drift 0.3 mm",
+     "[skill] place right ok steps=18 xy err 0.4 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.4 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=27 top axis 0 tilt 40, in-hand drift 0.1 mm",
+     "[skill] place left ok steps=41 xy err 0.3 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.4 deg; in-hand shift 0.4 mm, re-planned",
+     "[arrange] place alarm -> drawer: ok xy err 0.3 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.4 deg; in-hand shift 0.4 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 120/120 grasps reachable, 24 grasp-place pairs; right: 0/120 grasps reachable, 0 grasp-place pairs; pick slice z 0.048 dir 158 w 37mm tilt 40: left: 0 feasible of 1 (ik 0, collision 1); pick slice z 0.048 dir 158 w 37mm tilt 40: left:); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 120/120 grasps reachable, 24 grasp-place pairs; right: 0/120 grasps reachable, 0 grasp-place pairs; pick slice z 0; target [-0.27, -0.28]: left: 120/120 grasps reachable, 3276 grasp-place pairs; right: 0/120 grasps reachable, 0 g; as_is [-0.27, -0.28]: left: 120/120 grasps reachable, 276 grasp-place pairs; right: 0/120 grasps reachable, 0 gr; target [-0.27, -0.22]: left: 120/120 grasps reachable, 4086 grasp-place pairs; right: 0/120 grasps reachable, 0 g; as_is [-0.27, -0.22]: left: 120/120 grasps reachable, 342 grasp-place pairs; right: 0/120 grasps reachable, 0 gr; target [-0.27, -0.16]: left: 120/120 grasps reachable, 4086 grasp-place pairs; right: 0/120 grasps reachable, 0 g",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 120/120 grasps reachable, 24 grasp-place pairs; right: 0/120 grasps reachable, 0 grasp-place pairs; pick slice z 0",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=133 keyboard: no push stroke along axis 0",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=18 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100037,
+    "load_s": 4.64,
+    "stable": true,
+    "layout_file": "100037.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 632,
+    "step_lim": 1000,
+    "wall_s": 70.6,
+    "sim_s": 29.5,
+    "plan_s": 41.1,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['garage', 'alarm', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 632,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 35,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 23,
+      "arm": "right",
+      "note": "xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "loose",
+      "steps": 34,
+      "arm": "left",
+      "note": "slice slice z 0.091 dir 45 w 39mm tilt 25, in-hand drift 25.7 mm (loose)"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 73,
+      "arm": "left",
+      "note": "xy err 50.1 mm, dz +9.5 mm (centre 0.8700 vs 0.8605), rel tilt 28.0 deg; in-hand shift 26.8 mm (re-plan failed: )"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 0/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; target [-0.22, -0.28]: left: 0/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-; as_is [-0.22, -0.28]: left: 0/324 grasps reachable, 0 grasp-place pairs; right: 0/"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 437,
+      "arm": "right",
+      "note": "32 mm left"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 23,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4982,
+      -0.0103,
+      0.7844,
+      0.7075,
+      0.0051,
+      0.0006,
+      -0.7067
+     ],
+     "alarm": [
+      -0.1197,
+      0.0931,
+      0.7903,
+      0.5908,
+      -0.5861,
+      0.3945,
+      -0.3897
+     ],
+     "keyboard": [
+      0.0867,
+      -0.03,
+      0.7761,
+      0.9991,
+      -0.0,
+      -0.0,
+      0.0414
+     ],
+     "garage": [
+      -0.0942,
+      0.1629,
+      0.8028,
+      0.6534,
+      -0.2615,
+      0.6967,
+      -0.1388
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4571,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0513,
+      0.257,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4985,
+      -0.0102,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "place_miss",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=35 top axis 1 tilt 0, in-hand drift 0.3 mm",
+     "[skill] place right ok steps=23 xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.091 dir 45 w 39mm tilt 25)",
+     "[skill] pick left loose steps=34 slice slice z 0.091 dir 45 w 39mm tilt 25, in-hand drift 25.7 mm (loose)",
+     "[skill] place left place_miss steps=73 xy err 50.1 mm, dz +9.5 mm (centre 0.8700 vs 0.8605), rel tilt 28.0 deg; in-hand shift 26.8 mm (re-plan failed: )",
+     "[arrange] place garage -> cube_cushion: place_miss xy err 50.1 mm, dz +9.5 mm (centre 0.8700 vs 0.8605), rel tilt 28.0 deg; in-hand shift 26.8 mm (re-plan failed: )",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: no direct transfer (left: 0/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 0/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; target [-0.22, -0.28]: left: 0/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-; as_is [-0.22, -0.28]: left: 0/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-; target [-0.27, -0.28]: left: 0/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-; as_is [-0.27, -0.28]: left: 0/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-; target [-0.27, -0.22]: left: 0/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-",
+     "[arrange] place alarm -> drawer: ik_fail left: 0/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; target [-0.22, -0",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push right place_miss steps=437 32 mm left",
+     "[arrange] push keyboard -> frame: place_miss 32 mm left",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=23 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100038,
+    "load_s": 3.47,
+    "stable": true,
+    "layout_file": "100038.settled.json",
+    "success": false,
+    "score": 0.25,
+    "steps": 129,
+    "step_lim": 1000,
+    "wall_s": 36.5,
+    "sim_s": 5.2,
+    "plan_s": 31.3,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['alarm', 'garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 129,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 27,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.0 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 20,
+      "arm": "right",
+      "note": "xy err 0.3 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.3 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 20/324 grasps reachable, 8 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; pick axis 0 tilt; left pick: left: 0 feasible of 100 (ik 64, collision 36); right pick: right: 0 feasible of 100 (ik 84, collision 16)"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 58/60 grasps reachable, 0 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; no in-air handover for a 191 mm object"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 55,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 21,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.3502,
+      0.0008,
+      0.7844,
+      -0.7051,
+      -0.0051,
+      -0.0007,
+      0.709
+     ],
+     "alarm": [
+      -0.3854,
+      -0.2282,
+      0.805,
+      1.0,
+      -0.0004,
+      0.0001,
+      0.0
+     ],
+     "keyboard": [
+      -0.0551,
+      0.0013,
+      0.7715,
+      0.9853,
+      0.0,
+      -0.0,
+      0.1707
+     ],
+     "garage": [
+      -0.3372,
+      -0.1051,
+      0.8606,
+      0.9576,
+      0.0001,
+      0.0,
+      0.2882
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3744,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1041,
+      0.2678,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.3505,
+      0.001,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "ik_fail",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=27 top axis 1 tilt 0, in-hand drift 0.0 mm",
+     "[skill] place right ok steps=20 xy err 0.3 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.3 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.3 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.3 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: no direct transfer (left: 20/324 grasps reachable, 8 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; pick axis 0 tilt 40: left: 0 feasible of 1 (ik 1, collision 0); pick axis 0 tilt 40: left: 0 feasible of 1 (ik 1, collision 0); pick axi); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 20/324 grasps reachable, 8 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; pick axis 0 tilt; left pick: left: 0 feasible of 100 (ik 64, collision 36); right pick: right: 0 feasible of 100 (ik 84, collision 16)",
+     "[arrange] place alarm -> drawer: ik_fail left: 20/324 grasps reachable, 8 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; pick axis 0 tilt",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 58/60 grasps reachable, 0 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 58/60 grasps reachable, 0 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; no in-air handover for a 191 mm object",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 58/60 grasps reachable, 0 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; no in-air handover",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=55 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=21 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   }
+  ],
+  "route0": [
+   {
+    "task": "organize_table",
+    "seed": 100000,
+    "load_s": 3.25,
+    "stable": true,
+    "layout_file": "100000.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 300,
+    "step_lim": 1000,
+    "wall_s": 64.1,
+    "sim_s": 14.2,
+    "plan_s": 49.9,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse', 'alarm'], failed ['garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 300,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 32,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 25,
+      "arm": "right",
+      "note": "xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 39,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.2 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 52,
+      "arm": "left",
+      "note": "xy err 0.4 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.0 deg; in-hand shift 2.8 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 28,
+      "arm": "left",
+      "note": "slice slice z 0.178 dir 135 w 47mm tilt 40, in-hand drift 6.8 mm"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 35,
+      "arm": "left",
+      "note": "xy err 152.7 mm, dz -59.0 mm (centre 0.8015 vs 0.8605), rel tilt 82.7 deg; in-hand shift 169.2 mm (re-plan failed: )"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 46,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 21,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4771,
+      0.0018,
+      0.7844,
+      -0.7064,
+      -0.0051,
+      -0.0007,
+      0.7078
+     ],
+     "alarm": [
+      -0.3587,
+      0.0852,
+      1.0091,
+      1.0,
+      0.0,
+      0.0001,
+      0.0006
+     ],
+     "keyboard": [
+      -0.0595,
+      0.001,
+      0.7715,
+      0.9791,
+      -0.0,
+      -0.0,
+      0.2033
+     ],
+     "garage": [
+      -0.1905,
+      -0.0075,
+      0.8021,
+      0.6605,
+      -0.6527,
+      0.3646,
+      -0.0683
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3773,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1439,
+      0.2417,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4774,
+      0.0019,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "world_plans": [],
+    "category": "place_miss",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "arrange_route": "lateral"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=32 top axis 1 tilt 0, in-hand drift 0.3 mm",
+     "[skill] place right ok steps=25 xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=39 top axis 0 tilt 40, in-hand drift 0.2 mm",
+     "[skill] place left ok steps=52 xy err 0.4 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.0 deg; in-hand shift 2.8 mm, re-planned",
+     "[arrange] place alarm -> drawer: ok xy err 0.4 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.0 deg; in-hand shift 2.8 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.178 dir 135 w 47mm tilt 40)",
+     "[skill] pick left ok steps=28 slice slice z 0.178 dir 135 w 47mm tilt 40, in-hand drift 6.8 mm",
+     "[skill] place left place_miss steps=35 xy err 152.7 mm, dz -59.0 mm (centre 0.8015 vs 0.8605), rel tilt 82.7 deg; in-hand shift 169.2 mm (re-plan failed: )",
+     "[arrange] place garage -> cube_cushion: place_miss xy err 152.7 mm, dz -59.0 mm (centre 0.8015 vs 0.8605), rel tilt 82.7 deg; in-hand shift 169.2 mm (re-plan failed: )",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=46 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=21 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/route",
+     "commit": "6e2315e8"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   }
+  ],
+  "base0": [
+   {
+    "task": "organize_table",
+    "seed": 100030,
+    "load_s": 3.32,
+    "stable": true,
+    "layout_file": "100030.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 279,
+    "step_lim": 1000,
+    "wall_s": 95.0,
+    "sim_s": 13.2,
+    "plan_s": 81.8,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['garage', 'alarm', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 279,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 30,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.4 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 50,
+      "arm": "right",
+      "note": "xy err 0.5 mm, dz -7.0 mm (centre 0.7844 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 26,
+      "arm": "left",
+      "note": "object rose 45 mm (planned 80), in-hand drift 67 mm [slice slice z 0.045 dir 135 w 73mm tilt 25]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 42,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 37,
+      "arm": "left",
+      "note": "xy err 7.2 mm, dz -10.8 mm (centre 1.0213 vs 1.0321), rel tilt 12.7 deg; in-hand shift 0.9 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 63,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 23,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4433,
+      -0.0925,
+      0.7844,
+      0.7085,
+      -0.0004,
+      0.005,
+      -0.7056
+     ],
+     "alarm": [
+      -0.3152,
+      -0.0911,
+      0.8075,
+      -0.3623,
+      0.7258,
+      -0.5261,
+      0.2553
+     ],
+     "keyboard": [
+      -0.0322,
+      0.0399,
+      0.7715,
+      0.9941,
+      -0.0,
+      -0.0,
+      -0.1086
+     ],
+     "garage": [
+      -0.4027,
+      -0.0814,
+      0.8016,
+      0.6462,
+      -0.5642,
+      -0.4525,
+      -0.2437
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4347,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0747,
+      0.2557,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4438,
+      -0.0921,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +0mm)",
+     "[skill] pick right ok steps=30 box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.4 mm",
+     "[skill] place right ok steps=50 xy err 0.5 mm, dz -7.0 mm (centre 0.7844 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.5 mm, dz -7.0 mm (centre 0.7844 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.045 dir 135 w 73mm tilt 25)",
+     "[skill] pick left grasp_slip steps=26 object rose 45 mm (planned 80), in-hand drift 67 mm [slice slice z 0.045 dir 135 w 73mm tilt 25]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose 45 mm (planned 80), in-hand drift 67 mm [slice slice z 0.045 dir 135 w 73mm tilt 25]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=42 top axis 0 tilt 40, in-hand drift 0.1 mm",
+     "[skill] place left place_miss steps=37 xy err 7.2 mm, dz -10.8 mm (centre 1.0213 vs 1.0321), rel tilt 12.7 deg; in-hand shift 0.9 mm, re-planned",
+     "[arrange] place alarm -> drawer: place_miss xy err 7.2 mm, dz -10.8 mm (centre 1.0213 vs 1.0321), rel tilt 12.7 deg; in-hand shift 0.9 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=63 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=23 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100031,
+    "load_s": 3.27,
+    "stable": true,
+    "layout_file": "100031.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 256,
+    "step_lim": 1000,
+    "wall_s": 113.9,
+    "sim_s": 11.1,
+    "plan_s": 102.8,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['garage', 'alarm', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 256,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 32,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 25,
+      "arm": "right",
+      "note": "xy err 1.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.8 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 29,
+      "arm": "left",
+      "note": "object rose -57 mm (planned 80), in-hand drift 191 mm [slice slice z 0.045 dir 135 w 75mm tilt 40]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 51,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 31,
+      "arm": "left",
+      "note": "xy err 11.7 mm, dz -20.0 mm (centre 1.0121 vs 1.0321), rel tilt 11.1 deg; in-hand shift 0.9 mm (re-plan failed: )"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 55,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 24,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4671,
+      -0.0734,
+      0.7844,
+      -0.7037,
+      -0.003,
+      0.0045,
+      0.7105
+     ],
+     "alarm": [
+      -0.4136,
+      0.0591,
+      1.0091,
+      1.0,
+      0.0,
+      -0.0001,
+      0.0081
+     ],
+     "keyboard": [
+      0.0258,
+      0.018,
+      0.7761,
+      0.9998,
+      0.0,
+      0.0,
+      -0.0215
+     ],
+     "garage": [
+      -0.5574,
+      -0.2427,
+      0.7989,
+      -0.6022,
+      -0.3795,
+      0.6221,
+      0.326
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.447,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0642,
+      0.2631,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4685,
+      -0.0736,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +5mm)",
+     "[skill] pick right ok steps=32 box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm",
+     "[skill] place right ok steps=25 xy err 1.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.8 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 1.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.8 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.045 dir 135 w 75mm tilt 40)",
+     "[skill] pick left grasp_slip steps=29 object rose -57 mm (planned 80), in-hand drift 191 mm [slice slice z 0.045 dir 135 w 75mm tilt 40]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose -57 mm (planned 80), in-hand drift 191 mm [slice slice z 0.045 dir 135 w 75mm tilt 40]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=51 top axis 0 tilt 40, in-hand drift 0.3 mm",
+     "[skill] place left place_miss steps=31 xy err 11.7 mm, dz -20.0 mm (centre 1.0121 vs 1.0321), rel tilt 11.1 deg; in-hand shift 0.9 mm (re-plan failed: )",
+     "[arrange] place alarm -> drawer: place_miss xy err 11.7 mm, dz -20.0 mm (centre 1.0121 vs 1.0321), rel tilt 11.1 deg; in-hand shift 0.9 mm (re-plan failed: )",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=55 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=24 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100036,
+    "load_s": 3.49,
+    "stable": true,
+    "layout_file": "100036.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 211,
+    "step_lim": 1000,
+    "wall_s": 101.1,
+    "sim_s": 9.5,
+    "plan_s": 91.6,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['alarm', 'garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 211,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 37,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 20,
+      "arm": "right",
+      "note": "xy err 0.5 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.2 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 27,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 43,
+      "arm": "left",
+      "note": "xy err 15.4 mm, dz -27.9 mm (centre 1.0042 vs 1.0321), rel tilt 20.6 deg; in-hand shift 0.5 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 120/120 grasps reachable, 2 grasp-place pairs; right: 0/120 grasps reachable, 0 grasp-place pairs; pick slice z 0.; target [-0.27, -0.28]: left: 120/120 grasps reachable, 3276 grasp-place pairs; right: 0/120 grasps reachable, 0 g; as_is [-0.27, -0.28]: left: 120/120 grasps reachable, 276 grasp"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 55,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 24,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4622,
+      -0.0915,
+      0.7844,
+      -0.7035,
+      -0.0051,
+      -0.0007,
+      0.7106
+     ],
+     "alarm": [
+      -0.2831,
+      -0.1587,
+      0.79,
+      0.5042,
+      -0.5041,
+      0.4958,
+      -0.4958
+     ],
+     "keyboard": [
+      0.018,
+      0.0131,
+      0.7761,
+      0.9993,
+      -0.0,
+      0.0,
+      -0.0361
+     ],
+     "garage": [
+      -0.432,
+      -0.0996,
+      0.8604,
+      0.9377,
+      -0.0006,
+      -0.0001,
+      0.3474
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3809,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1478,
+      0.2373,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4627,
+      -0.0915,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "place_miss",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=37 top axis 1 tilt 0, in-hand drift 0.3 mm",
+     "[skill] place right ok steps=20 xy err 0.5 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.2 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.5 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.2 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=27 top axis 0 tilt 40, in-hand drift 0.1 mm",
+     "[skill] place left place_miss steps=43 xy err 15.4 mm, dz -27.9 mm (centre 1.0042 vs 1.0321), rel tilt 20.6 deg; in-hand shift 0.5 mm, re-planned",
+     "[arrange] place alarm -> drawer: place_miss xy err 15.4 mm, dz -27.9 mm (centre 1.0042 vs 1.0321), rel tilt 20.6 deg; in-hand shift 0.5 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 120/120 grasps reachable, 2 grasp-place pairs; right: 0/120 grasps reachable, 0 grasp-place pairs; pick slice z 0.048 dir 158 w 37mm tilt 40: left: 0 feasible of 1 (ik 0, collision 1); pick slice z 0.048 dir 158 w 37mm tilt 40: left: ); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 120/120 grasps reachable, 2 grasp-place pairs; right: 0/120 grasps reachable, 0 grasp-place pairs; pick slice z 0.; target [-0.27, -0.28]: left: 120/120 grasps reachable, 3276 grasp-place pairs; right: 0/120 grasps reachable, 0 g; as_is [-0.27, -0.28]: left: 120/120 grasps reachable, 276 grasp-place pairs; right: 0/120 grasps reachable, 0 gr; target [-0.27, -0.22]: left: 120/120 grasps reachable, 4086 grasp-place pairs; right: 0/120 grasps reachable, 0 g; as_is [-0.27, -0.22]: left: 120/120 grasps reachable, 342 grasp-place pairs; right: 0/120 grasps reachable, 0 gr; target [-0.27, -0.16]: left: 120/120 grasps reachable, 4086 grasp-place pairs; right: 0/120 grasps reachable, 0 g",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 120/120 grasps reachable, 2 grasp-place pairs; right: 0/120 grasps reachable, 0 grasp-place pairs; pick slice z 0.",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=55 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=24 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100037,
+    "load_s": 3.48,
+    "stable": true,
+    "layout_file": "100037.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 279,
+    "step_lim": 1000,
+    "wall_s": 68.2,
+    "sim_s": 13.4,
+    "plan_s": 54.8,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['garage', 'alarm', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 279,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 35,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 30,
+      "arm": "right",
+      "note": "xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.0 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 37,
+      "arm": "left",
+      "note": "object rose 9 mm (planned 80), in-hand drift 84 mm [slice slice z 0.091 dir 22 w 38mm tilt 40]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 51,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 40,
+      "arm": "left",
+      "note": "xy err 10.6 mm, dz -13.7 mm (centre 1.0184 vs 1.0321), rel tilt 19.8 deg; in-hand shift 0.4 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 55,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 22,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4982,
+      -0.0102,
+      0.7844,
+      0.7074,
+      0.0051,
+      0.0007,
+      -0.7068
+     ],
+     "alarm": [
+      -0.2943,
+      -0.0023,
+      0.7876,
+      0.708,
+      0.6992,
+      -0.0908,
+      -0.041
+     ],
+     "keyboard": [
+      0.0305,
+      0.0141,
+      0.7761,
+      0.9998,
+      0.0,
+      0.0,
+      -0.0186
+     ],
+     "garage": [
+      -0.4201,
+      -0.1821,
+      0.8605,
+      0.946,
+      0.002,
+      -0.0,
+      -0.3241
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4571,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0513,
+      0.257,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4985,
+      -0.0102,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=35 top axis 1 tilt 0, in-hand drift 0.3 mm",
+     "[skill] place right ok steps=30 xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.0 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.2 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.0 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.091 dir 22 w 38mm tilt 40)",
+     "[skill] pick left grasp_slip steps=37 object rose 9 mm (planned 80), in-hand drift 84 mm [slice slice z 0.091 dir 22 w 38mm tilt 40]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose 9 mm (planned 80), in-hand drift 84 mm [slice slice z 0.091 dir 22 w 38mm tilt 40]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=51 top axis 0 tilt 40, in-hand drift 0.1 mm",
+     "[skill] place left place_miss steps=40 xy err 10.6 mm, dz -13.7 mm (centre 1.0184 vs 1.0321), rel tilt 19.8 deg; in-hand shift 0.4 mm, re-planned",
+     "[arrange] place alarm -> drawer: place_miss xy err 10.6 mm, dz -13.7 mm (centre 1.0184 vs 1.0321), rel tilt 19.8 deg; in-hand shift 0.4 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=55 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=22 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100038,
+    "load_s": 3.63,
+    "stable": true,
+    "layout_file": "100038.settled.json",
+    "success": false,
+    "score": 0.25,
+    "steps": 133,
+    "step_lim": 1000,
+    "wall_s": 38.3,
+    "sim_s": 7.1,
+    "plan_s": 31.2,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['alarm', 'garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 133,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 27,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.0 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 24,
+      "arm": "right",
+      "note": "xy err 0.8 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 20/324 grasps reachable, 8 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; pick axis 0 tilt; left pick: left: 0 feasible of 100 (ik 64, collision 36); right pick: right: 0 feasible of 100 (ik 84, collision 16)"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 58/60 grasps reachable, 0 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; no in-air handover for a 191 mm object"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 55,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 21,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.3501,
+      0.0002,
+      0.7844,
+      0.7132,
+      0.0053,
+      0.0005,
+      -0.701
+     ],
+     "alarm": [
+      -0.3854,
+      -0.2282,
+      0.805,
+      1.0,
+      -0.0004,
+      0.0001,
+      0.0
+     ],
+     "keyboard": [
+      -0.0551,
+      0.0013,
+      0.7715,
+      0.9853,
+      0.0,
+      -0.0,
+      0.1707
+     ],
+     "garage": [
+      -0.3372,
+      -0.1051,
+      0.8606,
+      0.9576,
+      0.0001,
+      0.0,
+      0.2882
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3744,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1041,
+      0.2678,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.3505,
+      0.001,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "ik_fail",
+    "missing_meshes": [],
+    "skill_attrs": {},
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=27 top axis 1 tilt 0, in-hand drift 0.0 mm",
+     "[skill] place right ok steps=24 xy err 0.8 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.8 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: no direct transfer (left: 20/324 grasps reachable, 8 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; pick axis 0 tilt 40: left: 0 feasible of 1 (ik 1, collision 0); pick axis 0 tilt 40: left: 0 feasible of 1 (ik 1, collision 0); pick axi); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 20/324 grasps reachable, 8 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; pick axis 0 tilt; left pick: left: 0 feasible of 100 (ik 64, collision 36); right pick: right: 0 feasible of 100 (ik 84, collision 16)",
+     "[arrange] place alarm -> drawer: ik_fail left: 20/324 grasps reachable, 8 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; pick axis 0 tilt",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 58/60 grasps reachable, 0 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 58/60 grasps reachable, 0 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; no in-air handover for a 191 mm object",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 58/60 grasps reachable, 0 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; no in-air handover",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=55 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=21 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   }
+  ],
+  "combo1": [
+   {
+    "task": "organize_table",
+    "seed": 100039,
+    "load_s": 3.25,
+    "stable": true,
+    "layout_file": "100039.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 615,
+    "step_lim": 1000,
+    "wall_s": 108.4,
+    "sim_s": 27.5,
+    "plan_s": 80.9,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse', 'alarm'], failed ['garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 615,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 33,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 20,
+      "arm": "right",
+      "note": "xy err 1.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 42/42 grasps reachable, 0 grasp-place pairs; right: 0/42 grasps reachable, 0 grasp-place pairs; no in-air handover for a 191 mm object"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 38,
+      "arm": "right",
+      "note": "box close 0 approach -1 tilt -25 off -28mm, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "handover",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": "left",
+      "note": "alarm right -> left (close 0 approach +1 tilt +25 off +0mm), carry drift 5.0 mm, take drift 0.1 mm / 0.0 deg"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 37,
+      "arm": "left",
+      "note": "xy err 3.0 mm, dz -22.4 mm (centre 1.0098 vs 1.0321), rel tilt 2.8 deg; in-hand shift 2.9 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 383,
+      "arm": "right",
+      "note": "43 mm left"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 21,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4809,
+      -0.0719,
+      0.7844,
+      -0.7038,
+      -0.003,
+      0.0045,
+      0.7104
+     ],
+     "alarm": [
+      -0.3658,
+      0.1527,
+      1.0092,
+      -0.0023,
+      -0.0001,
+      -0.0007,
+      1.0
+     ],
+     "keyboard": [
+      0.06,
+      -0.0201,
+      0.7761,
+      0.9814,
+      0.0,
+      0.0,
+      -0.1922
+     ],
+     "garage": [
+      -0.3845,
+      -0.0835,
+      0.8605,
+      0.9785,
+      -0.0,
+      0.0,
+      0.2063
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3786,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0903,
+      0.2605,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4824,
+      -0.0721,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "ik_fail",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +5mm)",
+     "[skill] pick right ok steps=33 box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm",
+     "[skill] place right ok steps=20 xy err 1.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 1.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.6 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 42/42 grasps reachable, 0 grasp-place pairs; right: 0/42 grasps reachable, 0 grasp-place pairs); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 42/42 grasps reachable, 0 grasp-place pairs; right: 0/42 grasps reachable, 0 grasp-place pairs; no in-air handover for a 191 mm object",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 42/42 grasps reachable, 0 grasp-place pairs; right: 0/42 grasps reachable, 0 grasp-place pairs; no in-air handover",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: no direct transfer (left: 10/324 grasps reachable, 8 grasp-place pairs; right: 2/324 grasps reachable, 0 grasp-place pairs; place axis 0 tilt 40: approach: joint move at t=0.16: hits drawer; via failed: lift: ik_fail; place axis 0 tilt 40: approach: joint move); relay",
+     "[place_oriented] alarm: in-air handover right (close 0 approach -1 tilt -25 off -28mm) -> left (close 0 approach +1 tilt +25 off +0mm) at [0.0, -0.24, 0.95]",
+     "[skill] pick right ok steps=38 box close 0 approach -1 tilt -25 off -28mm, in-hand drift 0.1 mm",
+     "[skill] handover left ok steps=0 alarm right -> left (close 0 approach +1 tilt +25 off +0mm), carry drift 5.0 mm, take drift 0.1 mm / 0.0 deg",
+     "[skill] place left ok steps=37 xy err 3.0 mm, dz -22.4 mm (centre 1.0098 vs 1.0321), rel tilt 2.8 deg; in-hand shift 2.9 mm, re-planned",
+     "[arrange] place alarm -> drawer: ok xy err 3.0 mm, dz -22.4 mm (centre 1.0098 vs 1.0321), rel tilt 2.8 deg; in-hand shift 2.9 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push right place_miss steps=383 43 mm left",
+     "[arrange] push keyboard -> frame: place_miss 43 mm left",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=21 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100040,
+    "load_s": 4.6,
+    "stable": true,
+    "layout_file": "100040.settled.json",
+    "success": false,
+    "score": 0.75,
+    "steps": 679,
+    "step_lim": 1000,
+    "wall_s": 98.9,
+    "sim_s": 29.4,
+    "plan_s": 69.6,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse', 'alarm'], failed ['garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 679,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 30,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.5 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 19,
+      "arm": "right",
+      "note": "xy err 0.3 mm, dz -7.0 mm (centre 0.7844 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 30,
+      "arm": "left",
+      "note": "top axis 1 tilt 0, in-hand drift 5.4 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 23,
+      "arm": "left",
+      "note": "xy err 3.0 mm, dz +0.5 mm (centre 0.8055 vs 0.8050), rel tilt 2.6 deg; in-hand shift 0.3 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 30,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 3.6 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 54,
+      "arm": "left",
+      "note": "xy err 0.1 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.2 deg; in-hand shift 0.3 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 60,
+      "arm": "left",
+      "note": "object rose 40 mm (planned 80), in-hand drift 59 mm [slice slice z 0.048 dir 158 w 42mm tilt 40]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 404,
+      "arm": "right",
+      "note": "35 mm left"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 18,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.3727,
+      -0.0027,
+      0.7844,
+      0.708,
+      -0.0004,
+      0.0051,
+      -0.7062
+     ],
+     "alarm": [
+      -0.3972,
+      0.0849,
+      1.0091,
+      1.0,
+      0.0,
+      0.0001,
+      0.0007
+     ],
+     "keyboard": [
+      0.1268,
+      0.0235,
+      0.7721,
+      0.9873,
+      0.0005,
+      -0.0029,
+      0.1586
+     ],
+     "garage": [
+      -0.1054,
+      0.1615,
+      0.7953,
+      -0.6525,
+      0.7388,
+      0.1276,
+      -0.1104
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4212,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0997,
+      0.2612,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.3728,
+      -0.0023,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +0mm)",
+     "[skill] pick right ok steps=30 box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.5 mm",
+     "[skill] place right ok steps=19 xy err 0.3 mm, dz -7.0 mm (centre 0.7844 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.3 mm, dz -7.0 mm (centre 0.7844 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: no direct transfer (left: 84/324 grasps reachable, 18 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; place axis 1 tilt 40: approach: target unreachable (no seed converged); place axis 1 tilt 40: approach: target unreachable (no seed con); relay",
+     "[place_oriented] alarm: relay target@[-0.27, -0.28] left (axis 1 tilt 0) -> target left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=30 top axis 1 tilt 0, in-hand drift 5.4 mm",
+     "[skill] place left ok steps=23 xy err 3.0 mm, dz +0.5 mm (centre 0.8055 vs 0.8050), rel tilt 2.6 deg; in-hand shift 0.3 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[skill] pick left ok steps=30 top axis 0 tilt 40, in-hand drift 3.6 mm",
+     "[skill] place left ok steps=54 xy err 0.1 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.2 deg; in-hand shift 0.3 mm, re-planned",
+     "[arrange] place alarm -> drawer: ok xy err 0.1 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.2 deg; in-hand shift 0.3 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.048 dir 158 w 42mm tilt 40)",
+     "[skill] pick left grasp_slip steps=60 object rose 40 mm (planned 80), in-hand drift 59 mm [slice slice z 0.048 dir 158 w 42mm tilt 40]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose 40 mm (planned 80), in-hand drift 59 mm [slice slice z 0.048 dir 158 w 42mm tilt 40]",
+     "[skill] bank  ok steps=2 ",
+     "[skill] push right place_miss steps=404 35 mm left",
+     "[arrange] push keyboard -> frame: place_miss 35 mm left",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=18 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100042,
+    "load_s": 3.38,
+    "stable": true,
+    "layout_file": "100042.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 586,
+    "step_lim": 1000,
+    "wall_s": 76.0,
+    "sim_s": 24.1,
+    "plan_s": 51.9,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse', 'alarm'], failed ['garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 586,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 33,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 71,
+      "arm": "right",
+      "note": "xy err 0.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.7 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 26,
+      "arm": "left",
+      "note": "object rose -51 mm (planned 80), in-hand drift 157 mm [slice slice z 0.047 dir 158 w 78mm tilt 25]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 33,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.4 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 52,
+      "arm": "left",
+      "note": "xy err 2.5 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.8 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 342,
+      "arm": "right",
+      "note": "22 mm left"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 20,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4476,
+      -0.0906,
+      0.7844,
+      0.7071,
+      0.0031,
+      -0.0044,
+      -0.7071
+     ],
+     "alarm": [
+      -0.3798,
+      0.0571,
+      1.0091,
+      1.0,
+      0.0,
+      0.0001,
+      0.005
+     ],
+     "keyboard": [
+      0.0937,
+      0.0252,
+      0.7772,
+      0.9881,
+      -0.0037,
+      0.0007,
+      -0.1536
+     ],
+     "garage": [
+      -0.3734,
+      -0.1548,
+      0.8605,
+      0.4873,
+      0.0001,
+      0.0,
+      0.8732
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4038,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0871,
+      0.2462,
+      0.9877,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4471,
+      -0.0906,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +5mm)",
+     "[skill] pick right ok steps=33 box close 1 approach +2 tilt +0 off +5mm, in-hand drift 0.1 mm",
+     "[skill] place right ok steps=71 xy err 0.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.7 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.5 mm, dz -6.5 mm (centre 0.7844 vs 0.7909), rel tilt 0.7 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.047 dir 158 w 78mm tilt 25)",
+     "[skill] pick left grasp_slip steps=26 object rose -51 mm (planned 80), in-hand drift 157 mm [slice slice z 0.047 dir 158 w 78mm tilt 25]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose -51 mm (planned 80), in-hand drift 157 mm [slice slice z 0.047 dir 158 w 78mm tilt 25]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=33 top axis 0 tilt 40, in-hand drift 0.4 mm",
+     "[skill] place left ok steps=52 xy err 2.5 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.8 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place alarm -> drawer: ok xy err 2.5 mm, dz -23.1 mm (centre 1.0090 vs 1.0321), rel tilt 0.8 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push right place_miss steps=342 22 mm left",
+     "[arrange] push keyboard -> frame: place_miss 22 mm left",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=20 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100043,
+    "load_s": 3.48,
+    "stable": true,
+    "layout_file": "100043.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 407,
+    "step_lim": 1000,
+    "wall_s": 57.0,
+    "sim_s": 15.9,
+    "plan_s": 41.1,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['alarm', 'garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 407,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 26/324 grasps reachable, 6 grasp-place pairs; right: 2/324 grasps reachable, 0 grasp-place pairs; pick axis 1 tilt; left pick: left: 0 feasible of 100 (ik 48, collision 52); right pick: right: 0 feasible of 100 (ik 80, collision 20)"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 33,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.2 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 49,
+      "arm": "right",
+      "note": "xy err 0.4 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 60/60 grasps reachable, 26 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; place slice z 0.0; no in-air handover for a 191 mm object"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 302,
+      "arm": "right",
+      "note": "39 mm left"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 17,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4959,
+      -0.069,
+      0.7844,
+      0.709,
+      0.0052,
+      0.0006,
+      -0.7052
+     ],
+     "alarm": [
+      -0.3002,
+      -0.2535,
+      0.805,
+      1.0,
+      -0.0004,
+      0.0001,
+      0.0
+     ],
+     "keyboard": [
+      0.0546,
+      -0.0189,
+      0.7715,
+      0.9951,
+      -0.0,
+      -0.0,
+      -0.0987
+     ],
+     "garage": [
+      -0.4095,
+      -0.1374,
+      0.8606,
+      0.9878,
+      0.0001,
+      -0.0,
+      -0.156
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4016,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0842,
+      0.2648,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4962,
+      -0.0687,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "ik_fail",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] alarm: no direct transfer (left: 26/324 grasps reachable, 6 grasp-place pairs; right: 2/324 grasps reachable, 0 grasp-place pairs; pick axis 1 tilt 40: left: 0 feasible of 1 (ik 0, collision 1); pick axis 1 tilt 40: left: 0 feasible of 1 (ik 1, collision 0); pick axi); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 26/324 grasps reachable, 6 grasp-place pairs; right: 2/324 grasps reachable, 0 grasp-place pairs; pick axis 1 tilt; left pick: left: 0 feasible of 100 (ik 48, collision 52); right pick: right: 0 feasible of 100 (ik 80, collision 20)",
+     "[arrange] place alarm -> drawer: ik_fail left: 26/324 grasps reachable, 6 grasp-place pairs; right: 2/324 grasps reachable, 0 grasp-place pairs; pick axis 1 tilt",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=33 top axis 1 tilt 0, in-hand drift 0.2 mm",
+     "[skill] place right ok steps=49 xy err 0.4 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.4 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 60/60 grasps reachable, 26 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; place slice z 0.091 dir 90 w 77mm tilt 40: approach: joint move at t=0.32: hits drawer; via failed: via-pose z=1.; place slice z 0.091 di); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 60/60 grasps reachable, 26 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; place slice z 0.0; no in-air handover for a 191 mm object",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 60/60 grasps reachable, 26 grasp-place pairs; right: 0/60 grasps reachable, 0 grasp-place pairs; place slice z 0.0",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push right place_miss steps=302 39 mm left",
+     "[arrange] push keyboard -> frame: place_miss 39 mm left",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=17 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "organize_table",
+    "seed": 100044,
+    "load_s": 3.7,
+    "stable": true,
+    "layout_file": "100044.settled.json",
+    "success": false,
+    "score": 0.25,
+    "steps": 159,
+    "step_lim": 1000,
+    "wall_s": 76.3,
+    "sim_s": 6.9,
+    "plan_s": 69.4,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['garage', 'alarm', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 159,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 31,
+      "arm": "left",
+      "note": "object rose 8 mm (planned 80), in-hand drift 72 mm [slice slice z 0.049 dir 112 w 64mm tilt 40]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 31,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 20,
+      "arm": "right",
+      "note": "xy err 0.1 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.2 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 27,
+      "arm": "right",
+      "note": "box close 1 approach +0 tilt +25 off +28mm, in-hand drift 7.4 mm"
+     },
+     {
+      "skill": "handover",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 0,
+      "arm": "right",
+      "note": "alarm moved 35 mm in the giver's hand during the carry"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 1, axis 0"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 17,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4091,
+      0.0001,
+      0.7844,
+      0.7099,
+      0.0051,
+      0.0007,
+      -0.7043
+     ],
+     "alarm": [
+      0.0288,
+      -0.1138,
+      0.8031,
+      -0.6276,
+      0.6287,
+      0.3236,
+      -0.3259
+     ],
+     "keyboard": [
+      0.0342,
+      -0.1605,
+      0.7715,
+      1.0,
+      -0.0,
+      -0.0,
+      -0.0011
+     ],
+     "garage": [
+      -0.2458,
+      -0.1815,
+      0.799,
+      -0.6457,
+      0.7293,
+      -0.2067,
+      -0.0919
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3813,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1401,
+      0.2408,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4092,
+      0.0001,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] garage: direct, left (slice z 0.049 dir 112 w 64mm tilt 40)",
+     "[skill] pick left grasp_slip steps=31 object rose 8 mm (planned 80), in-hand drift 72 mm [slice slice z 0.049 dir 112 w 64mm tilt 40]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose 8 mm (planned 80), in-hand drift 72 mm [slice slice z 0.049 dir 112 w 64mm tilt 40]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=31 top axis 1 tilt 0, in-hand drift 0.3 mm",
+     "[skill] place right ok steps=20 xy err 0.1 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.2 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.1 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.2 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: no direct transfer (left: 70/324 grasps reachable, 8 grasp-place pairs; right: 0/324 grasps reachable, 0 grasp-place pairs; pick axis 0 tilt 40: left: 0 feasible of 1 (ik 0, collision 1); pick axis 0 tilt 40: left: 0 feasible of 1 (ik 0, collision 1); pick axi); relay",
+     "[place_oriented] alarm: in-air handover right (close 1 approach +0 tilt +25 off +28mm) -> left (close 0 approach -1 tilt +0 off +0mm) at [-0.0, -0.2, 1.0]",
+     "[skill] pick right ok steps=27 box close 1 approach +0 tilt +25 off +28mm, in-hand drift 7.4 mm",
+     "[skill] handover right grasp_slip steps=0 alarm moved 35 mm in the giver's hand during the carry",
+     "[arrange] place alarm -> drawer: grasp_slip alarm moved 35 mm in the giver's hand during the carry",
+     "[skill] bank  ok steps=2 ",
+     "[skill] push  ik_fail steps=0 keyboard: no push stroke along axis 1, axis 0",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 1, axis 0",
+     "[skill] bank  ok steps=0 ",
+     "[skill] finish  ok steps=17 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": "aa6a7751"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   }
+  ],
+  "smoke": [
+   {
+    "task": "organize_table",
+    "seed": 100030,
+    "load_s": 3.4,
+    "stable": true,
+    "layout_file": "100030.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 506,
+    "step_lim": 1000,
+    "wall_s": 138.3,
+    "sim_s": 23.7,
+    "plan_s": 114.6,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse'], failed ['garage', 'alarm', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 506,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 30,
+      "arm": "right",
+      "note": "box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.4 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 47,
+      "arm": "right",
+      "note": "xy err 0.4 mm, dz -7.0 mm (centre 0.7843 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 26,
+      "arm": "left",
+      "note": "object rose -51 mm (planned 80), in-hand drift 139 mm [slice slice z 0.045 dir 135 w 73mm tilt 25]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 29,
+      "arm": "right",
+      "note": "object rose 11 mm (planned 100), in-hand drift 87 mm [box close 0 approach -1 tilt -25 off +28mm]"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "place_miss",
+      "steps": 332,
+      "arm": "right",
+      "note": "34 mm left"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 22,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4433,
+      -0.0923,
+      0.7843,
+      0.7082,
+      -0.0003,
+      0.0052,
+      -0.7059
+     ],
+     "alarm": [
+      -0.1549,
+      0.0143,
+      0.805,
+      0.999,
+      -0.0012,
+      0.0001,
+      0.0451
+     ],
+     "keyboard": [
+      0.0725,
+      -0.0222,
+      0.7715,
+      0.9984,
+      0.0,
+      -0.0,
+      0.0568
+     ],
+     "garage": [
+      -0.3924,
+      -0.1542,
+      0.7915,
+      0.1566,
+      -0.5035,
+      -0.5883,
+      0.6131
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.4347,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.0747,
+      0.2557,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4438,
+      -0.0921,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "world_plans": [],
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "arrange_hover": "low",
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (close 1 approach +2 tilt +0 off +0mm)",
+     "[skill] pick right ok steps=30 box close 1 approach +2 tilt +0 off +0mm, in-hand drift 0.4 mm",
+     "[skill] place right ok steps=47 xy err 0.4 mm, dz -7.0 mm (centre 0.7843 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.4 mm, dz -7.0 mm (centre 0.7843 vs 0.7914), rel tilt 0.5 deg; in-hand shift 0.2 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: direct, left (slice z 0.045 dir 135 w 73mm tilt 25)",
+     "[skill] pick left grasp_slip steps=26 object rose -51 mm (planned 80), in-hand drift 139 mm [slice slice z 0.045 dir 135 w 73mm tilt 25]",
+     "[arrange] place garage -> cube_cushion: grasp_slip object rose -51 mm (planned 80), in-hand drift 139 mm [slice slice z 0.045 dir 135 w 73mm tilt 25]",
+     "[skill] bank  ok steps=2 ",
+     "[place_oriented] alarm: no direct transfer (left: 70/324 grasps reachable, 12 grasp-place pairs; right: 4/324 grasps reachable, 0 grasp-place pairs; place axis 0 tilt 40: approach: target unreachable (no seed converged); place axis 0 tilt 40: approach: target unreachable (no seed con); relay",
+     "[place_oriented] alarm: in-air handover right (close 0 approach -1 tilt -25 off +28mm) -> left (close 0 approach +1 tilt +25 off +0mm) at [0.0, -0.24, 0.95]",
+     "[skill] pick right grasp_slip steps=29 object rose 11 mm (planned 100), in-hand drift 87 mm [box close 0 approach -1 tilt -25 off +28mm]",
+     "[arrange] place alarm -> drawer: grasp_slip object rose 11 mm (planned 100), in-hand drift 87 mm [box close 0 approach -1 tilt -25 off +28mm]",
+     "[skill] bank  ok steps=2 ",
+     "[skill] push right place_miss steps=332 34 mm left",
+     "[arrange] push keyboard -> frame: place_miss 34 mm left",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=22 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/final",
+     "commit": "aaf7df34"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   }
+  ],
+  "tilt0": [
+   {
+    "task": "organize_table",
+    "seed": 100000,
+    "load_s": 3.18,
+    "stable": true,
+    "layout_file": "100000.settled.json",
+    "success": false,
+    "score": 0.5,
+    "steps": 223,
+    "step_lim": 1000,
+    "wall_s": 60.6,
+    "sim_s": 10.7,
+    "plan_s": 49.9,
+    "result": {
+     "ok": false,
+     "stage": "arrange",
+     "note": "done ['mouse', 'alarm'], failed ['garage', 'keyboard']",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 223,
+     "step_lim": 1000,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 32,
+      "arm": "right",
+      "note": "top axis 1 tilt 0, in-hand drift 0.3 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 32,
+      "arm": "right",
+      "note": "xy err 0.1 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 39,
+      "arm": "left",
+      "note": "top axis 0 tilt 40, in-hand drift 0.2 mm"
+     },
+     {
+      "skill": "place",
+      "ok": true,
+      "status": "ok",
+      "steps": 42,
+      "arm": "left",
+      "note": "xy err 12.7 mm, dz -21.9 mm (centre 1.0102 vs 1.0321), rel tilt 4.3 deg; in-hand shift 3.5 mm (re-plan failed: )"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "place_oriented",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 0,
+      "arm": null,
+      "note": "left: 114/114 grasps reachable, 2 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z 0; no in-air handover for a 191 mm object"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "push",
+      "ok": false,
+      "status": "ik_fail",
+      "steps": 50,
+      "arm": null,
+      "note": "keyboard: no push stroke along axis 0, axis 1"
+     },
+     {
+      "skill": "bank",
+      "ok": true,
+      "status": "ok",
+      "steps": 2,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 21,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "mouse": [
+      0.4772,
+      0.0019,
+      0.7844,
+      -0.7062,
+      -0.0051,
+      -0.0007,
+      0.7079
+     ],
+     "alarm": [
+      -0.2447,
+      0.0535,
+      1.009,
+      1.0,
+      0.0009,
+      0.0008,
+      -0.0054
+     ],
+     "keyboard": [
+      -0.0524,
+      0.0019,
+      0.7715,
+      0.9862,
+      0.0,
+      -0.0,
+      0.1658
+     ],
+     "garage": [
+      -0.3155,
+      -0.1245,
+      0.8605,
+      0.9328,
+      0.002,
+      -0.0001,
+      -0.3603
+     ],
+     "cube_cushion": [
+      -0.15,
+      0.1,
+      0.765,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "frame": [
+      0.1,
+      0.0,
+      0.7656,
+      1.0,
+      0.0,
+      0.0025,
+      0.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "drawer": [
+      -0.3773,
+      0.0987,
+      0.765,
+      0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ],
+     "monitor": [
+      0.1439,
+      0.2417,
+      0.9762,
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "mousemat": [
+      0.4774,
+      0.0019,
+      0.7686,
+      -0.7071,
+      0.0,
+      0.0,
+      0.7071
+     ]
+    },
+    "category": "ik_fail",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "push_approach": "tilted"
+    },
+    "routes": [],
+    "log": [
+     "[planner] arrange {'steps': [('place', 'alarm', 'drawer'), ('place', 'garage', 'cube_cushion'), ('place', 'mouse', 'mousemat'), ('push', 'keyboard', 'frame')]} (4 clauses)",
+     "[place_oriented] mouse: direct, right (axis 1 tilt 0)",
+     "[skill] pick right ok steps=32 top axis 1 tilt 0, in-hand drift 0.3 mm",
+     "[skill] place right ok steps=32 xy err 0.1 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[arrange] place mouse -> mousemat: ok xy err 0.1 mm, dz -6.3 mm (centre 0.7844 vs 0.7907), rel tilt 0.4 deg; in-hand shift 0.1 mm, re-planned",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] alarm: direct, left (axis 0 tilt 40)",
+     "[skill] pick left ok steps=39 top axis 0 tilt 40, in-hand drift 0.2 mm",
+     "[skill] place left ok steps=42 xy err 12.7 mm, dz -21.9 mm (centre 1.0102 vs 1.0321), rel tilt 4.3 deg; in-hand shift 3.5 mm (re-plan failed: )",
+     "[arrange] place alarm -> drawer: ok xy err 12.7 mm, dz -21.9 mm (centre 1.0102 vs 1.0321), rel tilt 4.3 deg; in-hand shift 3.5 mm (re-plan failed: )",
+     "[skill] bank  ok steps=0 ",
+     "[place_oriented] garage: no direct transfer (left: 114/114 grasps reachable, 2 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z 0.091 dir 0 w 39mm tilt 40: approach: target unreachable (no seed converged); place slice z 0.091 dir 0 w 39mm tilt 40: a); relay",
+     "[skill] place_oriented  ik_fail steps=0 left: 114/114 grasps reachable, 2 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z 0; no in-air handover for a 191 mm object",
+     "[arrange] place garage -> cube_cushion: ik_fail left: 114/114 grasps reachable, 2 grasp-place pairs; right: 0/114 grasps reachable, 0 grasp-place pairs; place slice z 0",
+     "[skill] bank  ok steps=0 ",
+     "[skill] push  ik_fail steps=50 keyboard: no push stroke along axis 0, axis 1",
+     "[arrange] push keyboard -> frame: ik_fail keyboard: no push stroke along axis 0, axis 1",
+     "[skill] bank  ok steps=2 ",
+     "[skill] finish  ok steps=21 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-org/candidate",
+     "commit": null
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   }
+  ]
+ },
+ "admissions": {
+  "base1": "physicalai seat0        2026-11-06 09:48 (login screen)\nphysicalai :1           2026-11-06 09:48 (:1)\npid, process_name, used_gpu_memory [MiB]\n3613, /usr/bin/python3, 2418 MiB\n2869765, /home/physicalai/dojo-robodojo/miniconda3/envs/robodojo/bin/python, 2033 MiB\ntime=2026-11-06T21:48:02Z used_MB=5547 available_GB=50\n",
+  "low0": "physicalai seat0        2026-11-06 09:48 (login screen)\nphysicalai :1           2026-11-06 09:48 (:1)\npid, process_name, used_gpu_memory [MiB]\n3613, /usr/bin/python3, 2418 MiB\n2820750, /home/physicalai/dojo-robodojo/miniconda3/envs/robodojo/bin/python, 2033 MiB\ntime=2026-11-06T21:37:36Z used_MB=5515 available_GB=50\n",
+  "combo1": "physicalai seat0        2026-11-06 09:48 (login screen)\nphysicalai :1           2026-11-06 09:48 (:1)\npid, process_name, used_gpu_memory [MiB]\n3613, /usr/bin/python3, 2418 MiB\n2871296, /home/physicalai/dojo-robodojo/miniconda3/envs/robodojo/bin/python, 2033 MiB\ntime=2026-11-06T21:50:03Z used_MB=5520 available_GB=50\n",
+  "route0": "physicalai seat0        2026-11-06 09:48 (login screen)\nphysicalai :1           2026-11-06 09:48 (:1)\npid, process_name, used_gpu_memory [MiB]\n3613, /usr/bin/python3, 2418 MiB\n2878531, /home/physicalai/dojo-robodojo/miniconda3/envs/robodojo/bin/python, 2033 MiB\ntime=2026-11-06T21:55:02Z used_MB=5506 available_GB=50\n",
+  "combo0": "physicalai seat0        2026-11-06 09:48 (login screen)\nphysicalai :1           2026-11-06 09:48 (:1)\npid, process_name, used_gpu_memory [MiB]\n3613, /usr/bin/python3, 2418 MiB\n2840676, /home/physicalai/dojo-robodojo/miniconda3/envs/robodojo/bin/python, 2033 MiB\ntime=2026-11-06T21:39:23Z used_MB=5483 available_GB=50\n",
+  "base0": "physicalai seat0        2026-11-06 09:48 (login screen)\nphysicalai :1           2026-11-06 09:48 (:1)\npid, process_name, used_gpu_memory [MiB]\n3613, /usr/bin/python3, 2418 MiB\ntime=2026-11-06T21:39:14Z used_MB=3439 available_GB=52\n",
+  "tilt0": "physicalai seat0        2026-11-06 09:48 (login screen)\nphysicalai :1           2026-11-06 09:48 (:1)\npid, process_name, used_gpu_memory [MiB]\n3613, /usr/bin/python3, 2418 MiB\n2820750, /home/physicalai/dojo-robodojo/miniconda3/envs/robodojo/bin/python, 2033 MiB\ntime=2026-11-06T21:36:29Z used_MB=5506 available_GB=50\n",
+  "smoke": "physicalai seat0        2026-11-06 09:48 (login screen)\nphysicalai :1           2026-11-06 09:48 (:1)\npid, process_name, used_gpu_memory [MiB]\n3613, /usr/bin/python3, 2418 MiB\ntime=2026-11-06T21:47:37Z used_MB=3429 available_GB=52\n"
+ },
+ "study": {
+  "task": "organize_table",
+  "paired_source": "aa6a7751",
+  "initial_baseline_actual_source": "18d97e56",
+  "initial_baseline_incorrect_stamp": "ebcbca",
+  "tilt0_missing_stamp_actual_source": "aa6a7751",
+  "merged_smoke_source": "aaf7df34",
+  "lateral_pilot_source": "6e2315e8",
+  "A": {},
+  "B": {
+   "arrange_hover": "low",
+   "push_approach": "tilted"
+  },
+  "lateral_pilot": {
+   "arrange_hover": "low",
+   "arrange_route": "lateral"
+  },
+  "calls": 0,
+  "tokens": 0,
+  "spend_usd": 0,
+  "host": "compute3",
+  "driver": "595.99.02",
+  "gpu": "RTX 5090",
+  "excluded_settling_ids": [
+   100032,
+   100033,
+   100034,
+   100035,
+   100041
+  ]
+ },
+ "pairs": [
+  {
+   "seed": 100030,
+   "A_score": 0.5,
+   "B_score": 0.5,
+   "A_steps": 279,
+   "B_steps": 506
+  },
+  {
+   "seed": 100031,
+   "A_score": 0.5,
+   "B_score": 0.5,
+   "A_steps": 256,
+   "B_steps": 572
+  },
+  {
+   "seed": 100036,
+   "A_score": 0.5,
+   "B_score": 0.5,
+   "A_steps": 211,
+   "B_steps": 280
+  },
+  {
+   "seed": 100037,
+   "A_score": 0.5,
+   "B_score": 0.5,
+   "A_steps": 279,
+   "B_steps": 632
+  },
+  {
+   "seed": 100038,
+   "A_score": 0.25,
+   "B_score": 0.25,
+   "A_steps": 133,
+   "B_steps": 129
+  },
+  {
+   "seed": 100039,
+   "A_score": 0.25,
+   "B_score": 0.5,
+   "A_steps": 379,
+   "B_steps": 615
+  },
+  {
+   "seed": 100040,
+   "A_score": 0.5,
+   "B_score": 0.75,
+   "A_steps": 286,
+   "B_steps": 679
+  },
+  {
+   "seed": 100042,
+   "A_score": 0.5,
+   "B_score": 0.5,
+   "A_steps": 323,
+   "B_steps": 586
+  },
+  {
+   "seed": 100043,
+   "A_score": 0.25,
+   "B_score": 0.5,
+   "A_steps": 224,
+   "B_steps": 407
+  },
+  {
+   "seed": 100044,
+   "A_score": 0.5,
+   "B_score": 0.25,
+   "A_steps": 308,
+   "B_steps": 159
+  }
+ ]
+}

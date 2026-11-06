@@ -55,3 +55,34 @@ A third independent default-off switch `arrange_route=lateral` forwards
 failure tries four fixed lateral offsets, each with fully checked legs. Failed
 IK endpoints remain refused. No partial route executes. The physical pilot
 combines this route with the separately tested low hover, without tilted pushes.
+
+## Completed paired result and disposition
+
+[Report](../experiments/2026-11-06-org-skill-ceiling.md) and
+[raw records/manifest/admissions](../experiments/2026-11-06-org-g3-results.json):
+ten stable variant-3 pairs, **42.5 ±12.08 -> 47.5 ±14.19** (sample SD),
+**3 score wins / 1 loss / 6 ties**, 0/10 successes both, no success flips.
+Median steps 279 -> 539, maxima 379 -> 679 of 1000. No budget exhaustion.
+All 29 recorded G3 episodes have complete meshes and no infrastructure failure.
+The gain meets the current score rule exactly; it does not establish a higher
+full-task success ceiling. The [parked camera registration](../experiments/2026-11-06-org-camera-prereg.md)
+explicitly uses score-pair wins despite its November 6 filename. No camera runs.
+
+The lateral pilot (`low + lateral`, no tilted pushes) picks original 100000's
+figurine, then loses it during transfer: 169.2 mm attachment shift, 152.7 mm
+final xy error / 82.7 degrees tilt. Score 50, 300 steps. Park this lever; exclude
+it from the camera candidate. Merged-main bundle smoke reproduces generated
+100030's score 50 and 506 steps exactly, separate from the comparison.
+
+Local full suite on pre-lateral source: 1961 passed / 191 skipped. Latest
+route/switch/legacy focused suite: 60 passed. The full suite started before the
+lateral additions; final source is covered separately by CI. The earlier suite
+was stopped after the main merge by checked own PID; TERM did not stop it, so
+that exact old pytest PID was killed. Other worktrees' tests were untouched.
+Pyflakes: only existing unused imports / unrelated f-string warning, no new
+undefined names. Local footprint ~160 MB. Zero model calls/tokens/spend.
+
+The original baseline stamp error and missing tilted-pilot stamp are called out
+in the report; paired rows have the correct immutable source. Main was merged
+into this branch to resolve PR CI eligibility; paired deployments stayed frozen.
+PR #407 remains open for the lead; do not merge.

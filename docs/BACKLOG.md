@@ -421,6 +421,11 @@
     so `push_to`'s 12 mm tolerance is too loose. Rotated much past 27 deg it can't cover the rect at all, and more
     strokes turn it further.
   Next: a yaw-correcting stroke before the translation. Off-centre strokes were tried before (longh) without a gain.
+  ORG ([study](experiments/2026-11-06-org-skill-ceiling.md)): ten variant-3 pairs,
+  low hover + tilted face pushes 42.5 -> 47.5, 3 score wins / 1 loss, no successes;
+  median steps 279 -> 539. Defaults off; camera registration parked. Lateral
+  approach pilot resolves a no-plan figurine pick, then loses it during carry
+  (169 mm attachment shift). Hold stability and keyboard convergence remain open.
 - [ ] **dojo skills: tic-tac-toe "wait opponent (timeout)" on layout 100003.** The opponent's move is never counted, the
   wait times out, and the episode ends not_home with the board unfinished:
   - c4b_ttt_gcoff_100003 (8dae375, 949/1100, own 4 / opp 3);
