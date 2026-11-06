@@ -123,3 +123,34 @@ fields while a suite was already running (old in-process module versus new
 subprocess source); all 36 affected/focused tests passed on rerun. CI passed
 on the first pushed PR head. Pyflakes reports only the pre-existing unused
 imports and placeholder-free f-string in library.py, no new undefined names.
+
+## Completed fresh-layout comparison
+
+Defaults: **6.5 ± 8.2** (sample SD), 0/10 success. Rolled-only: exactly the same
+scores and step counts on all ten, 0/10 success. Combination (vertical preference,
+stay, center, safe): **18.0 ± 11.8**, 0/10 success; paired gain **11.5** points,
+paired-delta sample SD 14.9, 6 score wins / 1 loss / 3 ties. Full-success flips
+0/0. Holders tipped at the final trace frame: 4/10 → 0/10. This is a real
+partial-score gain on this development cohort, not camera adoption or proof of
+a higher original-five full-task ceiling. Per-ID table and failure classes:
+[experiment report](../experiments/2026-11-06-pen-g3.md).
+
+The tilted preference's 100002 physical probe remained null (10 points): despite
+reachable pick IK, the transfer planner chose the old slipping direct pinch.
+`rolled_relay` excludes that fallback only while the shaft is rolled, to test
+whether the existing relay search can pair the better pick with a drop.
+`fill_drop=inset` uses 7 mm wall packing before centered fitting, retaining the
+occupied-space constraints in both attempts. These are separate default-off
+screens; the completed combination result above remains unchanged.
+
+The strict relay probe on 100002 still scores 10, but **physically picks pen0**:
+`top vertical axis 2 tilt 40 station +24mm`, pick ok, drift 2.4 mm. The table
+relay then refuses a descent whose palm would reach z=0.753 (below the table).
+It puts the object down through regrasp and banks no additional tier. This is
+proof of an improved pick, not a task-score improvement. `rolled_stage` adds a
+20 mm release gap plus the existing short-drop allowance to intermediate relay
+legs only. Its final insertion is unchanged. The staging option is covered by
+planning/execution forwarding tests, including default None.
+
+Local second full-suite run: **1800 passed, 187 skipped, 17m36s**; focused tests
+cover subsequent relay options. The final PR CI must validate the final source.
