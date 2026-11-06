@@ -14,7 +14,12 @@
       "plan_solver": "curobo"
     }
   },
-  "other_switches": "defaults, including hang_half_turn=off, hang_handle_grasp=off, hang_hook_pace=off",
+  "other_switches": {
+    "all_remaining_fields": "defaults",
+    "hang_half_turn": false,
+    "hang_handle_grasp": false,
+    "hang_carry_slow": false
+  },
   "layouts": {
     "hang_mugs": [
       100030,
