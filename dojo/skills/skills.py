@@ -365,6 +365,10 @@ class Skills:
         self.hang_cradle = "strict"
         # ``library.hang_on_hooks`` (stream N): grasps >= HANG_WIDE_W planned first (off = today)
         self.hang_wide = False
+        # Opposite handle orientation about its upward axis, after original candidates.
+        self.hang_half_turn = False
+        self.hang_handle_grasp = False
+        self.hang_carry_slow = False
         # articulated objects' geometry (stream N): "authored" (today: the USD's authored joint state) | "measured" (the
         # measured joint's: ``_pose_articulations``)
         self.artic_geom = "authored"
