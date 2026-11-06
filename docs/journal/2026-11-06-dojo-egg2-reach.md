@@ -53,3 +53,10 @@ All twenty admissions pass: max VRAM 16,858 MiB, min available RAM 41,798 MiB,
 max load1 17.08. Two EGG2 workers maximum; no worker remains after the panel.
 No foreign processes signaled or system/vendor changes. Local footprint remains
 under 200 MB. Raw artifacts stay on compute6 in the EGG2 data root.
+
+
+Post-measurement integration: main advanced with PLAN/ORG changes and produced
+stable-document conflicts that suppressed pull-request CI. The branch merges
+main, retaining both reports/architecture notes and the corrected other-arm
+backlog text. The paired panel remains frozen at `8be287c3`; merged-head G3 smoke
+runs are excluded from it. No profile retuning follows the negative result.

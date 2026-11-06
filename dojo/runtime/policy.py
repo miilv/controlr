@@ -379,6 +379,10 @@ class RuntimeConfig:
     # ``library.arrange``'s place order (``Skills.arrange_order``): near (today: nearest the arms first) | big_first (the
     # largest object first, while the table is emptiest) | push_big_first (the pushes first, then big_first)
     arrange_order: str = "near"
+    # Additional face-contact approach tilts, with fingertip position preserved.
+    push_approach: str = "off"
+    arrange_hover: str = "off"
+    arrange_route: str = "off"
     # ``library.push_to``'s strokes (``Skills.push_stroke``): face (today) | press (when no face stroke plans on either
     # axis, a drag with the closed fingertips pressed on the object's top)
     push_stroke: str = "face"
@@ -547,6 +551,10 @@ class RuntimeConfig:
     # reaches the other object's spot top-down; G3: at 0.86 the left arm cannot reach a T at x >= ~0.09)
     ported_swap: str = "fixed"
     # the IK's joint range (``Skills.joint_limits``): wide (today) | measured (joint 5 inside the sim's +-pi/2 stop)
+    plan_profile: str = "legacy"  # opt-in coverage recovery; old solver settings retained
+    plan_capture: str = "off"  # optional numeric request evidence
+    plan_solver: str = "routes"  # bounded CPU routes | cuRobo v2 belief world
+    plan_world: str = "table"  # legacy | bounded belief-object free-space routing
     joint_limits: str = "wide"
     # ... the drag onto a pad: v1 (Mikhail's planar_drag) | turn (planar_drag_p1: near a 180 deg turn both directions are
     # planned and the feasible one driven; v1 takes the sign of the yaw difference, which perception noise flips there and
@@ -674,6 +682,9 @@ class RuntimePolicy:
                 or self.cfg.slot_hover not in ("off", "low")
                 or self.cfg.slot_place not in ("off", "servo")
                 or self.cfg.slot_carry_read not in ("off", "on")
+                or self.cfg.arrange_route not in ("off", "lateral")
+                or self.cfg.arrange_hover not in ("off", "low")
+                or self.cfg.push_approach not in ("off", "tilted")
                 or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
                 or self.cfg.hang_cradle not in ("strict", "straddle") or self.cfg.artic_geom not in ("authored", "measured")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
@@ -700,6 +711,10 @@ class RuntimePolicy:
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
                 or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap")
+                or self.cfg.plan_profile not in ("legacy", "recover")
+                or self.cfg.plan_capture not in ("off", "requests")
+                or self.cfg.plan_solver not in ("routes", "curobo")
+                or self.cfg.plan_world not in ("table", "objects")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
@@ -762,7 +777,14 @@ class RuntimePolicy:
             self.log_lines = self.log_lines[-300:]
 
     # ------------------------------------------------------------------ proxy_eval interface
+    def _close_motion_workers(self):
+        for sk in (getattr(self, "_live", None) or {}).get("sks", []):
+            close = getattr(getattr(sk, "motion", None), "close", None)
+            if close is not None:
+                close()
+
     def reset(self, info: dict) -> None:
+        self._close_motion_workers()
         if self.bridge is not None:
             self.bridge.cancel()
         self._live = None
@@ -819,6 +841,8 @@ class RuntimePolicy:
                 for k, v in sk.vstats.items():
                     vt[k] = vt.get(k, 0) + v
             self.report["history"] = [h for s_ in live["sks"] for h in _hist(s_)]
+            self.report["world_plans"] = [event for s_ in live["sks"]
+                                         for event in getattr(getattr(s_, "motion", None), "world_plans", [])]
             rej: dict = {}                              # why the twin rejected candidates (judges' ``why``)
             for s_ in live["sks"]:
                 for k, n in (getattr(s_, "vreasons", None) or {}).get("rejects", {}).items():
@@ -950,6 +974,7 @@ class RuntimePolicy:
         self._live = {"vtot": vtot, "prov": prov, "verifier": verifier, "sk": None, "sks": []}
 
         def make_skills(prev=None):
+            self._close_motion_workers()
             if prev is not None:
                 for k, v in prev.vstats.items():
                     vtot[k] = vtot.get(k, 0) + v
@@ -999,6 +1024,9 @@ class RuntimePolicy:
             sk_.slot_place = cfg.slot_place
             sk_.slot_carry_read = cfg.slot_carry_read
             sk_.arrange_order = cfg.arrange_order
+            sk_.push_approach = cfg.push_approach
+            sk_.arrange_hover = cfg.arrange_hover
+            sk_.arrange_route = cfg.arrange_route
             sk_.push_stroke = cfg.push_stroke
             sk_.hang_cradle = cfg.hang_cradle
             sk_.hang_wide = bool(cfg.hang_wide)
@@ -1037,6 +1065,10 @@ class RuntimePolicy:
             sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
             sk_.ported_swap = cfg.ported_swap
+            sk_.plan_profile = cfg.plan_profile
+            sk_.plan_capture = cfg.plan_capture
+            sk_.plan_solver = cfg.plan_solver
+            sk_.plan_world = cfg.plan_world
             sk_.joint_limits = cfg.joint_limits
             sk_.ported_drag = cfg.ported_drag
             sk_.ported_pour_aim = cfg.ported_pour_aim
@@ -1224,6 +1256,7 @@ class RuntimePolicy:
                 except Exception:  # noqa: BLE001
                     pass
         finally:
+            self._close_motion_workers()
             if result is not None:
                 self.report["result"] = result
         return result

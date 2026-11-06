@@ -361,6 +361,9 @@ class Skills:
         # ``library.arrange`` (stream N): the places' order, "near" (today: nearest the arms first) | "big_first" |
         # "push_big_first" (the pushes first, then the places largest first)
         self.arrange_order = "near"
+        self.push_approach = "off"
+        self.arrange_hover = "off"
+        self.arrange_route = "off"
         # ``library.hang_on_hooks`` (stream N): a cradle hang's held object vs the rack's top, "strict" (today: an
         # obstacle) | "straddle" (the held object may straddle it: a headset on its stand; the hand still avoids it)
         self.hang_cradle = "strict"
@@ -523,6 +526,48 @@ class Skills:
             pass
 
     # ------------------------------------------------------------------ world
+    @property
+    def plan_profile(self):
+        return self.motion.plan_profile
+
+    @plan_profile.setter
+    def plan_profile(self, value):
+        if value not in ("legacy", "recover"):
+            raise ValueError(f"unknown plan_profile: {value}")
+        if value != self.motion.plan_profile:
+            self.motion.close()  # Worker settings and cached failures belong to a profile.
+        self.motion.plan_profile = value
+
+    @property
+    def plan_capture(self):
+        return self.motion.plan_capture
+
+    @plan_capture.setter
+    def plan_capture(self, value):
+        if value not in ("off", "requests"):
+            raise ValueError(f"unknown plan_capture: {value}")
+        self.motion.plan_capture = value
+
+    @property
+    def plan_solver(self):
+        return self.motion.plan_solver
+
+    @plan_solver.setter
+    def plan_solver(self, value):
+        if value not in ("routes", "curobo"):
+            raise ValueError(f"unknown plan_solver: {value}")
+        self.motion.plan_solver = value
+
+    @property
+    def plan_world(self):
+        return self.motion.plan_world
+
+    @plan_world.setter
+    def plan_world(self, value):
+        if value not in ("table", "objects"):
+            raise ValueError(f"unknown plan_world: {value}")
+        self.motion.plan_world = value
+
     def refresh(self) -> WorldState:
         self.world = self.provider.refresh({a: (h.label if h else None) for a, h in self.held.items()})
         if getattr(self, "artic_geom", "authored") == "measured":
@@ -950,7 +995,8 @@ class Skills:
                    sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None,
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
                    blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None,
-                   held_read: bool | None = None, purpose: str | None = None, approach_line: bool = False, carry_read: bool = False):
+                   held_read: bool | None = None, purpose: str | None = None, approach_line: bool = False, carry_read: bool = False,
+                   approach_lateral: bool = False):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``approach_line``: collision-checked Cartesian transit to the hover, preserving the interpolated TCP
         orientation along the carry instead of a joint-space transit. No joint-path fallback.
@@ -1039,7 +1085,8 @@ class Skills:
                                              * o.asset.extents + o.asset.bbox_min).T).T + T_obj[:3, 3]
                 lift = max(pre_h, sup_top + pre_clear - float(corners[:, 2].min()))
             T_pre[2, 3] += release_gap + lift
-            transit = self.motion.line if approach_line else self.motion.to_pose
+            transit = (self.motion.line if approach_line else
+                       self.motion.lateral if approach_lateral else self.motion.to_pose)
             to_pre = transit(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
                              ignore=(h.label,), **({} if approach_line else {"ease": ease}))
             if approach_line:

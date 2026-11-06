@@ -2378,7 +2378,7 @@ def _face_height(o, u: np.ndarray, band: float = 0.012, half_w: float = 0.03) ->
 def _push_stroke(sk: Skills, o, label: str, u, step: float, centre=None):
     """One push stroke of ``o`` along world unit ``u`` (2-D) by ``step``, with the object's centre at ``centre`` (default
     where it is: another centre asks whether the stroke would plan from there): an ``ArmPlan`` or None."""
-    from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R
+    from dojo.skills.kinematics import TIP_BEYOND_TCP, down_R, tilted_R
     c = o.center_w[:2] if centre is None else np.asarray(centre, float)
     half_u = float(np.abs(o.R.T @ np.r_[u, 0.0]) @ (o.asset.extents / 2))
     fh = _face_height(o, u)
@@ -2390,13 +2390,21 @@ def _push_stroke(sk: Skills, o, label: str, u, step: float, centre=None):
     end = c - u * (half_u - step)
     arms = sorted(ARMS, key=lambda x: float(np.linalg.norm(sk.kin.base(x)[:2, 3] - start)))
     for arm in arms:
-        for yw in (yaw, yaw + math.pi):
-            T_s = T_from([start[0], start[1], z], down_R(yw))
+        poses = [down_R(yw) for yw in (yaw, yaw + math.pi)]
+        if getattr(sk, "push_approach", "off") == "tilted":
+            base = sk.kin.base(arm)[:2, 3]
+            heading = math.atan2(start[1] - base[1], start[0] - base[0])
+            poses += [tilted_R(yw, pitch, heading) for pitch in (65.0, 50.0)
+                      for yw in (yaw, yaw + math.pi)]
+        for R in poses:
+            # Preserve the fingertip contact point when the approach tilts.
+            offset = -R[:, 0] * TIP_BEYOND_TCP - np.array([0.0, 0.0, TIP_BEYOND_TCP])
+            T_s = T_from(np.array([start[0], start[1], z]) + offset, R)
             T_ab = T_s.copy()
-            T_ab[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
-            T_e = T_from([end[0], end[1], z], down_R(yw))
+            T_ab[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP + offset[2]
+            T_e = T_from(np.array([end[0], end[1], z]) + offset, R)
             T_up = T_e.copy()
-            T_up[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP
+            T_up[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP + offset[2]
             m1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_ab, FAST, "push_above", gripper=CLOSED, ignore=(label,))
             if not m1.ok:
                 continue
@@ -2646,6 +2654,10 @@ def arrange(sk: Skills, steps: list) -> dict:
             tall = sk.world.obj(sup).top_z > TABLE_Z + 0.05
             kw = dict(yaw_sym=1, tol_xy=0.03, tol_tilt=10.0, tol_z=0.03, ignore=(sup,),
                       place_kw={"pre_h": 0.015 if tall else 0.04})
+            if getattr(sk, "arrange_hover", "off") == "low":
+                kw["place_kw"] = {"pre_h": 0.005, "pre_clear": 0.003}
+            if getattr(sk, "arrange_route", "off") == "lateral":
+                kw["place_kw"]["approach_lateral"] = True
             tg, on_mesh = _on_targets(sk, obj, sup)
             r = place_oriented(sk, obj, tg, **kw)
             if on_mesh and not r.ok and r.status in ("ik_fail", "collision") and not r.steps:

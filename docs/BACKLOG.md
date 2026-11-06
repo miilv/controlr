@@ -421,6 +421,11 @@
     so `push_to`'s 12 mm tolerance is too loose. Rotated much past 27 deg it can't cover the rect at all, and more
     strokes turn it further.
   Next: a yaw-correcting stroke before the translation. Off-centre strokes were tried before (longh) without a gain.
+  ORG ([study](experiments/2026-11-06-org-skill-ceiling.md)): ten variant-3 pairs,
+  low hover + tilted face pushes 42.5 -> 47.5, 3 score wins / 1 loss, no successes;
+  median steps 279 -> 539. Defaults off; camera registration parked. Lateral
+  approach pilot resolves a no-plan figurine pick, then loses it during carry
+  (169 mm attachment shift). Hold stability and keyboard convergence remain open.
 - [ ] **dojo skills: tic-tac-toe "wait opponent (timeout)" on layout 100003.** The opponent's move is never counted, the
   wait times out, and the episode ends not_home with the board unfinished:
   - c4b_ttt_gcoff_100003 (8dae375, 949/1100, own 4 / opp 3);
@@ -1026,7 +1031,24 @@
   as `Collision.parts`, two handle frames x two lift heights per hook, and the relay search. The batched parts check
   (3 ms) made it about 10x faster; most of the time left is IK screening.
 - [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range. The default-off `egg_reach=search` scopes fill-holes drops/picks to a practical envelope; see [EGG2 evidence](experiments/2026-11-06-egg2-reach-g3.md). Other picks and handovers remain open.
-- [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).
+- [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; the legacy shim's cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).
+  The optional Skills object-world proposer does not change this envelope or add other-arm avoidance
+  ([PLAN journal](journal/2026-11-06-dojo-plan-world.md)).
+- [ ] **dojo: object-planner coverage after a worker deadline.** The optional cuRobo proposer stops a timed-out
+  worker and caches legacy fallback for that Motion instance in the default legacy profile. Later fallback events are not new GPU calls.
+  The optional recover profile adds a ten-second budget, fresh workers after timeouts,
+  current native bounds, diverse IK seeds and fully validated shallow start repair.
+  Establish adequate coverage before claiming a general carry-ceiling gain. Separate
+  query-budget limits from fixed-goal IK/collision failures and proxy differences. Keep fatal CUDA failures outside Isaac; the exploratory in-process startup fault's
+  root cause remains unproven ([incident](incidents/2026-11-06-plan-curobo-worker.md)).
+
+- [ ] **dojo: object-planner goal feasibility and collision-model agreement.** Speculative
+  approach/drop targets can fail IK even without scene obstacles under native bounds;
+  a different route cannot repair a fixed infeasible endpoint. Native arm point samples
+  and GPU volumetric spheres also disagree near fixtures. Coordinate goal selection
+  with planning and reconcile proxies while retaining final validation; do not hide
+  speculative failures from coverage counts ([PLAN round 2 journal](journal/2026-11-06-dojo-plan-world.md)).
+
 - [ ] **Real UR3 backend** via PHANTOM drivers + `SafetyMonitor` (RTDE, Robotiq, RealSense).
 - [x] ~~**A real arm**~~ — SO-101 with a wrist camera: `robot.backend: so101` ([SO101.md](SO101.md)); first motion and live runs pending.
 - [x] ~~**SO-101: first motion**~~ — jog ±20 mm per axis within ~1 mm after sag compensation; VIEW directions match the image; no stop on free moves (journal 2026-10-14-so101-backend).

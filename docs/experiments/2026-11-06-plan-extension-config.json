@@ -1,0 +1,85 @@
+{
+  "source_commit": "79bb72b3040b8e205b62440107fe5af6aedec00c",
+  "purpose": "Lead-requested extension after the original three-cell study; do not pool sources or select on prior HANG outcomes.",
+  "host": "compute6",
+  "mode": "G3 A, physics only",
+  "repeats": 1,
+  "arms": {
+    "A": {
+      "plan_world": "table",
+      "plan_solver": "curobo"
+    },
+    "B": {
+      "plan_world": "objects",
+      "plan_solver": "curobo"
+    }
+  },
+  "other_switches": {
+    "all_remaining_fields": "defaults",
+    "hang_half_turn": false,
+    "hang_handle_grasp": false,
+    "hang_carry_slow": false
+  },
+  "layouts": {
+    "hang_mugs": [
+      100030,
+      100031,
+      100032,
+      100033,
+      100034,
+      100035,
+      100036,
+      100037,
+      100038,
+      100039
+    ],
+    "sweep_blocks": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004,
+      100010,
+      100011,
+      100012,
+      100013,
+      100014
+    ]
+  },
+  "layout_sha256": {
+    "hang_mugs/100030": "717fae6550bbaebe9568281186cd32a09550ebe942fe5c2314205e9261ab48e9",
+    "hang_mugs/100031": "24d7d1b726bdc2433fd3ffe22da81151696d9ead820ba97090d8780a49299c15",
+    "hang_mugs/100032": "0bc0dc042a9a7332f113a11ef5d759f4f0563d100df5eeb2376954e174dc599c",
+    "hang_mugs/100033": "5ebe1d68b9005b2c9c2cc5a8790399521786fbae722fac54eaaafbe74cda9754",
+    "hang_mugs/100034": "68dfd2ed36e1a422bba235fc2e68fe654621bb8323f13d8c83c1375d92735353",
+    "hang_mugs/100035": "26b1f28f9b03bc1395f6d45f3209a4d70b407af216fc0bc489079bba10eaf4af",
+    "hang_mugs/100036": "9f24263ba14810f35b81bb4bcdeea59ca1ed190609f82781392e484ededac637",
+    "hang_mugs/100037": "137ee2be36c67bad685c5f657387782deef49699e655eea82367c9042f279c9e",
+    "hang_mugs/100038": "4fac7bc380c2b71781ef9bcd1a3599645977f4ee690c82ebdee7dfdec20d7c31",
+    "hang_mugs/100039": "f71a7747ba30debc27ceb3142e612fd3757d70e13ff0c5c5e9d94ac4e69deb0b",
+    "sweep_blocks/100000": "0606d0e94dbfadac314ce23192d8f2defaaeefb94d73f8b0a1a86332bb33854f",
+    "sweep_blocks/100001": "495eaa81220e84d77796d8a12e580b18c27362858baefbaef18920a0307a0b3e",
+    "sweep_blocks/100002": "a9223dcde7aefaa0fc6876c5fc51d21b8868ed87430f8fc86f2f87240127ec6b",
+    "sweep_blocks/100003": "93322f6c8771473759e8df71359cabfa1a6d304f8cc6293d959d0f9acb7f40de",
+    "sweep_blocks/100004": "dcd2faae325bd72212604714d187437e033947f5b55e4153dbb16aa79e916c1a",
+    "sweep_blocks/100010": "18c62021562a5d6326f435254b3be9649fc85a010a932a907ac2b2436a9357ca",
+    "sweep_blocks/100011": "f937409443d58f5183d3d46bdf099a22151d0526772e5407289afb5759429213",
+    "sweep_blocks/100012": "377210be217e66624da757a2afa681c97d1732d295ee07699aa315ea4609a2a7",
+    "sweep_blocks/100013": "5bf4612681eef78e8c71b1c2b7dda2c4fbf9400246e008c47fa8fa94f15eaba7",
+    "sweep_blocks/100014": "afdb8e5e27348eb1ec178766494c3c843ed5a5a5d244e25b3d7ab6e4dd9dab7d"
+  },
+  "inputs": "hang/dev10/hang_mugs (all ten, no outcome selection); shared simlab/layouts/sweep_blocks (first five original and first five allowed generated IDs)",
+  "limits": {
+    "vram_used_max_mib": 20480,
+    "mem_available_min_mib": 12288,
+    "load1_max": 26,
+    "max_PLAN_jobs": 4,
+    "cpu_quota_per_job": "400%",
+    "memory_max_per_job": "8G",
+    "job_timeout_s": 1800
+  },
+  "original_task_step_limits": true,
+  "camera_spec_trigger": "mean score gain >=5 points and full-success flips wins >=2*losses with >=2 net wins; no dispatch in this stream",
+  "no_default_change": true,
+  "no_LLM_calls": true
+}

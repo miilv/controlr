@@ -1,0 +1,1785 @@
+{
+  "summary": [
+    {
+      "task": "fill_egg_holder",
+      "mode": "table",
+      "n": 10,
+      "success": 0,
+      "score": 23.5,
+      "score_sd": 4.74,
+      "steps_mean": 316.2,
+      "steps_median": 327.0,
+      "plan_s": 280.0,
+      "search_s": 0,
+      "requests": 0,
+      "fallbacks": 0,
+      "infra": 0
+    },
+    {
+      "task": "fill_egg_holder",
+      "mode": "objects",
+      "n": 10,
+      "success": 0,
+      "score": 28.5,
+      "score_sd": 12.48,
+      "steps_mean": 353.3,
+      "steps_median": 325.5,
+      "plan_s": 552.6,
+      "search_s": 373.15,
+      "requests": 1603,
+      "fallbacks": 1433,
+      "infra": 0
+    },
+    {
+      "task": "stack_blocks",
+      "mode": "table",
+      "n": 10,
+      "success": 10,
+      "score": 100.0,
+      "score_sd": 0.0,
+      "steps_mean": 153.6,
+      "steps_median": 169.5,
+      "plan_s": 17.1,
+      "search_s": 0,
+      "requests": 0,
+      "fallbacks": 0,
+      "infra": 0
+    },
+    {
+      "task": "stack_blocks",
+      "mode": "objects",
+      "n": 10,
+      "success": 10,
+      "score": 100.0,
+      "score_sd": 0.0,
+      "steps_mean": 155.5,
+      "steps_median": 174.0,
+      "plan_s": 30.9,
+      "search_s": 12.8,
+      "requests": 274,
+      "fallbacks": 14,
+      "infra": 0
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "mode": "table",
+      "n": 10,
+      "success": 4,
+      "score": 77.5,
+      "score_sd": 21.89,
+      "steps_mean": 453.4,
+      "steps_median": 434.5,
+      "plan_s": 979.6,
+      "search_s": 0,
+      "requests": 0,
+      "fallbacks": 0,
+      "infra": 0
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "mode": "objects",
+      "n": 10,
+      "success": 4,
+      "score": 75.0,
+      "score_sd": 26.35,
+      "steps_mean": 456.7,
+      "steps_median": 438.0,
+      "plan_s": 1367.8,
+      "search_s": 74.01,
+      "requests": 316,
+      "fallbacks": 177,
+      "infra": 0
+    }
+  ],
+  "pairs": [
+    {
+      "task": "fill_egg_holder",
+      "n": 10,
+      "mean_delta": 5.000000000000001,
+      "sd_delta": 12.909944487358057,
+      "score_wins": 5,
+      "score_losses": 1,
+      "success_wins": 0,
+      "success_losses": 0
+    },
+    {
+      "task": "stack_blocks",
+      "n": 10,
+      "mean_delta": 0.0,
+      "sd_delta": 0.0,
+      "score_wins": 0,
+      "score_losses": 0,
+      "success_wins": 0,
+      "success_losses": 0
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "n": 10,
+      "mean_delta": -2.5,
+      "sd_delta": 18.446619684315547,
+      "score_wins": 1,
+      "score_losses": 1,
+      "success_wins": 0,
+      "success_losses": 0
+    }
+  ],
+  "episodes": [
+    {
+      "task": "fill_egg_holder",
+      "seed": 100000,
+      "success": false,
+      "score": 0.25,
+      "steps": 324,
+      "step_lim": 700,
+      "wall_s": 29.2,
+      "sim_s": 25.3,
+      "plan_s": 3.8,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100001,
+      "success": false,
+      "score": 0.25,
+      "steps": 209,
+      "step_lim": 700,
+      "wall_s": 36.2,
+      "sim_s": 15.6,
+      "plan_s": 20.7,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100010,
+      "success": false,
+      "score": 0.25,
+      "steps": 425,
+      "step_lim": 700,
+      "wall_s": 54.5,
+      "sim_s": 28.3,
+      "plan_s": 26.2,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100012,
+      "success": false,
+      "score": 0.25,
+      "steps": 272,
+      "step_lim": 700,
+      "wall_s": 21.1,
+      "sim_s": 18.3,
+      "plan_s": 2.9,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100015,
+      "success": false,
+      "score": 0.25,
+      "steps": 330,
+      "step_lim": 700,
+      "wall_s": 44.8,
+      "sim_s": 19.9,
+      "plan_s": 24.9,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100016,
+      "success": false,
+      "score": 0.25,
+      "steps": 201,
+      "step_lim": 700,
+      "wall_s": 59.9,
+      "sim_s": 16.1,
+      "plan_s": 43.8,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100019,
+      "success": false,
+      "score": 0.25,
+      "steps": 393,
+      "step_lim": 700,
+      "wall_s": 119.6,
+      "sim_s": 46.3,
+      "plan_s": 73.3,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100053,
+      "success": false,
+      "score": 0.25,
+      "steps": 420,
+      "step_lim": 700,
+      "wall_s": 100.0,
+      "sim_s": 45.5,
+      "plan_s": 54.5,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100054,
+      "success": false,
+      "score": 0.25,
+      "steps": 215,
+      "step_lim": 700,
+      "wall_s": 54.6,
+      "sim_s": 29.1,
+      "plan_s": 25.6,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100055,
+      "success": false,
+      "score": 0.1,
+      "steps": 373,
+      "step_lim": 700,
+      "wall_s": 52.8,
+      "sim_s": 48.5,
+      "plan_s": 4.3,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100000,
+      "success": false,
+      "score": 0.25,
+      "steps": 235,
+      "step_lim": 700,
+      "wall_s": 38.1,
+      "sim_s": 34.0,
+      "plan_s": 4.0,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 15,
+      "fallbacks": 0,
+      "search_s": 0.255408,
+      "search_max_s": 0.034066,
+      "routes": {
+        "line": 12,
+        "via:0.0:0.06": 3
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100001,
+      "success": false,
+      "score": 0.4,
+      "steps": 311,
+      "step_lim": 700,
+      "wall_s": 50.9,
+      "sim_s": 40.7,
+      "plan_s": 10.2,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 33,
+      "fallbacks": 17,
+      "search_s": 6.404015,
+      "search_max_s": 0.560718,
+      "routes": {
+        "fallback": 17,
+        "line": 9,
+        "via:0.08:0.03": 2,
+        "via:0.0:0.06": 5
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100010,
+      "success": false,
+      "score": 0.25,
+      "steps": 340,
+      "step_lim": 700,
+      "wall_s": 41.8,
+      "sim_s": 28.6,
+      "plan_s": 13.2,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 39,
+      "fallbacks": 19,
+      "search_s": 9.33425,
+      "search_max_s": 0.719236,
+      "routes": {
+        "line": 20,
+        "fallback": 19
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100012,
+      "success": false,
+      "score": 0.25,
+      "steps": 459,
+      "step_lim": 700,
+      "wall_s": 166.3,
+      "sim_s": 48.7,
+      "plan_s": 117.6,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 327,
+      "fallbacks": 309,
+      "search_s": 87.080783,
+      "search_max_s": 0.756229,
+      "routes": {
+        "line": 10,
+        "via:0.0:0.06": 3,
+        "fallback": 309,
+        "via:0.0:0.1": 2,
+        "via:0.08:0.03": 3
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100015,
+      "success": false,
+      "score": 0.0,
+      "steps": 365,
+      "step_lim": 700,
+      "wall_s": 29.0,
+      "sim_s": 22.2,
+      "plan_s": 6.8,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 38,
+      "fallbacks": 6,
+      "search_s": 2.795718,
+      "search_max_s": 0.475657,
+      "routes": {
+        "line": 30,
+        "fallback": 6,
+        "via:-0.08:0.03": 2
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100016,
+      "success": false,
+      "score": 0.4,
+      "steps": 310,
+      "step_lim": 700,
+      "wall_s": 110.1,
+      "sim_s": 30.4,
+      "plan_s": 79.7,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 154,
+      "fallbacks": 144,
+      "search_s": 61.020793,
+      "search_max_s": 0.849845,
+      "routes": {
+        "fallback": 144,
+        "line": 4,
+        "via:0.0:0.06": 1,
+        "via:0.08:0.03": 2,
+        "via:-0.08:0.03": 3
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100019,
+      "success": false,
+      "score": 0.4,
+      "steps": 355,
+      "step_lim": 700,
+      "wall_s": 118.4,
+      "sim_s": 36.6,
+      "plan_s": 81.8,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 297,
+      "fallbacks": 282,
+      "search_s": 49.441712,
+      "search_max_s": 0.782626,
+      "routes": {
+        "line": 7,
+        "fallback": 282,
+        "via:0.0:0.06": 7,
+        "via:-0.08:0.03": 1
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100053,
+      "success": false,
+      "score": 0.4,
+      "steps": 681,
+      "step_lim": 700,
+      "wall_s": 137.1,
+      "sim_s": 79.3,
+      "plan_s": 57.8,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 200,
+      "fallbacks": 174,
+      "search_s": 36.109518,
+      "search_max_s": 0.7487,
+      "routes": {
+        "fallback": 174,
+        "line": 10,
+        "via:0.0:0.06": 12,
+        "via:0.08:0.03": 4
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100054,
+      "success": false,
+      "score": 0.25,
+      "steps": 248,
+      "step_lim": 700,
+      "wall_s": 139.4,
+      "sim_s": 24.7,
+      "plan_s": 114.7,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 254,
+      "fallbacks": 246,
+      "search_s": 89.22434200000001,
+      "search_max_s": 0.818104,
+      "routes": {
+        "fallback": 246,
+        "line": 3,
+        "via:0.0:0.06": 4,
+        "via:0.08:0.03": 1
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100055,
+      "success": false,
+      "score": 0.25,
+      "steps": 229,
+      "step_lim": 700,
+      "wall_s": 96.9,
+      "sim_s": 30.1,
+      "plan_s": 66.8,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 246,
+      "fallbacks": 236,
+      "search_s": 31.481256,
+      "search_max_s": 0.597596,
+      "routes": {
+        "line": 5,
+        "fallback": 236,
+        "via:0.0:0.06": 4,
+        "via:0.08:0.03": 1
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100000,
+      "success": true,
+      "score": 1.0,
+      "steps": 203,
+      "step_lim": 550,
+      "wall_s": 10.8,
+      "sim_s": 8.9,
+      "plan_s": 1.9,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100001,
+      "success": true,
+      "score": 1.0,
+      "steps": 113,
+      "step_lim": 550,
+      "wall_s": 6.9,
+      "sim_s": 5.2,
+      "plan_s": 1.6,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100002,
+      "success": true,
+      "score": 1.0,
+      "steps": 175,
+      "step_lim": 550,
+      "wall_s": 9.6,
+      "sim_s": 8.5,
+      "plan_s": 1.2,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100003,
+      "success": true,
+      "score": 1.0,
+      "steps": 186,
+      "step_lim": 550,
+      "wall_s": 11.6,
+      "sim_s": 9.9,
+      "plan_s": 1.8,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100004,
+      "success": true,
+      "score": 1.0,
+      "steps": 164,
+      "step_lim": 550,
+      "wall_s": 19.5,
+      "sim_s": 18.2,
+      "plan_s": 1.2,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100010,
+      "success": true,
+      "score": 1.0,
+      "steps": 190,
+      "step_lim": 550,
+      "wall_s": 14.3,
+      "sim_s": 12.0,
+      "plan_s": 2.3,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100011,
+      "success": true,
+      "score": 1.0,
+      "steps": 108,
+      "step_lim": 550,
+      "wall_s": 7.8,
+      "sim_s": 5.3,
+      "plan_s": 2.6,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100012,
+      "success": true,
+      "score": 1.0,
+      "steps": 116,
+      "step_lim": 550,
+      "wall_s": 6.4,
+      "sim_s": 4.9,
+      "plan_s": 1.5,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100013,
+      "success": true,
+      "score": 1.0,
+      "steps": 177,
+      "step_lim": 550,
+      "wall_s": 9.1,
+      "sim_s": 7.6,
+      "plan_s": 1.5,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100014,
+      "success": true,
+      "score": 1.0,
+      "steps": 104,
+      "step_lim": 550,
+      "wall_s": 7.1,
+      "sim_s": 5.6,
+      "plan_s": 1.5,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100000,
+      "success": true,
+      "score": 1.0,
+      "steps": 209,
+      "step_lim": 550,
+      "wall_s": 19.9,
+      "sim_s": 17.4,
+      "plan_s": 2.5,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 32,
+      "fallbacks": 1,
+      "search_s": 0.82257,
+      "search_max_s": 0.406453,
+      "routes": {
+        "line": 30,
+        "via:0.0:0.06": 1,
+        "fallback": 1
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100001,
+      "success": true,
+      "score": 1.0,
+      "steps": 114,
+      "step_lim": 550,
+      "wall_s": 9.2,
+      "sim_s": 6.2,
+      "plan_s": 3.0,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 19,
+      "fallbacks": 2,
+      "search_s": 1.524423,
+      "search_max_s": 0.402375,
+      "routes": {
+        "via:0.08:0.03": 2,
+        "line": 13,
+        "via:0.0:0.06": 1,
+        "via:-0.08:0.03": 1,
+        "fallback": 2
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100002,
+      "success": true,
+      "score": 1.0,
+      "steps": 180,
+      "step_lim": 550,
+      "wall_s": 15.8,
+      "sim_s": 13.3,
+      "plan_s": 2.5,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 27,
+      "fallbacks": 0,
+      "search_s": 1.138053,
+      "search_max_s": 0.249557,
+      "routes": {
+        "via:0.0:0.1": 2,
+        "line": 21,
+        "via:0.0:0.06": 4
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100003,
+      "success": true,
+      "score": 1.0,
+      "steps": 188,
+      "step_lim": 550,
+      "wall_s": 16.7,
+      "sim_s": 13.7,
+      "plan_s": 3.0,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 35,
+      "fallbacks": 0,
+      "search_s": 0.543244,
+      "search_max_s": 0.03244,
+      "routes": {
+        "line": 35
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100004,
+      "success": true,
+      "score": 1.0,
+      "steps": 168,
+      "step_lim": 550,
+      "wall_s": 12.5,
+      "sim_s": 9.7,
+      "plan_s": 2.8,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 28,
+      "fallbacks": 1,
+      "search_s": 1.63305,
+      "search_max_s": 0.999616,
+      "routes": {
+        "line": 25,
+        "via:0.08:0.03": 1,
+        "fallback": 1,
+        "via:0.0:0.06": 1
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100010,
+      "success": true,
+      "score": 1.0,
+      "steps": 193,
+      "step_lim": 550,
+      "wall_s": 19.9,
+      "sim_s": 16.1,
+      "plan_s": 3.8,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 34,
+      "fallbacks": 0,
+      "search_s": 1.221874,
+      "search_max_s": 0.289088,
+      "routes": {
+        "line": 31,
+        "via:0.0:0.06": 2,
+        "via:-0.08:0.03": 1
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100011,
+      "success": true,
+      "score": 1.0,
+      "steps": 108,
+      "step_lim": 550,
+      "wall_s": 12.1,
+      "sim_s": 6.5,
+      "plan_s": 5.6,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 29,
+      "fallbacks": 7,
+      "search_s": 2.724771,
+      "search_max_s": 0.510754,
+      "routes": {
+        "via:0.0:0.06": 4,
+        "line": 18,
+        "fallback": 7
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100012,
+      "success": true,
+      "score": 1.0,
+      "steps": 109,
+      "step_lim": 550,
+      "wall_s": 8.1,
+      "sim_s": 6.2,
+      "plan_s": 1.9,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 22,
+      "fallbacks": 2,
+      "search_s": 0.503717,
+      "search_max_s": 0.14904,
+      "routes": {
+        "via:0.0:0.06": 2,
+        "line": 18,
+        "fallback": 2
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100013,
+      "success": true,
+      "score": 1.0,
+      "steps": 183,
+      "step_lim": 550,
+      "wall_s": 13.5,
+      "sim_s": 10.3,
+      "plan_s": 3.2,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 27,
+      "fallbacks": 1,
+      "search_s": 1.7220659999999999,
+      "search_max_s": 0.752188,
+      "routes": {
+        "fallback": 1,
+        "line": 23,
+        "via:0.0:0.16": 1,
+        "via:0.0:0.06": 1,
+        "via:-0.08:0.03": 1
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100014,
+      "success": true,
+      "score": 1.0,
+      "steps": 103,
+      "step_lim": 550,
+      "wall_s": 8.0,
+      "sim_s": 5.4,
+      "plan_s": 2.6,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 21,
+      "fallbacks": 0,
+      "search_s": 0.961551,
+      "search_max_s": 0.287167,
+      "routes": {
+        "via:0.0:0.06": 2,
+        "line": 17,
+        "via:-0.08:0.03": 1,
+        "via:0.08:0.03": 1
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100000,
+      "success": true,
+      "score": 1.0,
+      "steps": 429,
+      "step_lim": 900,
+      "wall_s": 130.6,
+      "sim_s": 27.2,
+      "plan_s": 103.4,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100001,
+      "success": false,
+      "score": 0.5,
+      "steps": 431,
+      "step_lim": 900,
+      "wall_s": 114.7,
+      "sim_s": 19.7,
+      "plan_s": 95.0,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100002,
+      "success": false,
+      "score": 0.5,
+      "steps": 479,
+      "step_lim": 900,
+      "wall_s": 120.1,
+      "sim_s": 23.1,
+      "plan_s": 97.0,
+      "category": "collision",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100003,
+      "success": false,
+      "score": 0.75,
+      "steps": 437,
+      "step_lim": 900,
+      "wall_s": 105.7,
+      "sim_s": 24.1,
+      "plan_s": 81.6,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100004,
+      "success": true,
+      "score": 1.0,
+      "steps": 536,
+      "step_lim": 900,
+      "wall_s": 115.7,
+      "sim_s": 27.8,
+      "plan_s": 87.9,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100030,
+      "success": false,
+      "score": 0.75,
+      "steps": 421,
+      "step_lim": 900,
+      "wall_s": 121.8,
+      "sim_s": 24.1,
+      "plan_s": 97.6,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100031,
+      "success": false,
+      "score": 0.75,
+      "steps": 432,
+      "step_lim": 900,
+      "wall_s": 110.3,
+      "sim_s": 21.3,
+      "plan_s": 89.0,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100032,
+      "success": true,
+      "score": 1.0,
+      "steps": 545,
+      "step_lim": 900,
+      "wall_s": 128.5,
+      "sim_s": 27.4,
+      "plan_s": 101.0,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100033,
+      "success": false,
+      "score": 0.5,
+      "steps": 382,
+      "step_lim": 900,
+      "wall_s": 133.5,
+      "sim_s": 24.2,
+      "plan_s": 109.3,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100034,
+      "success": true,
+      "score": 1.0,
+      "steps": 442,
+      "step_lim": 900,
+      "wall_s": 145.3,
+      "sim_s": 27.5,
+      "plan_s": 117.8,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "table"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "search_s": 0,
+      "search_max_s": 0,
+      "routes": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100000,
+      "success": true,
+      "score": 1.0,
+      "steps": 438,
+      "step_lim": 900,
+      "wall_s": 136.5,
+      "sim_s": 26.5,
+      "plan_s": 110.0,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 12,
+      "fallbacks": 4,
+      "search_s": 2.000379,
+      "search_max_s": 0.560584,
+      "routes": {
+        "line": 8,
+        "fallback": 4
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100001,
+      "success": false,
+      "score": 0.75,
+      "steps": 438,
+      "step_lim": 900,
+      "wall_s": 121.5,
+      "sim_s": 23.5,
+      "plan_s": 98.0,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 19,
+      "fallbacks": 12,
+      "search_s": 7.470588,
+      "search_max_s": 0.85049,
+      "routes": {
+        "fallback": 12,
+        "line": 7
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100002,
+      "success": false,
+      "score": 0.5,
+      "steps": 474,
+      "step_lim": 900,
+      "wall_s": 136.5,
+      "sim_s": 22.9,
+      "plan_s": 113.6,
+      "category": "collision",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 84,
+      "fallbacks": 55,
+      "search_s": 18.799802,
+      "search_max_s": 0.815491,
+      "routes": {
+        "line": 29,
+        "fallback": 55
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100003,
+      "success": false,
+      "score": 0.25,
+      "steps": 416,
+      "step_lim": 900,
+      "wall_s": 289.1,
+      "sim_s": 24.5,
+      "plan_s": 264.6,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 53,
+      "fallbacks": 23,
+      "search_s": 10.179371999999999,
+      "search_max_s": 0.806542,
+      "routes": {
+        "fallback": 23,
+        "line": 25,
+        "via:0.0:0.06": 4,
+        "via:0.0:0.1": 1
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100004,
+      "success": true,
+      "score": 1.0,
+      "steps": 540,
+      "step_lim": 900,
+      "wall_s": 139.0,
+      "sim_s": 28.6,
+      "plan_s": 110.4,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 32,
+      "fallbacks": 19,
+      "search_s": 7.826719,
+      "search_max_s": 0.487736,
+      "routes": {
+        "line": 13,
+        "fallback": 19
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100030,
+      "success": false,
+      "score": 0.75,
+      "steps": 434,
+      "step_lim": 900,
+      "wall_s": 171.8,
+      "sim_s": 27.9,
+      "plan_s": 143.9,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 36,
+      "fallbacks": 29,
+      "search_s": 11.311784,
+      "search_max_s": 0.61998,
+      "routes": {
+        "fallback": 29,
+        "line": 7
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100031,
+      "success": false,
+      "score": 0.75,
+      "steps": 436,
+      "step_lim": 900,
+      "wall_s": 111.1,
+      "sim_s": 23.3,
+      "plan_s": 87.7,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 11,
+      "fallbacks": 3,
+      "search_s": 1.793084,
+      "search_max_s": 0.831534,
+      "routes": {
+        "line": 7,
+        "fallback": 3,
+        "via:0.0:0.06": 1
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100032,
+      "success": true,
+      "score": 1.0,
+      "steps": 557,
+      "step_lim": 900,
+      "wall_s": 154.2,
+      "sim_s": 38.6,
+      "plan_s": 115.5,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 12,
+      "fallbacks": 7,
+      "search_s": 2.8790050000000003,
+      "search_max_s": 0.468411,
+      "routes": {
+        "via:0.0:0.06": 1,
+        "line": 4,
+        "fallback": 7
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100033,
+      "success": false,
+      "score": 0.5,
+      "steps": 381,
+      "step_lim": 900,
+      "wall_s": 151.5,
+      "sim_s": 21.2,
+      "plan_s": 130.3,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 25,
+      "fallbacks": 11,
+      "search_s": 3.847363,
+      "search_max_s": 0.547599,
+      "routes": {
+        "line": 14,
+        "fallback": 11
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100034,
+      "success": true,
+      "score": 1.0,
+      "steps": 453,
+      "step_lim": 900,
+      "wall_s": 238.2,
+      "sim_s": 44.3,
+      "plan_s": 193.8,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "c58b7affbd1f0d686091590a1e1a93fabbc1f1bd"
+      },
+      "skill_attrs": {
+        "plan_world": "objects"
+      },
+      "infra_failure": null,
+      "requests": 32,
+      "fallbacks": 14,
+      "search_s": 7.899971,
+      "search_max_s": 0.820257,
+      "routes": {
+        "line": 18,
+        "fallback": 14
+      }
+    }
+  ],
+  "input_manifest_sha256": {
+    "store_tools_in_toolbox/100000": "591e3b4c97fbf606434eb93dd7254bb94dac8ab68bfd3f078a3369b0ef4d064f",
+    "store_tools_in_toolbox/100001": "7902526fafa9e1bf7015d79c7cbc941db86b1be1c2b114011f49e86bbcaf8a4e",
+    "store_tools_in_toolbox/100002": "2344086dc030c7f6468405fa6a16bd917329e4139312d3c9cc53540edf4c651c",
+    "store_tools_in_toolbox/100003": "8425b6720567477832b43fbfa285fb671e4b2fc21a0242c08db86095595eb440",
+    "store_tools_in_toolbox/100004": "596895eac3c09881b4c3137980b45c5115c4630f4d5bc6af5fe0ad43d67960b7",
+    "store_tools_in_toolbox/100030": "4afe56ef21cbff30717ba1ea4071328cf6c73f2dfee67f37f6df32dea9a14202",
+    "store_tools_in_toolbox/100031": "4d02bf7f8eec32b4406f036207ce07518398bedeee1bd866c21f44989bd91836",
+    "store_tools_in_toolbox/100032": "b6dd0b066e8fa2c32b447ced5b529a21022f1393f4ab9d091ca1a728c4bc391e",
+    "store_tools_in_toolbox/100033": "849ef2da26bc463d36fca12548ac78c8477361e37d15fd03034db44bb4f18b15",
+    "store_tools_in_toolbox/100034": "c6216ff7ccbbe0ad784537d96e820347c4e82b822c03b2bc88f4d965f915f470",
+    "fill_egg_holder/100000": "16fab329d32fd420401d65a6ad7e8d613453e145de7e1afa3a7e103388260272",
+    "fill_egg_holder/100001": "b0682eaae0b9dcb39be6c09de2c56ce0b082f80d25354d8e875ad02d94ec523a",
+    "fill_egg_holder/100010": "4cc172cafe99950e0b8b9fb375f99706ab7125ef635ae2b401339f6ad57f9d19",
+    "fill_egg_holder/100012": "5a912142f4b689f35d7d858e63b12363079b6723c80c7c59085e6236ab9ba870",
+    "fill_egg_holder/100015": "1ad8c255f156c43a295459ffcec44a62de1250866bba733cb6d1c26057b1ae66",
+    "fill_egg_holder/100016": "b176df730cf97fb2e3e264d7503fa22fd7bfbd2f753a896ce6390ca1a284abd9",
+    "fill_egg_holder/100019": "cb1865ce0239f1224ab1d9306fd6d7c8bd582ee01b3fc7bdc351fa392b4a023b",
+    "fill_egg_holder/100053": "147a9b28fd7c28dab42a2dd35671d13614118618fe8434e7cdd6938934565ce3",
+    "fill_egg_holder/100054": "538ab880a596d16dba92b2e2b8ce2a4470c4c5a4afd5f119f097ee16ab32aefd",
+    "fill_egg_holder/100055": "ae5085e49da46fe913bacc2e92141a4a725bd76fe9bd293d3de5c50919bcb47d",
+    "stack_blocks/100000": "d65a585f761f352c8f87a9ec23504deb4995a3461c944c1f86fdb1767cde8e11",
+    "stack_blocks/100001": "de26d8c680ea94735caed99b8922f6895c21fbc6dc5728a2837ee08e23e9ba6d",
+    "stack_blocks/100002": "8de016cca3dc507001e8fb03329720651d29a3917f212a7f803080dbc7b8a5ad",
+    "stack_blocks/100003": "438680fd444c2829158e0629e41aed0eec672904df456febc253cb2c4ea62e07",
+    "stack_blocks/100004": "a802df56ac2cfe2828c60155d7f144e57c8dca632d5e13f042c42402589a54c4",
+    "stack_blocks/100010": "a14bd409511129fca5ed25888d4b629e9292d69234645cd23e2bceb347061026",
+    "stack_blocks/100011": "06d84ae902357bc583ae1d5aebdcf6934e94b640d33128a3a0d8773d59fcc983",
+    "stack_blocks/100012": "49723d8dd5aec55bb86b2cd24f603443741bb21b64e0b0be6f22e198da927c71",
+    "stack_blocks/100013": "f90ea71e006d6a4d05b2e5db221384aad3fe28d97b6177674b69bb226968b942",
+    "stack_blocks/100014": "e7a892dcefd84bff66d04936aaf05c96f8cd6706a31b3981f4ead95972c3a16b"
+  }
+}

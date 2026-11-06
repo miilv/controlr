@@ -1,0 +1,2210 @@
+{
+  "source_commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021",
+  "arms": {
+    "A": {
+      "plan_world": "table",
+      "plan_solver": "curobo"
+    },
+    "B": {
+      "plan_world": "objects",
+      "plan_solver": "curobo"
+    }
+  },
+  "summary": [
+    {
+      "task": "store_tools_in_toolbox",
+      "mode": "table",
+      "n": 10,
+      "success": 4,
+      "score": 77.5,
+      "score_sd": 21.89,
+      "steps_mean": 453.4,
+      "steps_median": 434.5,
+      "plan_s": 2239.2,
+      "search_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "fallback_reasons": {},
+      "requests": 0,
+      "fallbacks": 0,
+      "infra": 0,
+      "fallback_pct": null,
+      "cached_fallbacks": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "worker_timeouts": 0,
+      "routes": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "mode": "objects",
+      "n": 10,
+      "success": 4,
+      "score": 80.0,
+      "score_sd": 19.72,
+      "steps_mean": 461.7,
+      "steps_median": 442.0,
+      "plan_s": 2272.6,
+      "search_s": 86.11,
+      "startup_s": 90.79,
+      "max_query_s": 2.137341,
+      "fallback_reasons": {
+        "TimeoutError: cuRobo planning budget (2 s)": 203,
+        "no_plan": 72
+      },
+      "requests": 310,
+      "fallbacks": 275,
+      "infra": 0,
+      "fallback_pct": 88.70967741935483,
+      "cached_fallbacks": 193,
+      "worker_requests": 117,
+      "accepted_proposals": 35,
+      "worker_timeouts": 10,
+      "routes": {
+        "curobo": 35,
+        "fallback": 275
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "mode": "table",
+      "n": 10,
+      "success": 0,
+      "score": 23.5,
+      "score_sd": 4.74,
+      "steps_mean": 316.2,
+      "steps_median": 327.0,
+      "plan_s": 257.1,
+      "search_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "fallback_reasons": {},
+      "requests": 0,
+      "fallbacks": 0,
+      "infra": 0,
+      "fallback_pct": null,
+      "cached_fallbacks": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "worker_timeouts": 0,
+      "routes": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "mode": "objects",
+      "n": 10,
+      "success": 0,
+      "score": 22.0,
+      "score_sd": 6.32,
+      "steps_mean": 315.4,
+      "steps_median": 307.5,
+      "plan_s": 921.2,
+      "search_s": 645.98,
+      "startup_s": 69.94,
+      "max_query_s": 2.102703,
+      "fallback_reasons": {
+        "no_plan": 1264,
+        "validation: hits egg_basket": 11,
+        "joint_limits": 10,
+        "TimeoutError: cuRobo planning budget (2 s)": 1551,
+        "validation: hits egg_holder": 14
+      },
+      "requests": 2922,
+      "fallbacks": 2850,
+      "infra": 0,
+      "fallback_pct": 97.53593429158111,
+      "cached_fallbacks": 1546,
+      "worker_requests": 1376,
+      "accepted_proposals": 72,
+      "worker_timeouts": 5,
+      "routes": {
+        "curobo": 72,
+        "fallback": 2850
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "mode": "table",
+      "n": 10,
+      "success": 10,
+      "score": 100.0,
+      "score_sd": 0.0,
+      "steps_mean": 153.6,
+      "steps_median": 169.5,
+      "plan_s": 14.9,
+      "search_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "fallback_reasons": {},
+      "requests": 0,
+      "fallbacks": 0,
+      "infra": 0,
+      "fallback_pct": null,
+      "cached_fallbacks": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "worker_timeouts": 0,
+      "routes": {}
+    },
+    {
+      "task": "stack_blocks",
+      "mode": "objects",
+      "n": 10,
+      "success": 10,
+      "score": 100.0,
+      "score_sd": 0.0,
+      "steps_mean": 153.8,
+      "steps_median": 169.5,
+      "plan_s": 216.4,
+      "search_s": 115.04,
+      "startup_s": 85.84,
+      "max_query_s": 2.135407,
+      "fallback_reasons": {
+        "no_plan": 33,
+        "TimeoutError: cuRobo planning budget (2 s)": 129
+      },
+      "requests": 274,
+      "fallbacks": 162,
+      "infra": 0,
+      "fallback_pct": 59.12408759124087,
+      "cached_fallbacks": 121,
+      "worker_requests": 153,
+      "accepted_proposals": 112,
+      "worker_timeouts": 8,
+      "routes": {
+        "curobo": 112,
+        "fallback": 162
+      }
+    }
+  ],
+  "pairs": [
+    {
+      "task": "store_tools_in_toolbox",
+      "n": 10,
+      "mean_delta": 2.5,
+      "paired_sd": 14.191155304938668,
+      "score_wins": 2,
+      "score_losses": 1,
+      "success_wins": 0,
+      "success_losses": 0
+    },
+    {
+      "task": "fill_egg_holder",
+      "n": 10,
+      "mean_delta": -1.5,
+      "paired_sd": 4.743416490252569,
+      "score_wins": 0,
+      "score_losses": 1,
+      "success_wins": 0,
+      "success_losses": 0
+    },
+    {
+      "task": "stack_blocks",
+      "n": 10,
+      "mean_delta": 0.0,
+      "paired_sd": 0.0,
+      "score_wins": 0,
+      "score_losses": 0,
+      "success_wins": 0,
+      "success_losses": 0
+    }
+  ],
+  "episodes": [
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100000,
+      "success": true,
+      "score": 1.0,
+      "steps": 429,
+      "step_lim": 900,
+      "wall_s": 304.3,
+      "sim_s": 34.9,
+      "load_s": 6.03,
+      "plan_s": 269.4,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100001,
+      "success": false,
+      "score": 0.5,
+      "steps": 431,
+      "step_lim": 900,
+      "wall_s": 291.6,
+      "sim_s": 32.5,
+      "load_s": 5.57,
+      "plan_s": 259.1,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100002,
+      "success": false,
+      "score": 0.5,
+      "steps": 479,
+      "step_lim": 900,
+      "wall_s": 295.0,
+      "sim_s": 34.8,
+      "load_s": 6.85,
+      "plan_s": 260.2,
+      "category": "collision",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100003,
+      "success": false,
+      "score": 0.75,
+      "steps": 437,
+      "step_lim": 900,
+      "wall_s": 298.2,
+      "sim_s": 46.5,
+      "load_s": 6.98,
+      "plan_s": 251.8,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100004,
+      "success": true,
+      "score": 1.0,
+      "steps": 536,
+      "step_lim": 900,
+      "wall_s": 325.2,
+      "sim_s": 46.1,
+      "load_s": 6.6,
+      "plan_s": 279.0,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100030,
+      "success": false,
+      "score": 0.75,
+      "steps": 421,
+      "step_lim": 900,
+      "wall_s": 264.4,
+      "sim_s": 31.6,
+      "load_s": 5.25,
+      "plan_s": 232.8,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100031,
+      "success": false,
+      "score": 0.75,
+      "steps": 432,
+      "step_lim": 900,
+      "wall_s": 221.6,
+      "sim_s": 31.4,
+      "load_s": 4.2,
+      "plan_s": 190.3,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100032,
+      "success": true,
+      "score": 1.0,
+      "steps": 545,
+      "step_lim": 900,
+      "wall_s": 215.2,
+      "sim_s": 49.0,
+      "load_s": 5.51,
+      "plan_s": 166.2,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100033,
+      "success": false,
+      "score": 0.5,
+      "steps": 382,
+      "step_lim": 900,
+      "wall_s": 196.4,
+      "sim_s": 27.4,
+      "load_s": 4.33,
+      "plan_s": 168.9,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100034,
+      "success": true,
+      "score": 1.0,
+      "steps": 442,
+      "step_lim": 900,
+      "wall_s": 193.0,
+      "sim_s": 31.5,
+      "load_s": 4.76,
+      "plan_s": 161.5,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100000,
+      "success": true,
+      "score": 1.0,
+      "steps": 430,
+      "step_lim": 900,
+      "wall_s": 327.5,
+      "sim_s": 34.1,
+      "load_s": 6.28,
+      "plan_s": 293.4,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 12,
+      "fallbacks": 9,
+      "query_s": 4.275907999999999,
+      "startup_s": 9.150171,
+      "max_query_s": 2.132506,
+      "worker_requests": 4,
+      "accepted_proposals": 3,
+      "cached_fallbacks": 8,
+      "fallback_reasons": {
+        "TimeoutError: cuRobo planning budget (2 s)": 9
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100001,
+      "success": false,
+      "score": 0.75,
+      "steps": 436,
+      "step_lim": 900,
+      "wall_s": 308.7,
+      "sim_s": 38.4,
+      "load_s": 8.21,
+      "plan_s": 270.3,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 19,
+      "fallbacks": 17,
+      "query_s": 5.0771120000000005,
+      "startup_s": 9.085343,
+      "max_query_s": 2.137341,
+      "worker_requests": 4,
+      "accepted_proposals": 2,
+      "cached_fallbacks": 15,
+      "fallback_reasons": {
+        "no_plan": 1,
+        "TimeoutError: cuRobo planning budget (2 s)": 16
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100002,
+      "success": false,
+      "score": 0.5,
+      "steps": 476,
+      "step_lim": 900,
+      "wall_s": 319.8,
+      "sim_s": 35.3,
+      "load_s": 6.33,
+      "plan_s": 284.5,
+      "category": "collision",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 84,
+      "fallbacks": 79,
+      "query_s": 34.22555,
+      "startup_s": 9.303597,
+      "max_query_s": 2.111286,
+      "worker_requests": 60,
+      "accepted_proposals": 5,
+      "cached_fallbacks": 24,
+      "fallback_reasons": {
+        "no_plan": 54,
+        "TimeoutError: cuRobo planning budget (2 s)": 25
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100003,
+      "success": false,
+      "score": 0.5,
+      "steps": 446,
+      "step_lim": 900,
+      "wall_s": 297.6,
+      "sim_s": 41.9,
+      "load_s": 7.73,
+      "plan_s": 255.7,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 44,
+      "fallbacks": 42,
+      "query_s": 5.782366,
+      "startup_s": 11.280434,
+      "max_query_s": 2.101696,
+      "worker_requests": 6,
+      "accepted_proposals": 2,
+      "cached_fallbacks": 38,
+      "fallback_reasons": {
+        "no_plan": 3,
+        "TimeoutError: cuRobo planning budget (2 s)": 39
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100004,
+      "success": true,
+      "score": 1.0,
+      "steps": 542,
+      "step_lim": 900,
+      "wall_s": 294.0,
+      "sim_s": 55.9,
+      "load_s": 6.97,
+      "plan_s": 238.1,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 32,
+      "fallbacks": 23,
+      "query_s": 11.005899000000001,
+      "startup_s": 9.167635,
+      "max_query_s": 2.101491,
+      "worker_requests": 16,
+      "accepted_proposals": 9,
+      "cached_fallbacks": 16,
+      "fallback_reasons": {
+        "no_plan": 6,
+        "TimeoutError: cuRobo planning budget (2 s)": 17
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100030,
+      "success": false,
+      "score": 0.75,
+      "steps": 421,
+      "step_lim": 900,
+      "wall_s": 255.3,
+      "sim_s": 32.1,
+      "load_s": 5.27,
+      "plan_s": 223.2,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 36,
+      "fallbacks": 36,
+      "query_s": 3.25059,
+      "startup_s": 9.306641,
+      "max_query_s": 2.130473,
+      "worker_requests": 2,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 34,
+      "fallback_reasons": {
+        "no_plan": 1,
+        "TimeoutError: cuRobo planning budget (2 s)": 35
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100031,
+      "success": false,
+      "score": 0.75,
+      "steps": 433,
+      "step_lim": 900,
+      "wall_s": 216.3,
+      "sim_s": 33.8,
+      "load_s": 4.86,
+      "plan_s": 182.5,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 11,
+      "fallbacks": 8,
+      "query_s": 4.058357,
+      "startup_s": 10.218769,
+      "max_query_s": 2.103857,
+      "worker_requests": 4,
+      "accepted_proposals": 3,
+      "cached_fallbacks": 7,
+      "fallback_reasons": {
+        "TimeoutError: cuRobo planning budget (2 s)": 8
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100032,
+      "success": true,
+      "score": 1.0,
+      "steps": 549,
+      "step_lim": 900,
+      "wall_s": 229.3,
+      "sim_s": 46.9,
+      "load_s": 4.24,
+      "plan_s": 182.4,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 12,
+      "fallbacks": 11,
+      "query_s": 4.357647,
+      "startup_s": 7.484129,
+      "max_query_s": 2.10489,
+      "worker_requests": 4,
+      "accepted_proposals": 1,
+      "cached_fallbacks": 8,
+      "fallback_reasons": {
+        "no_plan": 2,
+        "TimeoutError: cuRobo planning budget (2 s)": 9
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100033,
+      "success": false,
+      "score": 0.75,
+      "steps": 446,
+      "step_lim": 900,
+      "wall_s": 221.9,
+      "sim_s": 30.9,
+      "load_s": 7.48,
+      "plan_s": 190.9,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 28,
+      "fallbacks": 23,
+      "query_s": 6.683749,
+      "startup_s": 8.148332,
+      "max_query_s": 2.107601,
+      "worker_requests": 8,
+      "accepted_proposals": 5,
+      "cached_fallbacks": 20,
+      "fallback_reasons": {
+        "no_plan": 2,
+        "TimeoutError: cuRobo planning budget (2 s)": 21
+      }
+    },
+    {
+      "task": "store_tools_in_toolbox",
+      "seed": 100034,
+      "success": true,
+      "score": 1.0,
+      "steps": 438,
+      "step_lim": 900,
+      "wall_s": 177.8,
+      "sim_s": 26.2,
+      "load_s": 7.04,
+      "plan_s": 151.6,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 32,
+      "fallbacks": 27,
+      "query_s": 7.39485,
+      "startup_s": 7.646462,
+      "max_query_s": 2.10806,
+      "worker_requests": 9,
+      "accepted_proposals": 5,
+      "cached_fallbacks": 23,
+      "fallback_reasons": {
+        "no_plan": 3,
+        "TimeoutError: cuRobo planning budget (2 s)": 24
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100000,
+      "success": false,
+      "score": 0.25,
+      "steps": 324,
+      "step_lim": 700,
+      "wall_s": 32.0,
+      "sim_s": 27.3,
+      "load_s": 5.6,
+      "plan_s": 4.8,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100001,
+      "success": false,
+      "score": 0.25,
+      "steps": 209,
+      "step_lim": 700,
+      "wall_s": 41.5,
+      "sim_s": 17.6,
+      "load_s": 4.42,
+      "plan_s": 23.9,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100010,
+      "success": false,
+      "score": 0.25,
+      "steps": 425,
+      "step_lim": 700,
+      "wall_s": 81.9,
+      "sim_s": 50.4,
+      "load_s": 6.14,
+      "plan_s": 31.5,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100012,
+      "success": false,
+      "score": 0.25,
+      "steps": 272,
+      "step_lim": 700,
+      "wall_s": 36.7,
+      "sim_s": 33.4,
+      "load_s": 5.2,
+      "plan_s": 3.3,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100015,
+      "success": false,
+      "score": 0.25,
+      "steps": 330,
+      "step_lim": 700,
+      "wall_s": 56.4,
+      "sim_s": 28.6,
+      "load_s": 4.87,
+      "plan_s": 27.8,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100016,
+      "success": false,
+      "score": 0.25,
+      "steps": 201,
+      "step_lim": 700,
+      "wall_s": 61.1,
+      "sim_s": 23.5,
+      "load_s": 8.83,
+      "plan_s": 37.6,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100019,
+      "success": false,
+      "score": 0.25,
+      "steps": 393,
+      "step_lim": 700,
+      "wall_s": 96.7,
+      "sim_s": 39.7,
+      "load_s": 6.27,
+      "plan_s": 57.0,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100053,
+      "success": false,
+      "score": 0.25,
+      "steps": 420,
+      "step_lim": 700,
+      "wall_s": 79.4,
+      "sim_s": 37.4,
+      "load_s": 4.28,
+      "plan_s": 42.0,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100054,
+      "success": false,
+      "score": 0.25,
+      "steps": 215,
+      "step_lim": 700,
+      "wall_s": 39.3,
+      "sim_s": 13.8,
+      "load_s": 5.52,
+      "plan_s": 25.5,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100055,
+      "success": false,
+      "score": 0.1,
+      "steps": 373,
+      "step_lim": 700,
+      "wall_s": 31.2,
+      "sim_s": 27.5,
+      "load_s": 5.98,
+      "plan_s": 3.7,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100000,
+      "success": false,
+      "score": 0.25,
+      "steps": 271,
+      "step_lim": 700,
+      "wall_s": 39.2,
+      "sim_s": 19.3,
+      "load_s": 4.64,
+      "plan_s": 19.9,
+      "category": "place_miss",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 17,
+      "fallbacks": 6,
+      "query_s": 8.734533,
+      "startup_s": 7.24103,
+      "max_query_s": 0.602474,
+      "worker_requests": 17,
+      "accepted_proposals": 11,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {
+        "no_plan": 6
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100001,
+      "success": false,
+      "score": 0.25,
+      "steps": 210,
+      "step_lim": 700,
+      "wall_s": 178.2,
+      "sim_s": 17.9,
+      "load_s": 4.75,
+      "plan_s": 160.3,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 247,
+      "fallbacks": 245,
+      "query_s": 125.847013,
+      "startup_s": 8.003036,
+      "max_query_s": 1.705878,
+      "worker_requests": 247,
+      "accepted_proposals": 2,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {
+        "validation: hits egg_basket": 1,
+        "no_plan": 244
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100010,
+      "success": false,
+      "score": 0.25,
+      "steps": 307,
+      "step_lim": 700,
+      "wall_s": 171.3,
+      "sim_s": 24.1,
+      "load_s": 5.05,
+      "plan_s": 147.2,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 261,
+      "fallbacks": 241,
+      "query_s": 116.953849,
+      "startup_s": 6.988721,
+      "max_query_s": 1.47261,
+      "worker_requests": 261,
+      "accepted_proposals": 20,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {
+        "validation: hits egg_basket": 2,
+        "joint_limits": 4,
+        "no_plan": 235
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100012,
+      "success": false,
+      "score": 0.25,
+      "steps": 443,
+      "step_lim": 700,
+      "wall_s": 73.3,
+      "sim_s": 35.4,
+      "load_s": 6.13,
+      "plan_s": 37.9,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 492,
+      "fallbacks": 490,
+      "query_s": 4.414786,
+      "startup_s": 6.997904,
+      "max_query_s": 2.100955,
+      "worker_requests": 5,
+      "accepted_proposals": 2,
+      "cached_fallbacks": 487,
+      "fallback_reasons": {
+        "validation: hits egg_basket": 2,
+        "TimeoutError: cuRobo planning budget (2 s)": 488
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100015,
+      "success": false,
+      "score": 0.25,
+      "steps": 308,
+      "step_lim": 700,
+      "wall_s": 59.4,
+      "sim_s": 23.3,
+      "load_s": 4.15,
+      "plan_s": 36.1,
+      "category": "grasp_slip",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 247,
+      "fallbacks": 241,
+      "query_s": 7.944822,
+      "startup_s": 7.196127,
+      "max_query_s": 2.102703,
+      "worker_requests": 14,
+      "accepted_proposals": 6,
+      "cached_fallbacks": 233,
+      "fallback_reasons": {
+        "validation: hits egg_holder": 3,
+        "no_plan": 4,
+        "TimeoutError: cuRobo planning budget (2 s)": 234
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100016,
+      "success": false,
+      "score": 0.1,
+      "steps": 287,
+      "step_lim": 700,
+      "wall_s": 163.9,
+      "sim_s": 18.2,
+      "load_s": 3.77,
+      "plan_s": 145.7,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 274,
+      "fallbacks": 266,
+      "query_s": 119.302127,
+      "startup_s": 6.605891,
+      "max_query_s": 0.551375,
+      "worker_requests": 274,
+      "accepted_proposals": 8,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {
+        "validation: hits egg_basket": 2,
+        "no_plan": 263,
+        "validation: hits egg_holder": 1
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100019,
+      "success": false,
+      "score": 0.25,
+      "steps": 338,
+      "step_lim": 700,
+      "wall_s": 65.8,
+      "sim_s": 26.5,
+      "load_s": 3.83,
+      "plan_s": 39.3,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 345,
+      "fallbacks": 337,
+      "query_s": 7.733655,
+      "startup_s": 6.37273,
+      "max_query_s": 2.098972,
+      "worker_requests": 11,
+      "accepted_proposals": 8,
+      "cached_fallbacks": 334,
+      "fallback_reasons": {
+        "no_plan": 2,
+        "TimeoutError: cuRobo planning budget (2 s)": 335
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100053,
+      "success": false,
+      "score": 0.25,
+      "steps": 432,
+      "step_lim": 700,
+      "wall_s": 84.1,
+      "sim_s": 37.0,
+      "load_s": 4.41,
+      "plan_s": 47.1,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 492,
+      "fallbacks": 489,
+      "query_s": 4.768366,
+      "startup_s": 6.620289,
+      "max_query_s": 2.097052,
+      "worker_requests": 6,
+      "accepted_proposals": 3,
+      "cached_fallbacks": 486,
+      "fallback_reasons": {
+        "validation: hits egg_basket": 2,
+        "TimeoutError: cuRobo planning budget (2 s)": 487
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100054,
+      "success": false,
+      "score": 0.25,
+      "steps": 329,
+      "step_lim": 700,
+      "wall_s": 254.5,
+      "sim_s": 22.1,
+      "load_s": 3.83,
+      "plan_s": 232.4,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 492,
+      "fallbacks": 486,
+      "query_s": 206.083531,
+      "startup_s": 6.458124,
+      "max_query_s": 2.090747,
+      "worker_requests": 486,
+      "accepted_proposals": 6,
+      "cached_fallbacks": 6,
+      "fallback_reasons": {
+        "joint_limits": 4,
+        "no_plan": 474,
+        "validation: hits egg_holder": 1,
+        "TimeoutError: cuRobo planning budget (2 s)": 7
+      }
+    },
+    {
+      "task": "fill_egg_holder",
+      "seed": 100055,
+      "success": false,
+      "score": 0.1,
+      "steps": 229,
+      "step_lim": 700,
+      "wall_s": 71.1,
+      "sim_s": 15.7,
+      "load_s": 4.8,
+      "plan_s": 55.3,
+      "category": "not_home",
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 55,
+      "fallbacks": 49,
+      "query_s": 44.200554,
+      "startup_s": 7.456877,
+      "max_query_s": 1.894439,
+      "worker_requests": 55,
+      "accepted_proposals": 6,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {
+        "validation: hits egg_basket": 2,
+        "no_plan": 36,
+        "joint_limits": 2,
+        "validation: hits egg_holder": 9
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100000,
+      "success": true,
+      "score": 1.0,
+      "steps": 203,
+      "step_lim": 550,
+      "wall_s": 8.4,
+      "sim_s": 6.9,
+      "load_s": 3.34,
+      "plan_s": 1.5,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100001,
+      "success": true,
+      "score": 1.0,
+      "steps": 113,
+      "step_lim": 550,
+      "wall_s": 5.2,
+      "sim_s": 3.9,
+      "load_s": 3.13,
+      "plan_s": 1.3,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100002,
+      "success": true,
+      "score": 1.0,
+      "steps": 175,
+      "step_lim": 550,
+      "wall_s": 8.6,
+      "sim_s": 6.9,
+      "load_s": 3.46,
+      "plan_s": 1.7,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100003,
+      "success": true,
+      "score": 1.0,
+      "steps": 186,
+      "step_lim": 550,
+      "wall_s": 10.5,
+      "sim_s": 9.0,
+      "load_s": 3.95,
+      "plan_s": 1.5,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100004,
+      "success": true,
+      "score": 1.0,
+      "steps": 164,
+      "step_lim": 550,
+      "wall_s": 7.4,
+      "sim_s": 6.3,
+      "load_s": 4.1,
+      "plan_s": 1.2,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100010,
+      "success": true,
+      "score": 1.0,
+      "steps": 190,
+      "step_lim": 550,
+      "wall_s": 8.3,
+      "sim_s": 6.6,
+      "load_s": 3.31,
+      "plan_s": 1.6,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100011,
+      "success": true,
+      "score": 1.0,
+      "steps": 108,
+      "step_lim": 550,
+      "wall_s": 6.1,
+      "sim_s": 3.7,
+      "load_s": 3.12,
+      "plan_s": 2.4,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100012,
+      "success": true,
+      "score": 1.0,
+      "steps": 116,
+      "step_lim": 550,
+      "wall_s": 6.5,
+      "sim_s": 5.4,
+      "load_s": 3.71,
+      "plan_s": 1.2,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100013,
+      "success": true,
+      "score": 1.0,
+      "steps": 177,
+      "step_lim": 550,
+      "wall_s": 7.8,
+      "sim_s": 6.7,
+      "load_s": 3.06,
+      "plan_s": 1.1,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100014,
+      "success": true,
+      "score": 1.0,
+      "steps": 104,
+      "step_lim": 550,
+      "wall_s": 5.5,
+      "sim_s": 4.0,
+      "load_s": 3.37,
+      "plan_s": 1.4,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "table",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 0,
+      "fallbacks": 0,
+      "query_s": 0,
+      "startup_s": 0,
+      "max_query_s": 0,
+      "worker_requests": 0,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {}
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100000,
+      "success": true,
+      "score": 1.0,
+      "steps": 206,
+      "step_lim": 550,
+      "wall_s": 43.1,
+      "sim_s": 13.3,
+      "load_s": 5.2,
+      "plan_s": 29.8,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 32,
+      "fallbacks": 9,
+      "query_s": 18.869631,
+      "startup_s": 9.167387,
+      "max_query_s": 2.111944,
+      "worker_requests": 25,
+      "accepted_proposals": 23,
+      "cached_fallbacks": 7,
+      "fallback_reasons": {
+        "no_plan": 1,
+        "TimeoutError: cuRobo planning budget (2 s)": 8
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100001,
+      "success": true,
+      "score": 1.0,
+      "steps": 113,
+      "step_lim": 550,
+      "wall_s": 32.1,
+      "sim_s": 8.9,
+      "load_s": 9.12,
+      "plan_s": 23.2,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 19,
+      "fallbacks": 12,
+      "query_s": 12.653383,
+      "startup_s": 8.997551,
+      "max_query_s": 2.117228,
+      "worker_requests": 12,
+      "accepted_proposals": 7,
+      "cached_fallbacks": 7,
+      "fallback_reasons": {
+        "no_plan": 4,
+        "TimeoutError: cuRobo planning budget (2 s)": 8
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100002,
+      "success": true,
+      "score": 1.0,
+      "steps": 175,
+      "step_lim": 550,
+      "wall_s": 19.7,
+      "sim_s": 7.9,
+      "load_s": 5.78,
+      "plan_s": 11.8,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 27,
+      "fallbacks": 27,
+      "query_s": 2.114208,
+      "startup_s": 8.453087,
+      "max_query_s": 2.114182,
+      "worker_requests": 1,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 26,
+      "fallback_reasons": {
+        "TimeoutError: cuRobo planning budget (2 s)": 27
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100003,
+      "success": true,
+      "score": 1.0,
+      "steps": 186,
+      "step_lim": 550,
+      "wall_s": 33.8,
+      "sim_s": 17.9,
+      "load_s": 4.93,
+      "plan_s": 15.9,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 35,
+      "fallbacks": 33,
+      "query_s": 5.057847,
+      "startup_s": 8.961932,
+      "max_query_s": 2.119016,
+      "worker_requests": 5,
+      "accepted_proposals": 2,
+      "cached_fallbacks": 30,
+      "fallback_reasons": {
+        "no_plan": 2,
+        "TimeoutError: cuRobo planning budget (2 s)": 31
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100004,
+      "success": true,
+      "score": 1.0,
+      "steps": 164,
+      "step_lim": 550,
+      "wall_s": 26.7,
+      "sim_s": 10.6,
+      "load_s": 7.75,
+      "plan_s": 16.1,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 28,
+      "fallbacks": 19,
+      "query_s": 7.125583,
+      "startup_s": 7.910038,
+      "max_query_s": 2.117059,
+      "worker_requests": 11,
+      "accepted_proposals": 9,
+      "cached_fallbacks": 17,
+      "fallback_reasons": {
+        "no_plan": 1,
+        "TimeoutError: cuRobo planning budget (2 s)": 18
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100010,
+      "success": true,
+      "score": 1.0,
+      "steps": 189,
+      "step_lim": 550,
+      "wall_s": 40.1,
+      "sim_s": 10.1,
+      "load_s": 4.94,
+      "plan_s": 30.0,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 34,
+      "fallbacks": 5,
+      "query_s": 20.234783,
+      "startup_s": 8.204733,
+      "max_query_s": 2.090962,
+      "worker_requests": 33,
+      "accepted_proposals": 29,
+      "cached_fallbacks": 1,
+      "fallback_reasons": {
+        "no_plan": 3,
+        "TimeoutError: cuRobo planning budget (2 s)": 2
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100011,
+      "success": true,
+      "score": 1.0,
+      "steps": 108,
+      "step_lim": 550,
+      "wall_s": 38.3,
+      "sim_s": 5.7,
+      "load_s": 5.82,
+      "plan_s": 32.5,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 29,
+      "fallbacks": 13,
+      "query_s": 20.878906,
+      "startup_s": 8.977798,
+      "max_query_s": 1.890121,
+      "worker_requests": 29,
+      "accepted_proposals": 16,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {
+        "no_plan": 13
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100012,
+      "success": true,
+      "score": 1.0,
+      "steps": 116,
+      "step_lim": 550,
+      "wall_s": 29.8,
+      "sim_s": 6.3,
+      "load_s": 3.43,
+      "plan_s": 23.4,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 22,
+      "fallbacks": 14,
+      "query_s": 12.22411,
+      "startup_s": 9.929551,
+      "max_query_s": 2.094031,
+      "worker_requests": 15,
+      "accepted_proposals": 8,
+      "cached_fallbacks": 7,
+      "fallback_reasons": {
+        "no_plan": 6,
+        "TimeoutError: cuRobo planning budget (2 s)": 8
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100013,
+      "success": true,
+      "score": 1.0,
+      "steps": 177,
+      "step_lim": 550,
+      "wall_s": 19.8,
+      "sim_s": 9.1,
+      "load_s": 5.54,
+      "plan_s": 10.7,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 27,
+      "fallbacks": 27,
+      "query_s": 2.135433,
+      "startup_s": 7.331478,
+      "max_query_s": 2.135407,
+      "worker_requests": 1,
+      "accepted_proposals": 0,
+      "cached_fallbacks": 26,
+      "fallback_reasons": {
+        "TimeoutError: cuRobo planning budget (2 s)": 27
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "seed": 100014,
+      "success": true,
+      "score": 1.0,
+      "steps": 104,
+      "step_lim": 550,
+      "wall_s": 30.1,
+      "sim_s": 7.1,
+      "load_s": 4.16,
+      "plan_s": 23.0,
+      "category": null,
+      "code": {
+        "dir": "/home/robotics/controlr-plan",
+        "commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021"
+      },
+      "skill_attrs": {
+        "plan_world": "objects",
+        "plan_solver": "curobo"
+      },
+      "infra_failure": null,
+      "requests": 21,
+      "fallbacks": 3,
+      "query_s": 13.748845,
+      "startup_s": 7.909439,
+      "max_query_s": 1.300633,
+      "worker_requests": 21,
+      "accepted_proposals": 18,
+      "cached_fallbacks": 0,
+      "fallback_reasons": {
+        "no_plan": 3
+      }
+    }
+  ],
+  "layout_manifest_sha256": {
+    "store_tools_in_toolbox/100000": "591e3b4c97fbf606434eb93dd7254bb94dac8ab68bfd3f078a3369b0ef4d064f",
+    "store_tools_in_toolbox/100001": "7902526fafa9e1bf7015d79c7cbc941db86b1be1c2b114011f49e86bbcaf8a4e",
+    "store_tools_in_toolbox/100002": "2344086dc030c7f6468405fa6a16bd917329e4139312d3c9cc53540edf4c651c",
+    "store_tools_in_toolbox/100003": "8425b6720567477832b43fbfa285fb671e4b2fc21a0242c08db86095595eb440",
+    "store_tools_in_toolbox/100004": "596895eac3c09881b4c3137980b45c5115c4630f4d5bc6af5fe0ad43d67960b7",
+    "store_tools_in_toolbox/100030": "4afe56ef21cbff30717ba1ea4071328cf6c73f2dfee67f37f6df32dea9a14202",
+    "store_tools_in_toolbox/100031": "4d02bf7f8eec32b4406f036207ce07518398bedeee1bd866c21f44989bd91836",
+    "store_tools_in_toolbox/100032": "b6dd0b066e8fa2c32b447ced5b529a21022f1393f4ab9d091ca1a728c4bc391e",
+    "store_tools_in_toolbox/100033": "849ef2da26bc463d36fca12548ac78c8477361e37d15fd03034db44bb4f18b15",
+    "store_tools_in_toolbox/100034": "c6216ff7ccbbe0ad784537d96e820347c4e82b822c03b2bc88f4d965f915f470",
+    "fill_egg_holder/100000": "16fab329d32fd420401d65a6ad7e8d613453e145de7e1afa3a7e103388260272",
+    "fill_egg_holder/100001": "b0682eaae0b9dcb39be6c09de2c56ce0b082f80d25354d8e875ad02d94ec523a",
+    "fill_egg_holder/100010": "4cc172cafe99950e0b8b9fb375f99706ab7125ef635ae2b401339f6ad57f9d19",
+    "fill_egg_holder/100012": "5a912142f4b689f35d7d858e63b12363079b6723c80c7c59085e6236ab9ba870",
+    "fill_egg_holder/100015": "1ad8c255f156c43a295459ffcec44a62de1250866bba733cb6d1c26057b1ae66",
+    "fill_egg_holder/100016": "b176df730cf97fb2e3e264d7503fa22fd7bfbd2f753a896ce6390ca1a284abd9",
+    "fill_egg_holder/100019": "cb1865ce0239f1224ab1d9306fd6d7c8bd582ee01b3fc7bdc351fa392b4a023b",
+    "fill_egg_holder/100053": "147a9b28fd7c28dab42a2dd35671d13614118618fe8434e7cdd6938934565ce3",
+    "fill_egg_holder/100054": "538ab880a596d16dba92b2e2b8ce2a4470c4c5a4afd5f119f097ee16ab32aefd",
+    "fill_egg_holder/100055": "ae5085e49da46fe913bacc2e92141a4a725bd76fe9bd293d3de5c50919bcb47d",
+    "stack_blocks/100000": "d65a585f761f352c8f87a9ec23504deb4995a3461c944c1f86fdb1767cde8e11",
+    "stack_blocks/100001": "de26d8c680ea94735caed99b8922f6895c21fbc6dc5728a2837ee08e23e9ba6d",
+    "stack_blocks/100002": "8de016cca3dc507001e8fb03329720651d29a3917f212a7f803080dbc7b8a5ad",
+    "stack_blocks/100003": "438680fd444c2829158e0629e41aed0eec672904df456febc253cb2c4ea62e07",
+    "stack_blocks/100004": "a802df56ac2cfe2828c60155d7f144e57c8dca632d5e13f042c42402589a54c4",
+    "stack_blocks/100010": "a14bd409511129fca5ed25888d4b629e9292d69234645cd23e2bceb347061026",
+    "stack_blocks/100011": "06d84ae902357bc583ae1d5aebdcf6934e94b640d33128a3a0d8773d59fcc983",
+    "stack_blocks/100012": "49723d8dd5aec55bb86b2cd24f603443741bb21b64e0b0be6f22e198da927c71",
+    "stack_blocks/100013": "f90ea71e006d6a4d05b2e5db221384aad3fe28d97b6177674b69bb226968b942",
+    "stack_blocks/100014": "e7a892dcefd84bff66d04936aaf05c96f8cd6706a31b3981f4ead95972c3a16b"
+  },
+  "infrastructure": {
+    "robodojo_commit": "f57e1633ffed59761bc8e568cfe7530c4b33381c",
+    "curobo_commit": "895c6517243f8cb091c73c018c8167192d39599a",
+    "robodojo_dirty_paths": "XPolicyLab\nthird_party/curobo",
+    "curobo_dirty_paths": "",
+    "files_sha256": {
+      "Assets/Robots/x5/curobo.yml": "b07b28b7006640b272f190868558769a1339c4dc87352d4f25d32828cdb8683a",
+      "Assets/Robots/x5/X5A.urdf": "7aaa308a1a5b6a213d914db86ba09ddd6252f25cb498ac9a148bfa6c7166a423",
+      "third_party/curobo/curobo/_src/motion/motion_planner.py": "66557e0e9a99bba789437397b4274abd1687e75ed7459b4a499b475ff86a25d3",
+      "third_party/curobo/curobo/_src/collision/attachment_manager.py": "af975bffbf60a3eee3ebeeaa6c008cbc6b54032d0968a5a709f14244185b732d"
+    },
+    "controller_commit": "db8daddda4937402f6da1dcd2c19a3b650d4c021",
+    "layout_manifest_sha256": "62ad67b20af16f7089eb28710096db4a924c276f7e1c5b665b3825638b2e2659"
+  }
+}
