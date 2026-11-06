@@ -29,3 +29,21 @@ All 15 M15 demos pass these checks, with no exclusions. Nanosecond mtimes and SH
 are recorded in compute4 `~/dojo-data/wave-1106/m15-demo-provenance.json`. Historical
 absence of a loaded-layout hash in demo_index does not block this paired comparison.
 No scoring demos were regenerated.
+
+## Toy physics head review
+
+Both five-record jobs completed with rc=0, no unstable episodes, infrastructure
+failures or CUDA errors. A: 3/5 successes, mean score 0.84. B: 4/5, mean 0.92;
+one B-only success, zero A-only losses. The common failed id 100004 scores 0.6 in
+both arms (A place_miss; B not_home). B records 63 held reads / 38 adoptions;
+46 residual readings have lateral median 0.30 mm, maximum 0.62 mm, angular
+maximum 1.98 degrees. Per-view attempts/adoptions: hover 50/34, look 2/1,
+show 11/11. Original terminal object traces, held events and summaries are retained
+under compute4 `~/dojo-data/ab-wave-1106/physics/` and summarized at
+`~/dojo-data/wave-1106/physics-report.json`.
+
+The lead approved the toy physics head: `peg_held_read` is eligible for its
+pre-registered camera comparison. This is smoke validation, not camera adoption.
+The interrupted first A attempt is preserved separately as
+`toy-off.partial-pre-amendment`; it was stopped solely because the original plan
+incorrectly rejected the normal CPU environment device. It is not pooled.
