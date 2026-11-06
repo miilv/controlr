@@ -16,7 +16,7 @@ def rig(reads, fail=False):
         T = np.eye(4)
         T[:3, 3] = values[:3]
         return T
-    asset = SimpleNamespace(center=np.zeros(3), extents=np.full(3, 0.02))
+    asset = SimpleNamespace(key='Rigid/tool/00000', center=np.zeros(3), extents=np.full(3, 0.02))
     obj = SimpleNamespace(asset=asset, T=np.eye(4))
     world = SimpleNamespace(obj=lambda _: obj, arms={'left': SimpleNamespace(q=q)})
     def move(arm, q0, target, *a, **kw):
@@ -32,7 +32,7 @@ def rig(reads, fail=False):
                          kin=SimpleNamespace(tcp=tcp), ex=ex,
                          motion=SimpleNamespace(line=Mock(side_effect=move)),
                          _held_protocol=Mock(side_effect=reads))
-    pp = SimpleNamespace(arm='left', label='tool', tail_kw={'servo': True},
+    pp = SimpleNamespace(arm='left', label='tool', T_obj_target=np.eye(4), tail_kw={'servo': True},
                          approach=SimpleNamespace(segments=[Segment(np.zeros((2, 6)), 0.05, ease=3)]))
     commands = [(np.array([i * 0.01, 0, 0, 0, 0, 0]), 0.0) for i in range(1, 5)]
     return sk, pp, commands
@@ -76,3 +76,31 @@ def test_infeasible_hop_does_not_execute_partial_move_or_release():
     assert handled and 'blocked' in failure
     sk.ex.run.assert_not_called()
     assert sk.held['left'] is not None
+
+
+def test_camera_path_uses_shared_uncertainty_gate_without_reading_true_object_pose():
+    from dojo.skills.skills import Skills
+    sk, pp, commands = rig([])
+    asset = sk.refresh().obj('tool').asset
+    class CameraObject:
+        @property
+        def T(self):
+            raise AssertionError('camera controller read true object pose')
+    obj = CameraObject()
+    obj.asset = asset
+    world = SimpleNamespace(obj=lambda _: obj, arms={})
+    sk.refresh = lambda: world
+    sk.provider.held_pose = Mock(return_value={'ok': True, 'T_tcp_obj': np.eye(4),
+                                             'sigma': {'lead_lat_mm': 99, 'axis_deg': 1}})
+    sk.held_events = []
+    sk.log = lambda _: None
+    sk.held_looks = False
+    sk._held_read = lambda *a: Skills._held_read(sk, *a)
+    sk.held_sigma = Skills.held_sigma
+    sk._held_protocol = lambda *a: Skills._held_protocol(sk, *a)
+    assert measured_approach(sk, pp, commands, 0.02, 10) == (False, None)
+    sk.ex.run.assert_not_called()
+    assert len(sk.held_events) == 1 and not sk.held_events[0]['adopted']
+    sk.provider.held_pose.return_value['sigma']['lead_lat_mm'] = 1
+    assert measured_approach(sk, pp, commands, 0.02, 10) == (True, None)
+    assert sum(e['adopted'] for e in sk.held_events) == 4

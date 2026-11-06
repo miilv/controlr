@@ -44,7 +44,7 @@ joint-space trajectory. No slower-carry/regrip change. Infeasible lines reject a
 joint-path fallback. Seven CPU tests cover dispatch, collision-check arguments, refusal,
 level/reorienting propagation, default and config validation.
 
-Work in progress; final paired results will be recorded before review. No default is changed and no camera gain is claimed.
+Completed results are in the [experiment report](../experiments/2026-11-06-tools-slot-g3.md). No default is changed and no camera gain is claimed.
 
 ### Completed first ten baseline rows
 
@@ -116,3 +116,25 @@ perception uses the existing uncertainty-gated current-view read, with no observ
 keeps legacy motion; later unavailable reads retain the last accepted transform. Infeasible motion retains the grasp
 for the caller's existing recovery. Screen 100030 before any expansion. Forty CPU tests cover switches, bounded
 reads, unavailable-read fallback, attachment use, and refusal without partial execution/release.
+
+
+### Final disposition
+
+Lower-hover paired validation completed all ten prescribed dev layouts (pilot included once): A 0.775 -> B 0.675,
+4/10 -> 3/10 successes, 2 score wins / 5 losses / 3 ties, full-success flips 0 wins / 1 loss. Reject.
+Measured carry screens: 100030 0.75 -> 0.00; 100003 0.75 -> 0.25. Checked corrections refuse IK waypoints or a
+held object below the table. Stop these screens without expansion; no lever is an adopt candidate.
+
+All 29 G3 episode records have complete meshes and no infrastructure failure. Completed episode wall totals
+7209.0 s (~2.00 lane-hours), load 167.6 s; startup/presettle overhead is additional. LLM calls/tokens/spend: **0**.
+No camera frames or videos were produced. Both conditional camera specifications are blocked by their G3
+prerequisites; do not launch. The extra five baseline rows were all completed, not censored at their low scores.
+
+Validation: baseline full suite 1783 passed / 187 skipped; final focused switch/carry/legacy tests 48 passed.
+New carry code/tests pass pyflakes. Existing warnings in skills.py/library.py (unused imports and an unrelated
+f-string without placeholders) predate this work; no undefined names were introduced. The carry screen ran the
+new module from deployed commit 3bb99584; later code cleanup only removes an unused import.
+
+No improvement to the ~0.55 variant-1 skill ceiling was achieved. This is a negative experimental PR for the lead,
+with all switches off and no merge/adoption. All checked worker and queue PIDs exited; no Isaac worker remains
+from TOOLS. Compute3 was not used. Local checkout/venv remain below 1 GB.

@@ -4,7 +4,6 @@ from __future__ import annotations
 import copy
 import math
 
-import numpy as np
 
 from dojo.skills.executor import ArmPlan
 from dojo.skills.geometry import inv_T, slerp_R

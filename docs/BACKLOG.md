@@ -736,8 +736,14 @@
   - 7 of 11 lost tools moved 45-394 mm in the hand on the way to the slot.
   - Putting a loose pick down and re-picking (`slot_loose`, branch `feat/dojo-h95-slot-regrasp`) is negative: the
     same grasp comes back loose, another one slips.
-  - Next: the carry itself (speed, ease, the path's accelerations), and the 2 slots with no grasp-place pair.
+  - Next: stable grasp/route pairs with table clearance and room for held-pose correction, including slots with no grasp-place pair.
   - Planning is 97-986 s per episode.
+  - A hammer's lowest mesh point can reach the table before the toolbox while TCP lag stays below 3 mm.
+    A last-hover re-measure arrives after this contact. Low hover regressed ten paired dev layouts; Cartesian,
+    tail-servo and bounded carry-read screens did not recover the ceiling. See
+    [slot motion experiments](experiments/2026-11-06-tools-slot-g3.md). A stable grasp/route must also leave room
+    for held-pose corrections; checked corrections currently run into IK or table clearance.
+
 - [ ] **dojo skills: thin irregular tools still slip out** (store_tools). Two causes are fixed. First, every box grasp of a thin lying tool failed the table margin (the fingertip estimate sat 1 mm low; now taken from the finger model). Second, there were no grasps near the centre of mass (now stations every 6 mm). The hammer at its CoM lifts with 11-13 mm drift and is now carried on. Still open: the pliers' outline is rounded everywhere, so the patch is <= 0.08 at the joint. Try the handles' outer faces, or collider-based grasps; the colliders are convex decompositions of `/root/collision/model`, not the visual mesh. Skills-8 (journal 2026-10-26-dojo-skills8): the tools spawn lying as their slots want them, so a level carry suffices. A straight-down pinch at the centre of mass holds (hammer: 4-7 mm drift over a 15 cm carry); a 25-deg tilted one turns 37-81 mm. Straight down does not reach most slots, though: the IK at the slot fails for 28 of 40 hammer, 34 of 36 wrench and 16 of 16 tape-measure grasps. PhysX's centre of mass differs from the visual mesh's: the hammer's is 12.4 mm away, because the colliders are inflated to 20 mm `minThickness`. Read it in the twin (`RigidPrim.get_com`), e.g. into the catalogue, before ranking grasps by lever.
   Done since: `data/physics_com.json` + `_level_grasps` rank by the simulated lever. Stream H on M's mode-gt rows
   (08b0dd7, 100000-04; journal 2026-10-28-dojo-h95-organize): the level carry still took the hammer by "box close 2
