@@ -775,6 +775,15 @@
   top-down grasp keeps the finger's root block (38 x 56 mm) out of the wall. `nudge_from_wall` pushes one off when its
   fingertip path fits the gap on the wall side (some do not). Eggs on the table under the basket's flared rim have no
   grasp at all. Next: a push along the wall to a freer spot, tilted grasps from the basket's middle.
+  Further feasibility screens ([EGG journal](journal/2026-11-06-dojo-egg-ceiling.md)): upper-shell pinches
+  regress on ten paired v6 dev layouts. The radial top envelope also fills the empty air beneath the flare;
+  a lower/upper envelope unlocks plans but can still yield zero-rise physical grasps. Preserve that distinction
+  when diagnosing a no-pick exit versus a blocked execution.
+  The shell variant's inherited -10 mm allowance can accept an entire <=20 mm material band
+  (26/29 basket bins); six path samples can alias the thin shell. A strict 1 mm-clearance /
+  1 mm-step probe still had no clear-and-reachable grasp for the two trapped eggs. Do not
+  promote a radial-envelope plan count as physical grasp feasibility.
+
 - [ ] **dojo skills: put_bottles, what is left after unblock + gentle** (stream H, journal
   2026-10-29-dojo-h95-put-bottles-v15; G3 v15 dev draws 13/16).
   - An arm's reset home after a failed pick sweeps straight through and knocked a standing bottle over (100032).

@@ -1,0 +1,303 @@
+{
+  "task": "fill_egg_holder",
+  "source_commit": "dd9ddca5d7ebd06b1beccb339cf34e5c3a9b537c",
+  "box": "compute6",
+  "mode": "G3 A",
+  "repeats": 1,
+  "layouts": {
+    "100000": {
+      "file": "100000.settled.json",
+      "sha256": "16fab329d32fd420401d65a6ad7e8d613453e145de7e1afa3a7e103388260272",
+      "generator": "simlab/v6"
+    },
+    "100001": {
+      "file": "100001.settled.json",
+      "sha256": "b0682eaae0b9dcb39be6c09de2c56ce0b082f80d25354d8e875ad02d94ec523a",
+      "generator": "simlab/v6"
+    },
+    "100010": {
+      "file": "100010.settled.json",
+      "sha256": "4cc172cafe99950e0b8b9fb375f99706ab7125ef635ae2b401339f6ad57f9d19",
+      "generator": "simlab/v6"
+    },
+    "100012": {
+      "file": "100012.settled.json",
+      "sha256": "5a912142f4b689f35d7d858e63b12363079b6723c80c7c59085e6236ab9ba870",
+      "generator": "simlab/v6"
+    },
+    "100015": {
+      "file": "100015.settled.json",
+      "sha256": "1ad8c255f156c43a295459ffcec44a62de1250866bba733cb6d1c26057b1ae66",
+      "generator": "simlab/v6"
+    },
+    "100016": {
+      "file": "100016.settled.json",
+      "sha256": "b176df730cf97fb2e3e264d7503fa22fd7bfbd2f753a896ce6390ca1a284abd9",
+      "generator": "simlab/v6"
+    },
+    "100019": {
+      "file": "100019.settled.json",
+      "sha256": "cb1865ce0239f1224ab1d9306fd6d7c8bd582ee01b3fc7bdc351fa392b4a023b",
+      "generator": "simlab/v6"
+    },
+    "100053": {
+      "file": "100053.settled.json",
+      "sha256": "147a9b28fd7c28dab42a2dd35671d13614118618fe8434e7cdd6938934565ce3",
+      "generator": "simlab/v6"
+    },
+    "100054": {
+      "file": "100054.settled.json",
+      "sha256": "538ab880a596d16dba92b2e2b8ce2a4470c4c5a4afd5f119f097ee16ab32aefd",
+      "generator": "simlab/v6"
+    },
+    "100055": {
+      "file": "100055.settled.json",
+      "sha256": "ae5085e49da46fe913bacc2e92141a4a725bd76fe9bd293d3de5c50919bcb47d",
+      "generator": "simlab/v6"
+    }
+  },
+  "arms": {
+    "final-base10": {
+      "skill_attrs": {
+        "egg_grasp_height": "off",
+        "egg_grasp_angles": "off",
+        "egg_drop_approach": "off",
+        "egg_wall_model": "off",
+        "egg_drop_spin": "off"
+      },
+      "episodes": [
+        {
+          "seed": 100000,
+          "success": false,
+          "score": 0.25,
+          "steps": 324,
+          "step_lim": 700,
+          "wall_s": 28.1,
+          "plan_s": 4.4,
+          "sim_s": 23.7,
+          "category": "place_miss"
+        },
+        {
+          "seed": 100001,
+          "success": false,
+          "score": 0.25,
+          "steps": 209,
+          "step_lim": 700,
+          "wall_s": 35.9,
+          "plan_s": 21.5,
+          "sim_s": 14.4,
+          "category": "not_home"
+        },
+        {
+          "seed": 100010,
+          "success": false,
+          "score": 0.25,
+          "steps": 425,
+          "step_lim": 700,
+          "wall_s": 60.6,
+          "plan_s": 29.2,
+          "sim_s": 31.4,
+          "category": "grasp_slip"
+        },
+        {
+          "seed": 100012,
+          "success": false,
+          "score": 0.25,
+          "steps": 272,
+          "step_lim": 700,
+          "wall_s": 22.3,
+          "plan_s": 4.0,
+          "sim_s": 18.3,
+          "category": "grasp_slip"
+        },
+        {
+          "seed": 100015,
+          "success": false,
+          "score": 0.25,
+          "steps": 330,
+          "step_lim": 700,
+          "wall_s": 52.6,
+          "plan_s": 28.8,
+          "sim_s": 23.8,
+          "category": "not_home"
+        },
+        {
+          "seed": 100016,
+          "success": false,
+          "score": 0.25,
+          "steps": 201,
+          "step_lim": 700,
+          "wall_s": 54.0,
+          "plan_s": 39.3,
+          "sim_s": 14.7,
+          "category": "not_home"
+        },
+        {
+          "seed": 100019,
+          "success": false,
+          "score": 0.25,
+          "steps": 393,
+          "step_lim": 700,
+          "wall_s": 105.5,
+          "plan_s": 69.3,
+          "sim_s": 36.2,
+          "category": "not_home"
+        },
+        {
+          "seed": 100053,
+          "success": false,
+          "score": 0.25,
+          "steps": 420,
+          "step_lim": 700,
+          "wall_s": 84.5,
+          "plan_s": 48.0,
+          "sim_s": 36.5,
+          "category": "not_home"
+        },
+        {
+          "seed": 100054,
+          "success": false,
+          "score": 0.25,
+          "steps": 215,
+          "step_lim": 700,
+          "wall_s": 33.5,
+          "plan_s": 22.1,
+          "sim_s": 11.4,
+          "category": "not_home"
+        },
+        {
+          "seed": 100055,
+          "success": false,
+          "score": 0.1,
+          "steps": 373,
+          "step_lim": 700,
+          "wall_s": 30.6,
+          "plan_s": 3.9,
+          "sim_s": 26.7,
+          "category": "grasp_slip"
+        }
+      ]
+    },
+    "final-combo10": {
+      "skill_attrs": {
+        "egg_grasp_height": "off",
+        "egg_grasp_angles": "wide",
+        "egg_drop_approach": "off",
+        "egg_wall_model": "shell",
+        "egg_drop_spin": "axis"
+      },
+      "episodes": [
+        {
+          "seed": 100000,
+          "success": false,
+          "score": 0.25,
+          "steps": 276,
+          "step_lim": 700,
+          "wall_s": 77.0,
+          "plan_s": 55.2,
+          "sim_s": 21.8,
+          "category": "grasp_slip"
+        },
+        {
+          "seed": 100001,
+          "success": false,
+          "score": 0.25,
+          "steps": 413,
+          "step_lim": 700,
+          "wall_s": 169.5,
+          "plan_s": 134.9,
+          "sim_s": 34.6,
+          "category": "grasp_slip"
+        },
+        {
+          "seed": 100010,
+          "success": false,
+          "score": 0.25,
+          "steps": 343,
+          "step_lim": 700,
+          "wall_s": 38.4,
+          "plan_s": 11.4,
+          "sim_s": 27.0,
+          "category": "grasp_slip"
+        },
+        {
+          "seed": 100012,
+          "success": false,
+          "score": 0.25,
+          "steps": 322,
+          "step_lim": 700,
+          "wall_s": 43.6,
+          "plan_s": 16.8,
+          "sim_s": 26.8,
+          "category": "grasp_slip"
+        },
+        {
+          "seed": 100015,
+          "success": false,
+          "score": 0.25,
+          "steps": 394,
+          "step_lim": 700,
+          "wall_s": 41.4,
+          "plan_s": 8.2,
+          "sim_s": 33.2,
+          "category": "grasp_slip"
+        },
+        {
+          "seed": 100016,
+          "success": false,
+          "score": 0.25,
+          "steps": 314,
+          "step_lim": 700,
+          "wall_s": 109.3,
+          "plan_s": 83.7,
+          "sim_s": 25.6,
+          "category": "grasp_slip"
+        },
+        {
+          "seed": 100019,
+          "success": false,
+          "score": 0.25,
+          "steps": 393,
+          "step_lim": 700,
+          "wall_s": 283.0,
+          "plan_s": 244.5,
+          "sim_s": 38.5,
+          "category": "not_home"
+        },
+        {
+          "seed": 100053,
+          "success": false,
+          "score": 0.25,
+          "steps": 420,
+          "step_lim": 700,
+          "wall_s": 208.9,
+          "plan_s": 163.0,
+          "sim_s": 45.9,
+          "category": "not_home"
+        },
+        {
+          "seed": 100054,
+          "success": false,
+          "score": 0.25,
+          "steps": 262,
+          "step_lim": 700,
+          "wall_s": 122.8,
+          "plan_s": 94.2,
+          "sim_s": 28.6,
+          "category": "not_home"
+        },
+        {
+          "seed": 100055,
+          "success": false,
+          "score": 0.1,
+          "steps": 468,
+          "step_lim": 700,
+          "wall_s": 173.9,
+          "plan_s": 133.7,
+          "sim_s": 40.2,
+          "category": "grasp_slip"
+        }
+      ]
+    }
+  }
+}

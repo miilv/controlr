@@ -552,3 +552,11 @@ updates attachment between hops. Perception uses gated current-view held reads o
 it adds no show/observer moves. An unavailable first read keeps the legacy approach;
 a later missing read retains the last accepted attachment. Infeasible hops stop motion
 while retaining the grasp for the existing recovery path. G3 re-measures from its provider.
+
+For egg-holder feasibility screens, `RuntimeConfig.egg_grasp_height` (`off` / `raised`)
+adds upper-shell pinch candidates, and `egg_grasp_angles` (`off` / `wide`) adds steeper
+round grasps. `egg_wall_model` (`off` / `shell`) tests the lower/upper radial mesh envelope;
+`egg_drop_approach` (`off` / `low`) lowers the preapproach; `egg_drop_spin` (`off` / `axis`)
+adds spins about the round object's long axis. All default off and map to G3 `--skill-attr` switches. Dense wall checks,
+collision planning, pick verification and the episode budget still apply. Pair settled
+layouts from the same generator; v6 egg records must not be mixed with v15 records.
