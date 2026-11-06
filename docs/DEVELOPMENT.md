@@ -525,3 +525,13 @@ and reports launcher completion/rc and prospective remaining occupancy.
 The shared boot protocol reads only `~/coord/lane_gate.stamp`, waits until its
 epoch is at least 120 seconds old, then writes `<epoch> <iso> ilia-ab`. While the
 other team runs its single Isaac, use one Integration lane (`lane2.caps: 1 4`).
+
+### Pen-holder G3 switches
+
+Use `--skill-attr fill_grasp=vertical`, `fill_holder=stay`, `fill_drop=center`, or
+`fill_insert=safe` to screen fill-container changes independently. Defaults are
+`off`; runtime equivalents live in `RuntimeConfig`. The vertical preference keeps
+the original candidate set as fallback. Check both pick feasibility and final
+pens-in counts: reducing slip alone can still lose reachable transfers. Keep
+raw variant records and their presettled records together under a private data
+root; pass that layout directory explicitly to both paired G3 arms.

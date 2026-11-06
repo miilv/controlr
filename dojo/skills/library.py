@@ -2089,7 +2089,7 @@ def _fill_container(sk: Skills, objects: list[str], container: str, drop: float 
                            place_kw={"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 1,
                                      "servo": True, "servo_ref": container, "seat_tol": 0.3, "probe": False,
                                      "hover_clear": 0.01, "grip_only": (container, *st["inside"]),
-                                     **({"hover_clear": 0.003, "fingers_out": True, "servo_xy_tol": 0.004}
+                                     **({"hover_clear": 0.003, "servo_xy_tol": 0.004}
                                         if getattr(sk, "fill_insert", "off") == "safe" else {})},
                            transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min, skip=tuple(bad))}, air_handover=False)
         finally:
