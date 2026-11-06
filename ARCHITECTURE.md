@@ -532,3 +532,11 @@ asset extents, never layout identifiers. Other scenes follow the baseline path.
 The four scoped switches restore on return or exception; G3 records the decision
 and its geometric measurements. This is a development heuristic, not a stability
 guarantee.
+
+### Arrange approach experiments
+
+The runtime and G3 expose independent switches `push_approach=tilted` and
+`arrange_hover=low`, both default `off`. Tilted face pushes append 65/50-degree
+approaches with fingertip-position compensation after the original poses.
+The low arrange hover uses 5 mm pre-height and 3 mm support clearance.
+Both retain the existing collision-checked motion and placement tail.

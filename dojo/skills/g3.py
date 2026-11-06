@@ -199,7 +199,7 @@ class FrozenGarmentProvider:
 
 
 # ``--skill-attr NAME=VALUE``: Skills switches a G3 run may set (each mirrors a ``RuntimeConfig`` field; first = default)
-SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
+SKILL_ATTRS = {"arrange_hover": ("off", "low"), "push_approach": ("off", "tilted"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
                "arrange_order": ("near", "big_first", "push_big_first"), "push_stroke": ("face", "press"),
                "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"),
                "hang_half_turn": ("off", "on"),

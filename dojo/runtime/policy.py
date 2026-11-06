@@ -378,6 +378,9 @@ class RuntimeConfig:
     # ``library.arrange``'s place order (``Skills.arrange_order``): near (today: nearest the arms first) | big_first (the
     # largest object first, while the table is emptiest) | push_big_first (the pushes first, then big_first)
     arrange_order: str = "near"
+    # Additional face-contact approach tilts, with fingertip position preserved.
+    push_approach: str = "off"
+    arrange_hover: str = "off"
     # ``library.push_to``'s strokes (``Skills.push_stroke``): face (today) | press (when no face stroke plans on either
     # axis, a drag with the closed fingertips pressed on the object's top)
     push_stroke: str = "face"
@@ -672,6 +675,8 @@ class RuntimePolicy:
                 or self.cfg.slot_hover not in ("off", "low")
                 or self.cfg.slot_place not in ("off", "servo")
                 or self.cfg.slot_carry_read not in ("off", "on")
+                or self.cfg.arrange_hover not in ("off", "low")
+                or self.cfg.push_approach not in ("off", "tilted")
                 or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
                 or self.cfg.hang_cradle not in ("strict", "straddle") or self.cfg.artic_geom not in ("authored", "measured")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
@@ -996,6 +1001,8 @@ class RuntimePolicy:
             sk_.slot_place = cfg.slot_place
             sk_.slot_carry_read = cfg.slot_carry_read
             sk_.arrange_order = cfg.arrange_order
+            sk_.push_approach = cfg.push_approach
+            sk_.arrange_hover = cfg.arrange_hover
             sk_.push_stroke = cfg.push_stroke
             sk_.hang_cradle = cfg.hang_cradle
             sk_.hang_wide = bool(cfg.hang_wide)

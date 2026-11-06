@@ -360,6 +360,8 @@ class Skills:
         # ``library.arrange`` (stream N): the places' order, "near" (today: nearest the arms first) | "big_first" |
         # "push_big_first" (the pushes first, then the places largest first)
         self.arrange_order = "near"
+        self.push_approach = "off"
+        self.arrange_hover = "off"
         # ``library.hang_on_hooks`` (stream N): a cradle hang's held object vs the rack's top, "strict" (today: an
         # obstacle) | "straddle" (the held object may straddle it: a headset on its stand; the hand still avoids it)
         self.hang_cradle = "strict"
