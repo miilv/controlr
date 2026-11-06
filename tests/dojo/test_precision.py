@@ -174,3 +174,25 @@ def test_relay_spots_are_also_sought_toward_a_far_target(monkeypatch):
     T[0, 3] = 0.02                                              # central: one round
     L.place_oriented(sk, "tube0", [T], air_handover=False)
     assert seen == [(0.0, -0.28)]
+
+
+def _guarded_steps(kw):
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.skills import GTProvider, Skills
+    env = KinematicEnv([{"label": "b", "category": "block", "pos": [-0.25, -0.15, TABLE_Z + 0.015],
+                         "quat": [1, 0, 0, 0], "half": [0.015] * 3}])
+    sk = Skills(env, GTProvider(env, None))
+    assert sk.run_pick(sk.plan_pick("b", "left")).ok
+    T = np.asarray(sk.world.obj("b").T, float).copy()
+    T[2, 3] = TABLE_Z + 0.07                                 # 5.5 cm of free descent onto the target
+    T0 = np.asarray(sk.world.obj("b").T, float).copy()
+    T0[2, 3] = TABLE_Z + 0.015
+    n0 = sk.ex.steps_used
+    sk._guarded_descent("left", T0, sk.held["left"], dict(kw))
+    return sk.ex.steps_used - n0
+
+
+def test_a_longer_guard_stride_takes_fewer_env_steps():
+    base = _guarded_steps({})
+    quick = _guarded_steps({"guard_step": P.EACH_PLACE_KW["guard_step"], "guard_rate": P.EACH_PLACE_KW["guard_rate"]})
+    assert quick < 0.6 * base, (base, quick)

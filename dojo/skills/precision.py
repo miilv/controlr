@@ -924,7 +924,11 @@ def inside_bbox(o, c, margin: float = 0.0) -> bool:
 # ============================================================================ insert_each
 
 EACH_PLACE_KW = {"pre_h": 0.02, "descend_rad": 0.02, "release_gap": 0.0, "settle": 3, "pre_settle": 3,
-                 "release": True, "servo": True, "seat_tol": 0.008}
+                 "release": True, "servo": True, "seat_tol": 0.008, "guard_step": 0.006,
+                 "guard_rate": 0.04}
+# guard_step / guard_rate: mode B's guarded descent into a hole 1-2 mm wider than the tube in 6 mm strides of one move
+# step each (3 mm at 0.02: 46 of a mode-B
+# episode's ~140 steps per tube, and a relay, ~110 steps, never fitted in 500)
 EACH_HOLES = 6                # free holes tried per object (best first)
 EACH_PAD_BAND = 0.010         # m: along a long object's axis the pads cover this much each side of the TCP ...
 EACH_SECTION_VAR = 0.0015     # ... where its section radius may vary this much (no grasp on a lip, a cap, a taper:
