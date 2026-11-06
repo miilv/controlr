@@ -150,6 +150,9 @@ def main(argv=None):
                 "headroom_gib": a.batch_headroom_gb, "auto": a.batch < 1}) + "\n")
 
         model.add_callback("on_train_start", record_batch)
+        # Ultralytics may halve an AutoBatch estimate after an allocator OOM.
+        # Persist the effective batch, not only the pre-retry estimate.
+        model.add_callback("on_train_epoch_start", record_batch)
     t0 = time.time()
     # augmentations: geometry stays mild (the cameras are fixed; wrist views vary by the arm pose); no mosaic in the
     # last 10 epochs; colour jitter small (one renderer, one lighting)

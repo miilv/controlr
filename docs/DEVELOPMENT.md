@@ -348,6 +348,15 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   --sock S --weights W --classes classes.json` answers at `DOJO_SEG_ADDR` (torch + ultralytics in that venv); without
   one it is a no-op. Its classes are catalogue keys from the training export (`classes.json`): an asset that never
   appeared in the training renders cannot be named, only its category (`_seg_groups` falls back to the category).
+- **Additive segmentation uses independent checkpoints.** `EstimatorConfig.seg_additive` defaults to false.
+  Supply `serve --extra-weights W --extra-classes C` (or those leading options to `with_seg_server.sh`) to load a
+  disjoint new-only vocabulary. Enabled requests append extra masks only below `seg_additive_iou` overlap with
+  every base mask and above `seg_additive_min_score`. Base mask/key/score/box entries remain an unchanged prefix;
+  combined detections have no shared cap or NMS. Consumer deduplication gives base entries priority. Extras require
+  exact public task candidates and never category fallback; wrist pools and pad extension remain base-only.
+  A requested additive model that was not loaded fails loudly. Raw detector preservation does not establish
+  downstream pose/count invariance: gate every candidate on paired dev frames and report phantoms separately.
+  `new_only_export.py` deliberately retains empty-label old-only scenes as negatives for the separate new model.
 - **The glyph flag needs its server too.** `glyph_read` acts only when `python -m dojo.perception.glyph_read serve --sock S
   --model kong_cls/model.pt` answers at `DOJO_GLYPH_ADDR` (torch + torchvision); without one, or with a back / grazing
   / low-margin crop, the tile stays unread ("unknown"). The margins (per view kind) live in the checkpoint and were
