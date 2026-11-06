@@ -344,7 +344,16 @@ class Motion:
         self.kin = kin or X5Kin()
         self.coll = coll or Collision(self.kin)
         self.plan_world = "table"
+        self.plan_solver = "routes"
         self.world_plans = []
+
+    def close(self):
+        """Release only this motion instance's optional planner worker."""
+        worker = getattr(self, "_world_gpu", None)
+        if worker is not None and not isinstance(worker, str):
+            worker.close()
+        if hasattr(self, "_world_gpu"):
+            del self._world_gpu
 
     # ---- IK
     def ik(self, arm: str, T_tcp, q_current, **kw):

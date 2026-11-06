@@ -514,6 +514,16 @@ class Skills:
 
     # ------------------------------------------------------------------ world
     @property
+    def plan_solver(self):
+        return self.motion.plan_solver
+
+    @plan_solver.setter
+    def plan_solver(self, value):
+        if value not in ("routes", "curobo"):
+            raise ValueError(f"unknown plan_solver: {value}")
+        self.motion.plan_solver = value
+
+    @property
     def plan_world(self):
         return self.motion.plan_world
 

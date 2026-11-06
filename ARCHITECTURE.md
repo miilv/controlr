@@ -508,12 +508,30 @@ all unresolved thin objects. Neither switch measures a pose or guarantees a gras
 
 ### Belief-object free-space routing
 
-Dojo `RuntimeConfig.plan_world` defaults to `table` (legacy skill routing,
-which retains its existing object checks). `objects` adds checked Cartesian
-and bounded lateral/height detours in `dojo/skills/world_plan.py`, using the
-current Collision world and TCP-relative held geometry. It includes static
-Geometry obstacles, preserves the caller's container/contact models and margins,
-and falls back to legacy routing after a cooperative search budget. It does
-not change contact-line or explicit-joint semantics, execution step rates,
-the safety envelope, or simlab's cuRobo Mover. G3 `world_plans` records time,
-attempts and fallback per speculative plan request.
+Dojo RuntimeConfig.plan_world defaults to table (legacy routing, retaining its
+existing object checks). Objects adds a free-space proposer using the current
+Collision world, static Geometry, container parts and TCP-relative held geometry.
+RuntimeConfig.plan_solver selects routes (bounded CPU Cartesian/midpoint search)
+or curobo (an optional cuRobo v2 worker). Neither changes explicit contact lines,
+joint commands, executor step rates, the safety envelope or simlab's Mover.
+
+The GPU worker receives only numeric believed cuboids, joints, a base-frame
+flange goal and link-local held-box covering spheres. It reads the public X5
+robot configuration, never an eval env, layout or checker. Obstacles retain the
+skill model's margins (normally 6 mm); held spheres cover the box with another
+6 mm. The fixed mounting base is omitted from the GPU model's collision links;
+the existing skill Collision model still validates all returned paths.
+
+A request has a two-second GPU deadline, plus bounded worker shutdown. Cold
+startup has a separate 60-second budget. A failed worker is stopped and its
+failure cached for that Motion instance; legacy planning remains available.
+Workers are closed on Skills replacement, runtime reset/finalization and G3
+episode completion. The CPU route search has a cooperative 0.75-second budget.
+
+Every GPU path is checked for finite/current-limit joints, endpoint accuracy
+and the original Collision model at <=0.04 rad intervals, with the limited
+initial-contact escape allowance. Accepted paths become ordinary Segments
+with the caller's rate/easing. No partial or unvalidated proposal executes.
+G3 and runtime reports retain world_plans timing, startup, worker PID, route
+and fallback records, including speculative candidates. This is sampled
+geometry, not continuous collision certification or other-arm avoidance.

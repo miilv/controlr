@@ -199,7 +199,7 @@ class FrozenGarmentProvider:
 
 
 # ``--skill-attr NAME=VALUE``: Skills switches a G3 run may set (each mirrors a ``RuntimeConfig`` field; first = default)
-SKILL_ATTRS = {"plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
+SKILL_ATTRS = {"plan_solver": ("routes", "curobo"), "plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
                "arrange_order": ("near", "big_first", "push_big_first"), "push_stroke": ("face", "press"),
                "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"),
                "artic_geom": ("authored", "measured"),
@@ -353,6 +353,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
             run.env.unstable_envs.discard(0)
         except Exception:  # noqa: BLE001
             pass
+        sk.motion.close()
         return rec
     reward = env.reward()
     score = env.score()
@@ -410,6 +411,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     if trace and not rec.get("success"):              # traces only for failed episodes (shared disk)
         with gzip.open(out_dir / f"{task}_{seed}_trace.json.gz", "wt") as f:
             json.dump({"frames": frames, "skills": hist}, f, default=lambda x: x.item() if hasattr(x, "item") else str(x))
+    sk.motion.close()
     return rec
 
 

@@ -563,10 +563,24 @@ layouts from the same generator; v6 egg records must not be mixed with v15 recor
 
 ### Testing belief-object routing
 
-Use `--skill-attr plan_world=objects` in G3, or `plan_world: objects` in
-the dojo RuntimeConfig. Default `table` retains legacy skill behavior.
-`tests/dojo/test_world_plan.py` covers dispatch, held transforms, obstacle
-inclusion, checked detours, deadline fallback and the port's belief-only input.
-Compare paired settled dev layouts; aggregate G3 `world_plans` alongside
-`plan_s` and steps. The cooperative deadline can overrun one in-flight IK call.
-The module uses the skill Collision model, not a dynamic cuRobo world.
+G3 uses --skill-attr plan_world=objects and optionally
+--skill-attr plan_solver=curobo. The corresponding dojo RuntimeConfig fields
+have defaults table and routes. Table retains the legacy skill behavior.
+
+tests/dojo/test_world_plan.py covers CPU dispatch, geometry, attachments and
+the port's belief-only/native-TCP conversion. tests/dojo/test_curobo_world.py
+mocks GPU proposals and checks box/sphere transforms, limits, collisions,
+deadline fallback and owned-worker cleanup; it needs no GPU dependencies.
+
+The optional GPU worker requires the deployed cuRobo v2 and its public X5
+configuration in the current Python environment. Its process isolation keeps a
+fatal CUDA failure from poisoning Isaac. The installed MotionPlanner attachment
+accessor refers to a missing solver property, so the adapter binds managers to
+the available trajectory/IK/graph models. Mesh rendering links are excluded
+from IK tool targets; one trajectory seed avoids invalid graph-seed batches.
+
+Validate on paired settled dev layouts. Report success/score, spread, steps,
+overall plan_s, added-search/startup time and fallback reasons. Request counts
+include speculative skill candidates. Do not treat shared-machine timing as
+a controlled latency benchmark. The GPU request deadline and CPU cooperative
+deadline have different startup/overrun semantics; report them explicitly.

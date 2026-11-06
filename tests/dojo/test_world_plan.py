@@ -103,11 +103,13 @@ def test_port_attachment_comes_only_from_belief(monkeypatch):
     belief = SimpleNamespace(attached={"left": ("tool", rel)})
     robot.sk = SimpleNamespace(refresh=lambda: None, held={"left": None},
                                provider=SimpleNamespace(belief=belief),
-                               world=SimpleNamespace(objects={"tool": obj}), motion=object())
+                               world=SimpleNamespace(objects={"tool": obj}),
+                               motion=SimpleNamespace(kin=SimpleNamespace(tcp_offset=.145)))
     robot.ex = SimpleNamespace(g={"left": 0.})
     robot.env = SimpleNamespace()  # no truth accessors exist
     def plan(*args):
         assert args[7] == ("tool",)
+        assert np.allclose(args[3][:3, 3], [.145, 0., 1.])
         assert np.array_equal(args[8].T_tcp_obj, rel)
         return None
     monkeypatch.setattr(world_plan, "plan_objects", plan)

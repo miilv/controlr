@@ -582,7 +582,10 @@ class HarnessRobot:
             return None
         fl = np.asarray(flange, float)
         T = np.eye(4)
-        T[:3, :3], T[:3, 3] = qmat(fl[3:]), tcp_of(fl)
+        T[:3, :3] = qmat(fl[3:])
+        # This planner and its belief attachments use Skills' native TCP,
+        # whereas the port expresses targets at its 150.1 mm grasp point.
+        T[:3, 3] = fl[:3] + T[:3, 0] * self.sk.motion.kin.tcp_offset
         from dojo.skills.world_plan import plan_objects
         mv = plan_objects(self.sk.motion, arm, q0, T, LIM_HOLD if self.holding(arm) else LIM_EMPTY,
                           "ported", float(self.ex.g[arm]), ignore, held, 2)

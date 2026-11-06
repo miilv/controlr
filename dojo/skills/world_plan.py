@@ -18,6 +18,9 @@ MAX_ROUTES = 8
 def plan_objects(motion, arm, q0, target, step_rad, name, gripper, ignore, held, ease):
     from dojo.skills.motion import Motion
 
+    if motion.plan_solver == "curobo":
+        from dojo.skills.curobo_world import plan_curobo
+        return plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, ease)
     started = time.perf_counter()
     event = {"arm": arm, "name": name, "fallback": True, "routes": 0}
     # Keep the caller's contact models and margins; include static Geometry too.

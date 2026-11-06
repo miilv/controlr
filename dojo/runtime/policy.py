@@ -535,6 +535,7 @@ class RuntimeConfig:
     # reaches the other object's spot top-down; G3: at 0.86 the left arm cannot reach a T at x >= ~0.09)
     ported_swap: str = "fixed"
     # the IK's joint range (``Skills.joint_limits``): wide (today) | measured (joint 5 inside the sim's +-pi/2 stop)
+    plan_solver: str = "routes"  # bounded CPU routes | cuRobo v2 belief world
     plan_world: str = "table"  # legacy | bounded belief-object free-space routing
     joint_limits: str = "wide"
     # ... the drag onto a pad: v1 (Mikhail's planar_drag) | turn (planar_drag_p1: near a 180 deg turn both directions are
@@ -681,6 +682,7 @@ class RuntimePolicy:
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
                 or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap")
+                or self.cfg.plan_solver not in ("routes", "curobo")
                 or self.cfg.plan_world not in ("table", "objects")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
@@ -744,7 +746,14 @@ class RuntimePolicy:
             self.log_lines = self.log_lines[-300:]
 
     # ------------------------------------------------------------------ proxy_eval interface
+    def _close_motion_workers(self):
+        for sk in (getattr(self, "_live", None) or {}).get("sks", []):
+            close = getattr(getattr(sk, "motion", None), "close", None)
+            if close is not None:
+                close()
+
     def reset(self, info: dict) -> None:
+        self._close_motion_workers()
         if self.bridge is not None:
             self.bridge.cancel()
         self._live = None
@@ -801,6 +810,8 @@ class RuntimePolicy:
                 for k, v in sk.vstats.items():
                     vt[k] = vt.get(k, 0) + v
             self.report["history"] = [h for s_ in live["sks"] for h in _hist(s_)]
+            self.report["world_plans"] = [event for s_ in live["sks"]
+                                         for event in getattr(getattr(s_, "motion", None), "world_plans", [])]
             rej: dict = {}                              # why the twin rejected candidates (judges' ``why``)
             for s_ in live["sks"]:
                 for k, n in (getattr(s_, "vreasons", None) or {}).get("rejects", {}).items():
@@ -932,6 +943,7 @@ class RuntimePolicy:
         self._live = {"vtot": vtot, "prov": prov, "verifier": verifier, "sk": None, "sks": []}
 
         def make_skills(prev=None):
+            self._close_motion_workers()
             if prev is not None:
                 for k, v in prev.vstats.items():
                     vtot[k] = vtot.get(k, 0) + v
@@ -1010,6 +1022,7 @@ class RuntimePolicy:
             sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
             sk_.ported_swap = cfg.ported_swap
+            sk_.plan_solver = cfg.plan_solver
             sk_.plan_world = cfg.plan_world
             sk_.joint_limits = cfg.joint_limits
             sk_.ported_drag = cfg.ported_drag
@@ -1198,6 +1211,7 @@ class RuntimePolicy:
                 except Exception:  # noqa: BLE001
                     pass
         finally:
+            self._close_motion_workers()
             if result is not None:
                 self.report["result"] = result
         return result

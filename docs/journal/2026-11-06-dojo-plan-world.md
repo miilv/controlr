@@ -72,3 +72,31 @@ Initial full unit suite: 1837 passed / 187 skipped. A port review added an
 unknown-attachment guard (52 focused tests passed): a closed ported gripper
 without an accepted attachment retains legacy routing. Native cells above do
 not use that port path. Full tests are being rerun with the GPU adapter.
+
+## Dynamic cuRobo phase
+
+The CPU phase is followed by a separate solver axis: plan_solver = routes
+(default, preserving the CPU experiment) or curobo, under plan_world = objects.
+The GPU adapter uses belief OBBs/container parts and TCP-relative held-box
+covering spheres. It does not read the simulator. Every proposed joint path
+passes current joint limits and the skill collision validator before normal
+Segment/Executor rate/easing rules can execute it.
+
+The [GPU probe incident](../incidents/2026-11-06-plan-curobo-worker.md) explains
+why this solver runs in an isolated worker, not Isaac's process. API operation
+is demonstrated by empty-hand and attached-box smoke paths; this is not a
+task-level ceiling claim. The request deadline is two seconds, with bounded
+shutdown; cold startup is separately capped at 60 seconds. Failed workers are
+cached as legacy fallback for that Motion instance.
+
+Resource cleanup is explicit because runtime reports retain old Skills.
+The worker closes on replacement, reset/finalization and G3 completion.
+The port converts its 150.1 mm TCP target into the native planner's 145 mm
+TCP frame before using native belief attachments. A regression test covers
+the 5.1 mm difference. A large in-place rotation does not inherit an unlimited
+initial-touch exemption: full collision checks resume beyond 20 degrees.
+
+GPU validation will use the same 30-layout manifest in both off/on arms,
+from one frozen source snapshot, with plan_solver = curobo fixed and only
+plan_world varying. Separate g3-curobo outputs prevent overwriting the CPU
+comparison. The light-lock/VRAM/resource rules are unchanged. No model calls.
