@@ -127,3 +127,17 @@ def test_port_unknown_attachment_falls_back_without_empty_hand_plan(monkeypatch)
     monkeypatch.setattr(world_plan, "plan_objects", Mock(side_effect=AssertionError))
     assert robot.object_path("left", [0, 0, 1, 1, 0, 0, 0], np.zeros(6)) is None
     assert robot.sk.motion.world_plans[0]["reason"] == "unknown_attachment"
+
+
+def test_changing_profile_discards_the_old_worker_and_its_cached_failure():
+    from dojo.skills.skills import Skills
+    skills=object.__new__(Skills)
+    skills.motion=Motion()
+    worker=SimpleNamespace(close=Mock())
+    skills.motion._world_gpu=worker
+    skills.plan_profile="recover"
+    worker.close.assert_called_once()
+    assert not hasattr(skills.motion,"_world_gpu")
+    skills.motion._world_gpu="legacy backend failure"
+    skills.plan_profile="legacy"
+    assert not hasattr(skills.motion,"_world_gpu")

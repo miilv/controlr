@@ -530,6 +530,8 @@ class Skills:
     def plan_profile(self, value):
         if value not in ("legacy", "recover"):
             raise ValueError(f"unknown plan_profile: {value}")
+        if value != self.motion.plan_profile:
+            self.motion.close()  # Worker settings and cached failures belong to a profile.
         self.motion.plan_profile = value
 
     @property
