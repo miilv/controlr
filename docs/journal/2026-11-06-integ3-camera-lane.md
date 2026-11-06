@@ -1,5 +1,7 @@
 # Compute3 camera lane preparation
 
+**Dispatch blocked after startup; no valid comparison rows. ETA withdrawn.**
+
 INTEG3 was explicitly released to use compute3 after the shared-session driver
 incident. No driver, package-manager, service or VPN changes are authorized or
 made. The colleague's desktop session remains present. Initial GPU check:
@@ -107,3 +109,29 @@ power: `~/dojo-integ-c3-state/power.jsonl`. Create the state's `STOP` file to
 finish the current job then drain; the launch wrapper cleans up its services.
 HTTP 429 also stops dispatch. Missing registered pairs prevent adoption; the
 status helper applies the pre-registered per-cell rule only after full n.
+
+
+## Startup failed; dispatch stopped
+
+The first Isaac process crashed during startup. The existing no-row retry
+logic pulled five total attempts before STOP drained the manager at
+**15:44:06Z**: A/100020 original + retry, B/100020 original + retry, and
+B/100021 original. Every completion logged **rc=0 / no row**; none qualifies
+as a comparison. The [startup incident](../incidents/2026-11-06-integ3-camera-startup.md)
+records the current-attempt native crash evidence and the pre-existing same-day
+renderer incident missed during preflight. Zero paired cells are complete.
+
+**The earlier 03:00–05:00Z estimate is withdrawn.** A working CUDA GPU and
+passing physics preparation do not establish genuine Isaac 5.1 RTX support.
+No system-level repair or renderer/domain substitution is within this task's
+scope. Do not resume under the present recipe or count the attempts as losses.
+
+STOP is retained; **158 queue rows** remain. Both arms of 100020 exhausted their
+one permitted retry; B/100021 has its one retry queued. The complete original
+80-pair schedule is preserved, and no extra measured attempt is authorized by
+this journal. Recovery needs a validated compatible genuine renderer and a
+fresh prospective infrastructure-attempt disclosure before queue repair.
+
+No `calls.jsonl` or agentic `transcript.jsonl` was created in any attempt;
+recorded model spend is zero calls / tokens. Implementation made zero separate
+model calls. No measurement frames or treatment outcomes were used for tuning.
