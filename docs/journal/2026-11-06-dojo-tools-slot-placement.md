@@ -45,3 +45,42 @@ joint-path fallback. Seven CPU tests cover dispatch, collision-check arguments, 
 level/reorienting propagation, default and config validation.
 
 Work in progress; final paired results will be recorded before review. No default is changed and no camera gain is claimed.
+
+### Completed first ten baseline rows
+
+| v15 draw | score | success |
+|---|---:|---|
+| 100000 | 1.00 | yes |
+| 100001 | 0.50 | no |
+| 100002 | 0.50 | no |
+| 100003 | 0.75 | no |
+| 100004 | 1.00 | yes |
+| 100030 v1 | 0.75 | no |
+| 100031 v1 | 0.75 | no |
+| 100032 v1 | 1.00 | yes |
+| 100033 v1 | 0.50 | no |
+| 100034 v1 | 1.00 | yes |
+
+Mean 0.775, 4/10 successes. Of 40 tool opportunities, nine miss score credit:
+
+- **Carry loss, 4:** pliers 100001/02 (288/245 mm hover shifts), wrench 100003 (272 mm), hammer 100030 (104 mm).
+- **Tail/contact loss, 1:** wrench 100033: hover shift 11 mm; another 38 mm / 31 degrees while still closed in the
+  tail; final error 32 mm xy / 28 mm z / 69 degrees.
+- **Pick slip, 2:** wrench 100001/100031 (rose 42/48 mm instead of 80 mm).
+- **No usable slot transfer, 2:** tape measure 100002 (relay second pick slipped, then no successful completion),
+  hammer 100033 (134/148 left grasps reachable, zero grasp-place pairs; no in-air handover for a 228 mm object).
+
+These are credited-tool losses, not raw failed-attempt counts: e.g. 100003 hammer's 27-degree verification miss
+is still credited. The tape-measure class includes both planning and failed relay execution, not a pure IK failure.
+The first-ten ceiling on this box is higher than the historical ~0.55; do not pool them across box/layout revisions.
+
+### Cartesian screen: negative
+
+Candidate physics code `83c2f587` (record stamp `0706dad9`, docs/tests only above that), 100030 v1:
+0.75 -> **0.50**, no success. Pliers newly slipped 122 mm at hover; hammer still slipped (154 mm).
+No expanded Cartesian trial is justified from this screen. The flag remains default off pending disposition.
+
+Next independent lever: `slot_hover=low` (default off), pre_h 15 mm / pre_clear 3 mm instead of
+40 mm / 15 mm. Approach stays collision-checked and joint-space by default. The minimum is still computed
+from the container top and tool geometry; this is not permission to traverse its wall. Hypothesis: a lower
+hover admits more stable grasp/place pairs and shortens the fall when a corrected descent is refused.

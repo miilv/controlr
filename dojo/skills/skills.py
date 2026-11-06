@@ -339,6 +339,7 @@ class Skills:
         # more, the press point 4 mm each way: the lever's 85 % has ~0.1 mm of margin at the planned point)
         self.press_repeat = "off"
         self.slot_approach = "off"
+        self.slot_hover = "off"
         # pour_p1's way back to upright (stream H; ``RuntimeConfig.ported_pour_untilt``): "direct" (today) | "staged" | "capped"
         self.ported_pour_untilt = "direct"
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the

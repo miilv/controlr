@@ -30,13 +30,14 @@ def test_place_approach_selects_checked_cartesian_path(linear):
     assert 'check' not in kw  # both planners' collision checking defaults stay on
 
 
+@pytest.mark.parametrize('hover', ['off', 'low'])
 @pytest.mark.parametrize('mode', ['off', 'linear'])
 @pytest.mark.parametrize('fallback', [False, True])
-def test_slot_switch_reaches_both_level_and_reorienting_transfers(monkeypatch, mode, fallback):
+def test_slot_switch_reaches_both_level_and_reorienting_transfers(monkeypatch, mode, fallback, hover):
     from dojo.skills import library
     obj = SimpleNamespace(R=np.eye(3), center_w=np.zeros(3), asset=SimpleNamespace(extents=np.ones(3)))
     world = SimpleNamespace(objects={'tool': obj}, obj=lambda _: obj)
-    sk = SimpleNamespace(refresh=lambda: world, slot_approach=mode, log=lambda _: None,
+    sk = SimpleNamespace(refresh=lambda: world, slot_approach=mode, slot_hover=hover, log=lambda _: None,
                          held={'left': None, 'right': None}, bank=lambda: None)
     monkeypatch.setattr(library, 'container_obstacle', lambda *a: None)
     monkeypatch.setattr(library, 'slot_targets', lambda *a: [np.eye(4)])
@@ -53,11 +54,16 @@ def test_slot_switch_reaches_both_level_and_reorienting_transfers(monkeypatch, m
     for kw in calls:
         assert kw['place_kw'].get('approach_line', False) == (mode == 'linear')
         assert kw['place_kw']['drop_ok'] is True
+        assert kw['place_kw']['pre_h'] == (0.015 if hover == 'low' else 0.04)
+        assert kw['place_kw'].get('pre_clear', 0.015) == (0.003 if hover == 'low' else 0.015)
 
 
 def test_runtime_default_and_invalid_switch():
     from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
     assert RuntimeConfig().slot_approach == 'off'
+    assert RuntimeConfig().slot_hover == 'off'
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(slot_hover='typo'))
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(slot_approach='typo'))
 

@@ -534,3 +534,8 @@ It applies to level carries and the reorienting/relay fallback. An infeasible Ca
 rejects that candidate; it never falls back to a joint-space transit for the same candidate.
 G3 exposes the same switch with `--skill-attr slot_approach=linear`. Pick, descent, release,
 held-pose measurements and all non-slot places retain their existing settings.
+
+`RuntimeConfig.slot_hover=low` (default `off`) independently sets matching-slot pre-place
+height to 15 mm and support clearance to 3 mm. It retains collision-checked approaches;
+the container top and tool's lowest corner still set the minimum hover. G3 uses
+`--skill-attr slot_hover=low`. Do not combine it with Cartesian approaches without a separate comparison.
