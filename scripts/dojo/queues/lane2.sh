@@ -7,20 +7,26 @@
 {
 set -uo pipefail
 LANE=$1 LOCK=$2
-S=$HOME/dojo-integ-c4-state; Q=$S/queue2.txt; RUNS=$HOME/dojo-data/integ-c4/runs2; REPO=${LANE_REPO:?set LANE_REPO to the merged deployment}
+S=${LANE_STATE:-$HOME/dojo-integ-c4-state}; Q=$S/queue2.txt; RUNS=${LANE_RUNS:-$HOME/dojo-data/integ-c4/runs2}; REPO=${LANE_REPO:?set LANE_REPO to the merged deployment}
+STREAM=${LANE_STREAM:-integ-c4}
 JOB_MAX=${LANE_JOB_MAX_S:-1980}   # 33 min: boot + a 25-min episode cap + teardown (28 min while R2 ran)
 mkdir -p "$RUNS"; touch "$Q" "$Q.lock"
 source "$HOME/dojo-env.sh"
-export DOJO_STREAM=integ-c4 DOJO_MIN_FREE_GB=50 INTEG_MIN_FREE_MB=16223 INTEG_MIN_MEM_GB=16 INTEG_YIELD_S=0 INTEG_LOCK_WAIT_S=120
+export DOJO_STREAM=$STREAM DOJO_MIN_FREE_GB=50 INTEG_MIN_FREE_MB=16223 INTEG_MIN_MEM_GB=16 INTEG_YIELD_S=0 INTEG_LOCK_WAIT_S=120
+export DOJO_DATA=${LANE_DATA:-$DOJO_DATA}
 # 00:55Z (lead): ~/dojo-perception-data/bg_folds_51 has no scene/ backgrounds (belt, imitate's basket, organize's cushion
 # ran against the plain table); ours, md5-verified, with compute3's scene/ dirs. Checked in each job's perception service.
 export DOJO_BG_FOLDS="${LANE_BG_FOLDS:-$HOME/dojo-data/bg_folds_51_ilia}"
 [[ -d "$DOJO_BG_FOLDS/fold0/scene" ]] || { echo "$(date -u +%FT%TZ) [$1] no $DOJO_BG_FOLDS/fold0/scene: refusing to start"; exit 2; }
 INO=$(stat -L -c %i "$LOCK")
-[[ "$LOCK" == "$HOME/dojo-integ-c4-$LANE.lock" && ! -L "$LOCK" ]] || { echo "private lane lock required"; exit 2; }
+if [[ "$STREAM" == integ-c6 ]]; then
+  [[ "$LOCK" == "$HOME/dojo-gpu.lock" || "$LOCK" == "$HOME/dojo-gpu-heavy2.lock" ]] && [[ ! -L "$LOCK" ]] || { echo "compute6 heavy slot required"; exit 2; }
+else
+  [[ "$LOCK" == "$HOME/dojo-integ-c4-$LANE.lock" && ! -L "$LOCK" ]] || { echo "private lane lock required"; exit 2; }
+fi
 stopped() { [[ -e "$S/STOP" || -e "$S/STOP.$LANE" ]]; }
 log() { echo "$(date -u +%FT%TZ) [$LANE] $*"; }
-ours() { grep -qs "integ-c4" "/proc/$1/cgroup"; }   # integ-c4_* (side servers, round 1) and integ-c4b_* (round-2 jobs)
+ours() { grep -qs "$STREAM" "/proc/$1/cgroup"; }
 others() { local n=0 p; for p in $(nvidia-smi --query-compute-apps=pid --format=csv,noheader); do ours "$p" || n=$((n+1)); done; echo "$n"; }
 mine() {   # our running rendered jobs (other lanes')
   local n=0 f; for f in "$S"/running.*; do [[ -e "$f" ]] && kill -0 "$(cat "$f")" 2>/dev/null && n=$((n+1)); done; echo "$n"
@@ -50,6 +56,7 @@ cap_ok() {   # rendered of ours + 1 <= OURS; others + ours + big side servers + 
 }
 # The sole allowed coordination file. No other coord paths are accessed.
 boot_gate() {
+  [[ "$STREAM" == integ-c6 ]] && return 0  # ours alone; never accesses compute4's coordination protocol
   local epoch iso who now
   while true; do
     epoch=0 iso= who=
@@ -75,7 +82,7 @@ front() { flock "$Q.lock" bash -c '{ printf "%s\n" "$2"; cat "$1"; } > "$1.tmp" 
 units=() pids=() big=0
 side_start() {   # KIND SOCK ENVVAR WAIT_S CMD...: start in its own integ-c4_ scope, wait for the socket, export ENVVAR=SOCK
   local kind=$1 sock=$2 var=$3 wait_s=$4 u; shift 4
-  k=$((k + 1)); u="integ-c4_${kind}_${LANE}_$$_$k"; rm -f "$sock"
+  k=$((k + 1)); u="${STREAM}_${kind}_${LANE}_$$_$k"; rm -f "$sock"
   ( cd "$repo" && exec systemd-run --user --scope -q --unit="$u" -p MemoryMax=16G -p CPUQuota=400% "$@" ) \
     > "$RUNS/$name.$kind.log" 2>&1 7>&- 8>&- < /dev/null &
   units+=("$u"); pids+=($!); [[ "$kind" == sam || "$kind" == mv3d ]] && big=$((big + 1)); echo "$big" > "$S/side.$LANE"
@@ -162,7 +169,7 @@ while true; do
   if [[ "$repo" != "$REPO" ]] && ! [[ "$(realpath "$repo")" == "$HOME"/* && -f "$repo/scripts/dojo/integ_eval.sh" ]]; then
     drop_lock; log "bad --repo $repo: dropped $name"; continue
   fi
-  printf 'pid=%s stream=integ-c4 job=%s start=%s cmd=lane2 %s\n' "$$" "$name" "$(date -u +%FT%TZ)" "$args" > "$LOCK"
+  printf 'pid=%s stream=%s job=%s start=%s cmd=lane2 %s\n' "$$" "$STREAM" "$name" "$(date -u +%FT%TZ)" "$args" > "$LOCK"
   t0=$(date +%s)
   if [[ -n "$sam" ]]; then
     side_start sam "$S/sam.$LANE.sock" DOJO_SAM_ADDR 240 \

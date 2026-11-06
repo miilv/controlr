@@ -4,9 +4,9 @@ INTEG6 was assigned the 108-row tie family from the camera wave, keeping both
 arms of every pair on compute6. The lead subsequently requested two camera
 lanes, each retaining the 16 GiB-used admission gate, alongside independent
 physics streams on the light locks. Sustained GPU power above 700 W requires
-reducing to one camera lane. The migration is blocked before camera dispatch:
-the brief explicitly requires a lead decision on stack or perception-data
-differences. No compute4 queue mutation or camera/model request was made.
+reducing to one camera lane. Initial preflight stopped before camera dispatch:
+the brief required a lead decision on stack or perception-data differences.
+No compute4 queue mutation or camera/model request was made in that phase.
 
 ## Deployment and validation
 
@@ -101,3 +101,39 @@ and camera services have not been started while parity is blocked. The wave
 estimate is 14.64 lane-hours for tie, or about 7.32 ideal wall-hours on two
 camera lanes **after release**, plus setup/resource waits and retries. There
 is no committed completion ETA while the parity decision is pending.
+
+## Lead release and compute6 lane preparation
+
+The lead accepted the Python 3.11.17/3.11.18 and msgpack 1.2.3/1.2.4
+differences and explicitly prohibited modifying the RoboDojo environment.
+Both arms remain on compute6. The deployment's `.deployed.json` carries
+`host=compute6`, `family_prefix=c6b_`, and a `simulation_environment` object
+with both versions and the lead's acceptance. Existing runtime serialization
+places this complete metadata object in every episode row's `code` field;
+no episode serializer or controller code changes are needed.
+
+The lead authorized syncing the exact 794 differing perception files from
+compute4: 693 missing catalogue files plus its index, 96 backgrounds/calibration
+files and four side-model files. Inputs remain the isolated manifest-exact
+96-file copy from initial preflight. No RoboDojo environment or system setting
+was changed.
+
+The queue runner gains explicit state/run/data/stream environment overrides,
+preserving compute4 defaults. The `integ-c6` profile skips compute4's coord
+stamp entirely, accepts the two existing heavy slot locks, and retains the
+16 GiB-used gate, free-VRAM check, 50 GB disk floor, startup serialization,
+same-task stagger, HTTP 429 global STOP and one infrastructure retry.
+Light locks remain independent. Shared services use the pinned camera deploy;
+the versioned helper records ownership instead of stopping scopes by pattern.
+
+The power watcher samples every five minutes. Two consecutive readings above
+700 W lower the lane cap to one and create `STOP.heavy2`: heavy2 finishes its
+current job, then exits. It never signals another stream's process. The exact
+queue hand-over helper takes compute4's existing queue lock, keeps both arms
+of a partially started pair there, and archives removed rows with before/after
+queue hashes in `lead-notes.log`.
+
+Local validation: 1,786 tests passed, 187 skipped; the eight focused lane,
+power, queue hand-over and wave-status cases passed against the final helpers.
+Shell syntax, Python compilation and `git diff --check` passed. No simulation
+or model call was used by these checks.
