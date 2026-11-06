@@ -74,7 +74,7 @@ def scene_boxes(kin, coll, arm, ignore, profile="legacy"):
 
 
 class _GPUBackend:
-    def __init__(self, profile="legacy"):
+    def __init__(self, profile="legacy", limits=None):
         self.profile = profile
         # All optional/GPU imports stay behind the default-off switch.
         import yaml
@@ -112,6 +112,17 @@ class _GPUBackend:
             k["self_collision_ignore"]["native_hand"] = ["link6", "link5", "camera", "camera_base", "attached_object"]
             k["self_collision_ignore"]["attached_object"].append("native_hand")
         self.device = DeviceCfg()
+        if profile == "recover":
+            from curobo._src.types.robot import RobotCfg
+            from dojo.skills.kinematics import JOINT_LIMITS
+            robot = RobotCfg.create(robot, device_cfg=self.device)
+            native = np.asarray(JOINT_LIMITS if limits is None else limits)
+            joint_limits = robot.kinematics.get_joint_limits()
+            requested = torch.as_tensor(native.T,device=self.device.device,dtype=joint_limits.position.dtype)
+            # Tighten the GPU model before constructing every solver and cost.
+            # URDF ±10-radian ranges are not the native working envelope.
+            joint_limits.position[0].copy_(torch.maximum(joint_limits.position[0],requested[0]))
+            joint_limits.position[1].copy_(torch.minimum(joint_limits.position[1],requested[1]))
         cfg = MotionPlannerCfg.create(
             robot=robot, scene_model={"cuboid": {"warmup_floor": {
                 "dims": [.1, .1, .1], "pose": [0, 0, -5, 1, 0, 0, 0]}}},
@@ -124,6 +135,7 @@ class _GPUBackend:
         cfg.graph_planner_config.max_path_finding_iterations = 16 if profile == "recover" else 4
         cfg.graph_planner_config.min_finetune_iterations = 1
         self.planner = MotionPlanner(cfg)
+        self.model_limits = self.planner.kinematics.config.kinematics_config.joint_limits.position.detach().cpu().numpy().T.copy()
         self.planner.warmup(enable_graph=True, num_warmup_iterations=1)
         # The deployed v2 MotionPlanner.attachment_manager property references
         # a missing TrajOptSolver property. Bind managers to its actual models.
@@ -212,6 +224,11 @@ class _GPUBackend:
         self.goal_hint = payload.get("goal_hint")
         self.query_q0 = np.asarray(payload["q0"])
         self.query_limits = payload.get("limits")
+        if self.profile == "recover":
+            self.query_limits = np.asarray(self.query_limits).copy()
+            self.query_limits[:,0]=np.maximum(self.query_limits[:,0],self.model_limits[:,0])
+            self.query_limits[:,1]=np.minimum(self.query_limits[:,1],self.model_limits[:,1])
+            self.diagnostics["model_limits"]=self.model_limits.tolist()
         device = self.device.device
         names = list(p.joint_names)
         active = [names.index(f"joint{i}") for i in range(1, 7)]
@@ -252,7 +269,7 @@ class _GPUBackend:
             def penetrations(q):
                 spheres=p.compute_kinematics(joint_state(q)).robot_spheres.detach().cpu().numpy()
                 return world_penetrations(spheres,payload["boxes"])
-            repair_path, repair = repair_coordinates(payload["q0"],payload["limits"],evaluate,penetrations)
+            repair_path, repair = repair_coordinates(payload["q0"],self.query_limits,evaluate,penetrations)
             self.diagnostics["repair"] = repair
             self.emit({"stage":"repair","diagnostics":self.diagnostics})
             if repair_path is None:
@@ -297,10 +314,10 @@ def robot_config(raw):
             "load_dynamics": bool(raw.get("load_dynamics", False))}
 
 
-def _worker(connection, profile="legacy"):
+def _worker(connection, profile="legacy", limits=None):
     # Spawned without Isaac. Fatal CUDA errors can poison only this owned process.
     try:
-        backend = _GPUBackend(profile)
+        backend = _GPUBackend(profile, limits)
         backend.emit = lambda event: connection.send({"progress": event})
         connection.send({"ready": True})
         while True:
@@ -325,12 +342,13 @@ def _worker(connection, profile="legacy"):
 
 class CuroboWorld:
     """A single owned GPU worker; startup is separate from the 2 s request budget."""
-    def __init__(self, profile="legacy"):
+    def __init__(self, profile="legacy", limits=None):
         self.profile = profile
+        self.limits = None if limits is None else np.asarray(limits).copy()
         self._close_lock = threading.Lock()
         context = mp.get_context("spawn")
         self.connection, child = context.Pipe()
-        self.process = context.Process(target=_worker, args=(child, profile), daemon=True)
+        self.process = context.Process(target=_worker, args=(child, profile, limits), daemon=True)
         self.process.start()
         child.close()
 
@@ -434,10 +452,14 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
     started = time.perf_counter()
     q = None
     try:
+        if profile == "recover":
+            old_limits = getattr(getattr(motion, "_world_gpu", None), "limits", None)
+            if old_limits is not None and not np.array_equal(old_limits,motion.kin.limits):
+                motion.close()
         if not hasattr(motion, "_world_gpu"):
             init = time.perf_counter()
             try:
-                motion._world_gpu = CuroboWorld(profile)
+                motion._world_gpu = CuroboWorld(profile, motion.kin.limits.tolist() if profile == "recover" else None)
                 event["worker_pid"] = motion._world_gpu.process.pid
                 motion._world_gpu.wait_ready()
             except Exception as error:  # missing optional backend is a logged legacy fallback
