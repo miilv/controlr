@@ -62,7 +62,7 @@ def failure_category(diagnostics):
     ik = diagnostics.get("ik", {})
     if ik and not any(ik.get("success", [])):
         pos, rot = ik.get("position_error", []), ik.get("rotation_error", [])
-        if collision(ik) and any(p < ik.get("position_tolerance", .001) and r < ik.get("orientation_tolerance", .02) for p, r in zip(pos, rot)):
+        if collision(ik) and any(p < ik.get("configured_position_tolerance", ik.get("position_tolerance") or .001) and r < ik.get("configured_orientation_tolerance", ik.get("orientation_tolerance") or .02) for p, r in zip(pos, rot)):
             return "goal_collision"
         return "ik_fail"
     if diagnostics.get("graph") and not any(diagnostics["graph"].get("success", [])):

@@ -242,3 +242,19 @@ def test_recovery_excludes_attached_object_even_if_caller_omits_it():
     assert plan_curobo(motion,"left",q0,kin.tcp("left",q1),.05,"carry",0.,(),held,2).ok
     assert "hammer" in worker.propose.call_args.args[5]
     assert "hammer" in coll.check.call_args.kwargs["ignore"]
+
+
+def test_recovery_request_has_a_nearby_numeric_goal_seed_and_current_hand():
+    from dojo.skills.curobo_world import CuroboWorld
+    client=object.__new__(CuroboWorld)
+    client.connection=SimpleNamespace(send=Mock(),poll=Mock(return_value=True),recv=Mock(return_value={"q":None}))
+    motion=Motion();motion.plan_profile="recover"
+    q0=np.array([0.,1.,1.,0.,0.,0.]);q1=q0.copy();q1[0]+=.1
+    target=motion.kin.tcp("left",q1)
+    assert client.propose(motion,SimpleNamespace(obstacles=lambda ignore: []),"left",q0,target,(),None,gripper=0.) is None
+    payload=client.connection.send.call_args.args[0]
+    hint=np.asarray(payload["goal_hint"])
+    assert np.linalg.norm(motion.kin.tcp("left",hint)[:3,3]-target[:3,3])<.001
+    assert np.max(np.abs(hint-q0))<.2
+    assert len(payload["hand"])<=256
+    assert np.array_equal(payload["limits"],motion.kin.limits)

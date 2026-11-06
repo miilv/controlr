@@ -60,3 +60,24 @@ def mesh_spheres(held, tcp_offset, capacity=256):
     centers, radii = held._surface_cover
     transform = T_from((tcp_offset, 0, 0)) @ held.T_tcp_obj
     return np.c_[centers@transform[:3, :3].T+transform[:3, 3], radii]
+
+
+def hand_spheres(kin, gripper, capacity=256):
+    """Cover the native finger boxes, including the belief's current opening."""
+    boxes = kin.finger_points(np.eye(4), gripper).reshape(-1, 8, 3)
+    spheres = []
+    for corners in boxes:
+        low, high = corners.min(0), corners.max(0)
+        counts = np.maximum(1, np.ceil((high-low)/.01).astype(int))
+        size = (high-low)/counts
+        axes = [np.linspace(a+d/2, b-d/2, n) for a,b,d,n in zip(low,high,size,counts)]
+        import itertools
+        centers = np.array(list(itertools.product(*axes)))
+        spheres.extend(np.c_[centers, np.full(len(centers), np.linalg.norm(size/2)+.002)])
+    # Existing link6 spheres model the palm; preserve the native validator's
+    # additional palm corners as well, without filling the finger opening.
+    spheres.extend(np.c_[kin.palm_points(np.eye(4)), np.full(len(kin.palm_points(np.eye(4))), .002)])
+    result = np.asarray(spheres)
+    if len(result)>capacity:
+        raise ValueError(f"hand cover requires {len(result)} spheres (capacity {capacity})")
+    return result

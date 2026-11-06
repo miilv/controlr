@@ -102,6 +102,15 @@ class _GPUBackend:
             "fixed_transform": [0., 0., 0., 1., 0., 0., 0.]}}
         k["extra_collision_spheres"] = {"attached_object": SPHERES}
         k.setdefault("self_collision_ignore", {})["attached_object"] = ["link6", "link5", "camera", "camera_base"]
+        if profile == "recover":
+            k["collision_link_names"].append("native_hand")
+            k["extra_links"]["native_hand"] = {
+                "link_name": "native_hand", "parent_link_name": "link6",
+                "joint_name": "native_hand_fixed", "joint_type": "FIXED",
+                "fixed_transform": [0., 0., 0., 1., 0., 0., 0.]}
+            k["extra_collision_spheres"]["native_hand"] = SPHERES
+            k["self_collision_ignore"]["native_hand"] = ["link6", "link5", "camera", "camera_base", "attached_object"]
+            k["self_collision_ignore"]["attached_object"].append("native_hand")
         self.device = DeviceCfg()
         cfg = MotionPlannerCfg.create(
             robot=robot, scene_model={"cuboid": {"warmup_floor": {
@@ -125,6 +134,7 @@ class _GPUBackend:
                             for model in models]
         self.emit = lambda event: None
         self.diagnostics = {}
+        self.goal_hint = None
         # Observe the deployed v2 stages without replacing their algorithms.
         for stage, owner, method in (("ik", self.planner.ik_solver, "solve_pose"),
                                      ("trajopt", self.planner.trajopt_solver, "solve_pose"),
@@ -132,9 +142,29 @@ class _GPUBackend:
             original = getattr(owner, method)
             def observed(*args, _original=original, _stage=stage, **kwargs):
                 self.emit({"stage": _stage})
+                if _stage == "ik" and self.profile == "recover" and self.goal_hint is not None:
+                    import torch
+                    hint = torch.as_tensor(self.goal_hint, device=self.device.device, dtype=torch.float32)
+                    count = self.planner.ik_solver.config.num_seeds
+                    rng = torch.Generator(device=self.device.device).manual_seed(0)
+                    seeds = hint.reshape(1, 1, -1)+.04*torch.randn((1, count, len(hint)),
+                        generator=rng, device=self.device.device)
+                    seeds[:, 0] = hint
+                    bounds = torch.as_tensor(self.query_limits, device=self.device.device, dtype=torch.float32)
+                    kwargs["seed_config"] = torch.maximum(bounds[:, 0], torch.minimum(bounds[:, 1], seeds))
                 result = _original(*args, **kwargs)
                 from dojo.skills.plan_diagnostics import result_flags
                 self.diagnostics[_stage] = result_flags(result)
+                if _stage == "ik":
+                    self.diagnostics[_stage]["configured_position_tolerance"] = .002 if self.profile == "recover" else .001
+                    self.diagnostics[_stage]["configured_orientation_tolerance"] = .03 if self.profile == "recover" else .02
+                if _stage == "ik" and result is not None:
+                    try:
+                        best = self.planner.kinematics.get_active_js(result.js_solution).position.reshape(-1, self.planner.action_dim)[0]
+                        self.diagnostics[_stage]["goal_joints"] = best.detach().cpu().tolist()
+                        self.diagnostics[_stage]["goal_branch_delta"] = float(np.max(np.abs(np.asarray(self.diagnostics[_stage]["goal_joints"])-self.query_q0)))
+                    except Exception as error:
+                        self.diagnostics[_stage]["joint_diagnostic_error"] = str(error)
                 if _stage == "ik" and result is not None and not any(self.diagnostics[_stage].get("success", [])):
                     try:
                         self.diagnostics[_stage]["constraints"] = self._constraints(result.js_solution)
@@ -172,6 +202,9 @@ class _GPUBackend:
         from curobo.types import GoalToolPose, JointState, Pose
         p = self.planner
         self.diagnostics = {}
+        self.goal_hint = payload.get("goal_hint")
+        self.query_q0 = np.asarray(payload["q0"])
+        self.query_limits = payload.get("limits")
         device = self.device.device
         names = list(p.joint_names)
         active = [names.index(f"joint{i}") for i in range(1, 7)]
@@ -186,6 +219,10 @@ class _GPUBackend:
             # Already link-local: do not run FK against any simulator pose.
             for manager in self.attachments:
                 manager.update(spheres, state, link_name="attached_object")
+        if self.profile == "recover" and payload.get("hand") is not None:
+            hand = torch.as_tensor(payload["hand"], dtype=torch.float32, device=device)
+            for manager in self.attachments:
+                manager.update(hand, state, link_name="native_hand")
         flange = payload["flange"]
         pose = Pose(position=torch.as_tensor(flange[:3], device=device, dtype=torch.float32).reshape(1, 3),
                     quaternion=torch.as_tensor(flange[3:], device=device,
@@ -316,6 +353,14 @@ class CuroboWorld:
             q0=np.asarray(q0).tolist(), boxes=scene_boxes(motion.kin, coll, arm, ignore, profile),
             spheres=None if spheres is None else spheres.tolist(),
             flange=np.r_[flange[:3, 3], R_to_quat(flange[:3, :3])].tolist())
+        if profile == "recover":
+            from dojo.skills.plan_geometry import hand_spheres
+            payload["hand"] = hand_spheres(motion.kin, gripper).tolist()
+            # Warm-start cuRobo IK on the same nearby branch as native routing.
+            # It remains only a seed: GPU collision checks and final validation apply.
+            hint = motion.kin.ik(arm, target, q0, n_random=0)
+            payload["goal_hint"] = hint.q.tolist() if hint.ok else None
+            payload["limits"] = motion.kin.limits.tolist()
         if getattr(motion, "plan_capture", "off") == "requests":
             payload["source_model"] = {"profile": profile, "ignore": list(ignore), "gripper": float(gripper),
                 "heightmaps": list(getattr(coll, "heightmaps", {})), "parts": list(getattr(coll, "parts", {})),
@@ -355,6 +400,7 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
         ignore = tuple(set(ignore) | {held.label})
     event = dict(arm=arm, name=name, solver="curobo", profile=profile, fallback=True, routes=1)
     started = time.perf_counter()
+    q = None
     try:
         if not hasattr(motion, "_world_gpu"):
             init = time.perf_counter()
@@ -443,6 +489,10 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
                                        obstacles=[o for o in obs if not near or o[3] not in touch])
                 if not ok:
                     event["reason"] = f"validation: {reason}"
+                    event["validation_q"] = qi.tolist()
+                    if held is not None:
+                        event["validation_held_only"] = coll.check(arm, qi, gripper, ignore=ignore, held=None,
+                            obstacles=[o for o in obs if not near or o[3] not in touch])[0]
                     return None
         event.update(fallback=False, route="curobo")
         return MoveResult("reached", arm, [Segment(q, step_rad, name, ease)], goal)
@@ -463,6 +513,8 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
             motion._world_gpu = event["reason"]
         return None
     finally:
+        if q is not None and getattr(motion, "plan_capture", "off") == "requests":
+            event["proposal_q"] = np.asarray(q).tolist()
         if event["fallback"] and "failure_category" not in event:
             event["failure_category"] = "validation_reject"
         event["seconds"] = round(time.perf_counter()-started, 6)

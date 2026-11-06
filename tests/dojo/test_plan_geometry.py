@@ -38,3 +38,16 @@ def test_mesh_cover_contains_triangle_interior_after_tcp_transform():
         for b in np.linspace(0,1-a,13):
             point=np.array([.155+.1*a,.02+.1*b,.03])
             assert np.any(np.linalg.norm(spheres[:,:3]-point,axis=1)<=spheres[:,3])
+
+
+def test_hand_cover_follows_opening_and_covers_native_finger_surfaces():
+    from dojo.skills.kinematics import X5Kin
+    from dojo.skills.plan_geometry import hand_spheres
+    kin=X5Kin()
+    for opening in (0.,1.):
+        spheres=hand_spheres(kin,opening)
+        assert len(spheres)<=256
+        for point in kin.finger_points(np.eye(4),opening):
+            assert np.any(np.linalg.norm(spheres[:,:3]-point,axis=1)<=spheres[:,3]+1e-9)
+    closed=hand_spheres(kin,0.);opened=hand_spheres(kin,1.)
+    assert np.max(np.abs(opened[:180,1]))>np.max(np.abs(closed[:180,1]))
