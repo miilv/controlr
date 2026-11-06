@@ -6,6 +6,12 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Distinguish slow active perception from a rendered-driver hang.** The
+  300-second GUI-warning watchdog can fire while inverse-layout fitting is
+  actively computing. Add a bounded, observable perception-progress signal
+  before treating zenity warnings as evidence of a hang; retain a hard cap
+  ([dev diagnosis](journal/2026-11-06-integ6-render-recovery.md)).
+
 - [ ] **Check the actual perception worker's environment in camera admission.**
   `lane2.sh` uses pgrep on the module name, which can select its enclosing
   `bash -c` wrapper. Use the PID recorded in `perception.ready`, with ownership
