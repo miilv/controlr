@@ -2656,6 +2656,8 @@ def arrange(sk: Skills, steps: list) -> dict:
                       place_kw={"pre_h": 0.015 if tall else 0.04})
             if getattr(sk, "arrange_hover", "off") == "low":
                 kw["place_kw"] = {"pre_h": 0.005, "pre_clear": 0.003}
+            if getattr(sk, "arrange_route", "off") == "lateral":
+                kw["place_kw"]["approach_lateral"] = True
             tg, on_mesh = _on_targets(sk, obj, sup)
             r = place_oriented(sk, obj, tg, **kw)
             if on_mesh and not r.ok and r.status in ("ik_fail", "collision") and not r.steps:

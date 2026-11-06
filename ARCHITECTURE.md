@@ -591,3 +591,7 @@ The runtime and G3 expose independent switches `push_approach=tilted` and
 approaches with fingertip-position compensation after the original poses.
 The low arrange hover uses 5 mm pre-height and 3 mm support clearance.
 Both retain the existing collision-checked motion and placement tail.
+
+`arrange_route=lateral` (default `off`) separately adds four checked lateral
+waypoints after a placement transit's legacy collision failure. Unreachable
+endpoints are refused directly, and both legs must plan before execution.

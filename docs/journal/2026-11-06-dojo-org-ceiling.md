@@ -38,3 +38,20 @@ Focused tests cover candidate tip geometry and refusal, config validation,
 hover forwarding and legacy order. Full suite and physical screens pending.
 
 LLM calls/tokens/spend: 0/0/$0. No camera jobs, compute4, or dc19 access.
+
+## Lateral-route probe
+
+The first five generated pairs tie (mean 45, no successes), with several
+keyboard no-plan exits turning into unscored precision misses. No camera gate.
+A CPU reconstruction of original 100000, with drawer/stand obstacles and low
+hover, rejects the legacy route; wider 55/65-degree grasps increase pairs
+12 -> 32 but still find no full route. A bounded lateral waypoint probe does
+find a complete checked route for the original slice grasp at z 178 mm,
+dir 135, tilt 40. The successful waypoint offset is (+80, -100) mm in world xy.
+This is feasibility only, not a physical pick or score gain.
+
+A third independent default-off switch `arrange_route=lateral` forwards
+`approach_lateral` to placement. Legacy transit is tried first; only a collision
+failure tries four fixed lateral offsets, each with fully checked legs. Failed
+IK endpoints remain refused. No partial route executes. The physical pilot
+combines this route with the separately tested low hover, without tilted pushes.
