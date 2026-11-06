@@ -125,15 +125,15 @@ Lower-hover paired validation completed all ten prescribed dev layouts (pilot in
 Measured carry screens: 100030 0.75 -> 0.00; 100003 0.75 -> 0.25. Checked corrections refuse IK waypoints or a
 held object below the table. Stop these screens without expansion; no lever is an adopt candidate.
 
-All 29 G3 episode records have complete meshes and no infrastructure failure. Completed episode wall totals
-7209.0 s (~2.00 lane-hours), load 167.6 s; startup/presettle overhead is additional. LLM calls/tokens/spend: **0**.
+All 31 G3 episode records have complete meshes and no infrastructure failure. Completed episode wall totals
+7822.7 s (~2.17 lane-hours), load 178.9 s; startup/presettle overhead is additional. LLM calls/tokens/spend: **0**.
 No camera frames or videos were produced. Both conditional camera specifications are blocked by their G3
 prerequisites; do not launch. The extra five baseline rows were all completed, not censored at their low scores.
 
-Validation: baseline full suite 1783 passed / 187 skipped; final focused switch/carry/legacy tests 48 passed.
+Validation: baseline full suite 1783 passed / 187 skipped; final focused switch/carry/legacy tests 49 passed.
 New carry code/tests pass pyflakes. Existing warnings in skills.py/library.py (unused imports and an unrelated
 f-string without placeholders) predate this work; no undefined names were introduced. The carry screen ran the
-new module from deployed commit 3bb99584; later code cleanup only removes an unused import.
+new module from deployed commits 3bb99584 (v1) and 774b8030 (corrected v2).
 
 No improvement to the ~0.55 variant-1 skill ceiling was achieved. This is a negative experimental PR for the lead,
 with all switches off and no merge/adoption. All checked worker and queue PIDs exited; no Isaac worker remains
@@ -143,5 +143,6 @@ from TOOLS. Compute3 was not used. Local checkout/venv remain below 1 GB.
 
 Review found that the first carry version interpolated orientation from the stored pick attachment rather than
 its first accepted current read. The regression test fails on 3bb99584 and passes with interpolation anchored to
-the measured TCP + accepted attachment. Re-run both carry screens on this corrected source before disposition;
-retain v1 rows above as separate, bug-confounded observations, not evidence against the corrected lever.
+the measured TCP + accepted attachment. Both carry screens were re-run on corrected source 774b8030: 100030 remains 0.00 and 100003 remains 0.25.
+The same IK/table-clearance refusals persist. Retain v1 rows above as separate, bug-confounded observations;
+the rejection is now supported by the corrected v2 rows. The new regression and all focused tests pass (49).
