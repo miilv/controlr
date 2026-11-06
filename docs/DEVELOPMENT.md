@@ -545,3 +545,10 @@ for matching slots, disables insertion probes, and requests the existing held-po
 at the hover. G3 re-measures the tool between tail moves; perception mode can only use the
 provider's accepted held transform. Configure a held-pose provider to test the camera effect;
 this switch does not turn on a perception service or supply ground truth.
+
+`RuntimeConfig.slot_carry_read=on` (default `off`) splits the slot approach into at most
+four checked Cartesian hops. It interpolates object orientation from lift to hover and
+updates attachment between hops. Perception uses gated current-view held reads only;
+it adds no show/observer moves. An unavailable first read keeps the legacy approach;
+a later missing read retains the last accepted attachment. Infeasible hops stop motion
+while retaining the grasp for the existing recovery path. G3 re-measures from its provider.

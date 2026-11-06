@@ -30,15 +30,16 @@ def test_place_approach_selects_checked_cartesian_path(linear):
     assert 'check' not in kw  # both planners' collision checking defaults stay on
 
 
+@pytest.mark.parametrize('carry', ['off', 'on'])
 @pytest.mark.parametrize('placement', ['off', 'servo'])
 @pytest.mark.parametrize('hover', ['off', 'low'])
 @pytest.mark.parametrize('mode', ['off', 'linear'])
 @pytest.mark.parametrize('fallback', [False, True])
-def test_slot_switch_reaches_both_level_and_reorienting_transfers(monkeypatch, mode, fallback, hover, placement):
+def test_slot_switch_reaches_both_level_and_reorienting_transfers(monkeypatch, mode, fallback, hover, placement, carry):
     from dojo.skills import library
     obj = SimpleNamespace(R=np.eye(3), center_w=np.zeros(3), asset=SimpleNamespace(extents=np.ones(3)))
     world = SimpleNamespace(objects={'tool': obj}, obj=lambda _: obj)
-    sk = SimpleNamespace(refresh=lambda: world, slot_approach=mode, slot_hover=hover, slot_place=placement, log=lambda _: None,
+    sk = SimpleNamespace(refresh=lambda: world, slot_approach=mode, slot_hover=hover, slot_place=placement, slot_carry_read=carry, log=lambda _: None,
                          held={'left': None, 'right': None}, bank=lambda: None)
     monkeypatch.setattr(library, 'container_obstacle', lambda *a: None)
     monkeypatch.setattr(library, 'slot_targets', lambda *a: [np.eye(4)])
@@ -54,6 +55,7 @@ def test_slot_switch_reaches_both_level_and_reorienting_transfers(monkeypatch, m
     assert len(calls) == (2 if fallback else 1)
     for kw in calls:
         assert kw['place_kw'].get('approach_line', False) == (mode == 'linear')
+        assert kw['place_kw'].get('carry_read', False) == (carry == 'on')
         assert kw['place_kw']['drop_ok'] is True
         assert kw['place_kw'].get('servo', False) == (placement == 'servo')
         if placement == 'servo':
@@ -69,6 +71,9 @@ def test_runtime_default_and_invalid_switch():
     assert RuntimeConfig().slot_approach == 'off'
     assert RuntimeConfig().slot_hover == 'off'
     assert RuntimeConfig().slot_place == 'off'
+    assert RuntimeConfig().slot_carry_read == 'off'
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(slot_carry_read='typo'))
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(slot_place='typo'))
     with pytest.raises(ValueError):

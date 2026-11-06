@@ -96,3 +96,23 @@ with insertion probes disabled and the existing held-pose protocol requested. No
 approach is bundled into this trial. Screen on 100033, whose wrench moves 38 mm in the open-loop tail.
 G3 supplies measured object poses between tail moves; in camera mode this is limited to the accepted
 held transform at hover, not repeated oracle measurements. Camera adoption requires its own gate.
+
+### Measured-tail screen: null; bounded carry reads
+
+`slot_place=servo`, `c0aa7a63`, 100033 v1: **0.50 -> 0.50**. The wrench ends 130 mm off, against 32 mm in A;
+the arm lags 31 mm after descent. No expanded tail-only run is justified.
+
+All 15 baseline rows completed: 4/15, mean 0.600 (sample SD 0.351). Variant 0: 2/5, 0.750 (SD 0.250);
+variant 1 100030–39: 2/10, 0.525 (SD 0.381). This reconciles the older ~0.55 ceiling with the easier first ten.
+
+Clearance audit (catalogue mesh, true trace, dev analysis only): 100030 hammer touches the TABLE before it reaches
+the toolbox in both the baseline and Cartesian screen. In A, lowest-point clearance falls from 29 mm at approach
+start to 0.3 mm six steps later; subsequent fixture contact coincides with the 104 mm shift. Linear likewise touches
+the table six steps in. The last-hover read is too late to prevent this carry loss.
+
+Fourth lever: `slot_carry_read=on`, independent and default off. At most four checked Cartesian hops, object
+orientation interpolated from lift to hover, measured attachment updated between hops. G3 uses its measured world;
+perception uses the existing uncertainty-gated current-view read, with no observer/show moves. Missing first read
+keeps legacy motion; later unavailable reads retain the last accepted transform. Infeasible motion retains the grasp
+for the caller's existing recovery. Screen 100030 before any expansion. Forty CPU tests cover switches, bounded
+reads, unavailable-read fallback, attachment use, and refusal without partial execution/release.

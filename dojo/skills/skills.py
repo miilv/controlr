@@ -341,6 +341,7 @@ class Skills:
         self.slot_approach = "off"
         self.slot_hover = "off"
         self.slot_place = "off"
+        self.slot_carry_read = "off"
         # pour_p1's way back to upright (stream H; ``RuntimeConfig.ported_pour_untilt``): "direct" (today) | "staged" | "capped"
         self.ported_pour_untilt = "direct"
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
@@ -934,7 +935,7 @@ class Skills:
                    sym_axis: int | None = None, guard_seated: float | None = None, guard_lag: float | None = None,
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
                    blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None,
-                   held_read: bool | None = None, purpose: str | None = None, approach_line: bool = False):
+                   held_read: bool | None = None, purpose: str | None = None, approach_line: bool = False, carry_read: bool = False):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``approach_line``: collision-checked Cartesian transit to the hover, preserving the interpolated TCP
         orientation along the carry instead of a joint-space transit. No joint-path fallback.
@@ -1041,6 +1042,7 @@ class Skills:
             p = ArmPlan(arm, np.asarray(q0, float), CLOSED if held is not None else self.ex.g[arm]).move(to_pre, "approach")
             p.ops.extend(tail.ops)
             cand = PlacePlan(arm, p, T_obj, p.steps, h.label, keep_tilt=keep_tilt, purpose=purpose)
+            cand.carry_read = bool(carry_read)
             cand.approach = to_pre
             cand.tail_kw = tail_kw
             cand.pre_settle = pre_settle
@@ -1145,7 +1147,14 @@ class Skills:
                     lists[other_arm] = other[:len(c1)]
                 elif pre is not None:
                     lists[pre["obs"]] = pre["out"].compile()[0]
-                self.ex.run_lists(lists, name=f"place {pp.label} approach")
+                handled = False
+                if getattr(pp, "carry_read", False) and not other_arm and pre is None:
+                    from dojo.skills.slot_carry import measured_approach
+                    handled, failure = measured_approach(self, pp, c1, tol_xy, tol_tilt)
+                    if failure:
+                        return SkillResult(False, "place", "collision", self.ex.steps_used, pp.arm, note=failure)
+                if not handled:
+                    self.ex.run_lists(lists, name=f"place {pp.label} approach")
                 rest_other = other[len(c1):]
                 rehover = self._place_rehover(pp.arm, retarget)
                 if pre is not None:

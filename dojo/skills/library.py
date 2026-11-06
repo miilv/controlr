@@ -1759,6 +1759,8 @@ def place_in_slots(sk: Skills, objects: list[str], container: str) -> dict:
         # the objects already in their slots are ignored for the place (their boxes overlap the next slot's)
         kw = dict(yaw_sym=1, tol_xy=0.02, tol_tilt=10.0, tol_z=0.03, ignore=(container, *done),
                   place_kw={"pre_h": 0.04, "release_gap": 0.004, "drop_ok": True})
+        if getattr(sk, "slot_carry_read", "off") == "on":
+            kw["place_kw"]["carry_read"] = True
         if getattr(sk, "slot_place", "off") == "servo":
             kw["place_kw"].update(servo=True, probe=False, held_read=True, servo_ref=container)
         if getattr(sk, "slot_hover", "off") == "low":
