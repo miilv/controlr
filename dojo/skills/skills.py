@@ -1024,6 +1024,9 @@ class Skills:
             transit = self.motion.line if approach_line else self.motion.to_pose
             to_pre = transit(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
                              ignore=(h.label,), **({} if approach_line else {"ease": ease}))
+            if approach_line:
+                for segment in to_pre.segments:
+                    segment.ease = ease
             if not to_pre.ok:
                 notes.append(f"approach: {to_pre.note}")
                 continue

@@ -16,7 +16,7 @@ def test_place_approach_selects_checked_cartesian_path(linear):
     sk.ex = SimpleNamespace(q={'left': np.zeros(6)}, g={'left': 0.0})
     sk.world = SimpleNamespace(obj=lambda _: SimpleNamespace(asset=SimpleNamespace(center=np.zeros(3))))
     # A refused transit must remain refused: never fall back to an orientation-changing path.
-    bad = SimpleNamespace(ok=False, note='ik_fail: blocked waypoint')
+    bad = SimpleNamespace(ok=False, note='ik_fail: blocked waypoint', segments=[])
     sk.motion = SimpleNamespace(line=Mock(return_value=bad), to_pose=Mock(return_value=bad))
     result = sk.plan_place('left', np.eye(4), approach_line=linear)
     assert isinstance(result, SkillResult) and not result.ok
