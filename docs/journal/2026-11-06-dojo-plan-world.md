@@ -144,3 +144,21 @@ PLAN data directory. Both media and smoke processes exited.
 
 PR #401 is draft and unmerged for the lead's review. No default or adoption
 change is proposed.
+
+
+## Lead-requested extension
+
+After the original study, the lead requested hang_mugs and sweep_blocks if time
+allowed and released extra compute6 light capacity. Before outcomes, freeze
+[extension inputs/arms/admission](../experiments/2026-11-06-plan-extension-config.json)
+on integrated controller 79bb72b3. HANG #400 is integrated with all its probes
+at default off. Reuse all ten HANG dev layouts 100030–39 without selecting on
+its prior outcomes; sweep uses 100000–04 and 100010–14. Copy only these stable
+records into private PLAN extension storage and hash them before either arm.
+Both arms fix curobo, differing only table/objects. Keep this new source panel
+separate from the original 30 pairs.
+
+Compute6 only: <=20 GiB used VRAM, >=12 GiB available RAM, load1 <=26 at
+admission; at most four owned jobs, light locks only, 8 GB/400% per job.
+No compute3 work is needed. No LLM calls or camera dispatch. A clear gain must
+pass the existing score/full-success flip rule before a new camera spec.
