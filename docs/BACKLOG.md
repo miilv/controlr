@@ -1002,7 +1002,15 @@
   as `Collision.parts`, two handle frames x two lift heights per hook, and the relay search. The batched parts check
   (3 ms) made it about 10x faster; most of the time left is IK screening.
 - [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range.
-- [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).
+- [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; the legacy shim's cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).
+  The optional Skills object-world proposer does not change this envelope or add other-arm avoidance
+  ([PLAN journal](journal/2026-11-06-dojo-plan-world.md)).
+- [ ] **dojo: object-planner coverage after a worker deadline.** The optional cuRobo proposer stops a timed-out
+  worker and caches legacy fallback for that Motion instance. Later fallback events are not new GPU calls.
+  Study a configurable budget / bounded worker recovery without accepting stale joint paths before claiming a
+  general carry-ceiling gain. Keep fatal CUDA failures outside Isaac; the exploratory in-process startup fault's
+  root cause remains unproven ([incident](incidents/2026-11-06-plan-curobo-worker.md)).
+
 - [ ] **Real UR3 backend** via PHANTOM drivers + `SafetyMonitor` (RTDE, Robotiq, RealSense).
 - [x] ~~**A real arm**~~ — SO-101 with a wrist camera: `robot.backend: so101` ([SO101.md](SO101.md)); first motion and live runs pending.
 - [x] ~~**SO-101: first motion**~~ — jog ±20 mm per axis within ~1 mm after sag compensation; VIEW directions match the image; no stop on free moves (journal 2026-10-14-so101-backend).

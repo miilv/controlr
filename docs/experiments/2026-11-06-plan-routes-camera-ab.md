@@ -45,8 +45,9 @@ before either arm runs. Stage variants in separate private roots; pair by the
 full tuple. No tuning or rehearsal on selected draws before the A/B.
 
 Guard cells: stack_blocks and store_tools_in_toolbox, ten pairs each. Use their
-normal v15 generator with the same salt protocol, owned IDs and first-ten-stable
-rule. Freeze separate manifests before outcomes. Do not reuse G3 records.
+archived v15 generator from c58b7aff:dojo/simlab/gen_layouts.py with the same
+salt protocol, owned IDs and first-ten-stable rule. Do not substitute a later
+generator default. Freeze separate manifests before outcomes. Do not reuse G3 records.
 
 Alternate A/B and B/A ordering by pair index. Record infrastructure errors;
 rerun only infra-invalid pairs, both arms, retaining invalid attempts.
