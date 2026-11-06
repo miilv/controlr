@@ -12,7 +12,7 @@ image-level asset presences. All four metrics (found, identity, pose10, identity
 have zero category/asset losers. Phantom tolerance: baseline +2 overall, at most +1 per
 (set, task). Dev IoU grid: 0.1/0.3/0.5, extra confidence fixed 0.5; qualify old metrics and
 phantoms first, then maximize naming, ties choose the lowest IoU. Checkpoint selection is
-training-validation mask metric, not gate results. Raw base responses must match bitwise.
+training-validation fitness, not gate results. Raw base responses must match bitwise.
 The gate uses only frame 0, IDs 100000–04 and 100030–49: 162 frames / 975 objects.
 
 Training reuses the complete validated v2e export, projecting its labels onto the 32 new
@@ -24,6 +24,11 @@ The separate initial checkpoint selects v2e's 32 classifier rows; Ultralytics re
 561/561 weights transferred. The source v2e checkpoint and production v2b are never written.
 
 Training maximum 40 epochs, patience 10, imgsz960, seed0, close_mosaic5, automatic AdamW.
+Before any dev measurement, inspection of installed SegmentMetrics.fitness showed that
+Ultralytics selects best.pt by the sum of box and mask mAP50-95, not mask alone as originally
+stated. The recipe is clarified to match the actual trainer; no dev outcome informed this.
+At epoch27 the best mask and combined-fitness epoch coincided. This is a documented
+selection-description correction, not a claim that the trainer was modified mid-run.
 AutoBatch first proposed 39, hit the allocator cap, and retried successfully at **19**.
 The initial resolved_batch file reports the pre-retry estimate; the epoch-start recorder
 is corrected for future runs. The actual batch follows the retry log and 308 batches for
@@ -44,7 +49,7 @@ have priority during downstream deduplication, matching and proposal consumption
 Raw preservation does not prove downstream invariance when joint matching/refitting consumes
 additional masks; the complete paired gate remains mandatory.
 
-Local focused tests: 33 passed / 8 optional skips. Compute3's existing perception environment:
+Local focused tests: 34 passed / 8 optional skips. Compute3's existing perception environment:
 58 passed with no skips (including SAM/proposer consumers), including classifier-row selection, empty-label negatives,
 wire-prefix preservation, default request compatibility and consumer priority.
 
