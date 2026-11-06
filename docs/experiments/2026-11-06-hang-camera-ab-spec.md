@@ -1,8 +1,9 @@
 # HANG camera A/B pre-registration
 
 Prospective protocol; no camera data have been collected for these levers.
-Do not dispatch unless the final frozen paired G3 report shows a useful gain
-in both cells and the lead reviews the candidate. A failed G3 prerequisite
+Do not dispatch unless the final frozen paired G3 report shows at least a five-point mean score gain
+in each cell, with no decrease in full successes, and the lead reviews the
+candidate. A failed G3 prerequisite
 means defer, not a camera adoption claim.
 
 ## Arms and inputs

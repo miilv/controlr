@@ -114,3 +114,36 @@ Rebased local full suite: **1842 passed / 187 skipped**, 17m56s. The new
 retry-deduplication audit test passes separately. Camera specification fixes
 fresh owned-namespace variants 21/22 with stability-only reserves 20/19;
 no camera data or render preparation has been collected for the spec.
+
+## Capacity update and first probe
+
+The lead explicitly replaced the shared two-job cap with dedicated HANG
+locks `~/dojo-gpu-light5.lock` / `light6.lock`, up to two HANG physics jobs.
+Admission is now used VRAM <=20 GiB, free RAM >=12 GiB, load1 <=26;
+`admissions.jsonl` logs every check and admission, including both MemFree
+(the enforced RAM floor) and MemAvailable. Old unstarted waiters 227675,
+227676, 227677 and their checked flock/sleep children were stopped. No
+simulator was running for HANG during that switch. The first two admissions
+at 13:03:32Z both read 4813 MiB VRAM used, 32.255 GiB free RAM, load1 12.67.
+The launchers retain the 8G/600% scopes and disk guard. No light1-4 or camera
+lock is used after this capacity update.
+
+Single lever screen, PR policy source `8ff324fd`, original dev standard
+100002, `hang_handle_grasp=on`: **40**, the same as baseline, at 359 steps.
+All three selected grasps were the original wall pinches; the added handle
+pinches were not chosen by the full transfer planner. This is a null screen,
+not evidence that the bar pinches hold in physics. Paired B remains the two
+switches together; no policies are changed after the source freeze.
+
+Standard dev10 manifest is frozen at `~/dojo-data/hang/dev10/hang_mugs/manifest.json`:
+variant 2 ids 100030-39. The standard A0 chunk runs while random settling
+finishes; each cell's manifest precedes either of its arms. Standard chunk
+order is A0,B0,B1,A1; random order B0,A0,A1,B1. Both use the same pair source
+and each chunk contains five distinct layouts. Workers 240158 / 240159
+schedule the remaining jobs only through the admission-logged launcher.
+
+Before any paired B result, the camera prerequisite is made quantitative:
+G3 must gain >=5 score points in each cell with no full-success decrease,
+in addition to lead review. This is a dispatch prerequisite, not camera
+adoption; the camera default rule remains unchanged. Implementation-source
+CI passed (1842 tests, 187 skipped locally); latest audit/docs CI is separate.
