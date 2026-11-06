@@ -348,6 +348,20 @@ def egg_grasps(sk: Skills, label: str, arm: str, wall_clear: float = EGG_WALL_CL
         cands += [g for g in round_grasps(o, sk.kin, arm, rolls=(0.0,), tilts=(0.0,), ends=True) if g.method == "ends"]
     if not cands:                                   # standing on its end, or not round: the usual generators
         cands = G.box_grasps(o, sk.kin, arm, tilts=(0.0, 25.0, -25.0)) + G.candidates(o, sk.kin, arm)
+    if getattr(sk, "egg_grasp_angles", "off") == "wide":
+        cands += round_grasps(o, sk.kin, arm, rolls=(0.0, 25.0, -25.0, 40.0, -40.0),
+                              tilts=(40.0, -40.0, 55.0, -55.0), ends=False)
+    if getattr(sk, "egg_grasp_height", "off") == "raised":
+        # The pad is 30 mm long: an upper-shell pinch can clear the rim with the
+        # root block while keeping its lower half against the egg. Keep the
+        # original candidates first; raised variants rescue blocked corridors.
+        raised = []
+        for dz in (0.006, 0.010):
+            for g in cands:
+                T = g.T.copy()
+                T[2, 3] += dz
+                raised.append(dataclasses.replace(g, T=T, note=g.note + f" raised {dz * 1000:.0f}mm"))
+        cands += raised
     c = container_of(sk, label)
     prof = wall_profile(c) if c is not None else None
     if prof is None:
