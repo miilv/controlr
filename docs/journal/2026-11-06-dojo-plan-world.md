@@ -162,3 +162,38 @@ Compute6 only: <=20 GiB used VRAM, >=12 GiB available RAM, load1 <=26 at
 admission; at most four owned jobs, light locks only, 8 GB/400% per job.
 No compute3 work is needed. No LLM calls or camera dispatch. A clear gain must
 pass the existing score/full-success flip rule before a new camera spec.
+
+
+## Extension results and final disposition
+
+The [extension report/data](../experiments/2026-11-06-plan-extension-g3.md)
+adds 40 valid episodes / 20 pairs, with no infrastructure failures or repeats.
+HANG 61.5→57.5, success 4/10 both, paired SD 40.40, full-success flips 1/1.
+Sweep 20→20, success 2/10 both, all paired scores tie. HANG's historical control
+was 67.5 / 5 successes; layout 100038 now scores 40 instead of 100. No cause
+is established and only the new paired control is used. Inputs are v15 variant-2
+for HANG and v13 for sweep, all hash-pinned before outcomes.
+
+Added-solver fallback rates: HANG 93.7% (743/793), sweep 45.2% (47/104).
+Actual worker deadlines 10/2; cached fallbacks 683/7; accepted proposals 50/57.
+Recorded episode/load time is 2.08 lane-hours. No full-success ceiling gain
+appears in any GPU cell; no GPU camera spec or dispatch is warranted. The CPU
+egg partial-score specification remains undispatched. No default changes.
+
+The HANG log/skill audit counts more loose picks (7→10) and failed lifts (1→2).
+Original phase traces were not enabled, so carry/insertion/release classification
+is unavailable. Three separately rendered replays show both full-success flip
+directions and reproduce source outcomes; they are diagnostic, not camera-policy
+evidence. Raw metadata and source-action hashes remain in private PLAN storage.
+
+Eight extension G3 admissions all meet the new bounds: max used VRAM 18568 MiB,
+min available RAM 38981 MiB, max load1 23.99. Four chains and all 20 recorded
+workers exited; original-study 30 worker receipts are also absent. The replay
+process exited and before/after robot/cuRobo fingerprints match. No compute3
+or compute4 work, foreign-process signals or system changes occurred.
+
+Across CPU and GPU phases and the extension: 160 measured G3 episodes / 80 pairs,
+plus excluded probes, one merged-head smoke and diagnostic action replays.
+Zero LLM calls, tokens or model spend. Four-hour status was sent to the lead;
+current integrated-head CI passed 1932 tests / 191 skipped, and final docs/media
+CI is checked before handing back draft PR #401. The PR remains unmerged.

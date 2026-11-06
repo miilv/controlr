@@ -1021,7 +1021,8 @@
 - [ ] **dojo: object-planner coverage after a worker deadline.** The optional cuRobo proposer stops a timed-out
   worker and caches legacy fallback for that Motion instance. Later fallback events are not new GPU calls.
   Study a configurable budget / bounded worker recovery without accepting stale joint paths before claiming a
-  general carry-ceiling gain. Keep fatal CUDA failures outside Isaac; the exploratory in-process startup fault's
+  general carry-ceiling gain. Separate query-budget limits from conservative held-OBB
+  geometry and starts in contact before attributing the failures. Keep fatal CUDA failures outside Isaac; the exploratory in-process startup fault's
   root cause remains unproven ([incident](incidents/2026-11-06-plan-curobo-worker.md)).
 
 - [ ] **Real UR3 backend** via PHANTOM drivers + `SafetyMonitor` (RTDE, Robotiq, RealSense).

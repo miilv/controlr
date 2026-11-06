@@ -118,3 +118,10 @@ with scripts/turn_video.py from a separate diagnostic render export on merged
 head 8f6a9d26. They contain no model call, are excluded from the paired sample,
 and are not camera-policy evidence. A separate merged-head GPU stack smoke
 also reproduced layout 100000's success and 206 steps.
+
+
+A later, separately frozen [HANG/sweep extension](2026-11-06-plan-extension-g3.md)
+also finds no ceiling gain: HANG 61.5→57.5 (4/10 successes both), sweep 20→20
+(2/10 both). Its source, generator versions and stricter admission limits are
+reported separately. The held-sphere representation covers the full box rather
+than mesh concavities; representation and deadline effects are not isolated.
