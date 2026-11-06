@@ -1,0 +1,154 @@
+[
+  {
+    "block": "peg-gain1",
+    "task": "play_stacking_toy",
+    "n": 5,
+    "salt": "integ3-20261106-retest-peg-gain1-r1",
+    "salt_sha256": "4eb0280a2399f85fa538cd46a9bdd801b8c43116e487d8866bb99c0ed4437fe6",
+    "refill": false
+  },
+  {
+    "block": "peg-gain2",
+    "task": "play_stacking_toy",
+    "n": 5,
+    "salt": "integ3-20261106-retest-peg-gain2-r1",
+    "salt_sha256": "b9f8b7dc26b199b6b5f7a319d14f0870d98d342169fc14708b1005969a37d5c7",
+    "refill": false
+  },
+  {
+    "block": "peg-gain3",
+    "task": "play_stacking_toy",
+    "n": 5,
+    "salt": "integ3-20261106-retest-peg-gain3-r1",
+    "salt_sha256": "0f57a565ca39c84ef541a1608ebd2c749a3000c7c297f439762cd3e0f2480941",
+    "refill": false
+  },
+  {
+    "block": "peg-gain4",
+    "task": "play_stacking_toy",
+    "n": 5,
+    "salt": "integ3-20261106-retest-peg-gain4-r1",
+    "salt_sha256": "e9aee74082903c808fe48919d817d5a2f3504c669afeebd6c2cb1a98a19d991a",
+    "refill": false
+  },
+  {
+    "block": "peg-gain-refill1",
+    "task": "play_stacking_toy",
+    "n": 5,
+    "salt": "integ3-20261106-retest-peg-gain-refill1-r1",
+    "salt_sha256": "182baa823b2ef3a6a1bbd3eb79c58e22d4c2f77f82863347c40d0b9631083bff",
+    "refill": true
+  },
+  {
+    "block": "peg-stack1",
+    "task": "stack_blocks",
+    "n": 5,
+    "salt": "integ3-20261106-retest-peg-stack1-r1",
+    "salt_sha256": "20b293038e153335836daf810e1272849c63bdc08635209775cc3dd3a915d39c",
+    "refill": false
+  },
+  {
+    "block": "peg-stack2",
+    "task": "stack_blocks",
+    "n": 5,
+    "salt": "integ3-20261106-retest-peg-stack2-r1",
+    "salt_sha256": "fa054cf0dc2181756dc4948844bba6deff180edbc17708ad694626ced84117d0",
+    "refill": false
+  },
+  {
+    "block": "peg-stack-refill1",
+    "task": "stack_blocks",
+    "n": 5,
+    "salt": "integ3-20261106-retest-peg-stack-refill1-r1",
+    "salt_sha256": "391695b34856cf8d7c960baca96619469ef31b821d8f15c1551d1dc834ac0852",
+    "refill": true
+  },
+  {
+    "block": "peg-tubes1",
+    "task": "insert_tubes",
+    "n": 5,
+    "salt": "integ3-20261106-retest-peg-tubes1-r1",
+    "salt_sha256": "04cbe6bc6c9460440f98aa7f5fffe698c1dee81c1f8195a509f700c2739af37b",
+    "refill": false
+  },
+  {
+    "block": "peg-tubes2",
+    "task": "insert_tubes",
+    "n": 5,
+    "salt": "integ3-20261106-retest-peg-tubes2-r1",
+    "salt_sha256": "c0664aec2823756e3588f4e177c8c8eaad0b94e5d839ad973397ca350a0288a5",
+    "refill": false
+  },
+  {
+    "block": "peg-tubes-refill1",
+    "task": "insert_tubes",
+    "n": 5,
+    "salt": "integ3-20261106-retest-peg-tubes-refill1-r1",
+    "salt_sha256": "a41e4fe9a7d784ab1e783109190b9684f5ab43641c741bef9f6aabcf03a10b0c",
+    "refill": true
+  },
+  {
+    "block": "waist-gain1",
+    "task": "match_and_pick_from_conveyor",
+    "n": 5,
+    "salt": "integ3-20261106-retest-waist-gain1-r1",
+    "salt_sha256": "abb4cfa4d071edd9a29b95794ca2e5ed0cfa8676e7dedfc33317b73b06586e45",
+    "refill": false
+  },
+  {
+    "block": "waist-gain2",
+    "task": "match_and_pick_from_conveyor",
+    "n": 5,
+    "salt": "integ3-20261106-retest-waist-gain2-r1",
+    "salt_sha256": "b7e9bf4307acce2907d27f5e314df443fa98819e55521a2ecc3586f144fc4538",
+    "refill": false
+  },
+  {
+    "block": "waist-gain3",
+    "task": "match_and_pick_from_conveyor",
+    "n": 5,
+    "salt": "integ3-20261106-retest-waist-gain3-r1",
+    "salt_sha256": "9de48b8402d08200e29e208f4d2eef4e2e9061cdd4608ff3ea239fbd504bfa1e",
+    "refill": false
+  },
+  {
+    "block": "waist-gain4",
+    "task": "match_and_pick_from_conveyor",
+    "n": 5,
+    "salt": "integ3-20261106-retest-waist-gain4-r1",
+    "salt_sha256": "689076cbe1ff09a6696b472d2d39d5e785c9b6451bba4892ee62722a2a2529e1",
+    "refill": false
+  },
+  {
+    "block": "waist-gain-refill1",
+    "task": "match_and_pick_from_conveyor",
+    "n": 5,
+    "salt": "integ3-20261106-retest-waist-gain-refill1-r1",
+    "salt_sha256": "ffcb70d7e06299bb002562e0b842edfbb52cbe23e6efb37e3ce09ade619154f7",
+    "refill": true
+  },
+  {
+    "block": "waist-guard1",
+    "task": "pick_from_conveyor_by_image",
+    "n": 5,
+    "salt": "integ3-20261106-retest-waist-guard1-r1",
+    "salt_sha256": "dc3204bb54f0a0a536491f44d7f609935b6711c875e92e847d2a866beb67f028",
+    "refill": false
+  },
+  {
+    "block": "waist-guard2",
+    "task": "pick_from_conveyor_by_image",
+    "n": 5,
+    "salt": "integ3-20261106-retest-waist-guard2-r1",
+    "salt_sha256": "5870f2b7fae4342311c5c4f93adf003765c299bd0f158fc9005dc7a0ddba945c",
+    "refill": false
+  },
+  {
+    "block": "waist-guard-refill1",
+    "task": "pick_from_conveyor_by_image",
+    "n": 5,
+    "salt": "integ3-20261106-retest-waist-guard-refill1-r1",
+    "salt_sha256": "d7237b95342d193731f31d153e8bf560a2718b18638b44b00c6098de482b7f4b",
+    "refill": true
+  }
+]
