@@ -206,3 +206,8 @@ Final provenance checks: 650 baseline source/calibration files re-hashed after
 all candidate gates; none changed. The four baseline inference source files also
 match their frozen hashes. Full training arguments, checkpoint hashes and gate
 output hashes are in [final provenance](../experiments/data/seg-v2e-dev/final-provenance.json).
+
+After the experiment, main advanced with unrelated egg-skill work. Its two
+documentation conflicts were resolved preserving both streams, with no change
+to the frozen SEG runtime used above. Focused tests again passed 53 / 14 skipped.
+The latest result/merge commits have separate CI checks; no merge to main is made.

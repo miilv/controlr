@@ -6,7 +6,8 @@ Full recipe, recovery history and checkpoints: [journal](../journal/2026-11-06-d
 
 ## Setup and spend
 
-compute3 only, seed 0, expanded v2b head with its exact 511-name/id prefix plus
+compute3 only: Python 3.12.3, torch 2.9.1+cu128, Ultralytics 8.4.191,
+driver 595.99.02. Seed 0, expanded v2b head with its exact 511-name/id prefix plus
 32 classes. RGB is explicitly **Isaac 6.0 proxy**, with 5.1 physics and Isaac
 instance labels; genuine 5.1 RTX still crashes at startup. This domain change
 was registered before rendering/training. No compute4 access or model promotion.

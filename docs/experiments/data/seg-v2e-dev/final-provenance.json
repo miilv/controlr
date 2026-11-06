@@ -410,5 +410,11 @@
         "config.json": "df0805c06d74a315ae1f4a7dd61cbf7eadc516c40239e14b4a0e07a8cb1f4f67"
       }
     }
+  },
+  "training_environment_from_log": {
+    "ultralytics": "8.4.191",
+    "python": "3.12.3",
+    "torch": "2.9.1+cu128",
+    "driver": "595.99.02"
   }
 }
