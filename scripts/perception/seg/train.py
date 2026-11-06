@@ -75,6 +75,18 @@ def _nvml_power():
     return lambda: pynvml.nvmlDeviceGetPowerUsage(h) / 1000.0
 
 
+def auto_batch_budget(free: int, total: int, headroom_gb: float):
+    """YOLO auto-batch target and allocator cap, preserving shared VRAM reserve."""
+    import math
+
+    if not math.isfinite(headroom_gb) or headroom_gb < 6:
+        raise ValueError("auto batch headroom must be at least 6 GiB")
+    reserve = headroom_gb * 2**30
+    if not 0 < free <= total or free <= reserve:
+        raise RuntimeError("insufficient free VRAM after requested headroom")
+    return (free - reserve) / free, (free - reserve) / total
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", required=True)
@@ -82,6 +94,9 @@ def main(argv=None):
     ap.add_argument("--epochs", type=int, default=60)
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--batch", type=int, default=16)
+    ap.add_argument("--batch-headroom-gb", type=float, default=None,
+                    help="reserve this much free VRAM; with --batch -1 size automatically, "
+                         "then reuse the resolved integer for matched training arms")
     ap.add_argument("--workers", type=int, default=6)
     ap.add_argument("--project", required=True)
     ap.add_argument("--name", required=True)
@@ -112,10 +127,36 @@ def main(argv=None):
     thr = Throttle(a.power_target, a.power_max, run / "power_train.csv")
     model = YOLO(str(run / "weights" / "last.pt") if a.resume else os.path.expanduser(a.model))
     model.add_callback("on_train_batch_end", lambda trainer: thr.step())
+    batch = a.batch
+    if a.batch_headroom_gb is not None:
+        import torch
+
+        free, total = torch.cuda.mem_get_info()
+        fraction, limit = auto_batch_budget(free, total, a.batch_headroom_gb)
+        batch = fraction if a.batch < 1 else a.batch
+        torch.cuda.set_per_process_memory_fraction(limit)
+        print(f"[train] batch={batch}; reserve={a.batch_headroom_gb} GiB", flush=True)
+
+        def check_headroom(trainer):
+            if torch.cuda.mem_get_info()[0] < 6 * 2**30:
+                raise RuntimeError("shared GPU free VRAM dropped below 6 GiB")
+
+        model.add_callback("on_train_batch_end", check_headroom)
+
+        def record_batch(trainer):
+            import json
+
+            (run / "resolved_batch.json").write_text(json.dumps({"batch": int(trainer.batch_size),
+                "headroom_gib": a.batch_headroom_gb, "auto": a.batch < 1}) + "\n")
+
+        model.add_callback("on_train_start", record_batch)
+        # Ultralytics may halve an AutoBatch estimate after an allocator OOM.
+        # Persist the effective batch, not only the pre-retry estimate.
+        model.add_callback("on_train_epoch_start", record_batch)
     t0 = time.time()
     # augmentations: geometry stays mild (the cameras are fixed; wrist views vary by the arm pose); no mosaic in the
     # last 10 epochs; colour jitter small (one renderer, one lighting)
-    model.train(data=os.path.expanduser(a.data), epochs=a.epochs, imgsz=a.imgsz, batch=a.batch, workers=a.workers,
+    model.train(data=os.path.expanduser(a.data), epochs=a.epochs, imgsz=a.imgsz, batch=batch, workers=a.workers,
                 project=str(Path(a.project).expanduser()), name=a.name, exist_ok=True, patience=a.patience,
                 hsv_h=0.005, hsv_s=0.3, hsv_v=0.25, degrees=0.0, translate=0.1, scale=0.3, fliplr=0.0, mosaic=1.0,
                 close_mosaic=a.close_mosaic, overlap_mask=True, plots=False, amp=True, resume=a.resume, cache=False)

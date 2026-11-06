@@ -1,0 +1,55 @@
+{
+  "time_utc": "2026-11-06T13:30:46.489747+00:00",
+  "baseline_inputs_checked": 650,
+  "changed_inputs": [],
+  "old_object_fields_checked": [
+    "found",
+    "pred_idx",
+    "id_ok",
+    "t_err_mm",
+    "xy_err_mm",
+    "z_err_mm",
+    "yaw_err_deg",
+    "confidence"
+  ],
+  "old_objects": 756,
+  "old_field_differences": {
+    "v2b-off": 0,
+    "add-0.1": 0,
+    "add-0.3": 0,
+    "add-0.5": 0
+  },
+  "output_sha256": {
+    "v2b-off": {
+      "objects.jsonl": "894614204309c99916042dd3ebca89135ad8f056782979275bf169966f0c8ba8",
+      "frames.jsonl": "06ce66c302c0a8d2be2c1624eabc6b2d1374283db3520f0ef56312466d7e0668",
+      "config.json": "3e8b2fb1b389ed5be8073b53cee2bc9c8bca7178a942445aab08599e8118bcb5"
+    },
+    "add-0.1": {
+      "objects.jsonl": "1b17f5e94533552dc92f9d9cbeb55cac36a47d49d54dd0da81abf4c70fb96220",
+      "frames.jsonl": "1cbb825b56e2eb18400e4fc4ea789d45e650caf35ff1c963f95233a8a2057ad2",
+      "config.json": "9bb0fba4a7204f35e88380e79bd5af388683014a4c924caa86a012494d942166"
+    },
+    "add-0.3": {
+      "objects.jsonl": "03bb960dede4111f05c4342e786039d550cbc1f3fcc0e935708d392f8642e842",
+      "frames.jsonl": "9b844f13d0db203d694f8d02aa4be5f8ab9501c5a59165ea26a1205f0a6f2c43",
+      "config.json": "dad330f83221081d7064503c952941f4c63beac59308fe17fb2d3530bc623b8a"
+    },
+    "add-0.5": {
+      "objects.jsonl": "5dc278f1af3501d50506a0a70bee20129c281457e897ee95deb0e13463f9bb33",
+      "frames.jsonl": "3922946c9166ef29f7dc4d9a3c31c2ad81c32767f817613efe934db2ce1aa813",
+      "config.json": "8864d7b7b0e1d81899843cd6c9b9e5b8bb40f3bfe3bdfcc6eb2560339606c8c1"
+    }
+  },
+  "weights_md5": {
+    "base": "2f546196145fc424f76a5e2e47dd3210",
+    "extra": "be0817051b8efd0565218033cb647cec"
+  },
+  "gate_elapsed_seconds": {
+    "baseline": 397,
+    "add_01": 397,
+    "add_03": 402,
+    "add_05": 389
+  },
+  "cleanup": "launchers exited; no SEG GPU processes; heavy lock tested free; 110GB disk free; colleague GPU PID3613 unchanged"
+}

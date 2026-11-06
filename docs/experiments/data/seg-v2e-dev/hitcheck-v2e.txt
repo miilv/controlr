@@ -1,0 +1,34 @@
+v2b Articulation/laptop/00001 {'missed': 3}
+v2b Articulation/toaster/00002 {'merged': 1}
+v2b Articulation/toaster/00004 {'missed': 6}
+v2b Geometry/cup_holder/00001 {'missed': 3}
+v2b Rigid/brick/00002 {'missed': 3}
+v2b Rigid/headset/00008 {'missed': 3}
+v2b Rigid/matryoshka_dolls/00015 {'missed': 3}
+v2b Rigid/matryoshka_dolls/00016 {'missed': 3}
+v2b Rigid/matryoshka_dolls/00017 {'missed': 3}
+v2b Rigid/matryoshka_dolls/00018 {'missed': 3}
+v2b Rigid/matryoshka_dolls/00019 {'missed': 3}
+v2b Rigid/mug/00012 {'merged': 3}
+v2b Rigid/mug/00014 {'merged': 3}
+v2b Rigid/mug/00017 {'missed': 3}
+v2b Rigid/paper_ball/00000 {'missed': 3}
+v2b Rigid/wuliangye/00001 {'missed': 3}
+v2b _all {'merged': 7, 'missed': 42}
+v2e Articulation/laptop/00001 {'missed': 3}
+v2e Articulation/toaster/00002 {'merged': 1}
+v2e Articulation/toaster/00004 {'hit': 5, 'missed': 1}
+v2e Geometry/cup_holder/00001 {'hit': 1, 'missed': 2}
+v2e Rigid/brick/00002 {'missed': 3}
+v2e Rigid/headset/00008 {'hit': 1, 'missed': 2}
+v2e Rigid/matryoshka_dolls/00015 {'missed': 3}
+v2e Rigid/matryoshka_dolls/00016 {'missed': 3}
+v2e Rigid/matryoshka_dolls/00017 {'missed': 3}
+v2e Rigid/matryoshka_dolls/00018 {'missed': 3}
+v2e Rigid/matryoshka_dolls/00019 {'missed': 3}
+v2e Rigid/mug/00012 {'merged': 2, 'missed': 1}
+v2e Rigid/mug/00014 {'hit': 2, 'missed': 1}
+v2e Rigid/mug/00017 {'hit': 1, 'missed': 2}
+v2e Rigid/paper_ball/00000 {'missed': 3}
+v2e Rigid/wuliangye/00001 {'missed': 3}
+v2e _all {'merged': 3, 'hit': 10, 'missed': 36}

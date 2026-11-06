@@ -355,3 +355,30 @@ def test_rot_between_maps_a_onto_b():
     a = np.array([0.0, 0.0, 1.0])
     R = seg_render._rot_between(a, -a)            # the antiparallel case
     assert np.allclose(R @ a, -a) and np.isclose(np.linalg.det(R), 1.0)
+
+
+def test_training_extra_can_use_clutter_asset_without_changing_native_groups(tmp_path, monkeypatch):
+    import json
+    from dojo.simlab import gen_layouts as g
+
+    pytest.importorskip("shapely")
+    d = tmp_path / "Clutter/book/00000"
+    d.mkdir(parents=True)
+    (d / "object.usdz").touch()
+    (d / "metadata.json").write_text(json.dumps({"physics": {"mass": 0.1}}))
+    monkeypatch.setattr(g.paths, "OBJECTS", tmp_path)
+    monkeypatch.setattr(g, "hits_robot", lambda *args: False)
+
+    class Generator:
+        def add_model_from_config(self, **kw):
+            return True, np.array([0.1, -0.1, 0.8, 1, 0, 0, 0]), None
+
+    groups = g.extra_groups({}, ["Rigid/book/00000"])
+    layout = {}
+    g.place_task_objects(groups, {"table": Generator()}, random.Random(0), layout)
+    obj = layout["Rigid"]["book"][0]
+    assert obj["type"] == "cluttered" and obj["clutter_idx"] >= 10000
+    assert obj["category_idx"] == 0 and obj["physics"]["type"] == "rigid"
+    del groups["Rigid"][0]["_seg_extra"]
+    with pytest.raises(g.LayoutError, match="missing asset"):
+        g.place_task_objects(groups, {"table": Generator()}, random.Random(0), {})

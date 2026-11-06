@@ -14,3 +14,17 @@ Plan and pre-registered rules: [the wave plan](../experiments/2026-11-06-dojo-ab
 - **What failed:** the rule also needs ≥ 2 net wins, and there is 1. So the lever stays default-off.
 - **Re-test:** with a positive pooled delta it qualifies for ONE re-test on layouts it has never run on (EXPERIMENTS.md), ideally with 20 gain pairs.
 - 60 / 60 jobs had rc 0.
+
+## waist: `belt_waist_first=on` (#389), match_and_pick_from_conveyor — NOT ADOPTED (rule miss by one net win)
+
+The gain set is 100005-09 + 100020-24 with 100008 → 100025: 100008 failed raw-check, under the pre-collection amendment.
+
+| cell | pairs | A pooled | B pooled | Δ | B-only wins | A-only losses | successes A / B |
+|---|---|---|---|---|---|---|---|
+| match_and_pick_from_conveyor (gain) | 10 | 50.0 | 60.0 | +10.0 | 1 | 0 | 5 / 6 |
+| pick_from_conveyor_by_image (guard) | 5 | 0.0 | 0.0 | 0.0 | 0 | 0 | 0 / 0 |
+
+- **What passed:** the pooled gain (+10 ≥ +5), the flip ratio (1 ≥ 2 × 0) and the guard.
+- **What failed:** net wins are 1, and the rule needs ≥ 2. The lever stays default-off.
+- **Re-test:** it qualifies for one fresh-layout re-test; with peg, a 20-gain-pair re-test is the natural next booking.
+- 30 / 30 jobs had rc 0.

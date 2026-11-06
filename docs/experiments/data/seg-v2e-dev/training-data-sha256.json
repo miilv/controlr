@@ -1,0 +1,11 @@
+{
+  "yolo_v2e/frames.jsonl": "2d86d7e0e5aa4df4ff4bf48f12fc7f95140f3619a71a4bc57e9ab2b756c79365",
+  "yolo_v2e/train_rfs.txt": "b38c780dc8d8f1fd07edd60d4c2fedcd39e3e6b3073838a52177c4b73a3c85d1",
+  "yolo_v2e/classes.json": "05c11df81ea575df0afd0ad46ae162a30d05d7924f0c4afc8befb1090ea367b5",
+  "yolo_v2e/data.yaml": "138bc94cddbc1cb1512c554c6f4d9d529456642b0b980cd21eadcf3536b4a7bd",
+  "yolo_narrow/frames.jsonl": "bf9bcbae30517eaaf229757f426f3bf00e473a1a26829dfcde677ee5fdc3c583",
+  "yolo_narrow/train_rfs.txt": "03ae30a22ea65c410a80b57ea16ff66fc14549f877de5eaaec2f9f4c6217563f",
+  "yolo_narrow/classes.json": "8ea09241309a73383f3e4e530145285e9b75ef6ebcc0091fc6fcdf9b7f24b483",
+  "yolo_narrow/data.yaml": "e8f7902ca75e555cc73bde01708f71c1b7bf32403092832af306f6aa2a7b80fa",
+  "yolo_narrow/selection.json": "8c350b3d5ac9a643f84da3fa6b35ad801863af6f22d79b16ad38b4462d276835"
+}
