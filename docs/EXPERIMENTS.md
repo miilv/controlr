@@ -100,13 +100,19 @@ the default is:
 
 1. **Gain cell(s):** at least 10 pairs.
    - The pooled score of B is at least **5 points** above A.
-   - Success flips (a success in one arm only) satisfy **wins ≥ 2 × losses**, with at least 2 net wins.
+   - Pair wins and losses are counted on the per-pair SCORE: a win when B's score exceeds A's by at least 10 points
+     (0.1), a loss when A's exceeds B's by as much. They must satisfy **wins ≥ 2 × losses**, with at least 2 net wins.
+     Success flips are reported alongside. Pre-registrations written before 7 Nov 2026 count success flips instead;
+     each A/B keeps the rule it was registered with.
 2. **Guard cells:** on every guard cell, B's pooled score is no more than 5 points below A's, and B has no more flip
    losses than wins.
 3. **Re-tests:** a lever rejected with a positive pooled delta may be re-tested **once**, on layouts it has never
    run on, under a fresh pre-registration. Never re-run it on the same ids.
 
 A stricter "zero success losers" rule decides on a single noisy flip at 5-15 pairs, so it rejects most real gains.
+Counting on score rather than success fits the board, which averages scores. In low-success cells (one or two successes
+in ten), success flips are too rare to separate a real gain from noise; the first post-D-C19 wave lost three such
+levers, each with a +6 to +14 pooled gain, by one net flip.
 The flip ratio and the guard bound keep the protection against regressions that the zero-loser rule was meant to give.
 
 ## 4. Report template
