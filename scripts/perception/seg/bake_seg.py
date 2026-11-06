@@ -6,8 +6,7 @@ summary). DEV ONLY (the scorer reads GT after the estimate).
         [--sets d0_51,d0_ext] [--workers 6]
     python scripts/perception/sam/bake.py summary DIR [BASE_DIR]
 
-Frames: ids 100000-09 and 100020-24 only (the segmenter's held-out evaluation ids; its training draws are variants of
-100030-49). CPU only by default (B1's CPU silhouettes, DOJO_GL=0: no GPU process; ``--gl gpu`` uses the box's EGL).
+Gate frames: dev / training ids 100000-04 and 100030-49 only. Measurement ids are never selected. CPU only by default (B1's CPU silhouettes, DOJO_GL=0: no GPU process; ``--gl gpu`` uses the box's EGL).
 """
 from __future__ import annotations
 
@@ -28,8 +27,20 @@ CPU_GL_ENV = {"LIBGL_ALWAYS_SOFTWARE": "1", "EGL_DEVICE_ID": "1", "PYOPENGL_PLAT
               "__EGL_VENDOR_LIBRARY_FILENAMES": "/usr/share/glvnd/egl_vendor.d/50_mesa.json", "LP_NUM_THREADS": "1"}
 
 
+def init_gl_arrays():
+    """Register ctypes output pointers explicitly for the bake's PyOpenGL workers.
+
+    Older PyOpenGL plugin lists omit Python 3.12's _ctypes.CArgObject. Textured
+    meshes then fail at glGenTextures even though EGL and CUDA work. Use the
+    installed handler; this changes argument conversion, not render settings.
+    """
+    from OpenGL.arrays.ctypesparameters import CtypesParameterHandler
+
+    CtypesParameterHandler().register(CtypesParameterHandler.HANDLED_TYPES)
+
+
 def held_out(i: int) -> bool:
-    return 100000 <= i <= 100009 or 100020 <= i <= 100024
+    return 100000 <= i <= 100004 or 100030 <= i <= 100049
 
 
 def transitions(dir_a: str, dir_b: str) -> None:
@@ -88,6 +99,12 @@ def main(argv=None):
         os.environ.update(CPU_GL_ENV)
     elif a.gl == "none":
         os.environ["DOJO_GL"] = "0"
+    # Extra gate sets use the same source/calibration paths as the archived W bake.
+    h = Path.home()
+    for name, genuine in (("w51", True), ("p60", False)):
+        bake.SETS[name] = (h / "dojo-data/w-ready" / name,
+                           h / "dojo-perception-data" / ("bg_folds_51" if genuine else "bg_folds"),
+                           h / "dojo-perception-data/catalog" / ("color_calib_51.json" if genuine else "color_calib.json"))
     sets = a.sets.split(",")
     jobs = [(s, ep, json.loads(a.cfg) if a.cfg else None, str(a.out), False) for s, ep in bake.frames(sets, a.tasks)
             if held_out(int(Path(ep).name))
@@ -98,7 +115,8 @@ def main(argv=None):
                                                    "gl": a.gl}))
     print(len(jobs), "frames", flush=True)
     t0 = time.time()
-    with ProcessPoolExecutor(max_workers=a.workers) as ex, open(a.out / "objects.jsonl", "w") as fo, \
+    with ProcessPoolExecutor(max_workers=a.workers,
+                             initializer=init_gl_arrays if a.gl != "none" else None) as ex, open(a.out / "objects.jsonl", "w") as fo, \
             open(a.out / "frames.jsonl", "w") as ff:
         for i, res in enumerate(ex.map(bake.run_frame, jobs)):
             ff.write(json.dumps(res["frame"]) + "\n")

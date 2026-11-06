@@ -547,8 +547,12 @@ def place_task_objects(groups: dict[str, list], gens: dict, rng: random.Random, 
             prm.update(common)
             prm.update({key: v for key, v in entry.items() if key not in ("name", "index", "_label", "_fixed_xy")})
             cat = entry["name"]
-            meta = metadata(obj_type, cat, idx)
-            if meta is None or not usd_exists(obj_type, cat, idx):
+            clutter_extra = bool(group.get("_seg_extra") and obj_type == "Rigid"
+                                 and not usd_exists(obj_type, cat, idx)
+                                 and usd_exists(obj_type, cat, idx, clutter=True))
+            meta = metadata(obj_type, cat, idx, clutter=True) if clutter_extra else metadata(obj_type, cat, idx)
+            exists = usd_exists(obj_type, cat, idx, clutter=True) if clutter_extra else usd_exists(obj_type, cat, idx)
+            if meta is None or not exists:
                 raise LayoutError(f"missing asset {obj_type}/{cat}/{idx:05d}")
             label = entry.get("_label") or (labels[k] if k < len(labels) else f"{cat}{k}")
             if "_fixed_xy" in entry:                       # linked_count / dynamic_layout position
@@ -588,6 +592,11 @@ def place_task_objects(groups: dict[str, list], gens: dict, rng: random.Random, 
             inst.update({"label": label, "default_pos": [float(v) for v in pose[:3]],
                          "default_ori": [float(v) for v in pose[3:] / np.linalg.norm(pose[3:])],
                          "scale": [1.0, 1.0, 1.0], "physics": phys, "visual": {}})
+            if clutter_extra:
+                # Only explicit training extras use this path. Native clutter keeps
+                # its ordinary generator and indices; reserve a separate range.
+                inst.update(type="cluttered", yaml_path="Clutter/clutter.yml",
+                            clutter_idx=10000 + sum(len(v) for v in layout.get("Rigid", {}).values()))
             layout.setdefault(obj_type, {}).setdefault(cat, []).append(inst)
 
 
@@ -745,6 +754,7 @@ def extra_groups(groups: dict, assets: list[str], label_prefix: str = "seg_extra
     for i, key in enumerate(assets):
         typ, cat, idx = key.split("/")
         out.setdefault(typ, []).append({
+            "_seg_extra": True,
             "common": {"xlim": region[0], "ylim": region[1], "rotate_rand": True, "rotate_deg": 180,
                        "relative_plane": "Table", "margin": 0.01},
             "category": [{"name": cat, "index": [int(idx)]}],

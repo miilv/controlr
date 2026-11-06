@@ -1,0 +1,11 @@
+{
+  "dojo/perception/seg_twin.py": "1b68062ea6182f0d865ae92a43767c5e74c8b641227fc0b19d99f103ebbbcea4",
+  "dojo/perception/inverse_layout.py": "32c809b6aaebc0de4776dedc44949514eb4bcbb098fc8bbbeeaff6e6884ff6bc",
+  "scripts/perception/seg/new_only_export.py": "c1ed7e99b2e51c812bcac612ecbddc8cb72716fdb2ba4ef446d2c079d234c1a2",
+  "scripts/perception/seg/select_head.py": "eb890f4d0b8d90ddbcda2cba05bc59ff008e97325d490aa16c80392c744e452f",
+  "scripts/perception/seg/additive_hitcheck.py": "2d90ba5e430eccd6b8f0c1287e5b0bfc194b386c2ad3bd18c37bc43bc8e646e4",
+  "scripts/perception/seg/with_seg_server.sh": "16231b4d5ac03bdb0f8d3620c9172cd1f9adb3ab053d44b78dd1631fdbd504c7",
+  "scripts/perception/seg/bake_seg.py": "11c5258a0557086a58949562cfecb375f776e5eed233461a842a70c566a17d62",
+  "scripts/perception/seg/dev_gate.py": "2a36dead132542b19030965961d267d6c67ee9455b5a4b45159c9a5b566a97ba",
+  "scripts/perception/seg/train.py": "5b3f760497801d203cd71b943b97eaf1fa382d4315d1932da2e2496e189e66a5"
+}

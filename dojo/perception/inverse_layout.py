@@ -3463,6 +3463,15 @@ def _seg_groups(key: str, pending) -> list[int]:
     return [gi for gi, g, _ in pending if any(k.split("/")[1] == cat for k in g["candidates"])]
 
 
+def _seg_detect(client, image, cfg, groups):
+    """Only public task candidates can receive additive proposals; old-only tasks use base alone."""
+    if not cfg.seg_additive:
+        return client.detect(image, conf=cfg.seg_min_score)
+    return client.detect(image, conf=cfg.seg_min_score, additive=True,
+                         extra_iou=cfg.seg_additive_iou, extra_conf=cfg.seg_additive_min_score,
+                         extra_allowed=sorted({k for g in groups for k in g["candidates"]}))
+
+
 SUPPORT_DIR = os.path.join(os.path.dirname(__file__), "data", "support")
 SUPPORT_MATCH = 6.0     # mean |RGB| difference inside the head mask: the support robot stands at its home (imitate's
                         # dev / training frames 1.8-2.8; make_kong's opponent at its own home 9.9-10.0: not this robot)
@@ -3668,12 +3677,13 @@ def _seg_dedup(dets: list, iou_thr: float) -> tuple[list, int]:
     if iou_thr <= 0 or len(dets) < 2:
         return dets, 0
     kept: list = []
-    for d in sorted(dets, key=lambda d: -d.score):
+    for d in sorted(dets, key=lambda d: (getattr(d, "source", "base") == "extra", -d.score)):
         dup = next((k for k in kept if _mask_iou(d.mask, k.mask, np.ones_like(d.mask)) > iou_thr), None)
         if dup is None:
             kept.append(d)
         else:
-            dup.alts.append((d.key, round(float(d.score), 3)))
+            if getattr(dup, "source", "base") == getattr(d, "source", "base"):
+                dup.alts.append((d.key, round(float(d.score), 3)))
     return kept, len(dets) - len(kept)
 
 
@@ -3699,7 +3709,7 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
         return info
     head = views["cam_head"]
     try:
-        dets = [d for d in c.detect(img, conf=cfg.seg_min_score) if int(d.mask.sum()) >= MIN_BLOB_PX.get("cam_head", 25)]
+        dets = [d for d in _seg_detect(c, img, cfg, groups) if int(d.mask.sum()) >= MIN_BLOB_PX.get("cam_head", 25)]
     except SideServerDown:  # the segmenter's server is gone: an infra failure, not a run without seg
         raise
     except Exception as e:  # a detector failure never takes perception down
@@ -3713,7 +3723,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                            or h.per_view.get("slot"))
     sils = [h.sm().sil(head.cam, h.T()) for h in chosen]
     pend = {gi: (g, p) for gi, g, p in pending}
-    det_groups = [_seg_groups(d.key, pending) for d in dets]
+    det_groups = [([gi for gi, g, _ in pending if d.key in g["candidates"]]
+                   if getattr(d, "source", "base") == "extra" else _seg_groups(d.key, pending)) for d in dets]
     # explained: one-to-one within each group by IoU
     pairs = []
     for i, h in enumerate(chosen):
@@ -3722,7 +3733,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                 v = _mask_iou(sils[i], d.mask, head.known)
                 if v >= cfg.seg_match_iou:
                     pairs.append((v, i, j))
-    pairs.sort(reverse=True)
+    # Resolve all base matches first; an extra cannot steal a base's chosen member.
+    pairs.sort(key=lambda pair: (getattr(dets[pair[2]], "source", "base") == "base", *pair), reverse=True)
     h_of: dict[int, int] = {}
     d_of: dict[int, int] = {}
     for v, i, j in pairs:
@@ -3823,7 +3835,8 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                     sils[i] = h.sm().sil(head.cam, h.T())
     # 2. unexplained masks: fit, then add (group short) or move an unexplained member there
     trace = info.setdefault("trace", [])
-    for j in sorted((j for j in range(len(dets)) if j not in h_of), key=lambda j: -dets[j].score):
+    for j in sorted((j for j in range(len(dets)) if j not in h_of),
+                    key=lambda j: (getattr(dets[j], "source", "base") == "extra", -dets[j].score)):
         d = dets[j]
         tr = {"key": d.key, "score": round(float(d.score), 3), "px": int(d.mask.sum()), "groups": det_groups[j]}
         trace.append(tr)
@@ -4229,6 +4242,9 @@ class EstimatorConfig:
                                      # "off" until 2026-10-28 (journal 2026-10-28-dojo-plan-none-perception); a no-op
                                      # without a segmenter server (DOJO_SEG_ADDR)
     seg_min_score: float = 0.4     # detections below are ignored
+    seg_additive: bool = False    # independent new-class model; base detections retain priority
+    seg_additive_iou: float = 0.3  # reject extra masks above this IoU with any base mask
+    seg_additive_min_score: float = 0.5
     seg_accept_iou: float = 0.55   # a proposal's head silhouette vs its mask, to be added / moved there
     seg_match_iou: float = 0.3     # a chosen object's head silhouette explains a mask
     seg_refit_margin: float = 0.05  # a local re-fit inside the explained mask must gain this much IoU
@@ -4450,7 +4466,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
         c = seg_twin.client()
         if c is not None:
             try:
-                seg_dets = [d for d in c.detect(images["cam_head"], conf=cfg.seg_min_score)
+                seg_dets = [d for d in _seg_detect(c, images["cam_head"], cfg, groups)
                             if int(d.mask.sum()) >= MIN_BLOB_PX.get("cam_head", 25)]
             except SideServerDown:  # the segmenter's server is gone: an infra failure, not the config's minimum
                 raise

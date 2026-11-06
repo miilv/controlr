@@ -1,0 +1,134 @@
+{
+  "unit": "image-level GT asset presence, not physical-object localisation",
+  "confidence": 0.25,
+  "imgsz": 960,
+  "counts": {
+    "v2b": {
+      "Articulation/laptop/00001": {
+        "missed": 3
+      },
+      "Articulation/toaster/00002": {
+        "merged": 1
+      },
+      "Articulation/toaster/00004": {
+        "missed": 6
+      },
+      "Geometry/cup_holder/00001": {
+        "missed": 3
+      },
+      "Rigid/brick/00002": {
+        "missed": 3
+      },
+      "Rigid/headset/00008": {
+        "missed": 3
+      },
+      "Rigid/matryoshka_dolls/00015": {
+        "missed": 3
+      },
+      "Rigid/matryoshka_dolls/00016": {
+        "missed": 3
+      },
+      "Rigid/matryoshka_dolls/00017": {
+        "missed": 3
+      },
+      "Rigid/matryoshka_dolls/00018": {
+        "missed": 3
+      },
+      "Rigid/matryoshka_dolls/00019": {
+        "missed": 3
+      },
+      "Rigid/mug/00012": {
+        "merged": 3
+      },
+      "Rigid/mug/00014": {
+        "merged": 3
+      },
+      "Rigid/mug/00017": {
+        "missed": 3
+      },
+      "Rigid/paper_ball/00000": {
+        "missed": 3
+      },
+      "Rigid/wuliangye/00001": {
+        "missed": 3
+      },
+      "_all": {
+        "merged": 7,
+        "missed": 42
+      }
+    },
+    "v2e": {
+      "Articulation/laptop/00001": {
+        "missed": 3
+      },
+      "Articulation/toaster/00002": {
+        "merged": 1
+      },
+      "Articulation/toaster/00004": {
+        "hit": 5,
+        "missed": 1
+      },
+      "Geometry/cup_holder/00001": {
+        "hit": 1,
+        "missed": 2
+      },
+      "Rigid/brick/00002": {
+        "missed": 3
+      },
+      "Rigid/headset/00008": {
+        "hit": 1,
+        "missed": 2
+      },
+      "Rigid/matryoshka_dolls/00015": {
+        "missed": 3
+      },
+      "Rigid/matryoshka_dolls/00016": {
+        "missed": 3
+      },
+      "Rigid/matryoshka_dolls/00017": {
+        "missed": 3
+      },
+      "Rigid/matryoshka_dolls/00018": {
+        "missed": 3
+      },
+      "Rigid/matryoshka_dolls/00019": {
+        "missed": 3
+      },
+      "Rigid/mug/00012": {
+        "merged": 2,
+        "missed": 1
+      },
+      "Rigid/mug/00014": {
+        "hit": 2,
+        "missed": 1
+      },
+      "Rigid/mug/00017": {
+        "hit": 1,
+        "missed": 2
+      },
+      "Rigid/paper_ball/00000": {
+        "missed": 3
+      },
+      "Rigid/wuliangye/00001": {
+        "missed": 3
+      },
+      "_all": {
+        "merged": 3,
+        "hit": 10,
+        "missed": 36
+      }
+    }
+  },
+  "vocabulary_presences": {
+    "v2b": 0,
+    "v2e": 49
+  },
+  "denominator": 49,
+  "common_v2d30_denominator": 43,
+  "common_v2d30_hits": {
+    "v2b": 0,
+    "v2e": 10
+  },
+  "new_brick_and_paper_presences": 6,
+  "new_brick_and_paper_hits": 0
+}
