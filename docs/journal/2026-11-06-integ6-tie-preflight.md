@@ -95,12 +95,12 @@ At preflight, all 108 tie rows remained in compute4 queue2; its active job was
 `lead-notes.log` was not changed. Re-check started pairs under the queue lock
 when actually handing over: this observation is not a reservation.
 
-There are no compute6 START lines, camera calls or camera spend. Idle power
+At initial preflight there were no compute6 START lines, camera calls or spend. Idle power
 samples were 10.47 W (382 MiB initially, 207 MiB later). A five-minute logger
 and camera services have not been started while parity is blocked. The wave
 estimate is 14.64 lane-hours for tie, or about 7.32 ideal wall-hours on two
 camera lanes **after release**, plus setup/resource waits and retries. There
-is no committed completion ETA while the parity decision is pending.
+was no committed completion ETA while the parity decision was pending.
 
 ## Lead release and compute6 lane preparation
 
@@ -139,3 +139,91 @@ Local validation: 1,786 tests passed, 187 skipped; the eight focused lane,
 power, queue hand-over and wave-status cases passed against the final helpers.
 Shell syntax, Python compilation and `git diff --check` passed. No simulation
 or model call was used by these checks.
+
+## Released data parity and first camera pair
+
+The app restart interrupted the relay before any camera, shared-side or power
+process had started. Resume checked process ownership and queues first: compute6
+remained under STOP, all 108 tie rows were still queued on compute4, and no tie
+START existed there. Of the 794 approved data files, 321 already matched and
+473 needed completion (959,030,050 bytes). Only those remaining paths were
+resumed, in disjoint relay shards; no completed data was blindly recopied.
+
+All **794 source and destination SHA256s match** the frozen compute4 inventory.
+The original 96 isolated tie input files were rechecked and still match too.
+Receipts and per-path expected hashes are retained on compute6 under
+`~/dojo-data/wave-1106-c6/{sync-hashes.json,sync-source-final.json,sync-destination-final.json}`.
+Catalogue gate passes with MD5 `2cd7455cbdce2ab38e4e9d586e28db61`.
+Final `candidate_parity --packages-ref` reports `parity=true`, `diff={}`;
+`parity-released.json` and `gates-released.log` retain the full evidence.
+
+Camera code remains the exact `416a2a03` deployment; launcher code is
+`5b9337bc96cc65290cbe5007d2f3dd6368f31084`, staged separately in the lane state.
+All three shared services answer info pings, using the pinned deployment and
+the hash-verified v2b/digit_v2/kong_v1b files. No RoboDojo environment, driver,
+system service or power setting was modified. No compute4 coordination stamp
+or light lock was used by these camera lanes.
+
+First START lines (UTC):
+
+- **11:34:38**, heavy2: `c6b_imitatesg_tieAr1_100005`.
+- **11:42:28**, heavy1: `c6b_imitatesg_tieBr1_100005`.
+
+Admission was briefly paused while the first job had ready services but no
+environment steps and a zenity display warning. The existing audit identifies
+zenity as a symptom that also appears during successful long perception waits.
+No timeout, watchdog, renderer or policy setting was changed or warning suppressed.
+Actual progress reached 750 steps by 11:41:01; the watchdog did not fire.
+Only then was the hand-over performed. The waiting lane was restarted after
+checking its prior PID had exited; the running lane was retained.
+
+At **11:41:23.699776Z**, the helper held compute4's existing queue2 lock and
+removed **108 rows / 54 complete unstarted pairs**. Zero pairs were left there;
+none were split. Exact removed commands are archived at
+`~/dojo-data/wave-1106/tie-moved-to-c6.txt`, with the action in `lead-notes.log`.
+Queue SHA256 changed from
+`e4fa0310411005fdd162aabc071eae6823b4e8f793543426c9ef1ba023cb3df3` to
+`2e15f1d8a3878440c34db0dafa6bd66b25c37869e793e2845e13ca31136443d9`.
+The remaining 106 c6b_ commands were appended under compute6's queue lock;
+the append receipt prevents duplicating this operation after another restart.
+
+At **11:46:20Z**, both camera jobs were progressing (A 922 steps, B 52),
+106 commands remained queued, STOP was absent, and no watchdog or HTTP 429
+was recorded. The actual perception-worker PIDs from `perception.ready`
+confirmed `claude/claude-sonnet-5-5`, the frozen colour/background paths and
+all shared side-service addresses in both workers. No scoring frames, action
+diagnosis or treatment outcome was used to alter this booking.
+
+Live process ownership at that checkpoint: heavy1 **199143**, heavy2 **193633**;
+power logger **193630**; shared seg **192857**, digit **192917**, kong **192982**.
+State and logs: `~/dojo-integ-c6-state`; outputs: `~/dojo-data/integ-c6/runs2`.
+The power log is `~/dojo-integ-c6-state/power.jsonl`. Its first three five-minute
+samples are **67.19, 107.90, 74.59 W**, with 24,120 MiB used at the third sample.
+There was no logged reading above 700 W and no power-triggered lane reduction.
+
+Spend at 11:46:20Z: **6 completed logged camera calls**, **98,120 prompt /
+8,725 completion tokens**, including **6,968 reasoning / 75,792 cache-read
+tokens**. In-flight calls and subsequent work are additional. Implementation
+and parity work made zero separate model calls. No completed episode outcome
+or comparative gain is claimed at this checkpoint.
+
+The first A attempt subsequently hit the pinned watchdog after its last observed
+step 922. It finished rc=4 at **11:47:38Z**, retaining its 781-second occupancy
+and synthetic `infra_failure` row. This is excluded from valid comparison rows;
+the synthetic row's zero steps/calls are not actual execution or billing counts.
+Its provenance companion retains the accepted simulation versions. The same lane
+immediately started `c6b_imitatesg_tieAr1_100005__retry`, its one allowed identical-input
+retry. B reached step 963 by 11:50:59. No diagnosis-driven change or extra retry
+was made, and both arms and all attempts remain on compute6.
+
+Five-minute power samples through 11:54:37 range from **67.19 to 168.75 W**;
+none exceeded 700 W. The released dispatch metadata, source manifest SHA,
+full queue SHA, hand-over receipt and accepted environment are frozen in
+`~/dojo-data/wave-1106-c6/dispatch-released.json`.
+
+Planning ETA is approximately **19:10Z**, based on the pre-registered 14.64
+lane-hours and two camera lanes, their observed start stagger and this first
+infrastructure retry's extra occupancy.
+This remains an occupancy estimate: resource waits, cold starts and infrastructure
+retries can extend it. The batch and power monitor remain running for the lead's
+supervision; the 108-row family has not yet completed.

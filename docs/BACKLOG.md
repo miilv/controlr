@@ -6,6 +6,12 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Check the actual perception worker's environment in camera admission.**
+  `lane2.sh` uses pgrep on the module name, which can select its enclosing
+  `bash -c` wrapper. Use the PID recorded in `perception.ready`, with ownership
+  checks, so parent environment values cannot mask worker-only overrides
+  ([compute6 verification](journal/2026-11-06-integ6-tie-preflight.md)).
+
 - [ ] **Pin the camera lane extras installer completely.** The operational
   `venv_extras.sh` resolves timm without a version, so a fresh deploy can differ
   from the board lane despite matching torch/transformers pins. Keep using
