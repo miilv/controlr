@@ -49,10 +49,11 @@ def test_other_fill_switches_validate(field, value):
 
 
 @pytest.mark.parametrize("fail", [False, True])
-def test_safe_insert_restores_joint_range(monkeypatch, fail):
+@pytest.mark.parametrize("mode", ["safe", "deep"])
+def test_safe_insert_restores_joint_range(monkeypatch, fail, mode):
     from types import SimpleNamespace
     from dojo.skills import library
-    sk = SimpleNamespace(fill_insert="safe", fill_joint_limits="inherit", joint_limits="wide")
+    sk = SimpleNamespace(fill_insert=mode, fill_joint_limits="inherit", joint_limits="wide")
 
     def inner(*args):
         assert sk.joint_limits == "measured"
@@ -159,3 +160,31 @@ def test_inset_drop_keeps_occupied_space_in_both_fit_attempts(monkeypatch):
     assert calls[0]["min_clear"] == .007
     assert calls[0]["pack"] is True
     assert calls[1]["pack"] is False
+
+
+@pytest.mark.parametrize("mode,z", [("off", .124), ("safe", .124), ("deep", .085)])
+def test_deep_target_holds_the_tip_inside_instead_of_dropping_over_rim(monkeypatch, mode, z):
+    from types import SimpleNamespace
+    from dojo.skills import insertion, library
+    fit = SimpleNamespace(T_obj=np.eye(4), floor_z=0., top_z=.12, clearance=.02)
+    monkeypatch.setattr(insertion, "fit_insertion", lambda *a, **k: fit)
+    sk = SimpleNamespace(fill_insert=mode, world=SimpleNamespace(objects={}, obj=lambda l: l))
+    T, _ = library._fill_drop_target(sk, "p", "h", [])
+    assert T[2, 3] == pytest.approx(z)
+
+
+def test_deep_lean_poses_preserve_inserted_tip_depth():
+    from types import SimpleNamespace
+    from dojo.skills import library
+    V = np.array([[-.07, 0., 0.], [.07, 0., 0.]])
+    a = AssetInfo(key="Rigid/pen/00000", bbox_min=np.array([-.07, -.005, -.005]),
+                  bbox_max=np.array([.07, .005, .005]), mesh=(V, np.empty((0, 3), int)))
+    o = ObjectState("p", "Rigid", "pen", 0, np.zeros(3), np.array([1., 0., 0., 0.]), a)
+    sk = SimpleNamespace(world=SimpleNamespace(obj=lambda _: o), kin=X5Kin())
+    T = np.eye(4)
+    T[:3, :3] = np.array([[0., 0., -1.], [0., 1., 0.], [1., 0., 0.]])
+    T[:3, 3] = [-.2, -.2, .155]
+    poses = library._leaning(sk, "p", T, degrees=(15., 25., 35.), lower=0.)
+    assert len(poses) == 7
+    for target in poses:
+        assert (V @ target[:3, :3].T + target[:3, 3])[:, 2].min() == pytest.approx(.085)

@@ -1871,6 +1871,8 @@ def _fill_drop_target(sk: Skills, label: str, container: str, inside: list[str])
         if fit is not None and (not kw.get("pack") or fit.clearance >= kw["min_clear"]):
             T = fit.T_obj.copy()
             T[2, 3] += (fit.top_z + FILL_DROP_H) - fit.floor_z
+            if getattr(sk, "fill_insert", "off") == "deep":
+                T[2, 3] -= FILL_DROP_H + 0.035
             return T, fit
     return None, None
 
@@ -1881,7 +1883,7 @@ FILL_LEAN_IN = 0.012          # m: a leaning one is let go with its leading end 
                               # 4 mm over the rim leaning 30 deg, pens toppled out over the rim)
 
 
-def _leaning(sk: Skills, label: str, T: np.ndarray) -> list[np.ndarray]:
+def _leaning(sk: Skills, label: str, T: np.ndarray, degrees=FILL_LEAN_DEG, lower=FILL_DROP_H + FILL_LEAN_IN) -> list[np.ndarray]:
     """``T`` (an upright drop pose) first, then the same pose leaning ``FILL_LEAN_DEG`` about its lowest point, its top
     towards either arm's base, its lowest point ``FILL_LEAN_IN`` below the rim."""
     o = sk.world.obj(label)
@@ -1892,7 +1894,7 @@ def _leaning(sk: Skills, label: str, T: np.ndarray) -> list[np.ndarray]:
     V = np.asarray(o.asset.mesh[0], float) @ T[:3, :3].T + T[:3, 3]
     tip = V[np.argmin(V[:, 2])]
     up = np.array([0.0, 0.0, 1.0])
-    for deg in FILL_LEAN_DEG:
+    for deg in degrees:
         for arm in ARMS:
             d = sk.kin.base(arm)[:3, 3] - tip
             d[2] = 0.0
@@ -1903,7 +1905,7 @@ def _leaning(sk: Skills, label: str, T: np.ndarray) -> list[np.ndarray]:
             Tl = T.copy()
             Tl[:3, :3] = Rl @ T[:3, :3]
             Tl[:3, 3] = tip + Rl @ (T[:3, 3] - tip)
-            Tl[2, 3] -= FILL_DROP_H + FILL_LEAN_IN
+            Tl[2, 3] -= lower
             out.append(Tl)
     return out
 
@@ -2021,7 +2023,7 @@ def fill_container(sk: Skills, objects: list[str], container: str, drop: float =
     ``joint_limits``) | "measured" (joint 5 inside the sim's pi/2 stop for this skill only, restored after). G3 v15 dev,
     fill_move_lift "clear": 21 of 52 pen drops were planned with |q5| past pi/2 and the arm stood 1-56 mm off the
     plan at the release; 3 of those 21 pens ended inside, against 17 of the other 31."""
-    mode = ("measured" if getattr(sk, "fill_insert", "off") == "safe"
+    mode = ("measured" if getattr(sk, "fill_insert", "off") in ("safe", "deep")
             else getattr(sk, "fill_joint_limits", "inherit"))
     prev = getattr(sk, "joint_limits", None)
     if mode == "inherit" or prev is None or prev == mode:
@@ -2095,13 +2097,16 @@ def _fill_container(sk: Skills, objects: list[str], container: str, drop: float 
         log0 = sk.log
         sk.log = lambda m, _l=log0: (said.append(str(m)), _l(m))[1]
         try:
-            r = place_oriented(sk, lab, _leaning(sk, lab, T), yaw_sym=8, tol_xy=0.03, tol_tilt=45.0, tol_z=0.3,
+            targets = (_leaning(sk, lab, T, degrees=(15.0, 25.0, 35.0), lower=0.0)
+                       if getattr(sk, "fill_insert", "off") == "deep" else _leaning(sk, lab, T))
+            r = place_oriented(sk, lab, targets, yaw_sym=8, tol_xy=0.03, tol_tilt=45.0, tol_z=0.3,
                            ignore=(container, *st["inside"]),
                            place_kw={"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 1,
                                      "servo": True, "servo_ref": container, "seat_tol": 0.3, "probe": False,
                                      "hover_clear": 0.01, "grip_only": (container, *st["inside"]),
                                      **({"hover_clear": 0.003, "servo_xy_tol": 0.004}
-                                        if getattr(sk, "fill_insert", "off") == "safe" else {})},
+                                        if getattr(sk, "fill_insert", "off") in ("safe", "deep") else {}),
+                                     **({"pre_h": 0.060} if getattr(sk, "fill_insert", "off") == "deep" else {})},
                            transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min, skip=tuple(bad))}, air_handover=False)
         finally:
             sk.log = log0

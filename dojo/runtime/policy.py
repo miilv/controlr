@@ -629,7 +629,7 @@ class RuntimePolicy:
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence", "unblock", "gentle"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or self.cfg.push_goal not in ("centre", "cover", "cover_obb")
-                or self.cfg.fill_insert not in ("off", "safe")
+                or self.cfg.fill_insert not in ("off", "safe", "deep")
                 or self.cfg.fill_holder not in ("off", "stay")
                 or self.cfg.fill_drop not in ("off", "center", "inset")
                 or self.cfg.fill_grasp not in ("off", "vertical", "rolled", "rolled_tilt")
