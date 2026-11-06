@@ -19,10 +19,10 @@ preflight() { who; uptime; nvidia-smi; disk_guard SEG; }
 preflight
 cd "$N"
 # Never export unfinished state-only layouts as training images.
-if find "$D/render0" "$D/render1" "$D/extras0" "$D/extras1" "$D/extras2" -name stage.usd -print -quit | grep -q .; then
+if find "$D/render0" "$D/render1" "$D/extras0" "$D/extras1" "$D/extras2" "$D/coverage0" "$D/coverage1" "$D/coverage2" -name stage.usd -print -quit | grep -q .; then
   echo 'unfinished proxy renders'; exit 1
 fi
-"$PY" scripts/perception/seg/export_yolo.py --render "$D/render0,$D/render1,$D/extras0,$D/extras1,$D/extras2" --out "$D/yolo_v2e" \
+"$PY" scripts/perception/seg/export_yolo.py --render "$D/render0,$D/render1,$D/extras0,$D/extras1,$D/extras2,$D/coverage0,$D/coverage1,$D/coverage2" --out "$D/yolo_v2e" \
   --base-classes "$HOME/dojo-w-ext/classes_v2b.json" --new-keep "$D/new_keep_v2e.txt" \
   --drop-prefix Fluid/,Garment/ --rfs-t 0.02 --workers 16 --val-ids 100049 > "$D/export_full.log" 2>&1
 "$PY" scripts/perception/seg/audit_rehearsal.py --base-classes "$HOME/dojo-w-ext/classes_v2b.json" \

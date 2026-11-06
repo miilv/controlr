@@ -17,7 +17,8 @@ import time
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--data', type=Path, required=True)
-    p.add_argument('--phase', choices=('full', 'extras'), default='full')
+    p.add_argument('--phase', choices=('full', 'extras', 'coverage'), default='full')
+    p.add_argument('--startup-gap-s', type=float, default=0)
     a = p.parse_args()
     n = Path(__file__).resolve().parents[3]
     d = a.data.resolve()
@@ -31,6 +32,7 @@ def main():
                OPENBLAS_NUM_THREADS='2', MKL_NUM_THREADS='2')
     active = set()
     lock = threading.Lock()
+    startup = threading.Lock()
     stop = threading.Event()
 
     def terminate(proc):
@@ -64,10 +66,13 @@ def main():
         subprocess.run(['uptime'], check=True)
         subprocess.run(['nvidia-smi'], check=True)
         with log.open('w') as f:
-            proc = subprocess.Popen(cmd, env=env, cwd=n, stdout=f, stderr=subprocess.STDOUT,
-                                    start_new_session=True)
-            with lock:
-                active.add(proc)
+            with startup:
+                proc = subprocess.Popen(cmd, env=env, cwd=n, stdout=f, stderr=subprocess.STDOUT,
+                                        start_new_session=True)
+                with lock:
+                    active.add(proc)
+                if a.startup_gap_s:
+                    stop.wait(a.startup_gap_s)
             try:
                 rc = proc.wait(timeout=3600)
                 if rc:
@@ -78,15 +83,18 @@ def main():
                     active.discard(proc)
 
     def worker(i):
-        root = d / (f'extras{i}' if a.phase == 'extras' else f'render{i}')
+        prefix = {'full': 'render', 'extras': 'extras', 'coverage': 'coverage'}[a.phase]
+        root = d / f'{prefix}{i}'
         ids = '100030-100039' if i == 0 else '100040-100049'
-        if a.phase == 'extras':
+        if a.phase != 'full':
             ids = ['100030-100036', '100037-100043', '100044-100049'][i]
         tasks = ['general_pickup', 'hang_mugs_random', 'sort_nesting_dolls_by_size_random',
                  'make_toast_random', 'store_laptop_and_headphones_random', 'pour_liquid_into_cup_random',
                  'arrange_largest_number', 'organize_table', 'classify_objects']
         if a.phase == 'extras':
             tasks = ['general_pickup', 'sort_nesting_dolls_by_size_random', 'store_laptop_and_headphones_random']
+        if a.phase == 'coverage':
+            tasks = ['stack_blocks']
         for task in tasks:
             variants = '1,2,3,4,5' if task == 'general_pickup' else '1'
             extra = ['--extra-pool', str(d / 'all_classes_pool.txt'), '--extra-n', '6'] \
@@ -95,6 +103,9 @@ def main():
                 variants = '11' if task == 'general_pickup' else '2'
                 extra = ['--extra-pool', str(d / 'garage_negatives_pool.txt'), '--extra-n', '3'] \
                     if task == 'general_pickup' else []
+            if a.phase == 'coverage':
+                variants = '12,13,14,15,16,17'
+                extra = ['--extra-pool', str(d / 'missing_old_pool.txt'), '--extra-n', '1']
             run([str(n / 'scripts/simlab/rdpy.sh'), '-m', 'dojo.simlab.seg_render', '--task', task,
                  '--ids', ids, '--variants', variants, '--poses', '4', '--physics-only', '--out', str(root), *extra],
                 d / 'logs' / f'states_{i}_{task}.log')
@@ -107,8 +118,8 @@ def main():
     watcher = threading.Thread(target=guard, daemon=True)
     watcher.start()
     try:
-        with ThreadPoolExecutor(max_workers=3 if a.phase == 'extras' else 2) as pool:
-            futures = [pool.submit(worker, i) for i in range(3 if a.phase == 'extras' else 2)]
+        with ThreadPoolExecutor(max_workers=3 if a.phase != 'full' else 2) as pool:
+            futures = [pool.submit(worker, i) for i in range(3 if a.phase != 'full' else 2)]
             for future in futures:
                 future.result()
     finally:

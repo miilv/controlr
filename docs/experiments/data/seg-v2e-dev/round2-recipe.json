@@ -49,6 +49,23 @@
       "doll_laptop_variant": 2,
       "ids": "100030-100049",
       "poses": 4
+    },
+    "coverage_repair": {
+      "reason": "54 old classes absent after initial export; no training yet",
+      "task": "stack_blocks (public config has no clutter)",
+      "variants": [
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "extra_assets": "one uncovered old asset per draw, cycling the support-audit list",
+      "ids": "100030-100049",
+      "poses": 4,
+      "workers": 3,
+      "startup_gap_s": 25
     }
   },
   "cheap_ablation": {
