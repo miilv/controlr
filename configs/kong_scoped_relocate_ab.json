@@ -1,0 +1,73 @@
+{
+  "baseline_candidate": "scripts/dojo/queues/2026-11-06-candidate.txt",
+  "baseline_candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "A_overrides": {
+    "watch_relocate": false,
+    "watch_relocate_task": ""
+  },
+  "B_overrides": {
+    "watch_relocate": false,
+    "watch_relocate_task": "make_kong"
+  },
+  "agentic_model": "cx/gpt-6-luna",
+  "blocks": [
+    {
+      "block": "kong-scoped-1",
+      "salt": "kong-scoped-20261107-a158272fb14d21dd57be13e638c2e707e923664965fc04d942379e5e14fae0ee",
+      "salt_sha256": "f6489f35a3a145bcc225111e3ce6b295f865c747996a266e6f5e23ca89996de0"
+    },
+    {
+      "block": "kong-scoped-2",
+      "salt": "kong-scoped-20261107-ec6f6a9ecf3f1bba5b256c0cd41fad09c0238783a25e03fe00e3e53947ab0dde",
+      "salt_sha256": "de73f49c4839b0984ab095014f68f3d2d9e703c49222a6f8581780cd77e7ea1e"
+    }
+  ],
+  "cells": [
+    {
+      "task": "make_kong",
+      "role": "gain",
+      "blocks": [
+        "kong-scoped-1",
+        "kong-scoped-2"
+      ],
+      "ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004
+      ],
+      "repeats": 1
+    },
+    {
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "blocks": [
+        "kong-scoped-1"
+      ],
+      "ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004
+      ],
+      "repeats": 1
+    },
+    {
+      "task": "stack_blocks",
+      "role": "guard",
+      "blocks": [
+        "kong-scoped-2"
+      ],
+      "ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004
+      ],
+      "repeats": 1
+    }
+  ]
+}
