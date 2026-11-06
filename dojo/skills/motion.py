@@ -440,6 +440,11 @@ class Motion:
             result = plan_objects(self, arm, q0, T_goal, step_rad, name, gripper, ignore, held, ease)
             if result is not None:
                 return result
+            legacy = self._legacy_to_pose(arm, q0, T_goal, step_rad, name, gripper, ignore, held, check, safe_z, ease)
+            if self.world_plans:
+                self.world_plans[-1]["legacy_status"] = legacy.status
+                self.world_plans[-1]["legacy_note"] = legacy.note
+            return legacy
         return self._legacy_to_pose(arm, q0, T_goal, step_rad, name, gripper, ignore, held, check, safe_z, ease)
 
     def _legacy_to_pose(self, arm, q0, T_goal, step_rad, name, gripper, ignore, held, check, safe_z, ease):

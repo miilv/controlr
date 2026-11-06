@@ -54,6 +54,7 @@ def test_budget_falls_back_without_executing_partial(monkeypatch):
     assert m.to_pose("left", np.zeros(6), np.eye(4)) is expected
     assert m.world_plans[0]["fallback"]
     assert m.world_plans[0]["routes"] == 1
+    assert m.world_plans[0]["legacy_status"] == "collision"
     m._legacy_to_pose.assert_called_once()
 
 

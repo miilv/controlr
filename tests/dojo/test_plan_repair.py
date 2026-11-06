@@ -26,3 +26,12 @@ def test_deep_start_and_self_contact_are_refused():
             lambda q:{"scene_collision":1.,"self_collision":self_cost},lambda q:np.array([depth]))
         assert path is None
         assert info["reason"] in ["start_depth_limit","start_self_collision"]
+
+
+def test_prefix_cannot_dive_deeper_then_escape_at_its_endpoint():
+    from dojo.skills.plan_repair import check_escape_prefix
+    cost=lambda q:{"self_collision":0.}
+    penetration=lambda q:np.array([q[0]])
+    valid,why=check_escape_prefix(np.array([[.005],[.012],[0.]]),cost,penetration)
+    assert not valid and why=="prefix_worsens_contact"
+    assert check_escape_prefix(np.array([[.012],[.005],[0.]]),cost,penetration)[0]

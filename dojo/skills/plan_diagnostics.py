@@ -52,6 +52,8 @@ def constraint_flags(collection, horizon=None):
 
 def failure_category(diagnostics):
     """Stage-derived labels: installed v2 has no MotionGenStatus enum."""
+    if diagnostics.get("prefix", {}).get("valid") is False:
+        return "start_state_collision"
     start = diagnostics.get("start", {})
     if not start.get("constraints"):
         start = {"constraints": diagnostics.get("trajopt", {}).get("start_constraints", {})}

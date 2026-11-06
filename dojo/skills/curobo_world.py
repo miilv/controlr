@@ -147,6 +147,7 @@ class _GPUBackend:
         self.emit = lambda event: None
         self.diagnostics = {}
         self.goal_hint = None
+        self.ik_attempt = 0
         # Observe the deployed v2 stages without replacing their algorithms.
         for stage, owner, method in (("ik", self.planner.ik_solver, "solve_pose"),
                                      ("trajopt", self.planner.trajopt_solver, "solve_pose"),
@@ -156,21 +157,11 @@ class _GPUBackend:
                 self.emit({"stage": _stage})
                 if _stage == "ik" and self.profile == "recover":
                     import torch
+                    from dojo.skills.plan_seeds import ik_seed_bank
                     count = self.planner.ik_solver.config.num_seeds
-                    rng = torch.Generator(device=self.device.device).manual_seed(0)
-                    bounds = torch.as_tensor(self.query_limits, device=self.device.device, dtype=torch.float32)
-                    seeds = bounds[:, 0]+torch.rand((1, count, len(bounds)),generator=rng,
-                        device=self.device.device)*(bounds[:, 1]-bounds[:, 0])
-                    # Preserve global branch exploration; only a quarter of the
-                    # seeds are biased toward the nearby native solution.
-                    if self.goal_hint is not None:
-                        hint = torch.as_tensor(self.goal_hint,device=self.device.device,dtype=torch.float32)
-                        local=max(1,count//4)
-                        seeds[:,:local]=hint+.04*torch.randn((1,local,len(hint)),generator=rng,device=self.device.device)
-                        seeds[:,0]=hint
-                    else:
-                        seeds[:,0]=torch.as_tensor(self.query_q0,device=self.device.device,dtype=torch.float32)
-                    kwargs["seed_config"] = torch.maximum(bounds[:, 0],torch.minimum(bounds[:, 1],seeds))
+                    seeds=ik_seed_bank(self.query_q0,self.goal_hint,self.query_limits,count,self.ik_attempt)
+                    self.ik_attempt+=1
+                    kwargs["seed_config"] = torch.as_tensor(seeds,device=self.device.device,dtype=torch.float32)
                 result = _original(*args, **kwargs)
                 from dojo.skills.plan_diagnostics import result_flags
                 self.diagnostics[_stage] = result_flags(result)
@@ -216,12 +207,14 @@ class _GPUBackend:
         return out
 
     def propose(self, payload):
+        from dojo.skills.plan_geometry import world_penetrations
         import torch
         from curobo.scene import Cuboid, Scene
         from curobo.types import GoalToolPose, JointState, Pose
         p = self.planner
         self.diagnostics = {}
         self.goal_hint = payload.get("goal_hint")
+        self.ik_attempt = 0
         self.query_q0 = np.asarray(payload["q0"])
         self.query_limits = payload.get("limits")
         if self.profile == "recover":
@@ -259,9 +252,19 @@ class _GPUBackend:
             self.diagnostics["start"] = {"diagnostic_error": f"{type(error).__name__}: {error}"}
         self.emit({"stage": "start", "diagnostics": self.diagnostics})
         repair_path = None
+        if self.profile == "recover" and payload.get("prefix") is not None:
+            from dojo.skills.plan_repair import check_escape_prefix
+            def prefix_state(q):
+                return JointState.from_position(torch.as_tensor(q,device=device,dtype=full.dtype).reshape(1,-1),joint_names=names)
+            def prefix_penetration(q):
+                spheres=p.compute_kinematics(prefix_state(q)).robot_spheres.detach().cpu().numpy()
+                return world_penetrations(spheres,payload["boxes"])
+            valid, reason=check_escape_prefix(payload["prefix"],lambda q:self._constraints(prefix_state(q)),prefix_penetration)
+            self.diagnostics["prefix"]={"valid":valid,"reason":reason}
+            if not valid:
+                return {"q":None,"diagnostics":self.diagnostics}
         if self.profile == "recover" and any(v > 0 for v in self.diagnostics.get("start", {}).get("constraints", {}).values()):
             from dojo.skills.plan_repair import repair_coordinates
-            from dojo.skills.plan_geometry import world_penetrations
             def joint_state(q):
                 return JointState.from_position(torch.as_tensor(q,device=device,dtype=full.dtype).reshape(1,-1),joint_names=names)
             def evaluate(q):
@@ -383,26 +386,34 @@ class CuroboWorld:
     def __del__(self):
         self.close()
 
-    def propose(self, motion, coll, arm, q0, target, ignore, held, *, budget_s=None, gripper=1.):
+    def propose(self, motion, coll, arm, q0, target, ignore, held, *, budget_s=None, gripper=1., prefix_q=None):
         flange = inv_T(motion.kin.base(arm)) @ motion.kin.flange_from_tcp(target)
         profile = getattr(motion, "plan_profile", "legacy")
         spheres = None
         if held is not None:
             if profile == "recover":
                 from dojo.skills.plan_geometry import mesh_spheres
-                spheres = mesh_spheres(held, motion.kin.tcp_offset)
+                guarded = getattr(held,"points",None) is None and bool(getattr(coll,"heightmaps",{}))
+                spheres = mesh_spheres(held, motion.kin.tcp_offset, capacity=SPHERES-27 if guarded else SPHERES)
+                if guarded and spheres is not None:
+                    # Add, rather than replace, the native box samples used
+                    # against height fields. The mesh surface remains covered.
+                    corners=held.corners_w(T_from((motion.kin.tcp_offset,0,0)))
+                    spheres=np.vstack([spheres,np.c_[corners,np.full(len(corners),.001)]])
             if spheres is None:
                 spheres = attachment_spheres(held, motion.kin.tcp_offset)
         payload = dict(
             q0=np.asarray(q0).tolist(), boxes=scene_boxes(motion.kin, coll, arm, ignore, profile),
             spheres=None if spheres is None else spheres.tolist(),
             flange=np.r_[flange[:3, 3], R_to_quat(flange[:3, :3])].tolist())
+        if prefix_q is not None:
+            payload["prefix"]=np.asarray(prefix_q).tolist()
         if profile == "recover":
             from dojo.skills.plan_geometry import hand_spheres
             payload["hand"] = hand_spheres(motion.kin, gripper).tolist()
             # Warm-start cuRobo IK on the same nearby branch as native routing.
             # It remains only a seed: GPU collision checks and final validation apply.
-            hint = motion.kin.ik(arm, target, q0, n_random=0)
+            hint = motion.kin.ik(arm, target, q0, n_random=4)
             payload["goal_hint"] = hint.q.tolist() if hint.ok else None
             payload["limits"] = motion.kin.limits.tolist()
         if profile == "recover" and getattr(motion, "plan_capture", "off") == "requests":
@@ -506,7 +517,8 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
                     if remaining <= 0:
                         break
                     tail = motion._world_gpu.propose(motion, coll, arm, prefix.q_end, target, ignore, held,
-                                                    budget_s=remaining, gripper=gripper)
+                                                    budget_s=remaining, gripper=gripper,
+                                                    prefix_q=np.vstack([s.q for s in prefix.segments]))
                     attempts.append(getattr(motion._world_gpu, "last_diagnostics", {}))
                     if tail is not None:
                         q = np.vstack([s.q for s in prefix.segments]+[tail])

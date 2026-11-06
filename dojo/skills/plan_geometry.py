@@ -38,7 +38,8 @@ def mesh_spheres(held, tcp_offset, capacity=256):
     vertices, faces = map(np.asarray, mesh[:2])
     if not len(vertices) or not len(faces):
         return None
-    if not hasattr(held, "_surface_cover"):
+    cache=getattr(held,"_surface_covers",{})
+    if capacity not in cache:
         step = .008
         points = _surface_samples(vertices, faces, step=step)
         longest = max(float(np.linalg.norm(vertices[faces[:, a]]-vertices[faces[:, b]], axis=1).max())
@@ -56,8 +57,9 @@ def mesh_spheres(held, tcp_offset, capacity=256):
         np.minimum.at(low, index, points); np.maximum.at(high, index, points)
         centers = (low+high)/2
         radii = np.linalg.norm((high-low)/2, axis=1)+padding
-        held._surface_cover = (centers, radii)
-    centers, radii = held._surface_cover
+        cache[capacity] = (centers, radii)
+        held._surface_covers = cache
+    centers, radii = cache[capacity]
     transform = T_from((tcp_offset, 0, 0)) @ held.T_tcp_obj
     return np.c_[centers@transform[:3, :3].T+transform[:3, 3], radii]
 

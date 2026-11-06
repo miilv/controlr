@@ -53,3 +53,18 @@ def repair_coordinates(q0, limits, evaluate, penetrations, budget_s=3.):
         if not moved:
             break
     return None,info|{"reason":"no_monotone_escape"}
+
+
+def check_escape_prefix(path, evaluate, penetrations):
+    """A CPU-proposed retract must also respect shallow GPU contact escape."""
+    previous=None
+    for q in path:
+        depth=penetrations(q)
+        if float(np.max(depth,initial=0.))>.015:
+            return False,"prefix_depth_limit"
+        if previous is not None and np.any(depth>previous+1e-5):
+            return False,"prefix_worsens_contact"
+        if evaluate(q).get("self_collision",0)>0:
+            return False,"prefix_self_collision"
+        previous=depth
+    return True,"checked_prefix"
