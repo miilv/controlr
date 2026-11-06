@@ -479,3 +479,89 @@ Every pair stays on one host, counterbalances A/B order by layout index, and
 retains per-host timing/provenance. Same box rules, no model calls, no compute4
 or dc19 access. Compute3 incident reread; current explicit physics permission
 takes precedence over its older off-limits note.
+
+Round-three HANG pilot passes its pre-registered coverage dispatch gate:
+2/26 fallbacks (7.7%) across 100030/31, both complete/stable, no infra failure.
+Ten fresh comparison pairs are dispatched on the same frozen controller, with
+the pilot excluded from score statistics. The two-layout pilot scores are not
+used to choose the dispatch. GPU concurrency remains bounded by the four
+compute6 light slots even while multiple CPU chains queue for admission.
+Sweep has only one completed layout at this point; no gate decision yet.
+
+Sweep also passes its registered dispatch gate: 4/17 fallbacks (23.5%) across
+100000/01, two stable episodes, no infra failures. Dispatch its registered ten
+fresh pairs too. This is a small engineering screen near the threshold, not an
+adoption or score-gain finding. All four cells now have ten paired comparisons
+scheduled; HANG/sweep pilot scores remain outside those tables. No egg or model
+calls. No planner changes after the source freeze.
+
+Prepare separate tools action-replay clips from B layouts 100000 (success) and
+100001 (partial failure), selected before the other comparisons finish. The
+first helper launch exits before any replay because its old selector still
+requested 100003 while the new manifest contains 100001. Preserve that failed
+setup receipt, fix only the diagnostic selector, and launch a new receipt ID.
+This neither changes the frozen controller nor reruns/discards a G3 outcome.
+Rendering is compute6-only, under the same light-slot/admission cap; no model or
+perception policy runs in a replay, and its outcomes stay outside score tables.
+
+The main tools/control comparisons finish before the conditional cells.
+Tools ten paired dev layouts: 77.5 -> 75.0 score, 4/10 successes both,
+score-pair wins/losses >=10 points = 1/2, success flips 0/0. Full-sample fallback
+is 134/310 (43.2%): 109 IK-stage failures, 24 start/prefix collisions, one goal
+collision. The 12.9% two-layout coverage pilot did not generalize to the full
+layout set. These IK-stage flags alone do not establish scene-free reach
+failure as the separate egg counterfactual did. Stack remains 100 -> 100,
+10/10 successes both, with objects fallback 17/278 (6.1%). No new tools camera
+pre-registration is triggered under the current score-pair rule. Defaults stay
+off. Complete the already-triggered HANG/sweep comparisons without tuning.
+
+Resource fallback is exercised for the unstarted sweep tail after its first
+job waits 917 seconds without admission. Under PLAN's admission lock, verify
+the exact own chain/waiter commands, parent-child relationship, no GPU child,
+completed pair prefix and absence of any outcome for the remaining pairs.
+Then stop only checked own CPU chain/waiter PIDs 533797 / 561196 and move
+100010/12/14, both arms, to idle compute3. Completed sweep pairs remain on
+compute6; no partial pair changes host and no completed outcome is discarded.
+The controller, layout hashes, A/B order and score rule remain fixed. Migration
+receipts preserve the commands, wait time and exact job IDs before execution.
+
+
+## Round 3 complete: broader coverage and score result
+
+All 40 registered dev pairs / 80 comparison episodes and four excluded coverage
+pilot episodes complete. Controller stays 4dc81fce throughout; no retuning,
+score-based reruns, dropped outcomes, unstable layouts or G3 infrastructure
+failures. [Report, individual pairs and timings](../experiments/2026-11-06-plan-recover-g3.md)
+and [machine-readable records](../experiments/2026-11-06-plan-recover-results.json).
+
+| Cell | A → B score | A → B successes | B fallback | Score wins / losses >=10 |
+|---|---:|---:|---:|---:|
+| tools | 77.5 → 75.0 | 4/10 → 4/10 | 134/310, 43.2% | 1 / 2 |
+| stack control | 100 → 100 | 10/10 → 10/10 | 17/278, 6.1% | 0 / 0 |
+| HANG | 67.5 → 58.0 | 5/10 → 3/10 | 56/191, 29.3% | 2 / 3 |
+| sweep | 20 → 0 | 2/10 → 0/10 | 34/101, 33.7% | 0 / 2 |
+
+The two-layout gates were useful dispatch screens but poor estimates of broader
+coverage. Tools' 12.9% pilot grows to 43.2%; layout 100002 supplies 61/134
+fallbacks. HANG grows from 7.7% to 29.3%; sweep from 23.5% to 33.7%.
+No target cell meets the explicitly selected current score-based gain rule;
+stack passes its guard. No new recovery-profile camera pre-registration or
+camera policy calls are triggered. Defaults remain table/routes/legacy/capture
+off. These dev results establish no camera transfer and no general impossibility
+of object-aware planning. Future work should coordinate goal selection with
+routing and reconcile native/GPU geometry rather than hide speculative failures.
+Egg's independent 11/12 scene-free IK failure handoff remains prominent above.
+
+Two short compute6 RGB action-replay clips show a tools success and partial
+failure. Both retain source success/score, run no perception/model and stay
+outside comparison statistics. Keep the failed pre-action renderer setup receipt.
+All completed compute3 artifacts are mirrored into compute6's PLAN round3 root.
+Final fingerprints on both boxes match all 40 layouts and 93 checked files over
+42 asset keys. Compute6 uses at most four admitted scopes and obeys <=20 GiB
+used VRAM / >=12 GiB RAM / load <=26 at each start. Compute3 uses at most two,
+checks who/GPU each start and retains at least 20,942 MiB sampled free VRAM.
+All 213 recorded wrapper/driver/planner PIDs, private chains and PLAN GPU jobs
+have exited; only the two checked unadmitted CPU migration PIDs were signaled.
+Zero model calls/tokens/spend, no system/vendor changes or foreign-process
+signals, and local writes below 1 GB. Final CI and ready-for-review status are
+verified before handing PR #401 back; do not merge.
