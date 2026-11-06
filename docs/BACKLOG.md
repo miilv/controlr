@@ -254,6 +254,10 @@
   another class increment. Full per-class data: journal 2026-11-06-dojo-seg-v2e-round2 and experiment
   2026-11-06-seg-v2e-rehearsal. Genuine 5.1 RTX still crashes on compute3; this round explicitly registered
   proxy-domain training. Never silently substitute proxy for a genuine-data recipe.
+  The additive `seg_additive` path keeps v2b exact and trains a separate 32-class v2n with old-only negatives.
+  Dev naming reaches 24/49; at all three registered IoUs the full bake has zero category/asset losers and unchanged 35 phantoms.
+  Keep the switch off pending the camera A/B: five new-asset variant gain cells, strong stack_blocks/insert_tubes
+  guards, default decision rule. Details: experiment 2026-11-06-seg-v2n-additive and its camera-ab specification.
 - [ ] **dojo perception: classify_objects_by_language drops the watches after the segmenter.** On p60, watch 4-7 come
   out right 1 of 12 on the dev ids 100000-04 with any segmenter (v2b, v3ep6, v2cn). The other 11 have no prediction
   closer than 77 mm, though v2b's YOLO fires a watch on the head frame (0.97 on 100000). The loss is in the bake's

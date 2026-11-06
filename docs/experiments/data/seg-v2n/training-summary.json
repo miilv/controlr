@@ -11,5 +11,10 @@
   "cuda": "12.8",
   "torch": "2.9.1+cu128",
   "ultralytics": "8.4.191",
-  "llm_calls": 0
+  "llm_calls": 0,
+  "data_export_revision": "a0b45237",
+  "head_select_revision": "a0b45237",
+  "train_script_revision": "8c7b9b33",
+  "gate_inference_revision": "ff9ca54d",
+  "source_snapshot_note": "deployed-source snapshot taken before gates; new_only_export gained a training firewall after export, with all 5067 exported images independently audited positive-variant-only; local train.py gained effective-batch metadata recording for future runs"
 }
