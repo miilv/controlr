@@ -3547,6 +3547,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
     # a handle (a loop) is threaded over a hook's arm; any other point (a headband's bridge) is lowered onto its support
     # from above and let go 2 cm over it (it settles; the point need only end within a few cm)
     thread = "handle" in handle_tag.lower()
+    carry_rad = HANG_CARRY * (0.5 if thread and getattr(sk, "hang_carry_slow", False) in (True, "on") else 1.0)
     if not thread:
         hooks = [(i, H, None) for i, H, _ in hooks]
     hooks_by = {h[0]: h for h in hooks}
@@ -3604,8 +3605,10 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
         hs = functional_frames(o, handle_tag, active=True) or functional_frames(o, handle_tag)
         note = "no handle frame threads the hook"
         no_pairs = set()
-        for fi, Th, high in [(fi, Th, high) for high in (False, True) for fi, Th in enumerate(hs[:2])]:
-            if high and fi in no_pairs:
+        turns = (False, True) if tip is not None and getattr(sk, "hang_half_turn", False) in (True, "on") else (False,)
+        for fi, Th, high, turn in [(fi, Th, high, turn) for high in (False, True)
+                                   for turn in turns for fi, Th in enumerate(hs[:2])]:
+            if high and (fi, turn) in no_pairs:
                 continue              # the same place pose, fewer lifts: no pairs either
             dz = handle_hole(o, Th)
             if tip is not None and not threads_along_x(o, Th, dz):
@@ -3614,6 +3617,8 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
             Ht[:3, 3] += H[:3, 2] * dz
             if tip is None:              # a cradle: the point itself goes onto it, from above
                 Ht = H.copy()
+            if turn:
+                Ht[:3, :3] = Ht[:3, :3] @ np.diag([-1.0, -1.0, 1.0])
             T_obj = Ht @ inv_T(Th)
             T_pre = T_obj.copy()
             if tip is None:
@@ -3625,10 +3630,10 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
             r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=8, pair_rank=wide_rank,
                                  grasps=(lambda a, o=o: [g for g in G_hang(sk, o, a)
                                                          if g.method not in slipped.get(o.label, ())]),
-                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": HANG_CARRY, "purpose": "hang"}, q_start=q_start,
+                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": carry_rad, "purpose": "hang"}, q_start=q_start,
                                  lift_to_pre=high)
             if isinstance(r, SkillResult) and not re.search(r"[1-9]\d* grasp-place pairs", r.note):
-                no_pairs.add(fi)
+                no_pairs.add((fi, turn))
             if not isinstance(r, SkillResult):
                 if tip is None:
                     return (lab, hi, H, T_obj, T_pre, r)
@@ -3843,7 +3848,11 @@ def G_hang(sk: Skills, o, arm: str) -> list:
     if held_box(o, np.eye(4)).points is not None:          # irregular (a headset): its real slices
         return G.box_grasps(o, sk.kin, arm) + G.slice_grasps(o, sk.kin, arm) + G.antipodal_grasps(o, sk.kin, arm)
     # deep wall pinches only (twin: an 8 mm deep pinch slid 46 mm in the hand while the mug turned 90 deg)
-    return G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.02, 0.026, 0.032))
+    extra = []
+    if getattr(sk, "hang_handle_grasp", False) in (True, "on"):
+        from dojo.skills.hanging import handle_grasps
+        extra = handle_grasps(o)
+    return extra + G.box_grasps(o, sk.kin, arm) + G.wall_grasps(o, sk.kin, arm, depths=(0.02, 0.026, 0.032))
 
 
 # pieces threaded onto pegs: skills-7 (dojo/skills/pegs.py)
