@@ -113,3 +113,18 @@ def test_low_drop_changes_only_the_approach_height(monkeypatch, mode, expected):
     assert RuntimeConfig().egg_drop_approach == "off"
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(egg_drop_approach="typo"), assets=None)
+
+
+def test_shell_envelope_frees_air_under_flare_and_still_blocks_material():
+    prof = dict(center=np.zeros(2), r_out=0.1, bin=0.01,
+                surf=np.full(11, 0.06), lower=np.full(11, 0.04))
+    c = SimpleNamespace(pos=np.array([0.1, -0.2, 0.8]), R=np.eye(3))
+    points = np.array([[0.15, -0.2, 0.82], [0.15, -0.2, 0.85], [0.15, -0.2, 0.88]])
+    assert H.wall_clearance_v(c, prof, points[:1]) < -0.03
+    assert H.wall_shell_clearance(c, prof, points[:1]) == pytest.approx(0.02)
+    assert H.wall_shell_clearance(c, prof, points[1:2]) == pytest.approx(-0.01)
+    assert H.wall_shell_clearance(c, prof, points[2:]) == pytest.approx(0.02)
+    assert H.wall_shell_clearance(c, prof, [[1, 1, 1]]) == float("inf")
+    assert RuntimeConfig().egg_wall_model == "off"
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(egg_wall_model="typo"), assets=None)

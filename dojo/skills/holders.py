@@ -141,14 +141,17 @@ def wall_profile(c, bin_r: float = 0.004) -> dict | None:
     rim = float(V[:, 2].max())
     nb = int(math.ceil(r_out / bin_r)) + 1
     surf = np.full(nb, -np.inf)
+    lower = np.full(nb, np.inf)
     idx = np.minimum((r / bin_r).astype(int), nb - 1)
     np.maximum.at(surf, idx, V[:, 2])
+    np.minimum.at(lower, idx, V[:, 2])
     for i in range(1, nb):                              # empty bins: the inner neighbour's height
         if not np.isfinite(surf[i]):
             surf[i] = surf[i - 1]
+            lower[i] = lower[i - 1]
     if not np.isfinite(surf[0]) or rim - float(surf[0]) < 0.02:
         return None
-    return {"center": ctr, "rim": rim, "r_out": r_out, "bin": bin_r, "surf": surf, "floor": float(surf[0])}
+    return {"center": ctr, "rim": rim, "r_out": r_out, "bin": bin_r, "surf": surf, "lower": lower, "floor": float(surf[0])}
 
 
 def wall_clearance(c, prof: dict, pts_w: np.ndarray) -> float:
@@ -318,6 +321,25 @@ def wall_clearance_v(c, prof: dict, pts_w: np.ndarray) -> float:
     return float((P[m, 2] - s3[i]).min())
 
 
+def wall_shell_clearance(c, prof: dict, pts_w: np.ndarray) -> float:
+    """Clearance to a conservative radial material band, including its underside.
+
+    A flared wall does not fill the air below it. Each radial bin encloses all
+    mesh heights, expanded over neighboring bins exactly as the top envelope.
+    """
+    P = (np.asarray(pts_w, float) - c.pos) @ c.R
+    r = np.linalg.norm(P[:, :2] - prof["center"], axis=1)
+    m = r <= prof["r_out"] + 0.004
+    if not m.any():
+        return float("inf")
+    upper = np.asarray(prof["surf"], float)
+    lower = np.asarray(prof["lower"], float)
+    hi = np.maximum(np.maximum(upper, np.r_[upper[1:], upper[-1]]), np.r_[upper[0], upper[:-1]])
+    lo = np.minimum(np.minimum(lower, np.r_[lower[1:], lower[-1]]), np.r_[lower[0], lower[:-1]])
+    i = np.minimum((r[m] / prof["bin"]).astype(int), len(upper) - 1)
+    return float(np.maximum(P[m, 2] - hi[i], lo[i] - P[m, 2]).min())
+
+
 EGG_WALL_CLEAR = -0.010       # m: dense finger samples at most this far into a container's inner surface profile (grasp
                               # + descent). egg_v6 traces: hands that went down had >= -12.6 mm, blocked ones <= -17 mm
                               # (the profile is the max over 4 mm radius bins of a woven mesh; the collider is leaner)
@@ -368,6 +390,7 @@ def egg_grasps(sk: Skills, label: str, arm: str, wall_clear: float = EGG_WALL_CL
         return cands
     rim_w = float((c.R @ np.r_[prof["center"], prof["rim"]] + c.pos)[2])
     out = []
+    clearance = wall_shell_clearance if getattr(sk, "egg_wall_model", "off") == "shell" else wall_clearance_v
     for g in cands + [G.narrowed(x) for x in cands if x.method in ("round", "ends")]:
         go = gap_to_grip(g.open_gap())
         a = g.approach
@@ -385,7 +408,7 @@ def egg_grasps(sk: Skills, label: str, arm: str, wall_clear: float = EGG_WALL_CL
             T = g.T.copy()
             T[:3, 3] -= a * d
             P = finger_samples(sk.kin, sk.kin.flange_from_tcp(T), go)
-            if wall_clearance_v(c, prof, P) < wall_clear:
+            if clearance(c, prof, P) < wall_clear:
                 ok = False
                 break
         if ok:

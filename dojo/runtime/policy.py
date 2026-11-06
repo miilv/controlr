@@ -348,6 +348,7 @@ class RuntimeConfig:
     egg_grasp_height: str = "off"
     egg_grasp_angles: str = "off"
     egg_drop_approach: str = "off"
+    egg_wall_model: str = "off"
     # ``Skills._refine_hover`` (stream H; ``Skills.rehover_siblings``): follow (today) | keep (an object with an identical
     # sibling within 5 cm keeps its pose instead of following a refine's "seen elsewhere" hint)
     rehover_siblings: str = "follow"
@@ -634,6 +635,7 @@ class RuntimePolicy:
                 or self.cfg.egg_grasp_height not in ("off", "raised")
                 or self.cfg.egg_grasp_angles not in ("off", "wide")
                 or self.cfg.egg_drop_approach not in ("off", "low")
+                or self.cfg.egg_wall_model not in ("off", "shell")
                 or self.cfg.rehover_siblings not in ("follow", "keep")
                 or self.cfg.slip_shift not in ("off", "across")
                 or self.cfg.sibling_order not in ("given", "far")
@@ -946,6 +948,7 @@ class RuntimePolicy:
             sk_.egg_grasp_height = cfg.egg_grasp_height
             sk_.egg_grasp_angles = cfg.egg_grasp_angles
             sk_.egg_drop_approach = cfg.egg_drop_approach
+            sk_.egg_wall_model = cfg.egg_wall_model
             sk_.rehover_siblings = cfg.rehover_siblings
             sk_.slip_shift = cfg.slip_shift
             sk_.sibling_order = cfg.sibling_order
