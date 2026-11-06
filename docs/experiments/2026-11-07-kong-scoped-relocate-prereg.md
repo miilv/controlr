@@ -144,3 +144,21 @@ No camera verdict may be issued before audit results are recorded here.
 
 **Write-audit results:** pending recorded camera actions and physics-only replays.
 No audit pass or camera adoption is claimed by this preparation amendment.
+
+### Lead demo amendment, before collection
+
+Default-speed guard demo `100001` exceeded the generator's 900-step cap
+(924 steps). Before any KONG camera job, the lead authorized regenerating
+**all five** imitation guard demos on the same fixed layouts with the existing
+`demo_gen --speed 1.25` option, using normal validation. Archive the original
+attempts first. Both arms load the identical newly frozen demo for each pair.
+There is precedent in wave preparation (#394/#395 used 1.5), but this block
+must **not** escalate beyond 1.25.
+
+If a demo still fails normal validation at 1.25, exclude only that guard pair
+before collection and record its id, reason and revised planned guard n. No
+replacement id/salt, extra draw or policy-outcome selection is allowed. This
+explicit lead exception supersedes the fixed-five/invalid-demo launch blocker
+only for those failed 1.25 guard demos. The gain remains ten pairs and stack
+remains five; all score/write decision thresholds remain unchanged. Missing
+camera pairs within the revised planned panel still prevent adoption.
