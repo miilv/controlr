@@ -200,3 +200,16 @@ its implementation and tests. Final retained source is again byte-identical
 to the tested positive-arm source at 42d84ea4 / 58637618. The general ceiling
 goal remains unproven: fresh variants improve, original development layouts
 regress. Defaults stay off. All launched PEN physics jobs have completed.
+
+## Main synchronization and final verification
+
+Concurrent egg (#399) and slot (#398) merges conflicted with shared G3/config
+and documentation changes, preventing GitHub pull-request CI from starting.
+Merged main into this feature branch (not this PR into main), retaining both
+streams' default-off switches and resolving the documentation sections.
+All **86** focused PEN/egg/slot/config/parity tests pass. All nine PEN library
+functions match the measured implementation exactly by source-segment comparison.
+Post-egg and post-slot G3 smoke episodes both reproduce 25 on variant-2 100030
+and exit 0. No PEN physics jobs remain. The final JSON includes these additional
+smokes; the paired cohorts remain unchanged. The final full-suite/CI results
+are attached to PR #397.

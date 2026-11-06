@@ -367,6 +367,52 @@
         }
       }
     ],
+    "merged_head_smoke": [
+      {
+        "seed": 100030,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 520,
+        "step_lim": 1100,
+        "wall_s": 162.4,
+        "plan_s": 136.7,
+        "category": "grasp_slip",
+        "skill_attrs": {
+          "fill_grasp": "rolled_tilt",
+          "fill_holder": "stay",
+          "fill_drop": "inset",
+          "fill_insert": "safe"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "e00dc70dfe116536906dcd0d4c1f338d60571e07"
+        }
+      }
+    ],
+    "final_head_smoke": [
+      {
+        "seed": 100030,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 520,
+        "step_lim": 1100,
+        "wall_s": 182.0,
+        "plan_s": 151.0,
+        "category": "grasp_slip",
+        "skill_attrs": {
+          "fill_grasp": "rolled_tilt",
+          "fill_holder": "stay",
+          "fill_drop": "inset",
+          "fill_insert": "safe"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "eac649b7dd42ac26e63dae1f751a1e0980408a82"
+        }
+      }
+    ],
     "base10": [
       {
         "seed": 100030,
