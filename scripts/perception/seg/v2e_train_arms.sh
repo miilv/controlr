@@ -19,30 +19,17 @@ preflight() { who; uptime; nvidia-smi; disk_guard SEG; }
 preflight
 cd "$N"
 # Never export unfinished state-only layouts as training images.
-if find "$D/render0" "$D/render1" -name stage.usd -print -quit | grep -q .; then
+if find "$D/render0" "$D/render1" "$D/extras0" "$D/extras1" -name stage.usd -print -quit | grep -q .; then
   echo 'unfinished proxy renders'; exit 1
 fi
-"$PY" scripts/perception/seg/export_yolo.py --render "$D/render0,$D/render1" --out "$D/yolo_v2e" \
+"$PY" scripts/perception/seg/export_yolo.py --render "$D/render0,$D/render1,$D/extras0,$D/extras1" --out "$D/yolo_v2e" \
   --base-classes "$HOME/dojo-w-ext/classes_v2b.json" --new-keep "$D/new_keep_v2e.txt" \
   --drop-prefix Fluid/,Garment/ --rfs-t 0.02 --workers 16 --val-ids 100049 > "$D/export_full.log" 2>&1
 "$PY" scripts/perception/seg/audit_rehearsal.py --base-classes "$HOME/dojo-w-ext/classes_v2b.json" \
   --export "$D/yolo_v2e" --out "$D/support_full.json"
-# The control arm keeps the same 543-name head, but omits the repaired rehearsal.
-python3 - "$D" <<'PY'
-import sys
-from pathlib import Path
-D=Path(sys.argv[1])
-tasks=['hang_mugs_random','sort_nesting_dolls_by_size_random','make_toast_random',
-       'store_laptop_and_headphones_random','pour_liquid_into_cup_random']
-for i in (0,1):
- root=D/f'narrow{i}';root.mkdir(exist_ok=True)
- for task in tasks:
-  p=root/task
-  if not p.exists():p.symlink_to(D/f'render{i}'/task,target_is_directory=True)
-PY
-"$PY" scripts/perception/seg/export_yolo.py --render "$D/narrow0,$D/narrow1" --out "$D/yolo_narrow" \
-  --base-classes "$D/yolo_v2e/classes.json" --new-keep "$D/new_keep_v2e.txt" \
-  --drop-prefix Fluid/,Garment/ --rfs-t 0.02 --workers 16 --val-ids 100049 > "$D/export_narrow.log" 2>&1
+# Share all appended-class images; vary only old-only rehearsal images.
+"$PY" scripts/perception/seg/narrow_rehearsal.py --full "$D/yolo_v2e" \
+  --base-classes "$HOME/dojo-w-ext/classes_v2b.json" --out "$D/yolo_narrow" > "$D/export_narrow.log" 2>&1
 "$PY" scripts/perception/seg/audit_rehearsal.py --base-classes "$HOME/dojo-w-ext/classes_v2b.json" \
   --export "$D/yolo_narrow" --out "$D/support_narrow.json" || [[ $? == 1 ]]
 "$PY" scripts/perception/seg/expand_head.py --model "$HOME/dojo-w-ext/seg_v2b.pt" \

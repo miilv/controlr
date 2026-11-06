@@ -17,6 +17,7 @@ import time
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--data', type=Path, required=True)
+    p.add_argument('--phase', choices=('full', 'extras'), default='full')
     a = p.parse_args()
     n = Path(__file__).resolve().parents[3]
     d = a.data.resolve()
@@ -77,15 +78,21 @@ def main():
                     active.discard(proc)
 
     def worker(i):
-        root = d / f'render{i}'
+        root = d / (f'extras{i}' if a.phase == 'extras' else f'render{i}')
         ids = '100030-100039' if i == 0 else '100040-100049'
         tasks = ['general_pickup', 'hang_mugs_random', 'sort_nesting_dolls_by_size_random',
                  'make_toast_random', 'store_laptop_and_headphones_random', 'pour_liquid_into_cup_random',
                  'arrange_largest_number', 'organize_table', 'classify_objects']
+        if a.phase == 'extras':
+            tasks = ['general_pickup', 'sort_nesting_dolls_by_size_random', 'store_laptop_and_headphones_random']
         for task in tasks:
             variants = '1,2,3,4,5' if task == 'general_pickup' else '1'
             extra = ['--extra-pool', str(d / 'all_classes_pool.txt'), '--extra-n', '6'] \
                 if task == 'general_pickup' else []
+            if a.phase == 'extras':
+                variants = '11' if task == 'general_pickup' else '2'
+                extra = ['--extra-pool', str(d / 'garage_negatives_pool.txt'), '--extra-n', '3'] \
+                    if task == 'general_pickup' else []
             run([str(n / 'scripts/simlab/rdpy.sh'), '-m', 'dojo.simlab.seg_render', '--task', task,
                  '--ids', ids, '--variants', variants, '--poses', '4', '--physics-only', '--out', str(root), *extra],
                 d / 'logs' / f'states_{i}_{task}.log')

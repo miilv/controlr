@@ -42,7 +42,14 @@
       "classify_objects"
     ],
     "empty_capture_retries": 20,
-    "clutter_extras": "Resolve Rigid vocabulary keys through Clutter only for explicit training extras when no task-object asset exists; retry missing-asset generator errors."
+    "clutter_extras": "Resolve Rigid vocabulary keys through Clutter only for explicit training extras when no task-object asset exists; retry missing-asset generator errors.",
+    "focus_extras": {
+      "general_pickup_variant": 11,
+      "pool": "interleaved old garage / toy_car / car, three extras per draw",
+      "doll_laptop_variant": 2,
+      "ids": "100030-100049",
+      "poses": 4
+    }
   },
   "cheap_ablation": {
     "arms": [
@@ -59,7 +66,9 @@
     "close_mosaic": 0,
     "rfs_t": 0.02,
     "optimizer": "Ultralytics auto (record resolved optimizer and LR)",
-    "gate_weights": "last.pt"
+    "gate_weights": "last.pt",
+    "control_selection": "v2d five random-task images plus every appended-class image from full export; drop only old-class-only rehearsal",
+    "sampling": "control inherits exact full-export RFS repetitions for shared images; only old-only rehearsal exposures added in full arm"
   },
   "candidate": {
     "classes": "exact v2b prefix + v2d 30 names + Rigid/brick/00002 + Rigid/paper_ball/00000",

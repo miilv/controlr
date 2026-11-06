@@ -68,3 +68,41 @@ def test_proxy_capture_waits_for_paired_rgb_and_instance_buffers(monkeypatch):
     assert len(updates) == 400
     fake.instance_ids = lambda name: (np.zeros((480, 640), dtype=np.uint16), {})
     assert capture.ready_render(fake, {})[0] is images
+
+
+def test_narrow_control_shares_new_images_labels_and_repetitions(tmp_path, monkeypatch):
+    import json
+
+    spec = importlib.util.spec_from_file_location('narrow_rehearsal', Path(__file__).resolve().parents[2] /
+                                                 'scripts/perception/seg/narrow_rehearsal.py')
+    narrow = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(narrow)
+    full = tmp_path / 'full'
+    full.mkdir()
+    base = tmp_path / 'base.json'
+    base.write_text(json.dumps({'names': ['old']}))
+    (full / 'classes.json').write_text(json.dumps({'names': ['old', 'new'], 'val_ids': ['100049']}))
+    frames = []
+    for i, (task, keys) in enumerate([('general_pickup', ['old']), ('general_pickup', ['new']),
+                                     ('make_toast_random', ['old'])]):
+        frames.append(dict(img=f'/render0/{task}/100030_v1/frame_{i}_cam_head.jpg', task=task,
+                           layout='100030_v1', frame=i, cam='cam_head', keys=keys, source='isaac'))
+    paths = []
+    for f in frames:
+        stem = narrow.frame_stem(f)
+        for kind, suffix in [('images', '.jpg'), ('labels', '.txt')]:
+            p = full / kind / 'train' / (stem + suffix)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text('exact original bytes')
+        paths.append(str(full / 'images/train' / (stem + '.jpg')))
+    (full / 'frames.jsonl').write_text(''.join(json.dumps(f) + '\n' for f in frames))
+    (full / 'train_rfs.txt').write_text('\n'.join([paths[0], paths[1], paths[1], paths[2]]) + '\n')
+    out = tmp_path / 'control'
+    monkeypatch.setattr('sys.argv', ['narrow', '--full', str(full), '--base-classes', str(base), '--out', str(out)])
+    narrow.main()
+    kept = [json.loads(s) for s in (out / 'frames.jsonl').read_text().splitlines()]
+    assert kept == frames[1:]
+    rfs = (out / 'train_rfs.txt').read_text().splitlines()
+    assert len(rfs) == 3 and Path(rfs[0]).name == Path(rfs[1]).name
+    assert Path(rfs[0]).read_text() == 'exact original bytes'
+    assert (out / 'labels/train' / (narrow.frame_stem(frames[1]) + '.txt')).read_text() == 'exact original bytes'
