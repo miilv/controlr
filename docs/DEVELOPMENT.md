@@ -535,3 +535,13 @@ the original candidate set as fallback. Check both pick feasibility and final
 pens-in counts: reducing slip alone can still lose reachable transfers. Keep
 raw variant records and their presettled records together under a private data
 root; pass that layout directory explicitly to both paired G3 arms.
+
+### Egg-holder G3 switches
+
+For egg-holder feasibility screens, `RuntimeConfig.egg_grasp_height` (`off` / `raised`)
+adds upper-shell pinch candidates, and `egg_grasp_angles` (`off` / `wide`) adds steeper
+round grasps. `egg_wall_model` (`off` / `shell`) tests the lower/upper radial mesh envelope;
+`egg_drop_approach` (`off` / `low`) lowers the preapproach; `egg_drop_spin` (`off` / `axis`)
+adds spins about the round object's long axis. All default off and map to G3 `--skill-attr` switches. Dense wall checks,
+collision planning, pick verification and the episode budget still apply. Pair settled
+layouts from the same generator; v6 egg records must not be mixed with v15 records.
