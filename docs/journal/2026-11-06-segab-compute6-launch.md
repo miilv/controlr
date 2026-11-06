@@ -1,6 +1,7 @@
 # Additive v2n camera A/B on compute6
 
-SEGAB is preparing the [registered comparison](../experiments/2026-11-06-seg-v2n-camera-ab.md)
+SEGAB launched all 70 pairs / 140 camera rows on compute6. Both first arms
+have started; the paired verdict remains pending. This follows the [registered comparison](../experiments/2026-11-06-seg-v2n-camera-ab.md)
 on compute6, using merged PR #387 at `8473130a8fdb45ba586b4454ea71cd771b85d4e1`.
 Both arms use this deployment, immutable v2b and the frozen candidate. A disables
 additive segmentation; B enables v2n at IoU 0.1 / minimum score 0.5. All reader,
@@ -95,11 +96,23 @@ the watcher reducing `lane2.caps` to one.
 At **14:34:04Z**, heavy1 started `c6b_poursg_segA_a_100000` from the pinned
 8473130a deployment, with `seg_additive=false`. Its private SEG server was up
 in 12 seconds. The recorded start sample was **29.71 W / 12,847 MiB used**.
-The actual perception worker PID **296659**, read through an environment
-allowlist, confirms the Claude model, complete A estimator config, private
-SEG socket, shared digit/kong addresses and frozen background/calibration paths.
-The live private server reports 511 base / 32 extra classes and `add-only`.
-Evidence: `first-A-live-verification.json`. No scoring frame was inspected.
+The initial A environment check used PID **296659** from the lane log. A later
+check of `perception.ready` showed this was the enclosing launcher wrapper,
+not actual worker **296675**, which had already exited. Its inherited environment
+and the private server's 511/32-class `add-only` info were checked, but this is
+not direct worker-environment evidence. The limitation and original receipt
+are retained in `first-A-live-verification.json` and
+`first-A-wrapper-verification.original.json`. A subsequent A must be checked
+through `perception.ready`. No scoring frame was inspected.
+
+At **14:39:33Z**, heavy2 started `c6b_poursg_segB_a_100000`, loading the exact
+same frozen pour-a/100000 layout. Its start sample was **68.06 W / 11,798 MiB**.
+The B check correctly uses actual worker **301381** from `perception.ready`:
+Claude route, additive=true / IoU=0.1 / min_score=0.5, complete reader/pad settings,
+private SEG address, frozen calibration/backgrounds all match. Server info
+again reports 511+32 classes and `add-only`. The receipt is
+`first-B-live-verification.json`. The launcher's log names wrapper301365;
+it is not substituted for this worker check.
 
 Ready cells are prepended individually as they qualify; each insertion retains
 any queued mate of an already-started pair at the front. AB/BA parity is fixed
@@ -115,7 +128,7 @@ including **1,283 reasoning / 42,036 cache-read** tokens. In-flight calls are
 additional. Implementation, validation and the dev smoke made zero model calls.
 The verdict is **pending**, not a negative result or adoption decision.
 
-All five gain cells and stack_blocks are frozen at ten pairs each. These
+All seven cells are frozen at ten pairs each. These
 per-cell manifests under `~/dojo-data/segab-1106/` include raw/loaded SHA256+MD5,
 all attempted index statuses, resolved runtime/perception configs, exact queues,
 and shared generator/salt/catalogue/calibration/background/weight identities:
@@ -128,20 +141,35 @@ and shared generator/salt/catalogue/calibration/background/weight identities:
 | store_laptop_and_headphones_random | 10 | `c394ecf076657f8c8c783cc18782074bfb4b5a9f4120f43a7eff03429f43a833` |
 | pour_liquid_into_cup_random | 10 | `4542aa8609c99bfeed59aece8ca9210a1f5afe4dc20bbb2e8419fb8c6e93e9f6` |
 | stack_blocks | 10 | `b9aef4e9bcd0999155110dfbcbc9d83ecc0e80445a55079035173cb29e46ffc2` |
-| insert_tubes | pending | heavy2 prep started 14:36:51Z |
+| insert_tubes | 10 | `1c29843812a073b488430e85ab39682066cb8fb21728512b8f2fa9d865b44bce` |
 
-Sixty selected original layouts passed (ten raw checks and fifty two-pass
-settles); no exclusions or c refills were needed. Tube originals are still
-being prepared. Their rows will not be queued until they qualify. `finalize.py`
-will verify all recorded file digests and write the aggregate `manifest.json`
-when the seventh cell has been inserted. No aggregate hash is claimed yet.
+All **70 selected original layouts passed**: ten raw checks and sixty two-pass
+settles. There are zero exclusions and no c refills. Prep occupied **1,626 seconds
+(27m06s)** across fourteen lock-held blocks, within **41m20s** from first prep
+START to last END including waits. Tube prep ended14:39:29Z. The final twenty
+rows were inserted under the queue lock at **14:40:07Z**, bringing the complete
+schedule to 140 rows. Final insertion queue SHA256:
+`97ec809599845500fbe8d7e583a299aa8c203e665448fe4ed30e791ebcb2ec50`.
 
-Operational ownership: camera managers **287133 / 277591**, existing power
-logger **247816**; own prep **286386**, dispatch **277483**, manifest finalizer
-**289672**. Check PID command lines before acting. Prep uses a free heavy slot,
-limits CPU to six cores/RAM to 20 GiB, and preserves roughly 6 GiB free VRAM.
-A 14:36Z light-slot check found used VRAM 23,832 MiB and load 98.77, so no GPU
-prep was started on those slots. Existing light streams were untouched.
+Aggregate `~/dojo-data/segab-1106/manifest.json` SHA256:
+**`92689cca1d1260c01082ae04eef183ecf414728d3ba2a8f6ba089415cd76094c`**.
+All seven cell manifests and their recorded raw/loaded/index/queue/shared digests
+were independently reverified after finalization. The aggregate also freezes
+salts, amendments, operational scripts, requirements, queue mutation receipts and
+a notes snapshot. Both arms' rows and every preparation attempt remain retained.
+
+At **14:40:20Z**, one A episode had completed normally (312-second lane occupancy,
+score0, success false, `perception_gross`); there were **zero completed pairs**.
+Completed call logs recorded **8 camera calls**, **113,699 prompt / 6,131 completion**,
+**4,196 reasoning / 94,319 cache-read** tokens. In-flight calls are additional.
+This single-arm result does not decide the A/B. No HTTP429 was observed.
+
+Camera manager PIDs at launch are **287133 / 277591**, existing power logger
+**247816**. The owned prep/dispatch/finalizer completed and exited; do not restart
+them. Check PID command lines before acting on any recorded PID. Prep used free
+heavy slots, six-core CPU/20GiB RAM scopes, and roughly6GiB free VRAM admission.
+A14:36Z light-slot check found23,832MiB used and load98.77, so no GPU preparation
+ran there. Existing light streams and shared services were untouched.
 
 The nominal full budget is **35 lane-hours**, or **17.5 wall-hours at two
 continuously admitted camera lanes**, before retries and admission waits.
@@ -153,8 +181,7 @@ remains an estimate; actual call/token logs are retained. A 14:36Z instantaneous
 sample was 104 W; no >700 W power-triggered reduction or HTTP 429 was observed.
 
 A same-thread follow-up is scheduled every 30 minutes (next 15:07:31Z), bounded
-to the approximately eight-hour monitoring box ending **21:51Z**. It continues
-remaining prep/dispatch, verifies the first B worker, reports progress and
+to the approximately eight-hour monitoring box ending **21:51Z**. It verifies
+subsequent actual workers, reports progress and
 publishes an end-of-box report, then removes itself. Missing pairs retain a
 pending verdict. Authorized camera lanes may continue after the monitoring box.
-
