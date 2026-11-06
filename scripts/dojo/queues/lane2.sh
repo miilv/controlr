@@ -48,6 +48,26 @@ cap_ok() {   # rendered of ours + 1 <= OURS; others + ours + big side servers + 
   [[ "$used" =~ ^[0-9]+$ ]] || return 1
   (( used <= 16384 && o + m + d + 1 <= ${2:-4} && m + 1 <= ours && ${v:-0} >= 16223 ))
 }
+# The sole allowed coordination file. No other coord paths are accessed.
+boot_gate() {
+  local epoch iso who now
+  while true; do
+    epoch=0 iso= who=
+    if [[ -e "$HOME/coord/lane_gate.stamp" ]]; then
+      read -r epoch iso who < "$HOME/coord/lane_gate.stamp" || true
+      [[ "$epoch" =~ ^[0-9]+$ ]] || { log "invalid lane_gate.stamp: waiting"; sleep 15; continue; }
+    fi
+    now=$(date +%s)
+    if (( now - epoch >= 120 )); then
+      printf '%s %s ilia-ab\n' "$now" "$(date -u +%FT%TZ)" > "$HOME/coord/lane_gate.stamp"
+      log "boot gate claimed: $now ilia-ab"
+      return 0
+    fi
+    log "boot gate: last start $((now - epoch)) s ago ($who); waiting"
+    stopped && return 1
+    sleep 15
+  done
+}
 take_lock() { exec 8>>"$LOCK"; until flock -w 60 8; do stopped && { exec 8>&-; return 1; }; done; return 0; }
 drop_lock() { flock -u 8 2>/dev/null; exec 8>&-; }
 front() { flock "$Q.lock" bash -c '{ printf "%s\n" "$2"; cat "$1"; } > "$1.tmp" && mv "$1.tmp" "$1"' _ "$Q" "$1"; }
@@ -121,6 +141,7 @@ while true; do
   if ! cap_ok; then drop_lock; flock -u 7; exec 7>&-; sleep 15; continue; fi
   source "$REPO/scripts/dojo/disk_guard.sh"
   disk_guard "[wave lane]" || { drop_lock; exit 6; }
+  boot_gate || { drop_lock; break; }
   line=$(flock "$Q.lock" bash -c 'head -1 "$1"; sed -i 1d "$1"' _ "$Q")
   [[ -z "$line" ]] && { drop_lock; log "queue empty"; break; }
   name=${line%% *}; args=${line#* }; repo="$REPO"; sam=""; mv3d=""; seg=""; glyph=""; glyphk=""; jenv=(); toks=(); keep=()

@@ -521,3 +521,7 @@ Admission waits at used VRAM >16384 MiB (failed queries also wait), checks a
 150-second startup window. These guards coordinate our lanes; other GPU users
 must retain their own admission gates. `wave_status.py` reads only our lane logs
 and reports launcher completion/rc and prospective remaining occupancy.
+
+The shared boot protocol reads only `~/coord/lane_gate.stamp`, waits until its
+epoch is at least 120 seconds old, then writes `<epoch> <iso> ilia-ab`. While the
+other team runs its single Isaac, use one Integration lane (`lane2.caps: 1 4`).

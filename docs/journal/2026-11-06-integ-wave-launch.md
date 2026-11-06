@@ -15,3 +15,9 @@ are required by the runner. The status tool reads launcher logs only.
 
 Physics results, layout manifests and actual starts remain operational evidence
 under `~/dojo-data/wave-1106` on compute4; no camera result is claimed here.
+
+Lead amendments before collection: RoboDojo's standard environment device is CPU,
+including historical physics runs; this startup line alone is not an invalid GPU
+signal. CUDA-no-device errors remain infrastructure failures. Use one Integration
+lane alongside the other team's one Isaac, and the explicitly authorized shared
+`~/coord/lane_gate.stamp` boot protocol (120 s); all other coord paths stay forbidden.

@@ -18,7 +18,7 @@ def test_retry_and_other_jobs():
 def test_lane_admission_fails_closed(tmp_path):
     import subprocess
     lane = (Path(__file__).parents[2] / 'scripts/dojo/queues/lane2.sh').read_text()
-    cap = lane[lane.index('cap_ok()'):lane.index('take_lock()')]
+    cap = lane[lane.index('cap_ok()'):lane.index('# The sole allowed coordination file.')]
     (tmp_path / 'lane2.caps').write_text('2 5\n')
     base = f'''S={tmp_path}
 others() {{ echo 0; }}
