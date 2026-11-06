@@ -135,3 +135,18 @@ fresh prospective infrastructure-attempt disclosure before queue repair.
 No `calls.jsonl` or agentic `transcript.jsonl` was created in any attempt;
 recorded model spend is zero calls / tokens. Implementation made zero separate
 model calls. No measurement frames or treatment outcomes were used for tuning.
+
+## Final cleanup
+
+The three shared server PIDs exited. Their user scopes drained, with the last
+already-stopping owned glyphk scope explicitly SIGKILLed after its metadata
+and scope ownership were checked. The launch wrapper and power logger exited;
+all three owned scope cgroups are empty. `meta/cleanup-final.json` retains the
+checked PID/scope receipt. No other process was signalled.
+
+The five failed attempts occupied **167 lane-seconds**. Seven five-minute power
+samples ranged **22.67–105.66 W**, with no reading above 700 W. STOP remains set,
+all outputs/attempt logs and the original queue/manifests are preserved, and no
+Isaac job or owned side service remains running. The colleague's desktop
+sessions remain present. All six registered cells have **zero valid pairs**;
+peg and waist camera collection never started. There is no completion ETA.
