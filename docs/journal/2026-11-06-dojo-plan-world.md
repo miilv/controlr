@@ -197,3 +197,24 @@ plus excluded probes, one merged-head smoke and diagnostic action replays.
 Zero LLM calls, tokens or model spend. Four-hour status was sent to the lead;
 current integrated-head CI passed 1932 tests / 191 skipped, and final docs/media
 CI is checked before handing back draft PR #401. The PR remains unmerged.
+
+
+## Round 2: classify coverage before another score comparison
+
+Lead requests a <=4-hour follow-up on PR #401. The earlier high fallback rate
+leaves object-planning coverage untested; it does not refute the lever.
+The deployed cuRobo v2 returns BaseSolverResult success/feasibility/constraint
+flags, not MotionGenStatus enums. Older no_plan records discarded these flags
+and cannot be retroactively assigned specific native statuses. Preserve those
+unknowns. Instrumented source f726d3cb retains stage flags and optional numeric
+belief requests (`plan_capture=requests`, default off), with timeout progress
+that cannot extend the deadline. Cached failures are counted separately.
+
+Before fixes, run an objects-only diagnostic panel with the original 2-second
+budget on tools/egg/stack/sweep layout 100000 and HANG 100031. This is a coverage
+and failure-status probe, not a new score comparison or an adoption sample.
+Capture under compute6:~/dojo-data/plan/round2. Same strict light admission:
+<=4 jobs, used VRAM <=20 GiB, available RAM >=12 GiB, load1 <=26; no model calls.
+Only after measuring coverage below 20% fallback on tools and egg will the
+requested paired 10-layout tools/egg/HANG/stack score study start. If the gate
+cannot be met, report why and retain the failure evidence instead.
