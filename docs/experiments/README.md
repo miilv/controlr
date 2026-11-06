@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-06 | [egg2-reach-g3](2026-11-06-egg2-reach-g3.md) | Can practical-workspace orientation search raise the egg ceiling? | Ten pairs: 23.5→17.5, 0/10→0/10 success, 0 score wins/4 losses; stays off |
 | 2026-11-06 | [pen-conditional-g3](2026-11-06-pen-conditional-g3.md) | Can geometry retain PEN gains without baseline regressions? | 20 pairs: 14.75→20.75, 7 up/0 down; original 34 retained; added five all ties |
 | 2026-11-06 | [pen-conditional-camera-prereg](2026-11-06-pen-conditional-camera-prereg.md) | Does the conditional profile transfer to camera belief? | Parked; default decision rule; no camera run |
 | 2026-11-06 | [pen-inset-camera-prereg](2026-11-06-pen-inset-camera-prereg.md) | Does inset packing transfer to camera belief? | Supersedes centered-fit spec; default decision rule; no camera run |

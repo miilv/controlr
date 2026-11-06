@@ -41,7 +41,11 @@ def main():
                         variants.append((f'axis{axis}:{deg}', T))
                 for tag, T in variants:
                     r = kin.ik('left', T, req['q0'], n_random=4)
+                    local = kin.solve('left', T, req['q0']) if not r.ok else r
                     out['variants'].append(dict(profile=profile, tag=tag, ok=r.ok, residual_m=r.pos_err,
+                        local_residual_m=local.pos_err,
+                        local_margin_rad=np.minimum(local.q - kin.limits[:, 0],
+                                                    kin.limits[:, 1] - local.q).tolist(),
                         margin_rad=None if not r.ok else np.minimum(r.q - kin.limits[:, 0],
                                                                     kin.limits[:, 1] - r.q).tolist()))
         rows.append(out)
