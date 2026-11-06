@@ -574,6 +574,12 @@ class HarnessRobot:
             if obj is not None:
                 held = held_box(obj, T_tcp_obj)
                 ignore = (label,)
+        if self.holding(arm) and held is None:
+            self.sk.motion.world_plans.append({
+                "arm": arm, "name": "ported", "fallback": True, "routes": 0,
+                "seconds": 0.0, "reason": "unknown_attachment",
+            })
+            return None
         fl = np.asarray(flange, float)
         T = np.eye(4)
         T[:3, :3], T[:3, 3] = qmat(fl[3:]), tcp_of(fl)

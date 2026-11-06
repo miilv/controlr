@@ -112,3 +112,15 @@ def test_port_attachment_comes_only_from_belief(monkeypatch):
         return None
     monkeypatch.setattr(world_plan, "plan_objects", plan)
     assert robot.object_path("left", [0, 0, 1, 1, 0, 0, 0], np.zeros(6)) is None
+
+
+def test_port_unknown_attachment_falls_back_without_empty_hand_plan(monkeypatch):
+    from dojo.skills import world_plan
+    from dojo.skills.ported.harness_robot import HarnessRobot
+    robot = object.__new__(HarnessRobot)
+    robot.sk = SimpleNamespace(refresh=lambda: None, held={"left": None},
+                               provider=SimpleNamespace(), motion=SimpleNamespace(world_plans=[]))
+    robot.ex = SimpleNamespace(g={"left": 0.})
+    monkeypatch.setattr(world_plan, "plan_objects", Mock(side_effect=AssertionError))
+    assert robot.object_path("left", [0, 0, 1, 1, 0, 0, 0], np.zeros(6)) is None
+    assert robot.sk.motion.world_plans[0]["reason"] == "unknown_attachment"
