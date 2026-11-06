@@ -65,7 +65,8 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
     seen = {}
 
     def fake_transfer(lab, targets, **kw):
-        seen.setdefault("carry", kw["place_kw"]["approach_rad"])
+        if kw.get("place_kw") is not None:
+            seen.setdefault("carry", kw["place_kw"]["approach_rad"])
         seen.setdefault("rank", kw.get("pair_rank"))            # the hang plan's own call (relay legs come after)
         from dojo.skills.skills import SkillResult
         return SkillResult(False, "transfer", "ik_fail", 0, None, note="right: 0/1 grasps reachable, 0 grasp-place pairs")
