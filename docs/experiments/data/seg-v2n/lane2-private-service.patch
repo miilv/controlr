@@ -1,0 +1,22 @@
+--- a/scripts/dojo/queues/lane2.sh
++++ b/scripts/dojo/queues/lane2.sh
+@@ -188,12 +188,17 @@
+     fi
+     shared_pids=$(for k in "${shared_kinds[@]}"; do cat "$S/shared/$k.pid"; done | tr '\n' ' ')
+   fi
++  seg_base="$seg"; seg_extra=()
++  if [[ "$seg" == v2n-ab ]]; then
++    seg_base=v2b
++    seg_extra=(--extra-weights "$HOME/dojo-data/segab-1106/weights/v2n.pt" --extra-classes "$HOME/dojo-data/segab-1106/weights/classes.json")
++  fi
+   if [[ -n "$seg" ]]; then         # S's twin-trained segmenter (#220 / #234; = with_seg_server.sh's server), model dir $seg,
+     # run from the JOB's own pinned deploy venv (+ ultralytics), never another stream's dir (lead, 28 Oct 20:20Z)
+     side_start seg "$S/seg.$LANE.sock" DOJO_SEG_ADDR 120 env YOLO_CONFIG_DIR="$S/ultra_cfg" \
+       "$repo/.venv/bin/python" -u -m dojo.perception.seg_twin serve --sock "$S/seg.$LANE.sock" \
+-      --weights "$HOME/dojo-data/segtrain/models/$seg/best.pt" --classes "$HOME/dojo-data/segtrain/models/$seg/classes.json" \
+-      --conf 0.25 --max-hours 1 \
++      --weights "$HOME/dojo-data/segtrain/models/${seg_base}/best.pt" --classes "$HOME/dojo-data/segtrain/models/${seg_base}/classes.json" \
++      "${seg_extra[@]}" --conf 0.25 --max-hours 1 \
+       || { side_stop; drop_lock; log "seg server not ready (see $name.seg.log): $name put back, lane stops"; front "$line"; touch "$S/STOP.$LANE"; break; }
+   fi
+   if [[ -n "$glyph" ]]; then       # S's glyph reader (#277, dojo.perception.glyph_read; ~1 GB VRAM) -> DOJO_GLYPH_ADDR, from the job's deploy
