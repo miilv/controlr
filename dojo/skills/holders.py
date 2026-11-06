@@ -809,7 +809,9 @@ def _fill_drop(sk: Skills, objects: list[str], holder: str, H, holes: list, igno
             pl, last = None, ""
             for h in free:                 # front holes first (``holes`` order)
                 for off, yd, side, T in egg_drop_targets(o, h, plate_top, o.R):
-                    q = sk.plan_place(a, T, yaw_sym=1, release_gap=0.0, pre_h=0.05, ignore=ignore, descend_rad=0.03,
+                    q = sk.plan_place(a, T, yaw_sym=1, release_gap=0.0,
+                                      pre_h=0.02 if getattr(sk, "egg_drop_approach", "off") == "low" else 0.05,
+                                      ignore=ignore, descend_rad=0.03,
                                       settle=2, retreat=0.04)
                     if not isinstance(q, SkillResult):
                         pl = (h, yd, side, q, off)

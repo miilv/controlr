@@ -83,3 +83,33 @@ def test_side_entry_checks_its_whole_corridor_and_keeps_the_wall_threshold(monke
     assert gs and all(x.pre_dist == g.pre_dist for x in gs)
     monkeypatch.setattr(H, "wall_clearance_v", lambda c, prof, P: -0.02 if np.linalg.norm(P[0]) > 0.02 else 0.0)
     assert not H.egg_grasps(sk, "egg", "left")
+
+
+@pytest.mark.parametrize("mode,expected", [("off", 0.05), ("low", 0.02)])
+def test_low_drop_changes_only_the_approach_height(monkeypatch, mode, expected):
+    # Stop at the first place planner call: no execution or simulator required.
+    class Planned(Exception):
+        pass
+    obj = SimpleNamespace(pos=np.zeros(3), R=np.eye(3))
+    world = SimpleNamespace(obj=lambda label: obj)
+    monkeypatch.setattr(H, "in_hole", lambda *a: False)
+    monkeypatch.setattr(H, "_hole_free", lambda *a: True)
+    monkeypatch.setattr(H, "container_of", lambda *a: None)
+    monkeypatch.setattr(H, "egg_grasps", lambda *a: [SimpleNamespace(note="level")])
+    monkeypatch.setattr(H, "egg_drop_targets", lambda *a: [(0.012, 0, 1, np.eye(4))])
+    def place(arm, target, **kw):
+        assert arm == "left"
+        assert kw == dict(yaw_sym=1, release_gap=0.0, pre_h=expected, ignore=("holder#body",),
+                          descend_rad=0.03, settle=2, retreat=0.04)
+        raise Planned()
+    sk = SimpleNamespace(world=world, refresh=lambda: world, egg_drop_approach=mode,
+                         kin=SimpleNamespace(base=lambda a: np.eye(4)), log=lambda msg: None,
+                         plan_pick=lambda *a, **kw: SimpleNamespace(arm="left", grasp=SimpleNamespace(
+                             method="round", note="level", pre_dist=0.07)),
+                         run_pick=lambda pp: SimpleNamespace(ok=True, status="ok"), _record=lambda r: r,
+                         plan_place=place)
+    with pytest.raises(Planned):
+        H._fill_drop(sk, ["egg"], "holder", obj, [{"top": 0.8}], ("holder#body",), {"done": []})
+    assert RuntimeConfig().egg_drop_approach == "off"
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(egg_drop_approach="typo"), assets=None)
