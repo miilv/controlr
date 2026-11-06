@@ -221,6 +221,8 @@ SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "look
                "ported_pour_pace": ("v1", "lean", "overlap"),
                "nest_verify": ("target", "support"),
                "push_goal": ("centre", "cover", "cover_obb"), "fill_move_lift": ("off", "clear"),
+               "fill_guard": ("off", "geometry"), "fill_grasp": ("off", "vertical", "rolled", "rolled_tilt"),
+               "fill_insert": ("off", "safe"), "fill_holder": ("off", "stay"), "fill_drop": ("off", "center", "inset"),
                "egg_grasp_height": ("off", "raised"), "egg_grasp_angles": ("off", "wide"),
                "egg_drop_approach": ("off", "low"), "egg_wall_model": ("off", "shell"),
                "egg_drop_spin": ("off", "axis"),
@@ -403,6 +405,8 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     if verifier is not None:
         rec["verify"] = {**sk.vstats, **{k: (round(v, 1) if isinstance(v, float) else v) for k, v in verifier.stats.items()},
                          **(getattr(sk, "vreasons", None) or {})}
+    if hasattr(sk, "last_fill_guard"):
+        rec["fill_guard"] = sk.last_fill_guard
     out_dir.mkdir(parents=True, exist_ok=True)
     with gzip.open(out_dir / f"{task}_{seed}_actions.json.gz", "wt") as f:
         json.dump(sk.ex.trajectory_json(), f)

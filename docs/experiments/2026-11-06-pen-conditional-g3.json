@@ -1,0 +1,1816 @@
+{
+  "kind": "PEN round-2 conditional G3 development",
+  "score_scale": 100,
+  "source_freeze": "3fda84cd",
+  "source_sha256": "2e93e587fa3b954198e18273dfbf4c4a64ef93bf073fc3eb03b363730fc994ab  dojo/skills/library.py\n7a50946847c251f76e777f414944fa2fecc9e810c6a26624fcabacc103969db2  dojo/skills/g3.py\nb6731f97b9b46015186fbd418f77cbad6e7848990f4507e9bb27d9d046f2a4cc  dojo/skills/skills.py\nf3e48ba9285fedf3232a5525a92192adece7818f22384c263daa3c0d11bc7e07  dojo/runtime/policy.py\n",
+  "runtime": {
+    "python": "3.11.18",
+    "packages": {
+      "isaacsim": "5.1.0.0",
+      "isaacsim-core": "5.1.0.0",
+      "torch": "2.7.0+cu128",
+      "numpy": "1.26.0"
+    },
+    "gpu": "NVIDIA GeForce RTX 5090, 580.178.04",
+    "blas_threads": 1,
+    "memory_max": "10G",
+    "cpu_quota": "600%",
+    "physics_only": true,
+    "source_commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+  },
+  "metadata_note": "Both jobs started with deployment stamp 3fda84cd. Four production source files are SHA256-identical in A/B.",
+  "arms": {
+    "A": {},
+    "B": {
+      "fill_guard": "geometry"
+    }
+  },
+  "layout_hashes": [
+    {
+      "file": "100000.json",
+      "sha256": "ea9a659fb42237ca9c362965837d16f740ac31afe3da74c9f8b6982d81c6c844"
+    },
+    {
+      "file": "100000.settled.json",
+      "sha256": "691299cad42f7b78331b5b193fb43a763f97968757cd4553319c19117ca1b988"
+    },
+    {
+      "file": "100001.json",
+      "sha256": "68e40cf325ad484c3656817734ad6a86821fbed85e0d965e364527aeec0c561d"
+    },
+    {
+      "file": "100001.settled.json",
+      "sha256": "d725f0a83ab4f485fb68763958e324d55650e92694f6b9558dbd467d9d4cfcdb"
+    },
+    {
+      "file": "100002.json",
+      "sha256": "203632dd91133d482ad33430a1a3add42dbdf82ea756eb307e98e1afb36ce6e4"
+    },
+    {
+      "file": "100002.settled.json",
+      "sha256": "9353c4a4d803d69ad82e45675fcf94d7cc55b0f7a51d6e5d7e955c8d6379a91c"
+    },
+    {
+      "file": "100003.json",
+      "sha256": "a72aa7f70c0c4e36abf77cf14cbf56925e06155ab949fdd162749c92374eebab"
+    },
+    {
+      "file": "100003.settled.json",
+      "sha256": "480800c89c392b915ef17c07a907a21de25168052083012eda3c2dc02163d356"
+    },
+    {
+      "file": "100004.json",
+      "sha256": "34d71056a0a3a44ac5e5209f23db64d8f1f57eb9afab61d1d8eb4a2ab2baa59a"
+    },
+    {
+      "file": "100004.settled.json",
+      "sha256": "502e9b7da70371f48024ea505794987a09813d8e29a162966d73ba3d882a24c5"
+    },
+    {
+      "file": "100030.json",
+      "sha256": "993b6e5bf1b8d77431deeb296caa0545e2a1ba8d3ea669255181cc3b82581ddc"
+    },
+    {
+      "file": "100030.settled.json",
+      "sha256": "cdf3add5ced27c76e4e05695a1f6db8edc864b68d9bd14fa250a8c6272f8e98e"
+    },
+    {
+      "file": "100031.json",
+      "sha256": "b27e78f4c2419f5e5a44d40ba61f5ec73a1718c350d9140ae02ad9ae8e909fcc"
+    },
+    {
+      "file": "100031.settled.json",
+      "sha256": "8cca148baf0ded6b6df7e15c60d04db59f87206280e861d5edd005c2b69e741f"
+    },
+    {
+      "file": "100032.json",
+      "sha256": "965d065fa1ba790f80b2f6c19e303e94a6548b10bf5db5e9193f6c961df48585"
+    },
+    {
+      "file": "100032.settled.json",
+      "sha256": "a21421e89ee10c6bd3975e55c51ca02d39ad366c465149640408bf24130f0b5b"
+    },
+    {
+      "file": "100033.json",
+      "sha256": "9c2bc3cd262372f7525e1c8310de25287b0b37fadb8df1f7e226589e5c5f7cef"
+    },
+    {
+      "file": "100033.settled.json",
+      "sha256": "1fdb5f0298e895288b1f4df73c3d1718bc0203e0d547ccffcc0540934cdc190c"
+    },
+    {
+      "file": "100034.json",
+      "sha256": "f58cbe95f52b9a248ac587b04f3d8d1aed95140bcb36f1c8c731b43a52951c4c"
+    },
+    {
+      "file": "100034.settled.json",
+      "sha256": "8935c7d86c61ebbb95e00af1dcbb745e9ae4e8acbc994934b796caf3eb4c621f"
+    },
+    {
+      "file": "100035.json",
+      "sha256": "5e77e8b01566ed8f14b7e61bd46ce930ce56da449dc47a53c68a1db85afa4a2f"
+    },
+    {
+      "file": "100035.settled.json",
+      "sha256": "0454d0514977f15949032f09a4e939f4cb51888185e2dc8a62e4bab67c203cc6"
+    },
+    {
+      "file": "100036.json",
+      "sha256": "b31911bbaaaf599c8e3a95ec923aaf76a520ae3cf3599f08632f0ea985b27f85"
+    },
+    {
+      "file": "100036.settled.json",
+      "sha256": "2fc35e222d0235a42c651a376c1d7304f877bcf90d6d10a2932a43ccafcc1f4a"
+    },
+    {
+      "file": "100037.json",
+      "sha256": "5f89be08a8dadc456f6f855f0127b3a55cbf1537221ac00b826acb24c286a261"
+    },
+    {
+      "file": "100037.settled.json",
+      "sha256": "e646664221cd47fb0ef4557d1e9bf91b8ba002d68f94c9550e46000dd3f86b5f"
+    },
+    {
+      "file": "100038.json",
+      "sha256": "0caa2a3e8fa67982886842cf97381f1ae1b2ca3181632d894f5e36682bbf61dd"
+    },
+    {
+      "file": "100038.settled.json",
+      "sha256": "e1c80d4f7f9a0445dba54fdf8e68640ec5694782805929b75ec98689d639d91d"
+    },
+    {
+      "file": "100039.json",
+      "sha256": "3288279d11204a89ccc128367b4616abe10560351ab0a76612f2b16741aa8ee9"
+    },
+    {
+      "file": "100039.settled.json",
+      "sha256": "0193aecb5cef5f89012abece3398299a307c40ff266b5f492db6427520b07e0f"
+    },
+    {
+      "file": "100040.json",
+      "sha256": "131fa891d05539196543334ca30e7558cd6cceec49804ed24035041a6071d368"
+    },
+    {
+      "file": "100040.settled.json",
+      "sha256": "fcd1425c12fdf62a33ba45e098e12d303621b3b57f729f434e29007ca1621fef"
+    },
+    {
+      "file": "100041.json",
+      "sha256": "707473607d9ebf6c13b40fe75cb6d0e86df817ac9161b942f1da69c5291fda19"
+    },
+    {
+      "file": "100041.settled.json",
+      "sha256": "f00cf65169be9e8d2fc826acea639115d5a1f1aa1df9966c36bc3b89d5a244f7"
+    },
+    {
+      "file": "100042.json",
+      "sha256": "cf57eba98e5f4ab595d0d9106cd0ed81f772a712d8ac943620299ccfa0711e92"
+    },
+    {
+      "file": "100042.settled.json",
+      "sha256": "002833e800c28fe21f2f3b47566a2406cfe282195f2a0fb24ff202c4e784313c"
+    },
+    {
+      "file": "100043.json",
+      "sha256": "cf5c25d4ec3c031e7714ba53bac6b3a19b04c04b20d522c887509abc98e1cbe2"
+    },
+    {
+      "file": "100043.settled.json",
+      "sha256": "aa2a585dfd26e97d906f0d8058c74b8f560791dacd423869bf4fcec4692f2561"
+    },
+    {
+      "file": "100044.json",
+      "sha256": "8480596b7e25ae79da06cb9094147768be8ca1211cbb6c3adbc6725d7c1f265b"
+    },
+    {
+      "file": "100044.settled.json",
+      "sha256": "f267d6ae8ddce145e77c807e0fa134e1769d121a3cbd9d036290555c690e2bbb"
+    }
+  ],
+  "episodes": {
+    "A": [
+      {
+        "seed": 100000,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 618,
+        "step_lim": 1100,
+        "wall_s": 197.2,
+        "sim_s": 67.2,
+        "plan_s": 130.0,
+        "category": "place_miss",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100001,
+        "stable": true,
+        "success": true,
+        "score": 1.0,
+        "steps": 619,
+        "step_lim": 1100,
+        "wall_s": 222.1,
+        "sim_s": 60.0,
+        "plan_s": 162.1,
+        "category": null,
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.016
+      },
+      {
+        "seed": 100002,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 337,
+        "step_lim": 1100,
+        "wall_s": 129.4,
+        "sim_s": 26.2,
+        "plan_s": 103.2,
+        "category": "place_miss",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100003,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 491,
+        "step_lim": 1100,
+        "wall_s": 235.7,
+        "sim_s": 30.8,
+        "plan_s": 204.9,
+        "category": "place_miss",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.023
+      },
+      {
+        "seed": 100004,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 419,
+        "step_lim": 1100,
+        "wall_s": 171.1,
+        "sim_s": 29.2,
+        "plan_s": 141.8,
+        "category": "collision",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.023
+      },
+      {
+        "seed": 100030,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 356,
+        "step_lim": 1100,
+        "wall_s": 337.7,
+        "sim_s": 25.2,
+        "plan_s": 312.5,
+        "category": "collision",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100031,
+        "stable": true,
+        "success": false,
+        "score": 0.0,
+        "steps": 254,
+        "step_lim": 1100,
+        "wall_s": 35.1,
+        "sim_s": 16.8,
+        "plan_s": 18.2,
+        "category": "place_miss",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 90.0
+      },
+      {
+        "seed": 100032,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 664,
+        "step_lim": 1100,
+        "wall_s": 115.3,
+        "sim_s": 47.1,
+        "plan_s": 68.2,
+        "category": "ik_fail",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.036
+      },
+      {
+        "seed": 100033,
+        "stable": true,
+        "success": false,
+        "score": 0.0,
+        "steps": 242,
+        "step_lim": 1100,
+        "wall_s": 42.8,
+        "sim_s": 26.7,
+        "plan_s": 16.1,
+        "category": "ik_fail",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 89.999
+      },
+      {
+        "seed": 100034,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 409,
+        "step_lim": 1100,
+        "wall_s": 156.6,
+        "sim_s": 29.6,
+        "plan_s": 126.9,
+        "category": "place_miss",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 90.035
+      },
+      {
+        "seed": 100035,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 479,
+        "step_lim": 1100,
+        "wall_s": 136.6,
+        "sim_s": 36.6,
+        "plan_s": 100.0,
+        "category": "collision",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.011
+      },
+      {
+        "seed": 100036,
+        "stable": true,
+        "success": false,
+        "score": 0.0,
+        "steps": 375,
+        "step_lim": 1100,
+        "wall_s": 150.4,
+        "sim_s": 27.0,
+        "plan_s": 123.4,
+        "category": "ik_fail",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100037,
+        "stable": true,
+        "success": false,
+        "score": 0.0,
+        "steps": 328,
+        "step_lim": 1100,
+        "wall_s": 331.5,
+        "sim_s": 27.1,
+        "plan_s": 304.5,
+        "category": "collision",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100038,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 390,
+        "step_lim": 1100,
+        "wall_s": 103.0,
+        "sim_s": 32.1,
+        "plan_s": 70.9,
+        "category": "ik_fail",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.023
+      },
+      {
+        "seed": 100039,
+        "stable": true,
+        "success": false,
+        "score": 0.0,
+        "steps": 170,
+        "step_lim": 1100,
+        "wall_s": 36.3,
+        "sim_s": 11.9,
+        "plan_s": 24.4,
+        "category": "place_miss",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 90.009
+      },
+      {
+        "seed": 100040,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 279,
+        "step_lim": 1100,
+        "wall_s": 129.1,
+        "sim_s": 18.0,
+        "plan_s": 111.1,
+        "category": "collision",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.016
+      },
+      {
+        "seed": 100041,
+        "stable": true,
+        "success": false,
+        "score": 0.0,
+        "steps": 252,
+        "step_lim": 1100,
+        "wall_s": 104.4,
+        "sim_s": 18.1,
+        "plan_s": 86.3,
+        "category": "ik_fail",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.057
+      },
+      {
+        "seed": 100042,
+        "stable": true,
+        "success": false,
+        "score": 0.0,
+        "steps": 244,
+        "step_lim": 1100,
+        "wall_s": 43.6,
+        "sim_s": 28.6,
+        "plan_s": 15.0,
+        "category": "place_miss",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 90.0
+      },
+      {
+        "seed": 100043,
+        "stable": true,
+        "success": false,
+        "score": 0.4,
+        "steps": 477,
+        "step_lim": 1100,
+        "wall_s": 96.6,
+        "sim_s": 41.2,
+        "plan_s": 55.4,
+        "category": "place_miss",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.011
+      },
+      {
+        "seed": 100044,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 399,
+        "step_lim": 1100,
+        "wall_s": 149.8,
+        "sim_s": 39.8,
+        "plan_s": 110.0,
+        "category": "collision",
+        "skill_attrs": {},
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.016
+      }
+    ],
+    "B": [
+      {
+        "seed": 100000,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 618,
+        "step_lim": 1100,
+        "wall_s": 199.8,
+        "sim_s": 66.7,
+        "plan_s": 133.1,
+        "category": "place_miss",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": false,
+          "nearest_m": 0.3697588202304186,
+          "farthest_m": 0.6083336911728425,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100001,
+        "stable": true,
+        "success": true,
+        "score": 1.0,
+        "steps": 619,
+        "step_lim": 1100,
+        "wall_s": 219.7,
+        "sim_s": 59.7,
+        "plan_s": 160.0,
+        "category": null,
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": false,
+          "nearest_m": 0.40257448329406326,
+          "farthest_m": 0.4037395025671811,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.016
+      },
+      {
+        "seed": 100002,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 337,
+        "step_lim": 1100,
+        "wall_s": 134.1,
+        "sim_s": 29.6,
+        "plan_s": 104.5,
+        "category": "place_miss",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": false,
+          "nearest_m": 0.38926804539616083,
+          "farthest_m": 0.47640031394723514,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100003,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 491,
+        "step_lim": 1100,
+        "wall_s": 240.1,
+        "sim_s": 32.5,
+        "plan_s": 207.5,
+        "category": "place_miss",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": false,
+          "nearest_m": 0.4583885636095809,
+          "farthest_m": 0.7002191081799486,
+          "flat_shaft": false,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.023
+      },
+      {
+        "seed": 100004,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 419,
+        "step_lim": 1100,
+        "wall_s": 172.4,
+        "sim_s": 29.7,
+        "plan_s": 142.7,
+        "category": "collision",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": false,
+          "nearest_m": 0.5084651577114075,
+          "farthest_m": 0.7952158527925126,
+          "flat_shaft": true,
+          "inside_base_span": false
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.023
+      },
+      {
+        "seed": 100030,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 356,
+        "step_lim": 1100,
+        "wall_s": 345.6,
+        "sim_s": 27.6,
+        "plan_s": 318.0,
+        "category": "collision",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": false,
+          "nearest_m": 0.49377758089605883,
+          "farthest_m": 0.6136079765366004,
+          "flat_shaft": false,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100031,
+        "stable": true,
+        "success": false,
+        "score": 0.0,
+        "steps": 254,
+        "step_lim": 1100,
+        "wall_s": 34.8,
+        "sim_s": 16.0,
+        "plan_s": 18.8,
+        "category": "place_miss",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": false,
+          "nearest_m": 0.4108514906188515,
+          "farthest_m": 0.7600600954753849,
+          "flat_shaft": true,
+          "inside_base_span": false
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 90.0
+      },
+      {
+        "seed": 100032,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 416,
+        "step_lim": 1100,
+        "wall_s": 84.5,
+        "sim_s": 32.0,
+        "plan_s": 52.5,
+        "category": "place_miss",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": true,
+          "nearest_m": 0.533697743788086,
+          "farthest_m": 0.7509988455335335,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.016
+      },
+      {
+        "seed": 100033,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 371,
+        "step_lim": 1100,
+        "wall_s": 197.8,
+        "sim_s": 28.5,
+        "plan_s": 169.3,
+        "category": "ik_fail",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": true,
+          "nearest_m": 0.4050723912340307,
+          "farthest_m": 0.7113050285862745,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.023
+      },
+      {
+        "seed": 100034,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 511,
+        "step_lim": 1100,
+        "wall_s": 194.6,
+        "sim_s": 36.9,
+        "plan_s": 157.7,
+        "category": "not_home",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": true,
+          "nearest_m": 0.4740121182213982,
+          "farthest_m": 0.5492177284419105,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100035,
+        "stable": true,
+        "success": false,
+        "score": 0.4,
+        "steps": 281,
+        "step_lim": 1100,
+        "wall_s": 121.8,
+        "sim_s": 23.1,
+        "plan_s": 98.8,
+        "category": "place_miss",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": true,
+          "nearest_m": 0.494557483227806,
+          "farthest_m": 0.5288161915529429,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.032
+      },
+      {
+        "seed": 100036,
+        "stable": true,
+        "success": false,
+        "score": 0.0,
+        "steps": 375,
+        "step_lim": 1100,
+        "wall_s": 136.1,
+        "sim_s": 28.8,
+        "plan_s": 107.3,
+        "category": "ik_fail",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": false,
+          "nearest_m": 0.37915973066148184,
+          "farthest_m": 0.5741660337740987,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100037,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 202,
+        "step_lim": 1100,
+        "wall_s": 208.6,
+        "sim_s": 15.4,
+        "plan_s": 193.2,
+        "category": "grasp_slip",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": true,
+          "nearest_m": 0.5366730193915382,
+          "farthest_m": 0.5534902630200892,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.034
+      },
+      {
+        "seed": 100038,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 475,
+        "step_lim": 1100,
+        "wall_s": 171.1,
+        "sim_s": 43.4,
+        "plan_s": 127.7,
+        "category": "ik_fail",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": true,
+          "nearest_m": 0.5832061279816564,
+          "farthest_m": 0.6811142341450438,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100039,
+        "stable": true,
+        "success": false,
+        "score": 0.25,
+        "steps": 228,
+        "step_lim": 1100,
+        "wall_s": 68.1,
+        "sim_s": 16.9,
+        "plan_s": 51.2,
+        "category": "ik_fail",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": true,
+          "nearest_m": 0.5564021796370766,
+          "farthest_m": 0.5989855590507324,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.047
+      },
+      {
+        "seed": 100040,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 268,
+        "step_lim": 1100,
+        "wall_s": 140.7,
+        "sim_s": 25.0,
+        "plan_s": 115.7,
+        "category": "ik_fail",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": true,
+          "nearest_m": 0.49592435582183125,
+          "farthest_m": 0.614461649940752,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.026
+      },
+      {
+        "seed": 100041,
+        "stable": true,
+        "success": false,
+        "score": 0.0,
+        "steps": 252,
+        "step_lim": 1100,
+        "wall_s": 110.9,
+        "sim_s": 25.4,
+        "plan_s": 85.5,
+        "category": "ik_fail",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": false,
+          "nearest_m": 0.3809234697639085,
+          "farthest_m": 0.7435023897741687,
+          "flat_shaft": true,
+          "inside_base_span": false
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.057
+      },
+      {
+        "seed": 100042,
+        "stable": true,
+        "success": false,
+        "score": 0.0,
+        "steps": 244,
+        "step_lim": 1100,
+        "wall_s": 35.5,
+        "sim_s": 18.2,
+        "plan_s": 17.3,
+        "category": "place_miss",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": false,
+          "nearest_m": 0.35588044345253694,
+          "farthest_m": 0.6714562021867708,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 90.0
+      },
+      {
+        "seed": 100043,
+        "stable": true,
+        "success": false,
+        "score": 0.4,
+        "steps": 477,
+        "step_lim": 1100,
+        "wall_s": 109.5,
+        "sim_s": 49.5,
+        "plan_s": 60.0,
+        "category": "place_miss",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": false,
+          "nearest_m": 0.36139378871388117,
+          "farthest_m": 0.4289877260277376,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.011
+      },
+      {
+        "seed": 100044,
+        "stable": true,
+        "success": false,
+        "score": 0.1,
+        "steps": 324,
+        "step_lim": 1100,
+        "wall_s": 104.7,
+        "sim_s": 32.4,
+        "plan_s": 72.3,
+        "category": "ik_fail",
+        "skill_attrs": {
+          "fill_guard": "geometry"
+        },
+        "code": {
+          "dir": "/home/robotics/controlr-pen",
+          "commit": "3fda84cd4d2579d25d35039c8e083eba2e2d731b"
+        },
+        "fill_guard": {
+          "active": true,
+          "nearest_m": 0.5325711875688851,
+          "farthest_m": 0.7322006826758155,
+          "flat_shaft": true,
+          "inside_base_span": true
+        },
+        "missing_meshes": [],
+        "final_holder_tilt_deg": 0.016
+      }
+    ]
+  },
+  "pairs": [
+    {
+      "seed": 100000,
+      "cohort": "original5",
+      "A": 25.0,
+      "B": 25.0,
+      "delta": 0.0,
+      "active": false,
+      "actions_equal": true,
+      "action_sha256_A": "50d81a7b784237cad8358d0e21070dc17fd9b7fb07900e09178ef92a1dccdbd1",
+      "action_sha256_B": "50d81a7b784237cad8358d0e21070dc17fd9b7fb07900e09178ef92a1dccdbd1",
+      "holder_tilt_A": 0.026,
+      "holder_tilt_B": 0.026,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "base5",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100001,
+      "cohort": "original5",
+      "A": 100.0,
+      "B": 100.0,
+      "delta": 0.0,
+      "active": false,
+      "actions_equal": true,
+      "action_sha256_A": "153eeed7d99a24986411d9c53e4782db13ee23679f968889cbd4579120bf94a5",
+      "action_sha256_B": "153eeed7d99a24986411d9c53e4782db13ee23679f968889cbd4579120bf94a5",
+      "holder_tilt_A": 0.016,
+      "holder_tilt_B": 0.016,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "base5",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100002,
+      "cohort": "original5",
+      "A": 10.0,
+      "B": 10.0,
+      "delta": 0.0,
+      "active": false,
+      "actions_equal": true,
+      "action_sha256_A": "4303fd3b496a2b0a9e6dbda3e9d759a083b21161f4f37fb71f8be25e1c936af7",
+      "action_sha256_B": "4303fd3b496a2b0a9e6dbda3e9d759a083b21161f4f37fb71f8be25e1c936af7",
+      "holder_tilt_A": 0.026,
+      "holder_tilt_B": 0.026,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "base5",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100003,
+      "cohort": "original5",
+      "A": 25.0,
+      "B": 25.0,
+      "delta": 0.0,
+      "active": false,
+      "actions_equal": true,
+      "action_sha256_A": "646d2b6cad1623116fa57c71bac01ae183a4afbfee82857a1185bb0733554a95",
+      "action_sha256_B": "646d2b6cad1623116fa57c71bac01ae183a4afbfee82857a1185bb0733554a95",
+      "holder_tilt_A": 0.023,
+      "holder_tilt_B": 0.023,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "base5",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100004,
+      "cohort": "original5",
+      "A": 10.0,
+      "B": 10.0,
+      "delta": 0.0,
+      "active": false,
+      "actions_equal": true,
+      "action_sha256_A": "4eb699897586b0f5a269233da4eb0c3528fd80d5b2cef41014c17a2b53ab55e7",
+      "action_sha256_B": "4eb699897586b0f5a269233da4eb0c3528fd80d5b2cef41014c17a2b53ab55e7",
+      "holder_tilt_A": 0.023,
+      "holder_tilt_B": 0.023,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "base5",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100030,
+      "cohort": "previous_fresh10",
+      "A": 10.0,
+      "B": 10.0,
+      "delta": 0.0,
+      "active": false,
+      "actions_equal": true,
+      "action_sha256_A": "20abe95e1c589c5743e2d3587bdb00e52c4a33aa46ca20328859f7b47c0265b2",
+      "action_sha256_B": "20abe95e1c589c5743e2d3587bdb00e52c4a33aa46ca20328859f7b47c0265b2",
+      "holder_tilt_A": 0.026,
+      "holder_tilt_B": 0.026,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "base10",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100031,
+      "cohort": "previous_fresh10",
+      "A": 0.0,
+      "B": 0.0,
+      "delta": 0.0,
+      "active": false,
+      "actions_equal": true,
+      "action_sha256_A": "486336080a7c882b06fbf09c68761e2ac6fe2d31d1dd144b78dac6962fd22efe",
+      "action_sha256_B": "486336080a7c882b06fbf09c68761e2ac6fe2d31d1dd144b78dac6962fd22efe",
+      "holder_tilt_A": 90.0,
+      "holder_tilt_B": 90.0,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "base10",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100032,
+      "cohort": "previous_fresh10",
+      "A": 10.0,
+      "B": 25.0,
+      "delta": 15.0,
+      "active": true,
+      "actions_equal": false,
+      "action_sha256_A": "1f8cf4c37d2cf0a2f3b02a86ee9b7b80637be9dfc3e85eb9b48febd855c60f40",
+      "action_sha256_B": "1ff54df9cf4f12952ac557560b199bad85ad1aad7785382f8a7231bf342c0c8e",
+      "holder_tilt_A": 0.036,
+      "holder_tilt_B": 0.016,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "inset10",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100033,
+      "cohort": "previous_fresh10",
+      "A": 0.0,
+      "B": 25.0,
+      "delta": 25.0,
+      "active": true,
+      "actions_equal": false,
+      "action_sha256_A": "ee6bba42709ba6c6ef5c96d790740499ba8d10a66287cbc276a120753a41134e",
+      "action_sha256_B": "fb8dfa69353e7d09b3d0b8f8a4ee01ead55453c733b31cc11cc93660775e0f51",
+      "holder_tilt_A": 89.999,
+      "holder_tilt_B": 0.023,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "inset10",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100034,
+      "cohort": "previous_fresh10",
+      "A": 10.0,
+      "B": 25.0,
+      "delta": 15.0,
+      "active": true,
+      "actions_equal": false,
+      "action_sha256_A": "d701251286dbea3d66bd226061ae08b726ff99fc6e5aa75d9e8c79527a9c3566",
+      "action_sha256_B": "383a3e1065350400ad683fff7b654065dc9b665a55cc85cf7b247602a0cc9859",
+      "holder_tilt_A": 90.035,
+      "holder_tilt_B": 0.026,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "inset10",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100035,
+      "cohort": "previous_fresh10",
+      "A": 25.0,
+      "B": 40.0,
+      "delta": 15.0,
+      "active": true,
+      "actions_equal": false,
+      "action_sha256_A": "eb6c10cc4eac7ace4a7fdd7810ba3a54a082e58966beae2a05d890302a7a0617",
+      "action_sha256_B": "aa408851de2a5151c90e443cb2a1fe9dc356009d76b9c730fde5c8c6e684ed8f",
+      "holder_tilt_A": 0.011,
+      "holder_tilt_B": 0.032,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "inset10",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100036,
+      "cohort": "previous_fresh10",
+      "A": 0.0,
+      "B": 0.0,
+      "delta": 0.0,
+      "active": false,
+      "actions_equal": true,
+      "action_sha256_A": "e7d339f151bd9ee59f3cc233934c48ad156545fb67443d2b4625091dc8aeff59",
+      "action_sha256_B": "e7d339f151bd9ee59f3cc233934c48ad156545fb67443d2b4625091dc8aeff59",
+      "holder_tilt_A": 0.026,
+      "holder_tilt_B": 0.026,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "base10",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100037,
+      "cohort": "previous_fresh10",
+      "A": 0.0,
+      "B": 10.0,
+      "delta": 10.0,
+      "active": true,
+      "actions_equal": false,
+      "action_sha256_A": "9b2785b540b145447332974ac8458c4b196e2fbd3ded942963e79da1e8a2c196",
+      "action_sha256_B": "1b03046fb4c3796dffe58ecdb3847954988404061b7103c4223a006f8862669d",
+      "holder_tilt_A": 0.026,
+      "holder_tilt_B": 0.034,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "inset10",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100038,
+      "cohort": "previous_fresh10",
+      "A": 10.0,
+      "B": 25.0,
+      "delta": 15.0,
+      "active": true,
+      "actions_equal": false,
+      "action_sha256_A": "8e6ba829b4b4de758aa677760c9177abc4d4ea05efa500304870917891d3d808",
+      "action_sha256_B": "618272ec92bdf84834144fdfbb4604342bc5f04244183911b2654c2feacf4d51",
+      "holder_tilt_A": 0.023,
+      "holder_tilt_B": 0.026,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "inset10",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100039,
+      "cohort": "previous_fresh10",
+      "A": 0.0,
+      "B": 25.0,
+      "delta": 25.0,
+      "active": true,
+      "actions_equal": false,
+      "action_sha256_A": "930a2db7444cbe56520d4f32a52b26353f86ec7611d43ff432a833adf603f401",
+      "action_sha256_B": "fc24e45c18845f680ae66c8061217fc6ba04355914decd8ff782a98af849d64d",
+      "holder_tilt_A": 90.009,
+      "holder_tilt_B": 0.047,
+      "baseline_actions_equal_round1": true,
+      "selected_branch_reference": "inset10",
+      "selected_branch_actions_equal_round1": true
+    },
+    {
+      "seed": 100040,
+      "cohort": "added_fresh5",
+      "A": 10.0,
+      "B": 10.0,
+      "delta": 0.0,
+      "active": true,
+      "actions_equal": false,
+      "action_sha256_A": "e6a916613576977e45b5bfb0ee55bc63fb26b728e182a862c4e619b14060220e",
+      "action_sha256_B": "3b2d89b15e0ea1a0e5deb67839c8931a4eba33167cdf82e7e699eec5d05cb19c",
+      "holder_tilt_A": 0.016,
+      "holder_tilt_B": 0.026,
+      "baseline_actions_equal_round1": null
+    },
+    {
+      "seed": 100041,
+      "cohort": "added_fresh5",
+      "A": 0.0,
+      "B": 0.0,
+      "delta": 0.0,
+      "active": false,
+      "actions_equal": true,
+      "action_sha256_A": "03c293a519fe3507356af5edc43a9cd562bf43f05130c113e9d35101848e6925",
+      "action_sha256_B": "03c293a519fe3507356af5edc43a9cd562bf43f05130c113e9d35101848e6925",
+      "holder_tilt_A": 0.057,
+      "holder_tilt_B": 0.057,
+      "baseline_actions_equal_round1": null
+    },
+    {
+      "seed": 100042,
+      "cohort": "added_fresh5",
+      "A": 0.0,
+      "B": 0.0,
+      "delta": 0.0,
+      "active": false,
+      "actions_equal": true,
+      "action_sha256_A": "fb928c7b579193f1075748b8273e3bcf5e9dd9590fcdc21d770d3bd56f7095b3",
+      "action_sha256_B": "fb928c7b579193f1075748b8273e3bcf5e9dd9590fcdc21d770d3bd56f7095b3",
+      "holder_tilt_A": 90.0,
+      "holder_tilt_B": 90.0,
+      "baseline_actions_equal_round1": null
+    },
+    {
+      "seed": 100043,
+      "cohort": "added_fresh5",
+      "A": 40.0,
+      "B": 40.0,
+      "delta": 0.0,
+      "active": false,
+      "actions_equal": true,
+      "action_sha256_A": "7db37850edc65b2a77863be69c5d81046f63551f5b9e0e92a05a0819fb940203",
+      "action_sha256_B": "7db37850edc65b2a77863be69c5d81046f63551f5b9e0e92a05a0819fb940203",
+      "holder_tilt_A": 0.011,
+      "holder_tilt_B": 0.011,
+      "baseline_actions_equal_round1": null
+    },
+    {
+      "seed": 100044,
+      "cohort": "added_fresh5",
+      "A": 10.0,
+      "B": 10.0,
+      "delta": 0.0,
+      "active": true,
+      "actions_equal": false,
+      "action_sha256_A": "be66dfbf8090c559de766465044833584ec98a1d193c53603de6efe4b0439fd4",
+      "action_sha256_B": "be3e5525f986ac54ed8cc7bd667475f3c5529a0ca52523603bee06f168ac120d",
+      "holder_tilt_A": 0.016,
+      "holder_tilt_B": 0.016,
+      "baseline_actions_equal_round1": null
+    }
+  ],
+  "summary": {
+    "original5": {
+      "n": 5,
+      "A": {
+        "mean": 34.0,
+        "sample_sd": 37.65
+      },
+      "B": {
+        "mean": 34.0,
+        "sample_sd": 37.65
+      },
+      "delta": {
+        "mean": 0.0,
+        "sample_sd": 0.0
+      },
+      "score_wins": 0,
+      "score_losses": 0,
+      "score_ties": 5,
+      "success_A": 1,
+      "success_B": 1,
+      "flip_wins": 0,
+      "flip_losses": 0,
+      "holder_tips_A": 0,
+      "holder_tips_B": 0,
+      "active": 0
+    },
+    "previous_fresh10": {
+      "n": 10,
+      "A": {
+        "mean": 6.5,
+        "sample_sd": 8.182
+      },
+      "B": {
+        "mean": 18.5,
+        "sample_sd": 12.921
+      },
+      "delta": {
+        "mean": 12.0,
+        "sample_sd": 9.487
+      },
+      "score_wins": 7,
+      "score_losses": 0,
+      "score_ties": 3,
+      "success_A": 0,
+      "success_B": 0,
+      "flip_wins": 0,
+      "flip_losses": 0,
+      "holder_tips_A": 4,
+      "holder_tips_B": 1,
+      "active": 7
+    },
+    "added_fresh5": {
+      "n": 5,
+      "A": {
+        "mean": 12.0,
+        "sample_sd": 16.432
+      },
+      "B": {
+        "mean": 12.0,
+        "sample_sd": 16.432
+      },
+      "delta": {
+        "mean": 0.0,
+        "sample_sd": 0.0
+      },
+      "score_wins": 0,
+      "score_losses": 0,
+      "score_ties": 5,
+      "success_A": 0,
+      "success_B": 0,
+      "flip_wins": 0,
+      "flip_losses": 0,
+      "holder_tips_A": 1,
+      "holder_tips_B": 1,
+      "active": 2
+    },
+    "fresh15": {
+      "n": 15,
+      "A": {
+        "mean": 8.333,
+        "sample_sd": 11.286
+      },
+      "B": {
+        "mean": 16.333,
+        "sample_sd": 13.947
+      },
+      "delta": {
+        "mean": 8.0,
+        "sample_sd": 9.599
+      },
+      "score_wins": 7,
+      "score_losses": 0,
+      "score_ties": 8,
+      "success_A": 0,
+      "success_B": 0,
+      "flip_wins": 0,
+      "flip_losses": 0,
+      "holder_tips_A": 5,
+      "holder_tips_B": 2,
+      "active": 9
+    },
+    "all20": {
+      "n": 20,
+      "A": {
+        "mean": 14.75,
+        "sample_sd": 22.854
+      },
+      "B": {
+        "mean": 20.75,
+        "sample_sd": 22.436
+      },
+      "delta": {
+        "mean": 6.0,
+        "sample_sd": 8.974
+      },
+      "score_wins": 7,
+      "score_losses": 0,
+      "score_ties": 13,
+      "success_A": 1,
+      "success_B": 1,
+      "flip_wins": 0,
+      "flip_losses": 0,
+      "holder_tips_A": 5,
+      "holder_tips_B": 2,
+      "active": 9
+    }
+  },
+  "replay_original10": [
+    {
+      "name": "r1_A_100000",
+      "layout_id": 100000,
+      "score": 0.25,
+      "stable": true,
+      "n_actions": 618,
+      "stopped_at": 618,
+      "replay_s": 62.6
+    },
+    {
+      "name": "r1_A_100001",
+      "layout_id": 100001,
+      "score": 1.0,
+      "stable": true,
+      "n_actions": 619,
+      "stopped_at": 619,
+      "replay_s": 54.0
+    },
+    {
+      "name": "r1_A_100002",
+      "layout_id": 100002,
+      "score": 0.1,
+      "stable": true,
+      "n_actions": 337,
+      "stopped_at": 337,
+      "replay_s": 24.3
+    },
+    {
+      "name": "r1_A_100003",
+      "layout_id": 100003,
+      "score": 0.25,
+      "stable": true,
+      "n_actions": 491,
+      "stopped_at": 491,
+      "replay_s": 50.2
+    },
+    {
+      "name": "r1_A_100004",
+      "layout_id": 100004,
+      "score": 0.1,
+      "stable": true,
+      "n_actions": 419,
+      "stopped_at": 419,
+      "replay_s": 39.0
+    },
+    {
+      "name": "r1_B_100000",
+      "layout_id": 100000,
+      "score": 0.4,
+      "stable": true,
+      "n_actions": 438,
+      "stopped_at": 438,
+      "replay_s": 43.5
+    },
+    {
+      "name": "r1_B_100001",
+      "layout_id": 100001,
+      "score": 0.25,
+      "stable": true,
+      "n_actions": 365,
+      "stopped_at": 365,
+      "replay_s": 39.2
+    },
+    {
+      "name": "r1_B_100002",
+      "layout_id": 100002,
+      "score": 0.0,
+      "stable": true,
+      "n_actions": 115,
+      "stopped_at": 115,
+      "replay_s": 16.9
+    },
+    {
+      "name": "r1_B_100003",
+      "layout_id": 100003,
+      "score": 0.1,
+      "stable": true,
+      "n_actions": 391,
+      "stopped_at": 391,
+      "replay_s": 33.1
+    },
+    {
+      "name": "r1_B_100004",
+      "layout_id": 100004,
+      "score": 0.1,
+      "stable": true,
+      "n_actions": 425,
+      "stopped_at": 425,
+      "replay_s": 42.6
+    }
+  ],
+  "last_fill_events": {
+    "A": {
+      "inside": 20,
+      "miss": 20,
+      "unreachable": 32,
+      "slip": 7,
+      "collision": 1
+    },
+    "B": {
+      "inside": 30,
+      "miss": 13,
+      "unreachable": 23,
+      "slip": 5,
+      "no_opening": 7,
+      "collision": 2
+    }
+  },
+  "cost": {
+    "llm_calls": 0,
+    "llm_tokens": 0,
+    "A_wall_s": 2924.3,
+    "B_wall_s": 3030.4,
+    "A_plan_s": 2284.9,
+    "B_plan_s": 2393.1
+  },
+  "instrumented_original100001": {
+    "score": 0.25,
+    "steps": 365,
+    "actions_equal_original": true,
+    "cost": {
+      "load_s": 6.12,
+      "wall_s": 187.5,
+      "plan_s": 157.7
+    },
+    "pick_plan_calls": 57,
+    "pick_status_counts": {
+      "collision": 14,
+      "ik_fail": 12,
+      "ok": 31
+    },
+    "first_pick_event": {
+      "kind": "pick_plan",
+      "step": 74,
+      "label": "target0",
+      "grasps": [
+        "axis 0 tilt 0"
+      ],
+      "status": "collision",
+      "note": "left: 0 feasible of 1 (ik 0, collision 1)",
+      "motion_errors": [
+        {
+          "method": "to_pose",
+          "status": "collision",
+          "note": "joint move at t=0.18: hits pen_holder; via failed: via-pose z=1.078 unreachable",
+          "count": 3
+        }
+      ]
+    },
+    "motion_failures": [
+      {
+        "method": "to_pose",
+        "status": "ik_fail",
+        "note": "target unreachable (no seed converged)",
+        "calls": 36
+      },
+      {
+        "method": "to_pose",
+        "status": "collision",
+        "note": "joint move at t=0.18: hits pen_holder; via failed: via-pose z=1.078 unreachable",
+        "calls": 24
+      },
+      {
+        "method": "to_pose",
+        "status": "collision",
+        "note": "joint move at t=0.55: hits target3; via failed: via-pose z=1.078 unreachable",
+        "calls": 6
+      },
+      {
+        "method": "to_pose",
+        "status": "collision",
+        "note": "joint move at t=0.44: hits pen_holder; via failed: via-pose z=1.078 unreachable",
+        "calls": 6
+      },
+      {
+        "method": "to_pose",
+        "status": "collision",
+        "note": "joint move at t=0.42: hits pen_holder; via failed: via-pose z=1.078 unreachable",
+        "calls": 6
+      }
+    ]
+  },
+  "asset_provenance": {
+    "robodojo_commit": "f57e1633ffed59761bc8e568cfe7530c4b33381c",
+    "catalogs": [
+      "/home/robotics/dojo-perception-data/catalog"
+    ],
+    "files": [
+      {
+        "key": "Geometry/camera_stand/00000",
+        "metadata_file": "/home/robotics/dojo-robodojo/RoboDojo/Assets/Object/RoboDojo/Geometry/camera_stand/00000/metadata.json",
+        "metadata_sha256": "981392df89e5a45a28c0240ef0cb289b778550ec7ad49e98419a813865bb3d30",
+        "mesh_file": "/home/robotics/dojo-perception-data/catalog/Geometry/camera_stand/00000/geom.npz",
+        "mesh_sha256": "945c5cdbbed4787e9511e603d724d0f2d7ac0f97bb7a2837d8e0117638b42fd5"
+      },
+      {
+        "key": "Rigid/oil_pen/00000",
+        "metadata_file": "/home/robotics/dojo-robodojo/RoboDojo/Assets/Object/RoboDojo/Rigid/oil_pen/00000/metadata.json",
+        "metadata_sha256": "1d2a741f605e351c35c5db925cefca75e9a59bc6dd0e8c2d3eb8e59862fd8416",
+        "mesh_file": "/home/robotics/dojo-perception-data/catalog/Rigid/oil_pen/00000/geom.npz",
+        "mesh_sha256": "b01d580e84951e96b5255be54dd4cb04a8a554337037c3ef959b838151e3e4a2"
+      },
+      {
+        "key": "Rigid/oil_pen/00001",
+        "metadata_file": "/home/robotics/dojo-robodojo/RoboDojo/Assets/Object/RoboDojo/Rigid/oil_pen/00001/metadata.json",
+        "metadata_sha256": "7ee97ba5d1e4aefbe0e5aacb15fa85371ead9b6fc0282f4ea049e85299bcd504",
+        "mesh_file": "/home/robotics/dojo-perception-data/catalog/Rigid/oil_pen/00001/geom.npz",
+        "mesh_sha256": "10e9613a4d1d0ddb936ca94b565cc82a47964d344b86501461cf39e52729c440"
+      },
+      {
+        "key": "Rigid/pen/00000",
+        "metadata_file": "/home/robotics/dojo-robodojo/RoboDojo/Assets/Object/RoboDojo/Rigid/pen/00000/metadata.json",
+        "metadata_sha256": "096ae5b15c74600a7e84171f6c0fc25e05dd25fe2244ff18ab8cce08347f57e1",
+        "mesh_file": "/home/robotics/dojo-perception-data/catalog/Rigid/pen/00000/geom.npz",
+        "mesh_sha256": "a3ed129d6d021f815fdb3aae6d9945544662ff0c4621be4eb774a931055eb016"
+      },
+      {
+        "key": "Rigid/pen/00001",
+        "metadata_file": "/home/robotics/dojo-robodojo/RoboDojo/Assets/Object/RoboDojo/Rigid/pen/00001/metadata.json",
+        "metadata_sha256": "ba06cdc6765b77f685b781c498afbd6f169683da933bdbde4ac37d67a380d1da",
+        "mesh_file": "/home/robotics/dojo-perception-data/catalog/Rigid/pen/00001/geom.npz",
+        "mesh_sha256": "ebf307bf405a2b5753740c29549f5e8e80c748341111c8b8f2f33c7ae9c8dc8a"
+      },
+      {
+        "key": "Rigid/pen/00004",
+        "metadata_file": "/home/robotics/dojo-robodojo/RoboDojo/Assets/Object/RoboDojo/Rigid/pen/00004/metadata.json",
+        "metadata_sha256": "d5b71fa6a96ced02ad6dbb266ed91f741825112f8b712becda742457a2cca831",
+        "mesh_file": "/home/robotics/dojo-perception-data/catalog/Rigid/pen/00004/geom.npz",
+        "mesh_sha256": "01047905148ee6bffdc607012a5497535fa4e76eaa8b7199f077d3629009602f"
+      },
+      {
+        "key": "Rigid/pen_holder/00000",
+        "metadata_file": "/home/robotics/dojo-robodojo/RoboDojo/Assets/Object/RoboDojo/Rigid/pen_holder/00000/metadata.json",
+        "metadata_sha256": "9176f45ce9289da6ddad9cd918b961c941248952c0346c4e1bb32d9bda3fa785",
+        "mesh_file": "/home/robotics/dojo-perception-data/catalog/Rigid/pen_holder/00000/geom.npz",
+        "mesh_sha256": "3d507e6a5558eeeacf9631fb148a2bb828063fc4319fce5d6290a7e5e5ddf75f"
+      }
+    ],
+    "timing": "Recorded after paired runs; PEN did not modify assets or catalogues."
+  }
+}

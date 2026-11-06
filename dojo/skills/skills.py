@@ -326,6 +326,11 @@ class Skills:
         # ``library.fill_container`` (stream H; ``RuntimeConfig.fill_move_lift``): after the container's move, "off"
         # (today: the place's 50 mm retreat) | "clear" (hands still below its top go straight up clear of it)
         self.fill_move_lift = "off"
+        self.fill_grasp = "off"
+        self.fill_guard = "off"
+        self.fill_holder = "off"
+        self.fill_drop = "off"
+        self.fill_insert = "off"
         # ``_refine_hover`` (stream H; ``RuntimeConfig.rehover_siblings``): "follow" (today: a refine's "seen elsewhere"
         # hint moves the object there and re-hovers) | "keep" (not for an object with an identical sibling beside it)
         self.rehover_siblings = "follow"

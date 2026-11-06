@@ -341,6 +341,11 @@ class RuntimeConfig:
     # ``library.fill_container`` after the container's move (stream H; ``Skills.fill_move_lift``): off (today) | clear
     # (a hand whose fingertips are still below the container's top goes straight up clear of it first)
     fill_move_lift: str = "off"
+    fill_insert: str = "off"  # safe: measured joint range and corrected low release
+    fill_holder: str = "off"  # stay: leave the receptacle where observed
+    fill_drop: str = "off"  # center: maximum-clearance opening fit, no relaxed wall fit
+    fill_guard: str = "off"  # geometry: conditionally apply the fill profile
+    fill_grasp: str = "off"  # vertical: narrow horizontal pinches along the shaft
     # ``library.fill_container``'s joint range (stream H; ``Skills.fill_joint_limits``): inherit (today: ``joint_limits``) |
     # measured (joint 5 inside the sim's pi/2 stop while that skill runs, restored after)
     fill_joint_limits: str = "inherit"
@@ -639,6 +644,13 @@ class RuntimePolicy:
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence", "unblock", "gentle"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or self.cfg.push_goal not in ("centre", "cover", "cover_obb")
+                or self.cfg.fill_guard not in ("off", "geometry")
+                or (self.cfg.fill_guard == "geometry" and any(getattr(self.cfg, k) != "off" for k in
+                    ("fill_grasp", "fill_holder", "fill_drop", "fill_insert")))
+                or self.cfg.fill_insert not in ("off", "safe")
+                or self.cfg.fill_holder not in ("off", "stay")
+                or self.cfg.fill_drop not in ("off", "center", "inset")
+                or self.cfg.fill_grasp not in ("off", "vertical", "rolled", "rolled_tilt")
                 or self.cfg.fill_move_lift not in ("off", "clear")
                 or self.cfg.fill_joint_limits not in ("inherit", "measured")
                 or self.cfg.egg_grasp_height not in ("off", "raised")
@@ -958,6 +970,11 @@ class RuntimePolicy:
             sk_.push_order = cfg.push_order
             sk_.push_goal = cfg.push_goal
             sk_.fill_move_lift = cfg.fill_move_lift
+            sk_.fill_grasp = cfg.fill_grasp
+            sk_.fill_guard = cfg.fill_guard
+            sk_.fill_holder = cfg.fill_holder
+            sk_.fill_drop = cfg.fill_drop
+            sk_.fill_insert = cfg.fill_insert
             sk_.fill_joint_limits = cfg.fill_joint_limits
             sk_.egg_grasp_height = cfg.egg_grasp_height
             sk_.egg_grasp_angles = cfg.egg_grasp_angles

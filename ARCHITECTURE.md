@@ -505,3 +505,30 @@ opening-resolution guard to thin disc geometry. An opening-only negative that
 cannot resolve the disc's thickness is unknown; other held evidence retains its
 normal interpretation. The existing `held_thin` switch applies the same guard to
 all unresolved thin objects. Neither switch measures a pose or guarantees a grasp.
+
+### Pen-holder skill experiments
+
+`RuntimeConfig` and G3 expose four independent, default-off fill-container switches:
+`fill_grasp=vertical` adds narrow horizontal jaw pinches at five shaft stations and
+penalizes the original candidates by two score units, retaining them when the new
+ones cannot plan. `fill_grasp=rolled` applies that preference only to horizontal
+shafts whose body axes are more than 10 degrees from flat; `rolled_tilt` also
+tries 25/40-degree approach tilts while keeping the closing axis horizontal; `fill_holder=stay` bypasses the receptacle relocation;
+`fill_drop=center` uses only the maximum-clearance opening fit with occupied-space
+padding, refusing a fit rather than relaxing the occupied-space constraint;
+`fill_drop=inset` first tries wall packing at 7 mm clearance, then the centered
+fit, retaining occupied-space constraints in both attempts;
+`fill_insert=safe` scopes the measured joint range to the fill operation, restores
+it even on exceptions, and uses the existing low-hover and 4 mm xy-correction
+servo options. The grasp filter and collision model retain finger clearance. They consume the same world/provider as the
+original skill; none introduces a task-name route or a new perception read.
+
+`fill_guard=geometry` is a separate default-off conditional profile, used with the
+four independent switches off. It applies `rolled_tilt` + `stay` + `inset` + `safe`
+only to a rigid holder inside the arm bases’ lateral span, outside the shared
+comfortable reach, within the nearest arm’s finger-clearance band or farther,
+and with at least one flat slender shaft. It uses the current world poses and
+asset extents, never layout identifiers. Other scenes follow the baseline path.
+The four scoped switches restore on return or exception; G3 records the decision
+and its geometric measurements. This is a development heuristic, not a stability
+guarantee.

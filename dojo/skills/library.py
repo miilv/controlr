@@ -1865,8 +1865,15 @@ def _fill_drop_target(sk: Skills, label: str, container: str, inside: list[str])
     w = sk.world
     o, c = w.obj(label), w.obj(container)
     others = [w.obj(l) for l in inside if l in w.objects]
-    for kw in ({"pack": True, "min_clear": FILL_PACK_CLEAR, "others_pad": 0.003}, {"others_pad": 0.004},
-               {"others_pad": 0.002}, {"others_pad": 0.0}, {"others": ()}):
+    mode = getattr(sk, "fill_drop", "off")
+    if mode == "center":
+        fits = ({"others_pad": 0.004},)
+    elif mode == "inset":
+        fits = ({"pack": True, "min_clear": 0.007, "others_pad": 0.003}, {"others_pad": 0.004})
+    else:
+        fits = ({"pack": True, "min_clear": FILL_PACK_CLEAR, "others_pad": 0.003}, {"others_pad": 0.004},
+                {"others_pad": 0.002}, {"others_pad": 0.0}, {"others": ()})
+    for kw in fits:
         fit = fit_insertion(o, c, **{"others": others, "res": 0.001, "yaw_step_deg": 15.0, "pack": False,
                                      "others_band": 0.012, **kw})
         if fit is not None and (not kw.get("pack") or fit.clearance >= kw["min_clear"]):
@@ -1909,6 +1916,28 @@ def _leaning(sk: Skills, label: str, T: np.ndarray) -> list[np.ndarray]:
     return out
 
 
+def _fill_vertical_grasps(o, kin, arm, tilts=(0.0,)):
+    """Horizontal jaw pinches from above, at several shaft stations, opened narrowly.
+
+    Project the geometry onto the jaws: a rolled pen's body-frame width is not its
+    horizontal width. Keep the usual top grasp's table clearance and collision checks.
+    """
+    import dataclasses
+    from dojo.skills import grasps as G
+
+    out = []
+    for g in G.top_grasps(o, kin, arm, tilts=tilts, along=(0.0, -0.3, 0.3, -0.5, 0.5)):
+        points = o.world_bbox_corners() if o.asset.mesh is None else o.asset.mesh[0] @ o.R.T + o.pos
+        span = points @ g.T[:3, 1]
+        width = float(np.ptp(span))
+        if width <= G.MAX_WIDTH:
+            k = int(np.argmax(o.asset.extents))
+            station = float((g.T[:3, 3] - o.center_w) @ o.R[:, k])
+            out.append(dataclasses.replace(g, width=width, narrow=True,
+                                           note=f"vertical {g.note} station {station * 1000:+.0f}mm"))
+    return out
+
+
 def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, box_tilts=(0.0, 25.0, -25.0),
                    skip=()):
     """A ``plan_transfer`` grasp source: the usual candidates (box grasps, the category's, slices of irregular ones)
@@ -1925,6 +1954,14 @@ def _fingers_above(sk: Skills, label: str, T_target: np.ndarray, z_min: float, b
         cands = G.box_grasps(o, sk.kin, arm, tilts=tuple(box_tilts)) + G.candidates(o, sk.kin, arm)
         if held_box(o, np.eye(4)).points is not None:
             cands += G.slice_grasps(o, sk.kin, arm)
+        mode = getattr(sk, "fill_grasp", "off")
+        long = int(np.argmax(o.asset.extents))
+        rolled = abs(float(o.R[2, long])) < 0.2 and float(np.max(np.abs(o.R[2, :]))) < math.cos(math.radians(10))
+        if mode == "vertical" or (mode in ("rolled", "rolled_tilt") and rolled):
+            preferred = (_fill_vertical_grasps(o, sk.kin, arm, tilts=(0.0, 25.0, 40.0))
+                         if mode == "rolled_tilt" else _fill_vertical_grasps(o, sk.kin, arm))
+            cands = (preferred
+                     + [dataclasses.replace(g, score=g.score + 2.0) for g in cands])
         Tinv = inv_T(o.T)
         k = int(np.argmax(o.asset.extents))
         out = []
@@ -1986,13 +2023,73 @@ def _lift_clear_of(sk: Skills, container: str) -> None:
             pass
 
 
+FILL_GUARD_PROFILE = {"fill_grasp": "rolled_tilt", "fill_holder": "stay",
+                      "fill_drop": "inset", "fill_insert": "safe"}
+
+
+def _fill_guard_features(sk, objects, container, comfy):
+    """Conservative pose/geometry gate, independent of task/layout identity.
+
+    Leave a holder in the shared comfortable workspace alone. Outside that
+    overlap, reserve the existing finger-clearance band near the reach edge.
+    Require a flat slender shaft: when every slender shaft is rolled, the
+    score depends on fitting both wide bodies, where inset packing regressed.
+    Outside the arm-base lateral span, retain the baseline: the changed idle-arm
+    route can hit a holder that the baseline left upright.
+    """
+    w = sk.world
+    c = w.obj(container)
+    distances = [float(np.linalg.norm(sk.kin.base(a)[:2, 3] - c.center_w[:2])) for a in ARMS]
+    flat = False
+    for lab in objects:
+        if lab not in w.objects:
+            continue
+        o = w.obj(lab)
+        ext = np.asarray(o.asset.extents, float)
+        k = int(np.argmax(ext))
+        slender = float(ext[k]) >= 6.0 * float(np.max(np.delete(ext, k)))
+        flat |= bool(slender and abs(float(o.R[2, k])) < 0.2
+                     and float(np.max(np.abs(o.R[2]))) >= math.cos(math.radians(10)))
+    near, far = min(distances), max(distances)
+    base_x = [float(sk.kin.base(a)[0, 3]) for a in ARMS]
+    inside_span = min(base_x) <= float(c.center_w[0]) <= max(base_x)
+    active = bool(c.obj_type == "Rigid" and flat and inside_span
+                  and near > comfy - FILL_FINGER_CLEAR and far > comfy)
+    return {"active": active, "nearest_m": near, "farthest_m": far,
+            "flat_shaft": flat, "inside_base_span": inside_span}
+
+
 def fill_container(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
+                   comfy: float = 0.42, tries: int = 2) -> dict:
+    """Optional geometry gate around the independent fill experiments; default is the baseline."""
+    if getattr(sk, "fill_guard", "off") != "geometry":
+        return _fill_with_joint_limits(sk, objects, container, drop, comfy, tries)
+    saved = {key: getattr(sk, key, "off") for key in FILL_GUARD_PROFILE}
+    if any(value != "off" for value in saved.values()):
+        raise ValueError("fill_guard requires the four independent fill switches off")
+    features = _fill_guard_features(sk, objects, container, comfy)
+    sk.last_fill_guard = features
+    sk.log(f"[fill_guard] active={int(features['active'])} nearest={features['nearest_m']:.3f} "
+           f"farthest={features['farthest_m']:.3f} flat_shaft={int(features['flat_shaft'])}")
+    if not features["active"]:
+        return _fill_with_joint_limits(sk, objects, container, drop, comfy, tries)
+    try:
+        for key, value in FILL_GUARD_PROFILE.items():
+            setattr(sk, key, value)
+        return _fill_with_joint_limits(sk, objects, container, drop, comfy, tries)
+    finally:
+        for key, value in saved.items():
+            setattr(sk, key, value)
+
+
+def _fill_with_joint_limits(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
                    comfy: float = 0.42, tries: int = 2) -> dict:
     """``_fill_container``, under ``Skills.fill_joint_limits`` (stream H): "inherit" (default: the episode's
     ``joint_limits``) | "measured" (joint 5 inside the sim's pi/2 stop for this skill only, restored after). G3 v15 dev,
     fill_move_lift "clear": 21 of 52 pen drops were planned with |q5| past pi/2 and the arm stood 1-56 mm off the
     plan at the release; 3 of those 21 pens ended inside, against 17 of the other 31."""
-    mode = getattr(sk, "fill_joint_limits", "inherit")
+    mode = ("measured" if getattr(sk, "fill_insert", "off") == "safe"
+            else getattr(sk, "fill_joint_limits", "inherit"))
     prev = getattr(sk, "joint_limits", None)
     if mode == "inherit" or prev is None or prev == mode:
         return _fill_container(sk, objects, container, drop, comfy, tries)
@@ -2018,7 +2115,7 @@ def _fill_container(sk: Skills, objects: list[str], container: str, drop: float 
     cen = np.mean([w.obj(l).center_w[:2] for l in objects], axis=0)
     picker = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - cen)))
     st = w.notes.setdefault("fill", {"inside": []})
-    if c.obj_type == "Rigid" and float(np.linalg.norm(sk.kin.base(picker)[:2, 3] - c.center_w[:2])) > comfy \
+    if getattr(sk, "fill_holder", "off") != "stay" and c.obj_type == "Rigid" and float(np.linalg.norm(sk.kin.base(picker)[:2, 3] - c.center_w[:2])) > comfy \
             and not st.get("moved"):
         near = (0.5 * float(cen[0]), -0.27)
         spots = sorted(free_spots(sk, container, near_xy=near, clearance=0.04),
@@ -2069,7 +2166,9 @@ def _fill_container(sk: Skills, objects: list[str], container: str, drop: float 
                            ignore=(container, *st["inside"]),
                            place_kw={"pre_h": 0.03, "descend_rad": 0.03, "release_gap": 0.0, "settle": 1,
                                      "servo": True, "servo_ref": container, "seat_tol": 0.3, "probe": False,
-                                     "hover_clear": 0.01, "grip_only": (container, *st["inside"])},
+                                     "hover_clear": 0.01, "grip_only": (container, *st["inside"]),
+                                     **({"hover_clear": 0.003, "servo_xy_tol": 0.004}
+                                        if getattr(sk, "fill_insert", "off") == "safe" else {})},
                            transfer_kw={"grasps": _fingers_above(sk, lab, T, z_min, skip=tuple(bad))}, air_handover=False)
         finally:
             sk.log = log0
