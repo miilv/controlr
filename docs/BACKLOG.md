@@ -1122,3 +1122,5 @@
   hook consumed for later mugs. Release verified empty reservations before
   diagnosing the remaining hooks as unreachable; evaluate as a separate
   default-off lever. See journal `2026-11-06-dojo-hang-ceiling`.
+
+- **Relocation write audit coverage:** `RuntimePolicy._relocate_laid` emits resulting pos only; `m95_score.py audit` does not ingest it. Add explicit pre/post write coverage before collecting the [scoped KONG camera A/B](experiments/2026-11-07-kong-scoped-relocate-prereg.md); an audit omitting these writes cannot qualify the lever.

@@ -604,3 +604,14 @@ Both retain the existing collision-checked motion and placement tail.
 `arrange_route=lateral` (default `off`) separately adds four checked lateral
 waypoints after a placement transit's legacy collision failure. Unreachable
 endpoints are refused directly, and both legs must plan before execution.
+
+### Task-scoped actor relocation
+
+`RuntimeConfig.watch_relocate_task` defaults to the empty string, preserving the
+legacy `watch_relocate` boolean. Setting it to `make_kong` replaces that boolean
+with an exact match against the instruction-routed perception vocabulary; other
+values are rejected. The generic watcher remains installed on all perception
+scenes with `watch=true`. Only its relocation branch is scoped: other scenes keep
+the existing watch/lay-face-up behavior and skill parameters. No launcher task
+metadata, layout identity or checker state is consumed. The relocation search,
+convergence limits and writes retain their existing behavior.
