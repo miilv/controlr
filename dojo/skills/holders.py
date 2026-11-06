@@ -449,8 +449,10 @@ def egg_drop_candidates(sk, o, hole, plate_top):
     The long axis stays lying: this changes the feasible hand orientation without
     requiring the upright turn that makes an egg pivot out of the pads.
     """
-    spins = (0.0, 25.0, -25.0, 55.0, -55.0, 90.0, -90.0) if \
-        getattr(sk, "egg_drop_spin", "off") == "axis" else (0.0,)
+    if getattr(sk, "egg_drop_spin", "off") != "axis":
+        yield from egg_drop_targets(o, hole, plate_top, o.R)
+        return
+    spins = (0.0, 25.0, -25.0, 55.0, -55.0, 90.0, -90.0)
     axis = np.eye(3)[int(np.argmax(o.asset.extents))]
     for spin in spins:
         yield from egg_drop_targets(o, hole, plate_top, o.R @ _rot(axis, math.radians(spin)))

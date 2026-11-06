@@ -143,7 +143,7 @@ def test_drop_spin_preserves_the_long_axis_and_off_candidates():
     on = list(H.egg_drop_candidates(SimpleNamespace(egg_drop_spin="axis"), o, hole, .81))
     assert len(on) == 7 * len(base)
     for a, b in zip(base, off):
-        assert a[:3] == b[:3] and np.allclose(a[3], b[3])
+        assert a[:3] == b[:3] and np.array_equal(a[3], b[3])
     for index, (_, _, _, T) in enumerate(on):
         orig = base[index % len(base)][3]
         assert np.allclose(T[:3, 2], orig[:3, 2])
