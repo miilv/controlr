@@ -1,5 +1,13 @@
 # Compute6 tie launch: repeated rendered-driver watchdog failures
 
+Round-3 update: a dev-only investigation completed one episode without an
+infrastructure failure and resumed dispatch at 13:22:31Z. The
+[recovery journal](../journal/2026-11-06-integ6-render-recovery.md) records the
+offline extension overlay, active perception-fitting stacks, bounded watchdog
+configuration and disclosed extra A/B infrastructure attempts. The timeline
+below records the initial failure and hold; its stopped state was superseded
+by that release. No comparative outcome is established here.
+
 The camera deployment and all requested data parity gates passed before launch.
 Both first tie arms started on compute6, with the accepted simulation Python
 3.11.18 / msgpack 1.2.4 differences recorded. The first A attempt had reached
