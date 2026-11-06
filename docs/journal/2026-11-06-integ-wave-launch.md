@@ -21,3 +21,11 @@ including historical physics runs; this startup line alone is not an invalid GPU
 signal. CUDA-no-device errors remain infrastructure failures. Use one Integration
 lane alongside the other team's one Isaac, and the explicitly authorized shared
 `~/coord/lane_gate.stamp` boot protocol (120 s); all other coord paths stay forbidden.
+
+For the paired tie comparison the lead amended existing M15 demo provenance before
+collection: require status=ok / validation.ok, current settled layout mtime no newer
+than demo pkl mtime, and freeze current SHA256 of both for identity across arms.
+All 15 M15 demos pass these checks, with no exclusions. Nanosecond mtimes and SHA256s
+are recorded in compute4 `~/dojo-data/wave-1106/m15-demo-provenance.json`. Historical
+absence of a loaded-layout hash in demo_index does not block this paired comparison.
+No scoring demos were regenerated.
