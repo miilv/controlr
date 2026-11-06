@@ -1,0 +1,11 @@
+{
+  "series_count": "seg",
+  "seg_propose": "add",
+  "seg_add_move_weak": true,
+  "seg_add_refit_poor": true,
+  "seg_min_score": 0.4,
+  "seg_dup_iou": 0.7,
+  "seg_additive_iou": 0.1,
+  "seg_additive_min_score": 0.5,
+  "seg_additive": true
+}

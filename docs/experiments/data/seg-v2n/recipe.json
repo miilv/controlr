@@ -1,0 +1,64 @@
+{
+  "kind": "round-3 pre-registration before training or additive measurements",
+  "base": "immutable v2b; MD5 2f546196145fc424f76a5e2e47dd3210",
+  "data": "all 5067 validated v2e export images; project labels onto 32 new classes; retain old-only scenes with empty labels as deliberate negatives",
+  "split": "train 100030-48 variants only; val 100049; no gate images used for training",
+  "initialization": "separate checkpoint selecting 32 classifier rows from parked v2e; v2b file and model untouched",
+  "training": {
+    "max_epochs": 40,
+    "patience": 10,
+    "checkpoint": "best.pt by Ultralytics training-validation fitness: box mAP50-95 + mask mAP50-95; not dev gate",
+    "seed": 0,
+    "imgsz": 960,
+    "batch": "AutoBatch with 8 GiB reserve",
+    "rfs_t": 0.05,
+    "close_mosaic": 5
+  },
+  "merge": {
+    "mode": "add only; no relabel arm",
+    "extra_min_score": 0.5,
+    "mask_iou_grid": [
+      0.1,
+      0.3,
+      0.5
+    ],
+    "reject": "strictly greater than theta overlap with any v2b mask",
+    "old_output": "unmodified prefix; no combined truncation or NMS that suppresses it",
+    "consumer": "new classes must be exact public task candidates, never category-fallback into old-only groups"
+  },
+  "gate": {
+    "sets": [
+      "d0_51",
+      "d0_ext",
+      "series",
+      "w51",
+      "p60"
+    ],
+    "frames": 162,
+    "objects": 975,
+    "ids": "100000-04 and 100030-49, frame 0",
+    "old_per_category_and_asset_losers": 0,
+    "metrics": [
+      "found",
+      "identity",
+      "pose10",
+      "identity+10"
+    ],
+    "new_naming_target": 18,
+    "naming_denominator": 49,
+    "phantom_total_increase_max": 2,
+    "phantom_increase_per_set_task_max": 1,
+    "raw_base_prefix": "bitwise mask/key/score/box equality, tested separately",
+    "selection": "qualify old metrics and phantom bounds first, then maximize merged hitcheck; ties choose lowest theta"
+  },
+  "resources": {
+    "machine": "compute3 only",
+    "free_vram_gib": 6,
+    "reserved_physical_cores": 4,
+    "disk_floor_gb": 10,
+    "lock": "~/dojo-gpu.lock; no light locks",
+    "llm_calls": 0,
+    "time_box_h": 6
+  },
+  "selection_clarification": "Before any dev measurement: original registration called best.pt a mask-only selection. Installed SegmentMetrics.fitness actually sums box and mask mAP50-95. Document the implementation rather than change the running trainer. No dev outcomes used."
+}

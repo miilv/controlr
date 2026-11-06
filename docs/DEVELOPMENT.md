@@ -61,7 +61,41 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 | cache / router / timings | `llm/` | `test_llm_*`; live `bench-cache` |
 | an experiment axis | field in `config.py` + `configs/base.yaml` | `test_cli` / `test_loop`; the default must not change behaviour |
 
+### Testing belief-object routing
+
+G3 uses --skill-attr plan_world=objects and optionally
+--skill-attr plan_solver=curobo. The corresponding dojo RuntimeConfig fields
+have defaults table and routes. Table retains the legacy skill behavior.
+
+tests/dojo/test_world_plan.py covers CPU dispatch, geometry, attachments and
+the port's belief-only/native-TCP conversion. tests/dojo/test_curobo_world.py
+mocks GPU proposals and checks box/sphere transforms, limits, collisions,
+deadline fallback and owned-worker cleanup; it needs no GPU dependencies.
+
+The optional GPU worker requires the deployed cuRobo v2 and its public X5
+configuration in the current Python environment. Its process isolation keeps a
+fatal CUDA failure from poisoning Isaac. The installed MotionPlanner attachment
+accessor refers to a missing solver property, so the adapter binds managers to
+the available trajectory/IK/graph models. Mesh rendering links are excluded
+from IK tool targets; one trajectory seed avoids invalid graph-seed batches.
+
+Validate on paired settled dev layouts. Report success/score, spread, steps,
+overall plan_s, added-search/startup time and fallback reasons. Request counts
+include speculative skill candidates. Do not treat shared-machine timing as
+a controlled latency benchmark. The GPU request deadline and CPU cooperative
+deadline have different startup/overrun semantics; report them explicitly.
+
 ## 4. Pitfalls (already stepped on)
+
+- **Camera lane profiles:** `scripts/dojo/queues/lane2.sh` retains compute4 defaults.
+  For compute6 set `LANE_STREAM=integ-c6`, `LANE_STATE`, `LANE_RUNS`, `LANE_DATA`
+  and the pinned `LANE_REPO`. The compute6 profile skips the compute4 boot stamp
+  and accepts only `~/dojo-gpu.lock` / `~/dojo-gpu-heavy2.lock`; light locks remain
+  independent. Both profiles keep the 16 GiB-used admission gate and 50 GB disk
+  floor. `shared_side.sh` and `ping_side.py` manage shared candidate services from
+  the same deployment. `power_watch.py STATE` samples every five minutes and
+  drains heavy2 after two consecutive readings above 700 W, without killing
+  another stream's work. A drained lane finishes its current job before exiting.
 
 - **A full disk takes the whole box down.** compute3's `/` hit 100 % (2026-10-29: other tools' data plus ours). `integ_eval.sh`
   and `rdpy.sh` GPU jobs now refuse to start below `DOJO_MIN_FREE_GB` (default 10) free on the `$HOME` / `$DOJO_DATA`
@@ -348,6 +382,15 @@ one live run checking `cache_read` (see RUNBOOK §cache).
   --sock S --weights W --classes classes.json` answers at `DOJO_SEG_ADDR` (torch + ultralytics in that venv); without
   one it is a no-op. Its classes are catalogue keys from the training export (`classes.json`): an asset that never
   appeared in the training renders cannot be named, only its category (`_seg_groups` falls back to the category).
+- **Additive segmentation uses independent checkpoints.** `EstimatorConfig.seg_additive` defaults to false.
+  Supply `serve --extra-weights W --extra-classes C` (or those leading options to `with_seg_server.sh`) to load a
+  disjoint new-only vocabulary. Enabled requests append extra masks only below `seg_additive_iou` overlap with
+  every base mask and above `seg_additive_min_score`. Base mask/key/score/box entries remain an unchanged prefix;
+  combined detections have no shared cap or NMS. Consumer deduplication gives base entries priority. Extras require
+  exact public task candidates and never category fallback; wrist pools and pad extension remain base-only.
+  A requested additive model that was not loaded fails loudly. Raw detector preservation does not establish
+  downstream pose/count invariance: gate every candidate on paired dev frames and report phantoms separately.
+  `new_only_export.py` deliberately retains empty-label old-only scenes as negatives for the separate new model.
 - **The glyph flag needs its server too.** `glyph_read` acts only when `python -m dojo.perception.glyph_read serve --sock S
   --model kong_cls/model.pt` answers at `DOJO_GLYPH_ADDR` (torch + torchvision); without one, or with a back / grazing
   / low-margin crop, the tile stays unread ("unknown"). The margins (per view kind) live in the checkpoint and were
@@ -475,6 +518,44 @@ harmful-write audit. The safe tail fallback alone does not establish harmless be
 | images / videos for docs | `docs/img/`, `docs/video/` | only what a report links to |
 | runs | `runs/` | not in git; reports reference the run dir name |
 
+### Segmenter dev gate
+
+`scripts/perception/seg/bake_seg.py run` selects frame 0 on dev / training ids
+100000–04 and 100030–49 only, including the w51 / p60 gate sets when selected.
+Use `scripts/perception/seg/dev_gate.py cut SOURCE OUT` to archive that slice of
+an existing bake with provenance hashes; this reuses predictions, not inference.
+`dev_gate.py compare BASE CANDIDATE` requires matching frame/object keys, unique
+objects and no errored frames, and reports identity and 10 mm position separately.
+`--diagnostic` can inspect errored archives but marks them invalid for adoption.
+Use `--by-asset` to split categories by retained GT asset index; report both
+resolutions so a win on one asset cannot hide a loss on another. The genuine-dev
+new-class hitcheck remains a separate required gate.
+
+Before incremental segmenter training, run `audit_rehearsal.py --base-classes
+BASE/classes.json --export EXPORT --out support.json`. It checks the exact old
+class prefix, variant training ids, unique-image support and the validation split;
+exit 1 means at least one old class has zero training support. RFS repeats and
+validation images cannot satisfy rehearsal. This audits manifests, not whether
+image files still exist. Keep the support report and source hashes with the recipe.
+
+GPU / software-GL bake workers explicitly register PyOpenGL's installed ctypes
+parameter handler. Older PyOpenGL plugin lists can omit Python 3.12's output
+pointer type, causing `glGenTextures` to fail on textured assets even with working
+CUDA / EGL. Changing this setup requires a fresh paired baseline, not dropping
+failed frames from the gate.
+For a matched rehearsal ablation, `narrow_rehearsal.py` derives the control from
+an already labelled full export. It retains every appended-class image and its
+exact full-export RFS repetition count; only old-only rehearsal differs.
+`audit_rehearsal.py --allow-missing-old` is for this diagnostic control only;
+vocabulary and split validation still apply. Candidate training uses strict audit.
+
+`train.py --batch -1 --batch-headroom-gb 8` opts into auto batch sizing and an
+allocator cap from available VRAM minus that reserve. It records the resolved
+integer in `resolved_batch.json` for reuse in matched arms, and stops if free
+VRAM drops below 6 GiB. Without the option, training defaults are unchanged.
+Training extras explicitly marked by `extra_groups` can resolve canonical Rigid
+keys stored under Clutter; ordinary task generation keeps its original lookup.
+
 ## RoboDojo research board
 
 The durable 54-cell research board lives in [scripts/dojo/board](../scripts/dojo/board/README.md).
@@ -561,26 +642,3 @@ adds spins about the round object's long axis. All default off and map to G3 `--
 collision planning, pick verification and the episode budget still apply. Pair settled
 layouts from the same generator; v6 egg records must not be mixed with v15 records.
 
-### Testing belief-object routing
-
-G3 uses --skill-attr plan_world=objects and optionally
---skill-attr plan_solver=curobo. The corresponding dojo RuntimeConfig fields
-have defaults table and routes. Table retains the legacy skill behavior.
-
-tests/dojo/test_world_plan.py covers CPU dispatch, geometry, attachments and
-the port's belief-only/native-TCP conversion. tests/dojo/test_curobo_world.py
-mocks GPU proposals and checks box/sphere transforms, limits, collisions,
-deadline fallback and owned-worker cleanup; it needs no GPU dependencies.
-
-The optional GPU worker requires the deployed cuRobo v2 and its public X5
-configuration in the current Python environment. Its process isolation keeps a
-fatal CUDA failure from poisoning Isaac. The installed MotionPlanner attachment
-accessor refers to a missing solver property, so the adapter binds managers to
-the available trajectory/IK/graph models. Mesh rendering links are excluded
-from IK tool targets; one trajectory seed avoids invalid graph-seed batches.
-
-Validate on paired settled dev layouts. Report success/score, spread, steps,
-overall plan_s, added-search/startup time and fallback reasons. Request counts
-include speculative skill candidates. Do not treat shared-machine timing as
-a controlled latency benchmark. The GPU request deadline and CPU cooperative
-deadline have different startup/overrun semantics; report them explicitly.

@@ -1,0 +1,2860 @@
+{
+  "images": 5690,
+  "old_classes": 511,
+  "missing_old": [
+    "Articulation/toaster/00001",
+    "Geometry/number_card/00003",
+    "Geometry/number_card/00005",
+    "Geometry/number_card/00006",
+    "Geometry/number_card/00007",
+    "Geometry/number_card/00009",
+    "Rigid/block/00005",
+    "Rigid/block/00008",
+    "Rigid/block/00009",
+    "Rigid/block/00011",
+    "Rigid/block/00014",
+    "Rigid/block/00017",
+    "Rigid/block/00018",
+    "Rigid/block/00020",
+    "Rigid/block/00023",
+    "Rigid/block/00026",
+    "Rigid/bottle/00005",
+    "Rigid/bottle/00061",
+    "Rigid/bowl/00003",
+    "Rigid/bowl/00007",
+    "Rigid/bowl/00008",
+    "Rigid/bowl/00009",
+    "Rigid/bowl/00010",
+    "Rigid/bowl/00013",
+    "Rigid/bowl/00015",
+    "Rigid/bread/00001",
+    "Rigid/car/00001",
+    "Rigid/car/00003",
+    "Rigid/car/00005",
+    "Rigid/car/00006",
+    "Rigid/car/00008",
+    "Rigid/car/00009",
+    "Rigid/chick/00000",
+    "Rigid/chocolate_bag/00000",
+    "Rigid/clock/00000",
+    "Rigid/correction_tape/00000",
+    "Rigid/cup/00007",
+    "Rigid/donut/00000",
+    "Rigid/drawing_compass/00000",
+    "Rigid/electric_toothbrush/00003",
+    "Rigid/electric_toothbrush/00005",
+    "Rigid/glue/00000",
+    "Rigid/hammer/00001",
+    "Rigid/hammer/00006",
+    "Rigid/headset/00003",
+    "Rigid/headset/00004",
+    "Rigid/juice_carton/00000",
+    "Rigid/kiwi/00000",
+    "Rigid/lighter/00000",
+    "Rigid/mahjong/00002",
+    "Rigid/mahjong/00005",
+    "Rigid/mahjong/00007",
+    "Rigid/mahjong/00008",
+    "Rigid/mahjong/00009",
+    "Rigid/mahjong/00011",
+    "Rigid/mahjong/00013",
+    "Rigid/mahjong/00014",
+    "Rigid/mahjong/00015",
+    "Rigid/mahjong/00016",
+    "Rigid/mahjong/00017",
+    "Rigid/mahjong/00021",
+    "Rigid/mahjong/00022",
+    "Rigid/mahjong/00024",
+    "Rigid/mahjong/00025",
+    "Rigid/mahjong/00026",
+    "Rigid/mahjong/00027",
+    "Rigid/mahjong/00030",
+    "Rigid/mahjong/00032",
+    "Rigid/mahjong/00033",
+    "Rigid/mahjong/00035",
+    "Rigid/mahjong/00036",
+    "Rigid/mahjong/00041",
+    "Rigid/matryoshka_dolls/00000",
+    "Rigid/matryoshka_dolls/00001",
+    "Rigid/matryoshka_dolls/00002",
+    "Rigid/matryoshka_dolls/00003",
+    "Rigid/matryoshka_dolls/00004",
+    "Rigid/matryoshka_dolls/00010",
+    "Rigid/matryoshka_dolls/00011",
+    "Rigid/matryoshka_dolls/00012",
+    "Rigid/matryoshka_dolls/00013",
+    "Rigid/matryoshka_dolls/00014",
+    "Rigid/mouse/00007",
+    "Rigid/mug/00000",
+    "Rigid/mug/00002",
+    "Rigid/mug/00003",
+    "Rigid/mug/00004",
+    "Rigid/number/00001",
+    "Rigid/number/00002",
+    "Rigid/number/00003",
+    "Rigid/number/00004",
+    "Rigid/number/00005",
+    "Rigid/number/00006",
+    "Rigid/number/00007",
+    "Rigid/number/00008",
+    "Rigid/number/00009",
+    "Rigid/number/00010",
+    "Rigid/number/00011",
+    "Rigid/number/00012",
+    "Rigid/number/00013",
+    "Rigid/number/00014",
+    "Rigid/number/00015",
+    "Rigid/number/00016",
+    "Rigid/number/00017",
+    "Rigid/number/00018",
+    "Rigid/number/00019",
+    "Rigid/number/00020",
+    "Rigid/number/00021",
+    "Rigid/number/00022",
+    "Rigid/number/00023",
+    "Rigid/number/00024",
+    "Rigid/number/00025",
+    "Rigid/number/00026",
+    "Rigid/number/00027",
+    "Rigid/number/00028",
+    "Rigid/number/00029",
+    "Rigid/origami_crane/00000",
+    "Rigid/peeler/00000",
+    "Rigid/sachet/00000",
+    "Rigid/scissor/00000",
+    "Rigid/seashell/00000",
+    "Rigid/shoe/00005",
+    "Rigid/shoe/00006",
+    "Rigid/shoe/00007",
+    "Rigid/shoe/00008",
+    "Rigid/shoe/00009",
+    "Rigid/shoe/00011",
+    "Rigid/shoe/00012",
+    "Rigid/shoe/00013",
+    "Rigid/shoe/00014",
+    "Rigid/shoe/00016",
+    "Rigid/shovel/00000",
+    "Rigid/small_cube/00001",
+    "Rigid/small_cube/00002",
+    "Rigid/small_cube/00005",
+    "Rigid/small_cube/00006",
+    "Rigid/tape_dispense/00000",
+    "Rigid/teddy_bear/00000",
+    "Rigid/watch/00003",
+    "Rigid/wrench/00001"
+  ],
+  "all_old_supported": false,
+  "classes": {
+    "Articulation/SpringButton/00002": {
+      "old": true,
+      "train_images": 61,
+      "val_images": 19
+    },
+    "Articulation/SpringButton/00003": {
+      "old": true,
+      "train_images": 26,
+      "val_images": 6
+    },
+    "Articulation/laptop/00000": {
+      "old": true,
+      "train_images": 40,
+      "val_images": 10
+    },
+    "Articulation/toaster/00000": {
+      "old": true,
+      "train_images": 33,
+      "val_images": 0
+    },
+    "Articulation/toaster/00001": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 8
+    },
+    "Geometry/basket/00002": {
+      "old": true,
+      "train_images": 365,
+      "val_images": 25
+    },
+    "Geometry/basket/00003": {
+      "old": true,
+      "train_images": 503,
+      "val_images": 37
+    },
+    "Geometry/basket/00004": {
+      "old": true,
+      "train_images": 388,
+      "val_images": 27
+    },
+    "Geometry/bread_shelf/00000": {
+      "old": true,
+      "train_images": 347,
+      "val_images": 22
+    },
+    "Geometry/camera_stand/00000": {
+      "old": true,
+      "train_images": 1653,
+      "val_images": 236
+    },
+    "Geometry/checkerboard/00000": {
+      "old": true,
+      "train_images": 44,
+      "val_images": 19
+    },
+    "Geometry/cube_cushion/00001": {
+      "old": true,
+      "train_images": 41,
+      "val_images": 15
+    },
+    "Geometry/cube_cushion/00002": {
+      "old": true,
+      "train_images": 27,
+      "val_images": 9
+    },
+    "Geometry/cup_holder/00000": {
+      "old": true,
+      "train_images": 41,
+      "val_images": 7
+    },
+    "Geometry/drawer/00000": {
+      "old": true,
+      "train_images": 30,
+      "val_images": 9
+    },
+    "Geometry/dustbin/00000": {
+      "old": true,
+      "train_images": 14,
+      "val_images": 4
+    },
+    "Geometry/factory_bolt/00000": {
+      "old": true,
+      "train_images": 20,
+      "val_images": 0
+    },
+    "Geometry/factory_bolt/00001": {
+      "old": true,
+      "train_images": 13,
+      "val_images": 12
+    },
+    "Geometry/factory_bolt/00002": {
+      "old": true,
+      "train_images": 21,
+      "val_images": 11
+    },
+    "Geometry/factory_bolt/00003": {
+      "old": true,
+      "train_images": 19,
+      "val_images": 12
+    },
+    "Geometry/factory_bolt/00004": {
+      "old": true,
+      "train_images": 23,
+      "val_images": 0
+    },
+    "Geometry/frame/00000": {
+      "old": true,
+      "train_images": 40,
+      "val_images": 13
+    },
+    "Geometry/headset_stand/00000": {
+      "old": true,
+      "train_images": 306,
+      "val_images": 22
+    },
+    "Geometry/key_slot/00000": {
+      "old": true,
+      "train_images": 36,
+      "val_images": 8
+    },
+    "Geometry/laptop_stand/00001": {
+      "old": true,
+      "train_images": 435,
+      "val_images": 33
+    },
+    "Geometry/monitor/00000": {
+      "old": true,
+      "train_images": 23,
+      "val_images": 0
+    },
+    "Geometry/monitor/00001": {
+      "old": true,
+      "train_images": 15,
+      "val_images": 13
+    },
+    "Geometry/mousemat/00000": {
+      "old": true,
+      "train_images": 28,
+      "val_images": 12
+    },
+    "Geometry/number_card/00001": {
+      "old": true,
+      "train_images": 7,
+      "val_images": 0
+    },
+    "Geometry/number_card/00002": {
+      "old": true,
+      "train_images": 14,
+      "val_images": 0
+    },
+    "Geometry/number_card/00003": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Geometry/number_card/00004": {
+      "old": true,
+      "train_images": 8,
+      "val_images": 0
+    },
+    "Geometry/number_card/00005": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Geometry/number_card/00006": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Geometry/number_card/00007": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 6
+    },
+    "Geometry/number_card/00008": {
+      "old": true,
+      "train_images": 10,
+      "val_images": 0
+    },
+    "Geometry/number_card/00009": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 6
+    },
+    "Geometry/piggy_bank/00000": {
+      "old": true,
+      "train_images": 27,
+      "val_images": 8
+    },
+    "Geometry/stack_base/00000": {
+      "old": true,
+      "train_images": 26,
+      "val_images": 10
+    },
+    "Geometry/t_cushion/00000": {
+      "old": true,
+      "train_images": 32,
+      "val_images": 12
+    },
+    "Geometry/test_tube_slot/00000": {
+      "old": true,
+      "train_images": 36,
+      "val_images": 9
+    },
+    "Geometry/toolbox/00000": {
+      "old": true,
+      "train_images": 43,
+      "val_images": 9
+    },
+    "Geometry/vertical_coin_stand/00000": {
+      "old": true,
+      "train_images": 27,
+      "val_images": 13
+    },
+    "Geometry/vertical_laptop_storage_rack/00000": {
+      "old": true,
+      "train_images": 259,
+      "val_images": 25
+    },
+    "Geometry/xylophone/00000": {
+      "old": true,
+      "train_images": 43,
+      "val_images": 11
+    },
+    "Rigid/action_camera/00000": {
+      "old": true,
+      "train_images": 107,
+      "val_images": 0
+    },
+    "Rigid/action_camera/00001": {
+      "old": true,
+      "train_images": 109,
+      "val_images": 0
+    },
+    "Rigid/action_camera/00002": {
+      "old": true,
+      "train_images": 99,
+      "val_images": 16
+    },
+    "Rigid/alarm/00000": {
+      "old": true,
+      "train_images": 29,
+      "val_images": 9
+    },
+    "Rigid/audio/00000": {
+      "old": true,
+      "train_images": 123,
+      "val_images": 7
+    },
+    "Rigid/audio/00001": {
+      "old": true,
+      "train_images": 154,
+      "val_images": 0
+    },
+    "Rigid/audio/00002": {
+      "old": true,
+      "train_images": 117,
+      "val_images": 0
+    },
+    "Rigid/bag/00000": {
+      "old": true,
+      "train_images": 166,
+      "val_images": 13
+    },
+    "Rigid/balance/00000": {
+      "old": true,
+      "train_images": 183,
+      "val_images": 48
+    },
+    "Rigid/ball/00000": {
+      "old": true,
+      "train_images": 179,
+      "val_images": 0
+    },
+    "Rigid/ball/00001": {
+      "old": true,
+      "train_images": 223,
+      "val_images": 25
+    },
+    "Rigid/baseball_bat/00000": {
+      "old": true,
+      "train_images": 442,
+      "val_images": 23
+    },
+    "Rigid/binoculars/00000": {
+      "old": true,
+      "train_images": 2,
+      "val_images": 0
+    },
+    "Rigid/block/00000": {
+      "old": true,
+      "train_images": 27,
+      "val_images": 12
+    },
+    "Rigid/block/00001": {
+      "old": true,
+      "train_images": 25,
+      "val_images": 11
+    },
+    "Rigid/block/00002": {
+      "old": true,
+      "train_images": 41,
+      "val_images": 17
+    },
+    "Rigid/block/00003": {
+      "old": true,
+      "train_images": 25,
+      "val_images": 9
+    },
+    "Rigid/block/00004": {
+      "old": true,
+      "train_images": 21,
+      "val_images": 12
+    },
+    "Rigid/block/00005": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/block/00006": {
+      "old": true,
+      "train_images": 3,
+      "val_images": 0
+    },
+    "Rigid/block/00007": {
+      "old": true,
+      "train_images": 7,
+      "val_images": 11
+    },
+    "Rigid/block/00008": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/block/00009": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/block/00010": {
+      "old": true,
+      "train_images": 12,
+      "val_images": 12
+    },
+    "Rigid/block/00011": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/block/00012": {
+      "old": true,
+      "train_images": 12,
+      "val_images": 0
+    },
+    "Rigid/block/00013": {
+      "old": true,
+      "train_images": 24,
+      "val_images": 0
+    },
+    "Rigid/block/00014": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/block/00015": {
+      "old": true,
+      "train_images": 15,
+      "val_images": 0
+    },
+    "Rigid/block/00016": {
+      "old": true,
+      "train_images": 14,
+      "val_images": 0
+    },
+    "Rigid/block/00017": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/block/00018": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/block/00019": {
+      "old": true,
+      "train_images": 14,
+      "val_images": 12
+    },
+    "Rigid/block/00020": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/block/00021": {
+      "old": true,
+      "train_images": 3,
+      "val_images": 0
+    },
+    "Rigid/block/00022": {
+      "old": true,
+      "train_images": 26,
+      "val_images": 12
+    },
+    "Rigid/block/00023": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/block/00024": {
+      "old": true,
+      "train_images": 15,
+      "val_images": 0
+    },
+    "Rigid/block/00025": {
+      "old": true,
+      "train_images": 24,
+      "val_images": 11
+    },
+    "Rigid/block/00026": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/block/00027": {
+      "old": true,
+      "train_images": 12,
+      "val_images": 0
+    },
+    "Rigid/block/00028": {
+      "old": true,
+      "train_images": 21,
+      "val_images": 12
+    },
+    "Rigid/body_lotion/00000": {
+      "old": true,
+      "train_images": 247,
+      "val_images": 21
+    },
+    "Rigid/book/00000": {
+      "old": true,
+      "train_images": 33,
+      "val_images": 4
+    },
+    "Rigid/book/00001": {
+      "old": true,
+      "train_images": 59,
+      "val_images": 10
+    },
+    "Rigid/book/00002": {
+      "old": true,
+      "train_images": 19,
+      "val_images": 0
+    },
+    "Rigid/book/00003": {
+      "old": true,
+      "train_images": 10,
+      "val_images": 0
+    },
+    "Rigid/book/00004": {
+      "old": true,
+      "train_images": 53,
+      "val_images": 12
+    },
+    "Rigid/book_shelf/00000": {
+      "old": true,
+      "train_images": 507,
+      "val_images": 44
+    },
+    "Rigid/bottle/00000": {
+      "old": true,
+      "train_images": 482,
+      "val_images": 27
+    },
+    "Rigid/bottle/00002": {
+      "old": true,
+      "train_images": 6,
+      "val_images": 0
+    },
+    "Rigid/bottle/00005": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 6
+    },
+    "Rigid/bottle/00022": {
+      "old": true,
+      "train_images": 16,
+      "val_images": 7
+    },
+    "Rigid/bottle/00025": {
+      "old": true,
+      "train_images": 16,
+      "val_images": 7
+    },
+    "Rigid/bottle/00041": {
+      "old": true,
+      "train_images": 10,
+      "val_images": 0
+    },
+    "Rigid/bottle/00050": {
+      "old": true,
+      "train_images": 9,
+      "val_images": 0
+    },
+    "Rigid/bottle/00055": {
+      "old": true,
+      "train_images": 7,
+      "val_images": 0
+    },
+    "Rigid/bottle/00059": {
+      "old": true,
+      "train_images": 6,
+      "val_images": 0
+    },
+    "Rigid/bottle/00060": {
+      "old": true,
+      "train_images": 19,
+      "val_images": 7
+    },
+    "Rigid/bottle/00061": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/bowl/00000": {
+      "old": true,
+      "train_images": 132,
+      "val_images": 0
+    },
+    "Rigid/bowl/00001": {
+      "old": true,
+      "train_images": 122,
+      "val_images": 0
+    },
+    "Rigid/bowl/00002": {
+      "old": true,
+      "train_images": 27,
+      "val_images": 0
+    },
+    "Rigid/bowl/00003": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 9
+    },
+    "Rigid/bowl/00005": {
+      "old": true,
+      "train_images": 15,
+      "val_images": 0
+    },
+    "Rigid/bowl/00007": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/bowl/00008": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/bowl/00009": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/bowl/00010": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/bowl/00012": {
+      "old": true,
+      "train_images": 15,
+      "val_images": 9
+    },
+    "Rigid/bowl/00013": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/bowl/00014": {
+      "old": true,
+      "train_images": 24,
+      "val_images": 0
+    },
+    "Rigid/bowl/00015": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/box/00000": {
+      "old": true,
+      "train_images": 160,
+      "val_images": 19
+    },
+    "Rigid/box/00001": {
+      "old": true,
+      "train_images": 39,
+      "val_images": 0
+    },
+    "Rigid/box/00002": {
+      "old": true,
+      "train_images": 76,
+      "val_images": 0
+    },
+    "Rigid/box/00004": {
+      "old": true,
+      "train_images": 53,
+      "val_images": 0
+    },
+    "Rigid/bread/00000": {
+      "old": true,
+      "train_images": 357,
+      "val_images": 22
+    },
+    "Rigid/bread/00001": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/bridge/00000": {
+      "old": true,
+      "train_images": 213,
+      "val_images": 10
+    },
+    "Rigid/broom/00000": {
+      "old": true,
+      "train_images": 30,
+      "val_images": 13
+    },
+    "Rigid/broom_shovel/00000": {
+      "old": true,
+      "train_images": 35,
+      "val_images": 9
+    },
+    "Rigid/cactus/00000": {
+      "old": true,
+      "train_images": 1,
+      "val_images": 0
+    },
+    "Rigid/cake/00000": {
+      "old": true,
+      "train_images": 115,
+      "val_images": 5
+    },
+    "Rigid/cake/00001": {
+      "old": true,
+      "train_images": 104,
+      "val_images": 8
+    },
+    "Rigid/cake/00002": {
+      "old": true,
+      "train_images": 72,
+      "val_images": 7
+    },
+    "Rigid/calculator/00000": {
+      "old": true,
+      "train_images": 141,
+      "val_images": 20
+    },
+    "Rigid/calculator/00001": {
+      "old": true,
+      "train_images": 184,
+      "val_images": 5
+    },
+    "Rigid/calendar/00000": {
+      "old": true,
+      "train_images": 269,
+      "val_images": 43
+    },
+    "Rigid/can/00000": {
+      "old": true,
+      "train_images": 312,
+      "val_images": 31
+    },
+    "Rigid/candle/00000": {
+      "old": true,
+      "train_images": 237,
+      "val_images": 30
+    },
+    "Rigid/cap/00000": {
+      "old": true,
+      "train_images": 133,
+      "val_images": 10
+    },
+    "Rigid/cap/00001": {
+      "old": true,
+      "train_images": 97,
+      "val_images": 0
+    },
+    "Rigid/car/00000": {
+      "old": true,
+      "train_images": 13,
+      "val_images": 7
+    },
+    "Rigid/car/00001": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/car/00002": {
+      "old": true,
+      "train_images": 5,
+      "val_images": 0
+    },
+    "Rigid/car/00003": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/car/00004": {
+      "old": true,
+      "train_images": 18,
+      "val_images": 7
+    },
+    "Rigid/car/00005": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/car/00006": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/car/00007": {
+      "old": true,
+      "train_images": 11,
+      "val_images": 0
+    },
+    "Rigid/car/00008": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/car/00009": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/card/00000": {
+      "old": true,
+      "train_images": 187,
+      "val_images": 3
+    },
+    "Rigid/card/00001": {
+      "old": true,
+      "train_images": 184,
+      "val_images": 11
+    },
+    "Rigid/cereal/00000": {
+      "old": true,
+      "train_images": 266,
+      "val_images": 6
+    },
+    "Rigid/charger/00000": {
+      "old": true,
+      "train_images": 29,
+      "val_images": 11
+    },
+    "Rigid/chessman/00000": {
+      "old": true,
+      "train_images": 25,
+      "val_images": 14
+    },
+    "Rigid/chessman/00001": {
+      "old": true,
+      "train_images": 36,
+      "val_images": 13
+    },
+    "Rigid/chick/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/chinese_pavillion/00000": {
+      "old": true,
+      "train_images": 88,
+      "val_images": 0
+    },
+    "Rigid/chocolate/00000": {
+      "old": true,
+      "train_images": 343,
+      "val_images": 16
+    },
+    "Rigid/chocolate_bag/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/chocolate_bar/00000": {
+      "old": true,
+      "train_images": 9,
+      "val_images": 0
+    },
+    "Rigid/clip/00000": {
+      "old": true,
+      "train_images": 428,
+      "val_images": 25
+    },
+    "Rigid/clock/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/coffee_bag/00000": {
+      "old": true,
+      "train_images": 397,
+      "val_images": 31
+    },
+    "Rigid/coin/00000": {
+      "old": true,
+      "train_images": 273,
+      "val_images": 19
+    },
+    "Rigid/coin/00001": {
+      "old": true,
+      "train_images": 172,
+      "val_images": 9
+    },
+    "Rigid/comb/00000": {
+      "old": true,
+      "train_images": 323,
+      "val_images": 13
+    },
+    "Rigid/correction_tape/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/croissant/00000": {
+      "old": true,
+      "train_images": 174,
+      "val_images": 29
+    },
+    "Rigid/cube/00000": {
+      "old": true,
+      "train_images": 32,
+      "val_images": 13
+    },
+    "Rigid/cube/00001": {
+      "old": true,
+      "train_images": 23,
+      "val_images": 0
+    },
+    "Rigid/cube/00002": {
+      "old": true,
+      "train_images": 5,
+      "val_images": 12
+    },
+    "Rigid/cube/00003": {
+      "old": true,
+      "train_images": 45,
+      "val_images": 22
+    },
+    "Rigid/cube/00004": {
+      "old": true,
+      "train_images": 30,
+      "val_images": 9
+    },
+    "Rigid/cube/00005": {
+      "old": true,
+      "train_images": 37,
+      "val_images": 9
+    },
+    "Rigid/cube/00006": {
+      "old": true,
+      "train_images": 32,
+      "val_images": 10
+    },
+    "Rigid/cube/00007": {
+      "old": true,
+      "train_images": 17,
+      "val_images": 0
+    },
+    "Rigid/cube/00008": {
+      "old": true,
+      "train_images": 26,
+      "val_images": 0
+    },
+    "Rigid/cube/00009": {
+      "old": true,
+      "train_images": 12,
+      "val_images": 12
+    },
+    "Rigid/cup/00000": {
+      "old": true,
+      "train_images": 21,
+      "val_images": 10
+    },
+    "Rigid/cup/00001": {
+      "old": true,
+      "train_images": 109,
+      "val_images": 12
+    },
+    "Rigid/cup/00002": {
+      "old": true,
+      "train_images": 148,
+      "val_images": 5
+    },
+    "Rigid/cup/00003": {
+      "old": true,
+      "train_images": 63,
+      "val_images": 0
+    },
+    "Rigid/cup/00007": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/cutter/00000": {
+      "old": true,
+      "train_images": 333,
+      "val_images": 4
+    },
+    "Rigid/darts_board/00000": {
+      "old": true,
+      "train_images": 214,
+      "val_images": 21
+    },
+    "Rigid/dice/00000": {
+      "old": true,
+      "train_images": 441,
+      "val_images": 17
+    },
+    "Rigid/dog_toy/00000": {
+      "old": true,
+      "train_images": 118,
+      "val_images": 0
+    },
+    "Rigid/donut/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/drawing_compass/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/earbuds/00000": {
+      "old": true,
+      "train_images": 489,
+      "val_images": 18
+    },
+    "Rigid/earth_globe/00000": {
+      "old": true,
+      "train_images": 133,
+      "val_images": 30
+    },
+    "Rigid/electric_toothbrush/00000": {
+      "old": true,
+      "train_images": 5,
+      "val_images": 8
+    },
+    "Rigid/electric_toothbrush/00001": {
+      "old": true,
+      "train_images": 6,
+      "val_images": 0
+    },
+    "Rigid/electric_toothbrush/00002": {
+      "old": true,
+      "train_images": 8,
+      "val_images": 0
+    },
+    "Rigid/electric_toothbrush/00003": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/electric_toothbrush/00004": {
+      "old": true,
+      "train_images": 15,
+      "val_images": 6
+    },
+    "Rigid/electric_toothbrush/00005": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/electric_toothbrush/00006": {
+      "old": true,
+      "train_images": 5,
+      "val_images": 0
+    },
+    "Rigid/eraser/00000": {
+      "old": true,
+      "train_images": 517,
+      "val_images": 26
+    },
+    "Rigid/factory_nut/00000": {
+      "old": true,
+      "train_images": 21,
+      "val_images": 0
+    },
+    "Rigid/factory_nut/00001": {
+      "old": true,
+      "train_images": 3,
+      "val_images": 11
+    },
+    "Rigid/factory_nut/00002": {
+      "old": true,
+      "train_images": 20,
+      "val_images": 6
+    },
+    "Rigid/factory_nut/00003": {
+      "old": true,
+      "train_images": 19,
+      "val_images": 12
+    },
+    "Rigid/factory_nut/00004": {
+      "old": true,
+      "train_images": 24,
+      "val_images": 0
+    },
+    "Rigid/foosball_table/00000": {
+      "old": true,
+      "train_images": 65,
+      "val_images": 0
+    },
+    "Rigid/frame/00000": {
+      "old": true,
+      "train_images": 5,
+      "val_images": 0
+    },
+    "Rigid/french_fries/00000": {
+      "old": true,
+      "train_images": 130,
+      "val_images": 19
+    },
+    "Rigid/game_machine/00000": {
+      "old": true,
+      "train_images": 226,
+      "val_images": 7
+    },
+    "Rigid/gamepad/00000": {
+      "old": true,
+      "train_images": 359,
+      "val_images": 18
+    },
+    "Rigid/garage/00000": {
+      "old": true,
+      "train_images": 18,
+      "val_images": 0
+    },
+    "Rigid/garage/00002": {
+      "old": true,
+      "train_images": 4,
+      "val_images": 0
+    },
+    "Rigid/garage/00003": {
+      "old": true,
+      "train_images": 20,
+      "val_images": 0
+    },
+    "Rigid/garage/00004": {
+      "old": true,
+      "train_images": 7,
+      "val_images": 0
+    },
+    "Rigid/garage/00005": {
+      "old": true,
+      "train_images": 23,
+      "val_images": 0
+    },
+    "Rigid/garage/00006": {
+      "old": true,
+      "train_images": 18,
+      "val_images": 0
+    },
+    "Rigid/garage/00007": {
+      "old": true,
+      "train_images": 11,
+      "val_images": 11
+    },
+    "Rigid/garage/00008": {
+      "old": true,
+      "train_images": 14,
+      "val_images": 0
+    },
+    "Rigid/garage/00009": {
+      "old": true,
+      "train_images": 47,
+      "val_images": 0
+    },
+    "Rigid/garage/00011": {
+      "old": true,
+      "train_images": 9,
+      "val_images": 0
+    },
+    "Rigid/garage/00012": {
+      "old": true,
+      "train_images": 10,
+      "val_images": 0
+    },
+    "Rigid/garage/00014": {
+      "old": true,
+      "train_images": 124,
+      "val_images": 2
+    },
+    "Rigid/garage/00015": {
+      "old": true,
+      "train_images": 131,
+      "val_images": 0
+    },
+    "Rigid/garage/00016": {
+      "old": true,
+      "train_images": 32,
+      "val_images": 0
+    },
+    "Rigid/garage/00017": {
+      "old": true,
+      "train_images": 24,
+      "val_images": 0
+    },
+    "Rigid/glasses/00000": {
+      "old": true,
+      "train_images": 127,
+      "val_images": 2
+    },
+    "Rigid/glasses/00001": {
+      "old": true,
+      "train_images": 52,
+      "val_images": 12
+    },
+    "Rigid/glue/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/graphics_card/00000": {
+      "old": true,
+      "train_images": 66,
+      "val_images": 0
+    },
+    "Rigid/graphics_card/00001": {
+      "old": true,
+      "train_images": 104,
+      "val_images": 11
+    },
+    "Rigid/hammer/00000": {
+      "old": true,
+      "train_images": 317,
+      "val_images": 16
+    },
+    "Rigid/hammer/00001": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/hammer/00002": {
+      "old": true,
+      "train_images": 9,
+      "val_images": 8
+    },
+    "Rigid/hammer/00003": {
+      "old": true,
+      "train_images": 7,
+      "val_images": 0
+    },
+    "Rigid/hammer/00004": {
+      "old": true,
+      "train_images": 7,
+      "val_images": 0
+    },
+    "Rigid/hammer/00005": {
+      "old": true,
+      "train_images": 29,
+      "val_images": 8
+    },
+    "Rigid/hammer/00006": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 8
+    },
+    "Rigid/hammer/00008": {
+      "old": true,
+      "train_images": 26,
+      "val_images": 0
+    },
+    "Rigid/headphone/00000": {
+      "old": true,
+      "train_images": 1,
+      "val_images": 0
+    },
+    "Rigid/headphones/00000": {
+      "old": true,
+      "train_images": 111,
+      "val_images": 0
+    },
+    "Rigid/headset/00003": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/headset/00004": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/headset/00005": {
+      "old": true,
+      "train_images": 31,
+      "val_images": 12
+    },
+    "Rigid/helmets/00000": {
+      "old": true,
+      "train_images": 83,
+      "val_images": 0
+    },
+    "Rigid/helmets/00001": {
+      "old": true,
+      "train_images": 43,
+      "val_images": 0
+    },
+    "Rigid/house/00001": {
+      "old": true,
+      "train_images": 97,
+      "val_images": 0
+    },
+    "Rigid/house/00002": {
+      "old": true,
+      "train_images": 172,
+      "val_images": 0
+    },
+    "Rigid/ice_cream/00000": {
+      "old": true,
+      "train_images": 145,
+      "val_images": 0
+    },
+    "Rigid/ice_cream/00001": {
+      "old": true,
+      "train_images": 187,
+      "val_images": 20
+    },
+    "Rigid/iron/00000": {
+      "old": true,
+      "train_images": 206,
+      "val_images": 0
+    },
+    "Rigid/jeans/00000": {
+      "old": true,
+      "train_images": 161,
+      "val_images": 0
+    },
+    "Rigid/juice_carton/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/kettle/00000": {
+      "old": true,
+      "train_images": 91,
+      "val_images": 0
+    },
+    "Rigid/kettle/00001": {
+      "old": true,
+      "train_images": 47,
+      "val_images": 0
+    },
+    "Rigid/key/00000": {
+      "old": true,
+      "train_images": 451,
+      "val_images": 48
+    },
+    "Rigid/keyboard/00000": {
+      "old": true,
+      "train_images": 120,
+      "val_images": 14
+    },
+    "Rigid/keyboard/00001": {
+      "old": true,
+      "train_images": 74,
+      "val_images": 13
+    },
+    "Rigid/keyboard/00002": {
+      "old": true,
+      "train_images": 28,
+      "val_images": 12
+    },
+    "Rigid/kiwi/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/lamp/00000": {
+      "old": true,
+      "train_images": 194,
+      "val_images": 18
+    },
+    "Rigid/lighter/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/magic_potion/00000": {
+      "old": true,
+      "train_images": 157,
+      "val_images": 8
+    },
+    "Rigid/mahjong/00000": {
+      "old": true,
+      "train_images": 8,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00001": {
+      "old": true,
+      "train_images": 8,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00002": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00003": {
+      "old": true,
+      "train_images": 10,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00004": {
+      "old": true,
+      "train_images": 11,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00005": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00006": {
+      "old": true,
+      "train_images": 9,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00007": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00008": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 12
+    },
+    "Rigid/mahjong/00009": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00010": {
+      "old": true,
+      "train_images": 14,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00011": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00012": {
+      "old": true,
+      "train_images": 22,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00013": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 10
+    },
+    "Rigid/mahjong/00014": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00015": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00016": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00017": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 5
+    },
+    "Rigid/mahjong/00018": {
+      "old": true,
+      "train_images": 14,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00019": {
+      "old": true,
+      "train_images": 13,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00020": {
+      "old": true,
+      "train_images": 12,
+      "val_images": 6
+    },
+    "Rigid/mahjong/00021": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00022": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00023": {
+      "old": true,
+      "train_images": 13,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00024": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 6
+    },
+    "Rigid/mahjong/00025": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00026": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00027": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00028": {
+      "old": true,
+      "train_images": 28,
+      "val_images": 12
+    },
+    "Rigid/mahjong/00029": {
+      "old": true,
+      "train_images": 12,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00030": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00031": {
+      "old": true,
+      "train_images": 10,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00032": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00033": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00034": {
+      "old": true,
+      "train_images": 14,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00035": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 7
+    },
+    "Rigid/mahjong/00036": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00037": {
+      "old": true,
+      "train_images": 28,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00038": {
+      "old": true,
+      "train_images": 14,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00039": {
+      "old": true,
+      "train_images": 22,
+      "val_images": 11
+    },
+    "Rigid/mahjong/00040": {
+      "old": true,
+      "train_images": 13,
+      "val_images": 0
+    },
+    "Rigid/mahjong/00041": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mallet/00000": {
+      "old": true,
+      "train_images": 31,
+      "val_images": 8
+    },
+    "Rigid/mallet_stand/00000": {
+      "old": true,
+      "train_images": 31,
+      "val_images": 8
+    },
+    "Rigid/mask/00000": {
+      "old": true,
+      "train_images": 149,
+      "val_images": 28
+    },
+    "Rigid/matryoshka_dolls/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00001": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00002": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00003": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00004": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00005": {
+      "old": true,
+      "train_images": 31,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00006": {
+      "old": true,
+      "train_images": 33,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00007": {
+      "old": true,
+      "train_images": 30,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00008": {
+      "old": true,
+      "train_images": 28,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00009": {
+      "old": true,
+      "train_images": 25,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00010": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 12
+    },
+    "Rigid/matryoshka_dolls/00011": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 12
+    },
+    "Rigid/matryoshka_dolls/00012": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 8
+    },
+    "Rigid/matryoshka_dolls/00013": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 12
+    },
+    "Rigid/matryoshka_dolls/00014": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 9
+    },
+    "Rigid/meta_quest/00000": {
+      "old": true,
+      "train_images": 174,
+      "val_images": 14
+    },
+    "Rigid/microscope/00000": {
+      "old": true,
+      "train_images": 229,
+      "val_images": 5
+    },
+    "Rigid/minecraft_blocks/00000": {
+      "old": true,
+      "train_images": 31,
+      "val_images": 0
+    },
+    "Rigid/minecraft_blocks/00003": {
+      "old": true,
+      "train_images": 5,
+      "val_images": 0
+    },
+    "Rigid/minecraft_blocks/00004": {
+      "old": true,
+      "train_images": 23,
+      "val_images": 0
+    },
+    "Rigid/minecraft_blocks/00005": {
+      "old": true,
+      "train_images": 46,
+      "val_images": 24
+    },
+    "Rigid/minecraft_blocks/00006": {
+      "old": true,
+      "train_images": 7,
+      "val_images": 7
+    },
+    "Rigid/minecraft_blocks/00007": {
+      "old": true,
+      "train_images": 14,
+      "val_images": 0
+    },
+    "Rigid/minecraft_blocks/00008": {
+      "old": true,
+      "train_images": 9,
+      "val_images": 0
+    },
+    "Rigid/minecraft_blocks/00009": {
+      "old": true,
+      "train_images": 19,
+      "val_images": 19
+    },
+    "Rigid/minecraft_blocks/00011": {
+      "old": true,
+      "train_images": 6,
+      "val_images": 0
+    },
+    "Rigid/minecraft_blocks/00012": {
+      "old": true,
+      "train_images": 11,
+      "val_images": 0
+    },
+    "Rigid/minecraft_blocks/00013": {
+      "old": true,
+      "train_images": 29,
+      "val_images": 0
+    },
+    "Rigid/minecraft_blocks/00014": {
+      "old": true,
+      "train_images": 22,
+      "val_images": 13
+    },
+    "Rigid/mini_fan/00000": {
+      "old": true,
+      "train_images": 113,
+      "val_images": 8
+    },
+    "Rigid/mini_fan/00001": {
+      "old": true,
+      "train_images": 24,
+      "val_images": 16
+    },
+    "Rigid/mini_fan/00002": {
+      "old": true,
+      "train_images": 157,
+      "val_images": 10
+    },
+    "Rigid/money_stack/00000": {
+      "old": true,
+      "train_images": 383,
+      "val_images": 18
+    },
+    "Rigid/monitor/00000": {
+      "old": true,
+      "train_images": 369,
+      "val_images": 69
+    },
+    "Rigid/mouse/00004": {
+      "old": true,
+      "train_images": 21,
+      "val_images": 0
+    },
+    "Rigid/mouse/00006": {
+      "old": true,
+      "train_images": 7,
+      "val_images": 8
+    },
+    "Rigid/mouse/00007": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mug/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mug/00001": {
+      "old": true,
+      "train_images": 22,
+      "val_images": 0
+    },
+    "Rigid/mug/00002": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 6
+    },
+    "Rigid/mug/00003": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/mug/00004": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 6
+    },
+    "Rigid/mug/00005": {
+      "old": true,
+      "train_images": 12,
+      "val_images": 0
+    },
+    "Rigid/mug/00006": {
+      "old": true,
+      "train_images": 9,
+      "val_images": 0
+    },
+    "Rigid/mug/00007": {
+      "old": true,
+      "train_images": 2,
+      "val_images": 0
+    },
+    "Rigid/mug/00008": {
+      "old": true,
+      "train_images": 10,
+      "val_images": 6
+    },
+    "Rigid/mug/00009": {
+      "old": true,
+      "train_images": 24,
+      "val_images": 0
+    },
+    "Rigid/notes_holder/00000": {
+      "old": true,
+      "train_images": 224,
+      "val_images": 8
+    },
+    "Rigid/number/00001": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00002": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00003": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00004": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00005": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00006": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00007": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00008": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00009": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00010": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00011": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00012": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00013": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00014": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00015": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00016": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00017": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00018": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00019": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00020": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00021": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00022": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00023": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00024": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00025": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00026": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00027": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00028": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/number/00029": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/nvlink/00000": {
+      "old": true,
+      "train_images": 308,
+      "val_images": 26
+    },
+    "Rigid/office_mail/00000": {
+      "old": true,
+      "train_images": 143,
+      "val_images": 0
+    },
+    "Rigid/office_mail/00001": {
+      "old": true,
+      "train_images": 105,
+      "val_images": 24
+    },
+    "Rigid/oil_pen/00000": {
+      "old": true,
+      "train_images": 33,
+      "val_images": 5
+    },
+    "Rigid/oil_pen/00001": {
+      "old": true,
+      "train_images": 24,
+      "val_images": 0
+    },
+    "Rigid/origami_crane/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/oscilloscope/00000": {
+      "old": true,
+      "train_images": 76,
+      "val_images": 9
+    },
+    "Rigid/palette/00000": {
+      "old": true,
+      "train_images": 75,
+      "val_images": 8
+    },
+    "Rigid/peeler/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/pen/00000": {
+      "old": true,
+      "train_images": 195,
+      "val_images": 14
+    },
+    "Rigid/pen/00001": {
+      "old": true,
+      "train_images": 222,
+      "val_images": 38
+    },
+    "Rigid/pen/00002": {
+      "old": true,
+      "train_images": 168,
+      "val_images": 8
+    },
+    "Rigid/pen/00004": {
+      "old": true,
+      "train_images": 152,
+      "val_images": 0
+    },
+    "Rigid/pen/00011": {
+      "old": true,
+      "train_images": 3,
+      "val_images": 0
+    },
+    "Rigid/pen_holder/00000": {
+      "old": true,
+      "train_images": 30,
+      "val_images": 4
+    },
+    "Rigid/pencil_case/00000": {
+      "old": true,
+      "train_images": 206,
+      "val_images": 42
+    },
+    "Rigid/phone_stand/00000": {
+      "old": true,
+      "train_images": 227,
+      "val_images": 23
+    },
+    "Rigid/phone_stand/00001": {
+      "old": true,
+      "train_images": 80,
+      "val_images": 0
+    },
+    "Rigid/piano/00000": {
+      "old": true,
+      "train_images": 196,
+      "val_images": 32
+    },
+    "Rigid/plane/00000": {
+      "old": true,
+      "train_images": 306,
+      "val_images": 18
+    },
+    "Rigid/plant/00000": {
+      "old": true,
+      "train_images": 151,
+      "val_images": 24
+    },
+    "Rigid/plant/00001": {
+      "old": true,
+      "train_images": 74,
+      "val_images": 0
+    },
+    "Rigid/plate/00000": {
+      "old": true,
+      "train_images": 55,
+      "val_images": 12
+    },
+    "Rigid/plate/00001": {
+      "old": true,
+      "train_images": 67,
+      "val_images": 0
+    },
+    "Rigid/plier/00000": {
+      "old": true,
+      "train_images": 278,
+      "val_images": 20
+    },
+    "Rigid/pliers/00000": {
+      "old": true,
+      "train_images": 30,
+      "val_images": 8
+    },
+    "Rigid/pokeball/00000": {
+      "old": true,
+      "train_images": 19,
+      "val_images": 9
+    },
+    "Rigid/pokeball/00001": {
+      "old": true,
+      "train_images": 15,
+      "val_images": 0
+    },
+    "Rigid/pokeball/00002": {
+      "old": true,
+      "train_images": 40,
+      "val_images": 0
+    },
+    "Rigid/pokeball/00003": {
+      "old": true,
+      "train_images": 48,
+      "val_images": 0
+    },
+    "Rigid/pokeball/00004": {
+      "old": true,
+      "train_images": 41,
+      "val_images": 0
+    },
+    "Rigid/pokeball/00005": {
+      "old": true,
+      "train_images": 38,
+      "val_images": 16
+    },
+    "Rigid/pokeball/00006": {
+      "old": true,
+      "train_images": 11,
+      "val_images": 0
+    },
+    "Rigid/pokeball/00007": {
+      "old": true,
+      "train_images": 21,
+      "val_images": 0
+    },
+    "Rigid/pokeball/00008": {
+      "old": true,
+      "train_images": 63,
+      "val_images": 0
+    },
+    "Rigid/power_bank/00000": {
+      "old": true,
+      "train_images": 330,
+      "val_images": 35
+    },
+    "Rigid/power_bank/00002": {
+      "old": true,
+      "train_images": 3,
+      "val_images": 0
+    },
+    "Rigid/puzzle_pieces/00000": {
+      "old": true,
+      "train_images": 205,
+      "val_images": 5
+    },
+    "Rigid/racket/00000": {
+      "old": true,
+      "train_images": 145,
+      "val_images": 0
+    },
+    "Rigid/racket/00001": {
+      "old": true,
+      "train_images": 26,
+      "val_images": 0
+    },
+    "Rigid/racket/00002": {
+      "old": true,
+      "train_images": 26,
+      "val_images": 0
+    },
+    "Rigid/racket/00003": {
+      "old": true,
+      "train_images": 56,
+      "val_images": 0
+    },
+    "Rigid/racket/00004": {
+      "old": true,
+      "train_images": 92,
+      "val_images": 16
+    },
+    "Rigid/remote/00000": {
+      "old": true,
+      "train_images": 2,
+      "val_images": 0
+    },
+    "Rigid/sachet/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/sandwich/00000": {
+      "old": true,
+      "train_images": 195,
+      "val_images": 0
+    },
+    "Rigid/scale/00000": {
+      "old": true,
+      "train_images": 55,
+      "val_images": 0
+    },
+    "Rigid/scale/00001": {
+      "old": true,
+      "train_images": 119,
+      "val_images": 16
+    },
+    "Rigid/scissor/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/screwdriver/00000": {
+      "old": true,
+      "train_images": 481,
+      "val_images": 29
+    },
+    "Rigid/sculpture/00000": {
+      "old": true,
+      "train_images": 182,
+      "val_images": 24
+    },
+    "Rigid/sculpture/00001": {
+      "old": true,
+      "train_images": 102,
+      "val_images": 10
+    },
+    "Rigid/sculpture/00002": {
+      "old": true,
+      "train_images": 106,
+      "val_images": 12
+    },
+    "Rigid/seashell/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/shampoo/00000": {
+      "old": true,
+      "train_images": 292,
+      "val_images": 6
+    },
+    "Rigid/shoe/00001": {
+      "old": true,
+      "train_images": 7,
+      "val_images": 0
+    },
+    "Rigid/shoe/00002": {
+      "old": true,
+      "train_images": 10,
+      "val_images": 8
+    },
+    "Rigid/shoe/00004": {
+      "old": true,
+      "train_images": 6,
+      "val_images": 0
+    },
+    "Rigid/shoe/00005": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/shoe/00006": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/shoe/00007": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/shoe/00008": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/shoe/00009": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/shoe/00010": {
+      "old": true,
+      "train_images": 8,
+      "val_images": 0
+    },
+    "Rigid/shoe/00011": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 6
+    },
+    "Rigid/shoe/00012": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/shoe/00013": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/shoe/00014": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/shoe/00015": {
+      "old": true,
+      "train_images": 6,
+      "val_images": 0
+    },
+    "Rigid/shoe/00016": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/shoe/00017": {
+      "old": true,
+      "train_images": 7,
+      "val_images": 0
+    },
+    "Rigid/shovel/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/shovel/00001": {
+      "old": true,
+      "train_images": 3,
+      "val_images": 0
+    },
+    "Rigid/small_cube/00000": {
+      "old": true,
+      "train_images": 6,
+      "val_images": 12
+    },
+    "Rigid/small_cube/00001": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/small_cube/00002": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/small_cube/00003": {
+      "old": true,
+      "train_images": 17,
+      "val_images": 0
+    },
+    "Rigid/small_cube/00004": {
+      "old": true,
+      "train_images": 7,
+      "val_images": 8
+    },
+    "Rigid/small_cube/00005": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/small_cube/00006": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 8
+    },
+    "Rigid/small_cube/00007": {
+      "old": true,
+      "train_images": 20,
+      "val_images": 11
+    },
+    "Rigid/small_cube/00008": {
+      "old": true,
+      "train_images": 21,
+      "val_images": 0
+    },
+    "Rigid/small_cube/00009": {
+      "old": true,
+      "train_images": 20,
+      "val_images": 0
+    },
+    "Rigid/socket/00000": {
+      "old": true,
+      "train_images": 32,
+      "val_images": 10
+    },
+    "Rigid/sound_card/00000": {
+      "old": true,
+      "train_images": 480,
+      "val_images": 28
+    },
+    "Rigid/stackingblocks/00000": {
+      "old": true,
+      "train_images": 40,
+      "val_images": 14
+    },
+    "Rigid/stackingblocks/00001": {
+      "old": true,
+      "train_images": 38,
+      "val_images": 9
+    },
+    "Rigid/stackingblocks/00002": {
+      "old": true,
+      "train_images": 33,
+      "val_images": 21
+    },
+    "Rigid/stackingblocks/00003": {
+      "old": true,
+      "train_images": 46,
+      "val_images": 17
+    },
+    "Rigid/stapler/00000": {
+      "old": true,
+      "train_images": 107,
+      "val_images": 0
+    },
+    "Rigid/stapler/00001": {
+      "old": true,
+      "train_images": 88,
+      "val_images": 9
+    },
+    "Rigid/stapler/00003": {
+      "old": true,
+      "train_images": 103,
+      "val_images": 5
+    },
+    "Rigid/stapler/00004": {
+      "old": true,
+      "train_images": 74,
+      "val_images": 9
+    },
+    "Rigid/t/00000": {
+      "old": true,
+      "train_images": 62,
+      "val_images": 23
+    },
+    "Rigid/t/00001": {
+      "old": true,
+      "train_images": 62,
+      "val_images": 22
+    },
+    "Rigid/tape_dispense/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/tape_measure/00000": {
+      "old": true,
+      "train_images": 393,
+      "val_images": 18
+    },
+    "Rigid/teddy_bear/00000": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/test_tube/00002": {
+      "old": true,
+      "train_images": 45,
+      "val_images": 12
+    },
+    "Rigid/tissue/00000": {
+      "old": true,
+      "train_images": 103,
+      "val_images": 0
+    },
+    "Rigid/tissue/00001": {
+      "old": true,
+      "train_images": 9,
+      "val_images": 0
+    },
+    "Rigid/tissue/00002": {
+      "old": true,
+      "train_images": 43,
+      "val_images": 20
+    },
+    "Rigid/tissue/00003": {
+      "old": true,
+      "train_images": 55,
+      "val_images": 0
+    },
+    "Rigid/toothpaste/00000": {
+      "old": true,
+      "train_images": 176,
+      "val_images": 6
+    },
+    "Rigid/toothpaste/00001": {
+      "old": true,
+      "train_images": 198,
+      "val_images": 14
+    },
+    "Rigid/toy/00000": {
+      "old": true,
+      "train_images": 65,
+      "val_images": 0
+    },
+    "Rigid/toy/00001": {
+      "old": true,
+      "train_images": 43,
+      "val_images": 0
+    },
+    "Rigid/toy/00002": {
+      "old": true,
+      "train_images": 103,
+      "val_images": 24
+    },
+    "Rigid/toy_car/00000": {
+      "old": true,
+      "train_images": 181,
+      "val_images": 11
+    },
+    "Rigid/toy_car/00001": {
+      "old": true,
+      "train_images": 237,
+      "val_images": 19
+    },
+    "Rigid/toy_car/00002": {
+      "old": true,
+      "train_images": 62,
+      "val_images": 0
+    },
+    "Rigid/toy_car/00003": {
+      "old": true,
+      "train_images": 23,
+      "val_images": 18
+    },
+    "Rigid/toy_car/00004": {
+      "old": true,
+      "train_images": 41,
+      "val_images": 3
+    },
+    "Rigid/toy_plane/00000": {
+      "old": true,
+      "train_images": 125,
+      "val_images": 6
+    },
+    "Rigid/toy_plane/00001": {
+      "old": true,
+      "train_images": 112,
+      "val_images": 0
+    },
+    "Rigid/toy_plane/00002": {
+      "old": true,
+      "train_images": 35,
+      "val_images": 9
+    },
+    "Rigid/triangular_prism/00000": {
+      "old": true,
+      "train_images": 31,
+      "val_images": 13
+    },
+    "Rigid/trophy/00000": {
+      "old": true,
+      "train_images": 129,
+      "val_images": 0
+    },
+    "Rigid/trophy/00001": {
+      "old": true,
+      "train_images": 108,
+      "val_images": 0
+    },
+    "Rigid/usb_multip/00000": {
+      "old": true,
+      "train_images": 1,
+      "val_images": 0
+    },
+    "Rigid/walkie_talkie/00000": {
+      "old": true,
+      "train_images": 307,
+      "val_images": 29
+    },
+    "Rigid/watch/00000": {
+      "old": true,
+      "train_images": 98,
+      "val_images": 0
+    },
+    "Rigid/watch/00001": {
+      "old": true,
+      "train_images": 77,
+      "val_images": 0
+    },
+    "Rigid/watch/00002": {
+      "old": true,
+      "train_images": 87,
+      "val_images": 2
+    },
+    "Rigid/watch/00003": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Rigid/whisk/00000": {
+      "old": true,
+      "train_images": 1,
+      "val_images": 0
+    },
+    "Rigid/wooden_toy/00000": {
+      "old": true,
+      "train_images": 2,
+      "val_images": 0
+    },
+    "Rigid/wrench/00000": {
+      "old": true,
+      "train_images": 220,
+      "val_images": 27
+    },
+    "Rigid/wrench/00001": {
+      "old": true,
+      "train_images": 0,
+      "val_images": 0
+    },
+    "Articulation/laptop/00001": {
+      "old": false,
+      "train_images": 96,
+      "val_images": 8
+    },
+    "Articulation/laptop/00002": {
+      "old": false,
+      "train_images": 105,
+      "val_images": 0
+    },
+    "Articulation/laptop/00003": {
+      "old": false,
+      "train_images": 130,
+      "val_images": 10
+    },
+    "Articulation/toaster/00002": {
+      "old": false,
+      "train_images": 157,
+      "val_images": 8
+    },
+    "Articulation/toaster/00004": {
+      "old": false,
+      "train_images": 266,
+      "val_images": 19
+    },
+    "Geometry/cup_holder/00001": {
+      "old": false,
+      "train_images": 321,
+      "val_images": 18
+    },
+    "Rigid/headset/00008": {
+      "old": false,
+      "train_images": 213,
+      "val_images": 20
+    },
+    "Rigid/headset/00009": {
+      "old": false,
+      "train_images": 45,
+      "val_images": 0
+    },
+    "Rigid/headset/00010": {
+      "old": false,
+      "train_images": 32,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00015": {
+      "old": false,
+      "train_images": 81,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00016": {
+      "old": false,
+      "train_images": 84,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00017": {
+      "old": false,
+      "train_images": 83,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00018": {
+      "old": false,
+      "train_images": 70,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00019": {
+      "old": false,
+      "train_images": 82,
+      "val_images": 0
+    },
+    "Rigid/matryoshka_dolls/00020": {
+      "old": false,
+      "train_images": 131,
+      "val_images": 12
+    },
+    "Rigid/matryoshka_dolls/00021": {
+      "old": false,
+      "train_images": 132,
+      "val_images": 15
+    },
+    "Rigid/matryoshka_dolls/00022": {
+      "old": false,
+      "train_images": 122,
+      "val_images": 11
+    },
+    "Rigid/matryoshka_dolls/00023": {
+      "old": false,
+      "train_images": 116,
+      "val_images": 11
+    },
+    "Rigid/matryoshka_dolls/00024": {
+      "old": false,
+      "train_images": 113,
+      "val_images": 13
+    },
+    "Rigid/mug/00010": {
+      "old": false,
+      "train_images": 161,
+      "val_images": 10
+    },
+    "Rigid/mug/00011": {
+      "old": false,
+      "train_images": 87,
+      "val_images": 6
+    },
+    "Rigid/mug/00012": {
+      "old": false,
+      "train_images": 79,
+      "val_images": 8
+    },
+    "Rigid/mug/00013": {
+      "old": false,
+      "train_images": 80,
+      "val_images": 0
+    },
+    "Rigid/mug/00014": {
+      "old": false,
+      "train_images": 219,
+      "val_images": 6
+    },
+    "Rigid/mug/00017": {
+      "old": false,
+      "train_images": 206,
+      "val_images": 0
+    },
+    "Rigid/mug/00018": {
+      "old": false,
+      "train_images": 102,
+      "val_images": 18
+    },
+    "Rigid/mug/00019": {
+      "old": false,
+      "train_images": 253,
+      "val_images": 0
+    },
+    "Rigid/wuliangye/00001": {
+      "old": false,
+      "train_images": 172,
+      "val_images": 0
+    },
+    "Rigid/wuliangye/00002": {
+      "old": false,
+      "train_images": 166,
+      "val_images": 18
+    },
+    "Rigid/wuliangye/00003": {
+      "old": false,
+      "train_images": 193,
+      "val_images": 1
+    }
+  },
+  "sha256": {
+    "base": "900b4967d0ff4353b02efd782c065f556c8cb46289eb31d1e7f2cae56b5b027d",
+    "classes": "8f6c07b6e0c0468ba42d8e73233fb452335a6795c044024deb9f599d0c700f95",
+    "frames": "6ddba9fd0b03fea290cba82a3e341c80384b8715c7fcc28d0d0b7208a527623a"
+  },
+  "kind": "manifest support audit; image availability not checked"
+}

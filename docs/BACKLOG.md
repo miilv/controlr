@@ -6,6 +6,24 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Distinguish slow active perception from a rendered-driver hang.** The
+  300-second GUI-warning watchdog can fire while inverse-layout fitting is
+  actively computing. Add a bounded, observable perception-progress signal
+  before treating zenity warnings as evidence of a hang; retain a hard cap
+  ([dev diagnosis](journal/2026-11-06-integ6-render-recovery.md)).
+
+- [ ] **Check the actual perception worker's environment in camera admission.**
+  `lane2.sh` uses pgrep on the module name, which can select its enclosing
+  `bash -c` wrapper. Use the PID recorded in `perception.ready`, with ownership
+  checks, so parent environment values cannot mask worker-only overrides
+  ([compute6 verification](journal/2026-11-06-integ6-tie-preflight.md)).
+
+- [ ] **Pin the camera lane extras installer completely.** The operational
+  `venv_extras.sh` resolves timm without a version, so a fresh deploy can differ
+  from the board lane despite matching torch/transformers pins. Keep using
+  `candidate_parity --packages-ref`; consolidate the lane's exact extras pins
+  into a versioned installer ([compute6 preflight](journal/2026-11-06-integ6-tie-preflight.md)).
+
 - [ ] **Durable board exact replay:** pin `PYTHONHASHSEED` as well as inputs/history; hash iteration can change drift audit selections. Native Python 3.11/3.12 `sum()` differs in low-order float digits in `northstar.json`; define a stable summation/serialization policy before promising cross-version byte identity.
 
 - [ ] **dojo D-C19: agree the sealed-block mode with Misha's side.** `official_eval.sh --sealed-block DIR --manifest FILE
@@ -233,8 +251,19 @@
   v2d (30 `_random` task assets) failed too and is parked (journal 2026-10-30-dojo-seg-v2d). It names 13 of 43 new
   instances on genuine dev frame-0 (v2b: 0), but it repeats v2cn's organize_table garage error and arrange detection
   loss to the object, with no new class in common: the incremental recipe on v2b looks like the cause.
-  Landmine: the frame-0 bake sets (d0_51, d0_ext, series, w51, p60) mix 35 measurement ids with 29 dev ids. Re-cut
-  them to dev / training ids only (100000-04, 100030-49) before the next segmenter gate.
+  ~~Re-cut the mixed frame-0 bake sets to dev / training ids only.~~ Done: dev-only selector and a fresh
+  162-frame / 975-object baseline with zero errors; PyOpenGL ctypes registration fixes press_by_number.
+  v2e restores training support for all 511 old classes, but still fails: 6 category / 7 asset losers, including
+  the same arrange count loss (number and cube_cushion 22→20). Short rehearsal reduces category losers 10→4,
+  so coverage helps but is not a sufficient repair. New naming: 10/49 (10/43 on v2d's vocabulary); dolls/laptop
+  remain missed despite head-view data. Keep v2b; isolate mask/series-count sensitivity or optimization before
+  another class increment. Full per-class data: journal 2026-11-06-dojo-seg-v2e-round2 and experiment
+  2026-11-06-seg-v2e-rehearsal. Genuine 5.1 RTX still crashes on compute3; this round explicitly registered
+  proxy-domain training. Never silently substitute proxy for a genuine-data recipe.
+  The additive `seg_additive` path keeps v2b exact and trains a separate 32-class v2n with old-only negatives.
+  Dev naming reaches 24/49; at all three registered IoUs the full bake has zero category/asset losers and unchanged 35 phantoms.
+  Keep the switch off pending the camera A/B: five new-asset variant gain cells, strong stack_blocks/insert_tubes
+  guards, default decision rule. Details: experiment 2026-11-06-seg-v2n-additive and its camera-ab specification.
 - [ ] **dojo perception: classify_objects_by_language drops the watches after the segmenter.** On p60, watch 4-7 come
   out right 1 of 12 on the dev ids 100000-04 with any segmenter (v2b, v3ep6, v2cn). The other 11 have no prediction
   closer than 77 mm, though v2b's YOLO fires a watch on the head frame (0.97 on 100000). The loss is in the bake's

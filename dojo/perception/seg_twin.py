@@ -163,6 +163,7 @@ class Det:
     score: float
     box: tuple = ()        # x0, y0, x1, y1 (pixels)
     alts: list = field(default_factory=list)   # [(key, prob)] runner-up classes, best first
+    source: str = "base"   # additive proposals never displace a base detection
 
 
 def match_greedy(gt: dict[int, np.ndarray], preds: list[Det], thr: float = 0.0) -> dict[int, tuple[int, float]]:
@@ -235,10 +236,49 @@ class _SegModel:
         t0 = time.time()
         if req["op"] != "detect":
             raise ValueError(req["op"])
+        if req.get("additive", False):
+            raise ValueError("additive requested without a new-class model")
         res = [(*pack(m), k, s, b) for m, k, s, b in self.detect(img, req.get("conf"), int(req.get("max_det", 100)))]
         n, tot = self.timing.get("detect", (0, 0.0))
         self.timing["detect"] = (n + 1, tot + time.time() - t0)
         return {"dets": res}
+
+
+class _AdditiveSegModel:
+    """Two independent models. Base wire detections form an untouched prefix of the result."""
+
+    def __init__(self, base, extra):
+        if set(base.classes) & set(extra.classes):
+            raise ValueError("additive vocabulary must be disjoint from the base")
+        self.base, self.extra = base, extra
+
+    def handle(self, req, img):
+        from .sam_masks import pack, unpack
+
+        base_req = {k: v for k, v in req.items() if k not in
+                    ("additive", "extra_iou", "extra_conf", "extra_allowed")}
+        result = self.base.handle(base_req, img)
+        if not req.get("additive", False):
+            return result
+        threshold, confidence = float(req.get("extra_iou", .3)), float(req.get("extra_conf", .5))
+        if not 0 <= threshold <= 1 or not 0 <= confidence <= 1:
+            raise ValueError("additive IoU and confidence must lie in [0,1]")
+        base_masks = [unpack(m, shape) for m, shape, *_ in result["dets"]]
+        allowed = req.get("extra_allowed")
+        allowed = set(self.extra.classes) if allowed is None else set(allowed) & set(self.extra.classes)
+        added = []
+        if allowed:
+            for mask, key, score, box in self.extra.detect(img, confidence, int(req.get("max_det", 100))):
+                if key not in allowed or score < confidence or not mask.any():
+                    continue
+                if any(iou(mask, old) > threshold for old in base_masks):
+                    continue
+                added.append((*pack(mask), key, score, box))
+        return {**result, "dets": result["dets"] + added,
+                "sources": ["base"] * len(result["dets"]) + ["extra"] * len(added)}
+
+    def info(self):
+        return {**self.base.info(), "extra": self.extra.info(), "merge": "add-only"}
 
 
 class SegClient:
@@ -249,11 +289,19 @@ class SegClient:
 
         self._c = SamClient(addr, loud=True)     # unreachable / gone / erroring -> SideServerDown
 
-    def detect(self, img: np.ndarray, conf: float = 0.25, max_det: int = 100) -> list[Det]:
+    def detect(self, img: np.ndarray, conf: float = 0.25, max_det: int = 100, *, additive: bool = False,
+               extra_iou: float = 0.3, extra_conf: float = 0.5, extra_allowed: list[str] | None = None) -> list[Det]:
         from .sam_masks import unpack
 
-        r = self._c._call({"op": "detect", "conf": float(conf), "max_det": int(max_det)}, img)
-        return [Det(unpack(m, s), k, float(sc), tuple(b)) for m, s, k, sc, b in r["dets"]]
+        req = {"op": "detect", "conf": float(conf), "max_det": int(max_det)}
+        if additive:
+            req.update(additive=True, extra_iou=extra_iou, extra_conf=extra_conf, extra_allowed=extra_allowed)
+        r = self._c._call(req, img)
+        sources = r.get("sources", ["base"] * len(r["dets"]))
+        if len(sources) != len(r["dets"]):
+            raise ValueError("segmenter provenance length mismatch")
+        return [Det(unpack(m, s), k, float(sc), tuple(b), source=source)
+                for (m, s, k, sc, b), source in zip(r["dets"], sources)]
 
     def info(self) -> dict:
         return self._c.info()
@@ -287,6 +335,8 @@ def main(argv=None):
     s.add_argument("--sock", required=True)
     s.add_argument("--weights", required=True)
     s.add_argument("--classes", default=None, help="classes.json of the export (else the model's own names)")
+    s.add_argument("--extra-weights", help="optional independent new-class-only checkpoint")
+    s.add_argument("--extra-classes", help="new-only classes.json; must be disjoint from base")
     s.add_argument("--conf", type=float, default=0.25)
     s.add_argument("--imgsz", type=int, default=None, help="inference size (default: the model's training size)")
     s.add_argument("--max-hours", type=float, default=6.0)
@@ -294,6 +344,14 @@ def main(argv=None):
     classes = json.load(open(a.classes))["names"] if a.classes else None
     M = _SegModel(a.weights, classes, imgsz=a.imgsz, conf=a.conf)
     print(f"[seg] loaded {a.weights}: {len(M.classes)} classes in {M.load_s} s", flush=True)
+    if a.extra_weights:
+        extra_classes = json.load(open(a.extra_classes))["names"] if a.extra_classes else None
+        extra = _SegModel(a.extra_weights, extra_classes, imgsz=a.imgsz, conf=a.conf)
+        if extra.classes != [extra.model.names[i] for i in range(len(extra.model.names))]:
+            raise ValueError("extra class metadata differs from checkpoint")
+        M = _AdditiveSegModel(M, extra)
+    elif a.extra_classes:
+        ap.error("--extra-classes requires --extra-weights")
     serve(os.path.expanduser(a.sock), ["seg"], a.max_hours, M=M)
 
 

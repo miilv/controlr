@@ -1,0 +1,67 @@
+{
+  "Articulation/laptop/00003": {
+    "cam_right_wrist": 50,
+    "cam_head": 53,
+    "cam_left_wrist": 31
+  },
+  "Articulation/laptop/00002": {
+    "cam_right_wrist": 47,
+    "cam_head": 44,
+    "cam_left_wrist": 17
+  },
+  "Articulation/laptop/00001": {
+    "cam_right_wrist": 41,
+    "cam_head": 39,
+    "cam_left_wrist": 20
+  },
+  "Rigid/matryoshka_dolls/00015": {
+    "cam_left_wrist": 23,
+    "cam_head": 48,
+    "cam_right_wrist": 13
+  },
+  "Rigid/matryoshka_dolls/00016": {
+    "cam_right_wrist": 31,
+    "cam_head": 43,
+    "cam_left_wrist": 14
+  },
+  "Rigid/matryoshka_dolls/00020": {
+    "cam_head": 81,
+    "cam_left_wrist": 14,
+    "cam_right_wrist": 43
+  },
+  "Rigid/matryoshka_dolls/00022": {
+    "cam_head": 76,
+    "cam_right_wrist": 19,
+    "cam_left_wrist": 36
+  },
+  "Rigid/matryoshka_dolls/00018": {
+    "cam_head": 46,
+    "cam_left_wrist": 10,
+    "cam_right_wrist": 21
+  },
+  "Rigid/matryoshka_dolls/00017": {
+    "cam_head": 52,
+    "cam_left_wrist": 19,
+    "cam_right_wrist": 19
+  },
+  "Rigid/matryoshka_dolls/00021": {
+    "cam_head": 80,
+    "cam_left_wrist": 39,
+    "cam_right_wrist": 21
+  },
+  "Rigid/matryoshka_dolls/00019": {
+    "cam_head": 49,
+    "cam_right_wrist": 24,
+    "cam_left_wrist": 19
+  },
+  "Rigid/matryoshka_dolls/00023": {
+    "cam_head": 74,
+    "cam_right_wrist": 18,
+    "cam_left_wrist": 30
+  },
+  "Rigid/matryoshka_dolls/00024": {
+    "cam_head": 78,
+    "cam_left_wrist": 22,
+    "cam_right_wrist": 22
+  }
+}

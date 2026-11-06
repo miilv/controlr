@@ -8,14 +8,32 @@
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 : "${SEG_PY:?python with torch + ultralytics}" "${SEG_WEIGHTS:?best.pt}" "${SEG_CLASSES:?classes.json}"
+EXTRA=()
+while [[ ${1:-} == --extra-weights || ${1:-} == --extra-classes ]]; do
+    [[ $# -ge 2 ]] || { echo "missing value for $1" >&2; exit 2; }
+    EXTRA+=("$1" "$2"); shift 2
+done
+[[ ${1:-} != -- ]] || shift
+[[ $# -gt 0 ]] || { echo "missing command" >&2; exit 2; }
 SOCK="${SEG_SOCK:-${XDG_RUNTIME_DIR:-/tmp}/dojo-seg-$$.sock}"
 LOG="${SEG_SERVER_LOG:-/dev/null}"
 rm -f "$SOCK"
 ( cd "$HERE" && YOLO_CONFIG_DIR="${YOLO_CONFIG_DIR:-$(dirname "$SEG_WEIGHTS")/ultra_cfg}" exec "$SEG_PY" -m dojo.perception.seg_twin serve \
-    --sock "$SOCK" --weights "$SEG_WEIGHTS" --classes "$SEG_CLASSES" --conf "${SEG_CONF:-0.25}" --max-hours "${SEG_MAX_HOURS:-6}" ) \
+    --sock "$SOCK" --weights "$SEG_WEIGHTS" --classes "$SEG_CLASSES" --conf "${SEG_CONF:-0.25}" --max-hours "${SEG_MAX_HOURS:-6}" "${EXTRA[@]}" ) \
     > "$LOG" 2>&1 &
 SRV=$!
-trap 'kill $SRV 2>/dev/null; rm -f "$SOCK"' EXIT
+SRV_START=$(awk '{print $22}' "/proc/$SRV/stat" 2>/dev/null)
+stop_server() {
+    # This account is shared: never signal a recycled PID.
+    local current
+    current=$(awk '{print $22}' "/proc/$SRV/stat" 2>/dev/null)
+    if [[ -n "$SRV_START" && "$current" == "$SRV_START" ]]; then
+        kill "$SRV" 2>/dev/null
+        wait "$SRV" 2>/dev/null
+    fi
+    rm -f "$SOCK"
+}
+trap stop_server EXIT
 for _ in $(seq 120); do [[ -S "$SOCK" ]] && break; kill -0 $SRV 2>/dev/null || { echo "[with_seg_server] server died (log: $LOG)" >&2; exit 1; }; sleep 0.5; done
 [[ -S "$SOCK" ]] || { echo "[with_seg_server] no socket after 60 s" >&2; exit 1; }
 export DOJO_SEG_ADDR="$SOCK"
