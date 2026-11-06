@@ -6,6 +6,18 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Check the actual perception worker's environment in camera admission.**
+  `lane2.sh` uses pgrep on the module name, which can select its enclosing
+  `bash -c` wrapper. Use the PID recorded in `perception.ready`, with ownership
+  checks, so parent environment values cannot mask worker-only overrides
+  ([compute6 verification](journal/2026-11-06-integ6-tie-preflight.md)).
+
+- [ ] **Pin the camera lane extras installer completely.** The operational
+  `venv_extras.sh` resolves timm without a version, so a fresh deploy can differ
+  from the board lane despite matching torch/transformers pins. Keep using
+  `candidate_parity --packages-ref`; consolidate the lane's exact extras pins
+  into a versioned installer ([compute6 preflight](journal/2026-11-06-integ6-tie-preflight.md)).
+
 - [ ] **Durable board exact replay:** pin `PYTHONHASHSEED` as well as inputs/history; hash iteration can change drift audit selections. Native Python 3.11/3.12 `sum()` differs in low-order float digits in `northstar.json`; define a stable summation/serialization policy before promising cross-version byte identity.
 
 - [ ] **dojo D-C19: agree the sealed-block mode with Misha's side.** `official_eval.sh --sealed-block DIR --manifest FILE

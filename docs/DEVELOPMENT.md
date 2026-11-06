@@ -63,6 +63,16 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 
 ## 4. Pitfalls (already stepped on)
 
+- **Camera lane profiles:** `scripts/dojo/queues/lane2.sh` retains compute4 defaults.
+  For compute6 set `LANE_STREAM=integ-c6`, `LANE_STATE`, `LANE_RUNS`, `LANE_DATA`
+  and the pinned `LANE_REPO`. The compute6 profile skips the compute4 boot stamp
+  and accepts only `~/dojo-gpu.lock` / `~/dojo-gpu-heavy2.lock`; light locks remain
+  independent. Both profiles keep the 16 GiB-used admission gate and 50 GB disk
+  floor. `shared_side.sh` and `ping_side.py` manage shared candidate services from
+  the same deployment. `power_watch.py STATE` samples every five minutes and
+  drains heavy2 after two consecutive readings above 700 W, without killing
+  another stream's work. A drained lane finishes its current job before exiting.
+
 - **A full disk takes the whole box down.** compute3's `/` hit 100 % (2026-10-29: other tools' data plus ours). `integ_eval.sh`
   and `rdpy.sh` GPU jobs now refuse to start below `DOJO_MIN_FREE_GB` (default 10) free on the `$HOME` / `$DOJO_DATA`
   filesystem (`scripts/dojo/disk_guard.sh`, exit 6). Boxes with a small data disk set their own floor (compute1: 2).
