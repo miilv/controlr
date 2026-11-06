@@ -511,3 +511,13 @@ tries mesh waist grasps before shallow slice/rim grasps when the rider has no to
 An unreachable waist falls back to the existing surface search. Narrow top grasps retain
 their search. This changes grasp selection, not tracking or identity; keep `belt_wrist_veto`
 independently configured. Both conveyor skills share this interception planner.
+
+### Integration camera queue
+
+The compute4 Integration runner is versioned at `scripts/dojo/queues/lane2.sh`.
+Set `LANE_REPO` to a merged deployment and use private heavy1/heavy2 locks.
+Admission waits at used VRAM >16384 MiB (failed queries also wait), checks a
+50 GB disk floor, and serializes startups until perception readiness plus a
+150-second startup window. These guards coordinate our lanes; other GPU users
+must retain their own admission gates. `wave_status.py` reads only our lane logs
+and reports launcher completion/rc and prospective remaining occupancy.
