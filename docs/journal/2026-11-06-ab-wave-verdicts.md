@@ -46,3 +46,16 @@ The gain set is 100005-09 + 100020-24 with 100008 → 100025: 100008 failed raw-
 - In low-success cells, success flips are rare at n = 10.
 - The board scores the mean SCORE, not the success rate.
 - These verdicts stand as registered. The refined rule for future pre-registrations is in EXPERIMENTS.md.
+
+## reloc re-test: `watch_relocate=true`, make_kong (fresh salted layouts) — NOT ADOPTED (guard failed)
+
+| cell | pairs | A pooled | B pooled | Δ | B-only wins | A-only losses | successes A / B |
+|---|---|---|---|---|---|---|---|
+| make_kong (gain) | 10 | 40.0 | 70.0 | **+30.0** | 4 | 1 | 4 / 7 |
+| imitate_sorting_sequence (guard) | 8 | 13.8 | 5.0 | −8.8 | 0 | 1 | 1 / 0 |
+
+- **What passed:** the gain cell, clearly (+30; flips 4 vs 1, net 3).
+- **What failed:** the imitate guard (Δ −8.8 < −5, losses 1 > wins 0), so the lever is not adopted. This was its one fresh-layout re-test.
+- **Missing guard pairs:** two imitate guard pairs (b1 100003, b2 100001) were lost to infra-only startup stalls (rc 4, 0 steps, retry exhausted), so the guard has n = 8.
+
+**Follow-up (a new lever, not a third test):** make_kong's gain is large, and the only harm shows up in a different task. The natural next lever is `watch_relocate` scoped to make_kong only, so it can't change imitate by construction. It needs its own pre-registration on new fresh layouts, under the current score-based rule.
