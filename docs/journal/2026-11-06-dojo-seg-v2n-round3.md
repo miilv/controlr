@@ -64,4 +64,30 @@ The queued gate acquires the same heavy lock after training, rechecks who/load/G
 checks raw parity, then runs a fresh disabled baseline and all three registered IoUs.
 No system changes, compute4 access, LLM calls or downloaded weights.
 
-Results and final cleanup are recorded after the queued gate completes.
+## Training and detector results
+
+Early stopping completed at epoch37 after ten epochs without improving validation fitness.
+Both mask-only and combined validation maxima are epoch27, so the selection-description
+correction did not change the chosen checkpoint. Training occupied about22 minutes.
+
+- v2b MD5: `2f546196145fc424f76a5e2e47dd3210` (unchanged).
+- v2n best.pt MD5: `be0817051b8efd0565218033cb647cec`.
+- v2n last.pt MD5: `f1ce5afa880847f2ca9d46e1ec95f52f`.
+- Weights remain `compute3:~/dojo-data/s-v2n-seg/runs/v2n/weights/`.
+
+Raw parity passed on **486 gate images / 2,055 base detections**, comparing serialized
+standalone-v2b, disabled-composition and enabled base-prefix tuples. Including hitcheck
+requests across all three thresholds: 552 checks / 2,772 base detections, zero mismatches.
+Each request checks mask bits, key, score, box, order and base detection count.
+
+Naming is identical at theta0.1/0.3/0.5: **24 hit / 13 merged / 12 missed, of49**.
+All24 hits are within the original43-instance vocabulary; brick2/paper_ball0 remain0/6.
+Dolls15–19 total8/15; laptop1 2/3; toaster4 5/6; holder1 3/3; headset8 1/3;
+mug14 1/3; mug17 2/3; wuliangye1 2/3. V2b0/49, historical v2d13/49,
+round2v2e10/49. Unit is image-level scene membership, not localisation or visibility.
+The untouched base may retain a wrong name alongside an added correct name; naming is
+not a count/phantom or episode-success result. Full rows and image-level predictions:
+[hitcheck.json](../experiments/data/seg-v2n/hitcheck.json).
+
+CI passed at `ff9ca54d` (GitHub run42221716519,9m47s). Per-class and phantom gates
+remain pending; final qualification and cleanup follow their complete paired outputs.

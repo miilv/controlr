@@ -1,0 +1,15 @@
+{
+  "epochs": 37,
+  "selected_epoch": 27,
+  "mask_best_epoch": 27,
+  "combined_best_epoch": 27,
+  "autobatch_estimate": 39,
+  "effective_batch": 19,
+  "effective_batch_evidence": "allocator-cap retry logged 39 ->19; 5842 lines /308 batches",
+  "base_md5": "2f546196145fc424f76a5e2e47dd3210",
+  "extra_md5": "be0817051b8efd0565218033cb647cec",
+  "cuda": "12.8",
+  "torch": "2.9.1+cu128",
+  "ultralytics": "8.4.191",
+  "llm_calls": 0
+}

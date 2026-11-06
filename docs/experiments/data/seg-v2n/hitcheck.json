@@ -1,0 +1,2595 @@
+{
+  "unit": "image-level scene asset presence; no localisation/visibility filtering",
+  "extra_conf": 0.5,
+  "parity_gate": {
+    "images": 486,
+    "base_detections": 2055
+  },
+  "parity_total": {
+    "images": 552,
+    "base_detections": 2772
+  },
+  "rows": [
+    {
+      "theta": "0.1",
+      "key": "Articulation/laptop/00001",
+      "hit": 2,
+      "missed": 1
+    },
+    {
+      "theta": "0.1",
+      "key": "Articulation/toaster/00002",
+      "merged": 1
+    },
+    {
+      "theta": "0.1",
+      "key": "Articulation/toaster/00004",
+      "hit": 5,
+      "missed": 1
+    },
+    {
+      "theta": "0.1",
+      "key": "Geometry/cup_holder/00001",
+      "hit": 3
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/brick/00002",
+      "missed": 3
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/headset/00008",
+      "hit": 1,
+      "missed": 2
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/matryoshka_dolls/00015",
+      "hit": 1,
+      "merged": 2
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/matryoshka_dolls/00016",
+      "hit": 2,
+      "merged": 1
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/matryoshka_dolls/00017",
+      "hit": 2,
+      "merged": 1
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/matryoshka_dolls/00018",
+      "hit": 1,
+      "merged": 2
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/matryoshka_dolls/00019",
+      "hit": 2,
+      "merged": 1
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/mug/00012",
+      "merged": 3
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/mug/00014",
+      "hit": 1,
+      "merged": 2
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/mug/00017",
+      "hit": 2,
+      "missed": 1
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/paper_ball/00000",
+      "missed": 3
+    },
+    {
+      "theta": "0.1",
+      "key": "Rigid/wuliangye/00001",
+      "hit": 2,
+      "missed": 1
+    },
+    {
+      "theta": "0.1",
+      "key": "_all",
+      "hit": 24,
+      "merged": 13,
+      "missed": 12
+    },
+    {
+      "theta": "0.3",
+      "key": "Articulation/laptop/00001",
+      "hit": 2,
+      "missed": 1
+    },
+    {
+      "theta": "0.3",
+      "key": "Articulation/toaster/00002",
+      "merged": 1
+    },
+    {
+      "theta": "0.3",
+      "key": "Articulation/toaster/00004",
+      "hit": 5,
+      "missed": 1
+    },
+    {
+      "theta": "0.3",
+      "key": "Geometry/cup_holder/00001",
+      "hit": 3
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/brick/00002",
+      "missed": 3
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/headset/00008",
+      "hit": 1,
+      "missed": 2
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/matryoshka_dolls/00015",
+      "hit": 1,
+      "merged": 2
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/matryoshka_dolls/00016",
+      "hit": 2,
+      "merged": 1
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/matryoshka_dolls/00017",
+      "hit": 2,
+      "merged": 1
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/matryoshka_dolls/00018",
+      "hit": 1,
+      "merged": 2
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/matryoshka_dolls/00019",
+      "hit": 2,
+      "merged": 1
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/mug/00012",
+      "merged": 3
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/mug/00014",
+      "hit": 1,
+      "merged": 2
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/mug/00017",
+      "hit": 2,
+      "missed": 1
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/paper_ball/00000",
+      "missed": 3
+    },
+    {
+      "theta": "0.3",
+      "key": "Rigid/wuliangye/00001",
+      "hit": 2,
+      "missed": 1
+    },
+    {
+      "theta": "0.3",
+      "key": "_all",
+      "hit": 24,
+      "merged": 13,
+      "missed": 12
+    },
+    {
+      "theta": "0.5",
+      "key": "Articulation/laptop/00001",
+      "hit": 2,
+      "missed": 1
+    },
+    {
+      "theta": "0.5",
+      "key": "Articulation/toaster/00002",
+      "merged": 1
+    },
+    {
+      "theta": "0.5",
+      "key": "Articulation/toaster/00004",
+      "hit": 5,
+      "missed": 1
+    },
+    {
+      "theta": "0.5",
+      "key": "Geometry/cup_holder/00001",
+      "hit": 3
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/brick/00002",
+      "missed": 3
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/headset/00008",
+      "hit": 1,
+      "missed": 2
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/matryoshka_dolls/00015",
+      "hit": 1,
+      "merged": 2
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/matryoshka_dolls/00016",
+      "hit": 2,
+      "merged": 1
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/matryoshka_dolls/00017",
+      "hit": 2,
+      "merged": 1
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/matryoshka_dolls/00018",
+      "hit": 1,
+      "merged": 2
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/matryoshka_dolls/00019",
+      "hit": 2,
+      "merged": 1
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/mug/00012",
+      "merged": 3
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/mug/00014",
+      "hit": 1,
+      "merged": 2
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/mug/00017",
+      "hit": 2,
+      "missed": 1
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/paper_ball/00000",
+      "missed": 3
+    },
+    {
+      "theta": "0.5",
+      "key": "Rigid/wuliangye/00001",
+      "hit": 2,
+      "missed": 1
+    },
+    {
+      "theta": "0.5",
+      "key": "_all",
+      "hit": 24,
+      "merged": 13,
+      "missed": 12
+    }
+  ],
+  "records": [
+    {
+      "image": "hang_mugs_random_100000_cam_head.png",
+      "theta": 0.1,
+      "gt": [
+        "Geometry/cup_holder/00001",
+        "Rigid/mug/00012",
+        "Rigid/mug/00014"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Geometry/cup_holder/00001",
+        "Rigid/audio/00002",
+        "Rigid/box/00001",
+        "Rigid/calendar/00000",
+        "Rigid/card/00001",
+        "Rigid/clip/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/comb/00000",
+        "Rigid/eraser/00000",
+        "Rigid/hammer/00000",
+        "Rigid/mini_fan/00001",
+        "Rigid/money_stack/00000",
+        "Rigid/mug/00002",
+        "Rigid/mug/00014",
+        "Rigid/piano/00000",
+        "Rigid/plant/00000",
+        "Rigid/toothpaste/00000"
+      ],
+      "extra": [
+        [
+          "Rigid/mug/00014",
+          0.9833670854568481,
+          [
+            282.7244873046875,
+            260.47039794921875,
+            336.5653076171875,
+            328.3633728027344
+          ]
+        ],
+        [
+          "Rigid/mug/00014",
+          0.982315719127655,
+          [
+            403.6943359375,
+            189.6221160888672,
+            455.50311279296875,
+            245.3417205810547
+          ]
+        ],
+        [
+          "Geometry/cup_holder/00001",
+          0.9745122194290161,
+          [
+            266.38311767578125,
+            57.15665817260742,
+            357.9384460449219,
+            210.10018920898438
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "hang_mugs_random_100000_cam_head.png",
+      "theta": 0.3,
+      "gt": [
+        "Geometry/cup_holder/00001",
+        "Rigid/mug/00012",
+        "Rigid/mug/00014"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Geometry/cup_holder/00001",
+        "Rigid/audio/00002",
+        "Rigid/box/00001",
+        "Rigid/calendar/00000",
+        "Rigid/card/00001",
+        "Rigid/clip/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/comb/00000",
+        "Rigid/eraser/00000",
+        "Rigid/hammer/00000",
+        "Rigid/mini_fan/00001",
+        "Rigid/money_stack/00000",
+        "Rigid/mug/00002",
+        "Rigid/mug/00014",
+        "Rigid/piano/00000",
+        "Rigid/plant/00000",
+        "Rigid/toothpaste/00000"
+      ],
+      "extra": [
+        [
+          "Rigid/mug/00014",
+          0.9833670854568481,
+          [
+            282.7244873046875,
+            260.47039794921875,
+            336.5653076171875,
+            328.3633728027344
+          ]
+        ],
+        [
+          "Rigid/mug/00014",
+          0.982315719127655,
+          [
+            403.6943359375,
+            189.6221160888672,
+            455.50311279296875,
+            245.3417205810547
+          ]
+        ],
+        [
+          "Geometry/cup_holder/00001",
+          0.9745122194290161,
+          [
+            266.38311767578125,
+            57.15665817260742,
+            357.9384460449219,
+            210.10018920898438
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "hang_mugs_random_100000_cam_head.png",
+      "theta": 0.5,
+      "gt": [
+        "Geometry/cup_holder/00001",
+        "Rigid/mug/00012",
+        "Rigid/mug/00014"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Geometry/cup_holder/00001",
+        "Rigid/audio/00002",
+        "Rigid/box/00001",
+        "Rigid/calendar/00000",
+        "Rigid/card/00001",
+        "Rigid/clip/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/comb/00000",
+        "Rigid/eraser/00000",
+        "Rigid/hammer/00000",
+        "Rigid/mini_fan/00001",
+        "Rigid/money_stack/00000",
+        "Rigid/mug/00002",
+        "Rigid/mug/00014",
+        "Rigid/piano/00000",
+        "Rigid/plant/00000",
+        "Rigid/toothpaste/00000"
+      ],
+      "extra": [
+        [
+          "Rigid/mug/00014",
+          0.9833670854568481,
+          [
+            282.7244873046875,
+            260.47039794921875,
+            336.5653076171875,
+            328.3633728027344
+          ]
+        ],
+        [
+          "Rigid/mug/00014",
+          0.982315719127655,
+          [
+            403.6943359375,
+            189.6221160888672,
+            455.50311279296875,
+            245.3417205810547
+          ]
+        ],
+        [
+          "Geometry/cup_holder/00001",
+          0.9745122194290161,
+          [
+            266.38311767578125,
+            57.15665817260742,
+            357.9384460449219,
+            210.10018920898438
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "hang_mugs_random_100000_cam_left_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Geometry/cup_holder/00001",
+        "Rigid/mug/00012",
+        "Rigid/mug/00014"
+      ],
+      "predicted": [
+        "Geometry/cup_holder/00001",
+        "Rigid/calendar/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/graphics_card/00001",
+        "Rigid/hammer/00000",
+        "Rigid/house/00002",
+        "Rigid/mug/00002",
+        "Rigid/trophy/00001"
+      ],
+      "extra": [
+        [
+          "Geometry/cup_holder/00001",
+          0.9631903767585754,
+          [
+            553.564208984375,
+            76.68682861328125,
+            640.0,
+            305.96551513671875
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "hang_mugs_random_100000_cam_left_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Geometry/cup_holder/00001",
+        "Rigid/mug/00012",
+        "Rigid/mug/00014"
+      ],
+      "predicted": [
+        "Geometry/cup_holder/00001",
+        "Rigid/calendar/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/graphics_card/00001",
+        "Rigid/hammer/00000",
+        "Rigid/house/00002",
+        "Rigid/mug/00002",
+        "Rigid/trophy/00001"
+      ],
+      "extra": [
+        [
+          "Geometry/cup_holder/00001",
+          0.9631903767585754,
+          [
+            553.564208984375,
+            76.68682861328125,
+            640.0,
+            305.96551513671875
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "hang_mugs_random_100000_cam_left_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Geometry/cup_holder/00001",
+        "Rigid/mug/00012",
+        "Rigid/mug/00014"
+      ],
+      "predicted": [
+        "Geometry/cup_holder/00001",
+        "Rigid/calendar/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/graphics_card/00001",
+        "Rigid/hammer/00000",
+        "Rigid/house/00002",
+        "Rigid/mug/00002",
+        "Rigid/trophy/00001"
+      ],
+      "extra": [
+        [
+          "Geometry/cup_holder/00001",
+          0.9631903767585754,
+          [
+            553.564208984375,
+            76.68682861328125,
+            640.0,
+            305.96551513671875
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "hang_mugs_random_100000_cam_right_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Geometry/cup_holder/00001",
+        "Rigid/mug/00012",
+        "Rigid/mug/00014"
+      ],
+      "predicted": [
+        "Geometry/cup_holder/00001",
+        "Rigid/calendar/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/dice/00000",
+        "Rigid/money_stack/00000",
+        "Rigid/mug/00006",
+        "Rigid/piano/00000",
+        "Rigid/plant/00000"
+      ],
+      "extra": [
+        [
+          "Geometry/cup_holder/00001",
+          0.9877555966377258,
+          [
+            0.0,
+            227.73667907714844,
+            63.042381286621094,
+            295.6803283691406
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "hang_mugs_random_100000_cam_right_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Geometry/cup_holder/00001",
+        "Rigid/mug/00012",
+        "Rigid/mug/00014"
+      ],
+      "predicted": [
+        "Geometry/cup_holder/00001",
+        "Rigid/calendar/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/dice/00000",
+        "Rigid/money_stack/00000",
+        "Rigid/mug/00006",
+        "Rigid/piano/00000",
+        "Rigid/plant/00000"
+      ],
+      "extra": [
+        [
+          "Geometry/cup_holder/00001",
+          0.9877555966377258,
+          [
+            0.0,
+            227.73667907714844,
+            63.042381286621094,
+            295.6803283691406
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "hang_mugs_random_100000_cam_right_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Geometry/cup_holder/00001",
+        "Rigid/mug/00012",
+        "Rigid/mug/00014"
+      ],
+      "predicted": [
+        "Geometry/cup_holder/00001",
+        "Rigid/calendar/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/dice/00000",
+        "Rigid/money_stack/00000",
+        "Rigid/mug/00006",
+        "Rigid/piano/00000",
+        "Rigid/plant/00000"
+      ],
+      "extra": [
+        [
+          "Geometry/cup_holder/00001",
+          0.9877555966377258,
+          [
+            0.0,
+            227.73667907714844,
+            63.042381286621094,
+            295.6803283691406
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100000_cam_head.png",
+      "theta": 0.1,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/book/00004",
+        "Rigid/bottle/00000",
+        "Rigid/bread/00000",
+        "Rigid/cereal/00000",
+        "Rigid/coin/00000",
+        "Rigid/earth_globe/00000",
+        "Rigid/game_machine/00000",
+        "Rigid/key/00000",
+        "Rigid/pen/00001",
+        "Rigid/scale/00001",
+        "Rigid/screwdriver/00000",
+        "Rigid/stapler/00000",
+        "Rigid/toy/00000",
+        "Rigid/toy_plane/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.9763215184211731,
+          [
+            332.158447265625,
+            151.4529571533203,
+            418.703125,
+            289.0218200683594
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100000_cam_head.png",
+      "theta": 0.3,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/book/00004",
+        "Rigid/bottle/00000",
+        "Rigid/bread/00000",
+        "Rigid/cereal/00000",
+        "Rigid/coin/00000",
+        "Rigid/earth_globe/00000",
+        "Rigid/game_machine/00000",
+        "Rigid/key/00000",
+        "Rigid/pen/00001",
+        "Rigid/scale/00001",
+        "Rigid/screwdriver/00000",
+        "Rigid/stapler/00000",
+        "Rigid/toy/00000",
+        "Rigid/toy_plane/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.9763215184211731,
+          [
+            332.158447265625,
+            151.4529571533203,
+            418.703125,
+            289.0218200683594
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100000_cam_head.png",
+      "theta": 0.5,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/book/00004",
+        "Rigid/bottle/00000",
+        "Rigid/bread/00000",
+        "Rigid/cereal/00000",
+        "Rigid/coin/00000",
+        "Rigid/earth_globe/00000",
+        "Rigid/game_machine/00000",
+        "Rigid/key/00000",
+        "Rigid/pen/00001",
+        "Rigid/scale/00001",
+        "Rigid/screwdriver/00000",
+        "Rigid/stapler/00000",
+        "Rigid/toy/00000",
+        "Rigid/toy_plane/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.9763215184211731,
+          [
+            332.158447265625,
+            151.4529571533203,
+            418.703125,
+            289.0218200683594
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100000_cam_left_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Geometry/bread_shelf/00000",
+        "Rigid/bread/00000",
+        "Rigid/cereal/00000",
+        "Rigid/earth_globe/00000",
+        "Rigid/glasses/00000",
+        "Rigid/key/00000",
+        "Rigid/screwdriver/00000",
+        "Rigid/stapler/00000"
+      ],
+      "extra": []
+    },
+    {
+      "image": "make_toast_random_100000_cam_left_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Geometry/bread_shelf/00000",
+        "Rigid/bread/00000",
+        "Rigid/cereal/00000",
+        "Rigid/earth_globe/00000",
+        "Rigid/glasses/00000",
+        "Rigid/key/00000",
+        "Rigid/screwdriver/00000",
+        "Rigid/stapler/00000"
+      ],
+      "extra": []
+    },
+    {
+      "image": "make_toast_random_100000_cam_left_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Geometry/bread_shelf/00000",
+        "Rigid/bread/00000",
+        "Rigid/cereal/00000",
+        "Rigid/earth_globe/00000",
+        "Rigid/glasses/00000",
+        "Rigid/key/00000",
+        "Rigid/screwdriver/00000",
+        "Rigid/stapler/00000"
+      ],
+      "extra": []
+    },
+    {
+      "image": "make_toast_random_100000_cam_right_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Rigid/bottle/00000",
+        "Rigid/coin/00000",
+        "Rigid/game_machine/00000",
+        "Rigid/tissue/00000",
+        "Rigid/toy/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.9327554106712341,
+          [
+            0.0,
+            104.54854583740234,
+            186.8029022216797,
+            457.71002197265625
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100000_cam_right_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Rigid/bottle/00000",
+        "Rigid/coin/00000",
+        "Rigid/game_machine/00000",
+        "Rigid/tissue/00000",
+        "Rigid/toy/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.9327554106712341,
+          [
+            0.0,
+            104.54854583740234,
+            186.8029022216797,
+            457.71002197265625
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100000_cam_right_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Rigid/bottle/00000",
+        "Rigid/coin/00000",
+        "Rigid/game_machine/00000",
+        "Rigid/tissue/00000",
+        "Rigid/toy/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.9327554106712341,
+          [
+            0.0,
+            104.54854583740234,
+            186.8029022216797,
+            457.71002197265625
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100001_cam_head.png",
+      "theta": 0.1,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/bag/00000",
+        "Rigid/baseball_bat/00000",
+        "Rigid/bottle/00000",
+        "Rigid/bread/00000",
+        "Rigid/cutter/00000",
+        "Rigid/lamp/00000",
+        "Rigid/magic_potion/00000",
+        "Rigid/mini_fan/00000",
+        "Rigid/power_bank/00000",
+        "Rigid/scale/00001",
+        "Rigid/screwdriver/00000",
+        "Rigid/sound_card/00000",
+        "Rigid/tissue/00001",
+        "Rigid/toy_car/00001",
+        "Rigid/walkie_talkie/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.9781700372695923,
+          [
+            298.0777587890625,
+            139.8243865966797,
+            380.5358581542969,
+            271.50384521484375
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100001_cam_head.png",
+      "theta": 0.3,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/bag/00000",
+        "Rigid/baseball_bat/00000",
+        "Rigid/bottle/00000",
+        "Rigid/bread/00000",
+        "Rigid/cutter/00000",
+        "Rigid/lamp/00000",
+        "Rigid/magic_potion/00000",
+        "Rigid/mini_fan/00000",
+        "Rigid/power_bank/00000",
+        "Rigid/scale/00001",
+        "Rigid/screwdriver/00000",
+        "Rigid/sound_card/00000",
+        "Rigid/tissue/00001",
+        "Rigid/toy_car/00001",
+        "Rigid/walkie_talkie/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.9781700372695923,
+          [
+            298.0777587890625,
+            139.8243865966797,
+            380.5358581542969,
+            271.50384521484375
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100001_cam_head.png",
+      "theta": 0.5,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/bag/00000",
+        "Rigid/baseball_bat/00000",
+        "Rigid/bottle/00000",
+        "Rigid/bread/00000",
+        "Rigid/cutter/00000",
+        "Rigid/lamp/00000",
+        "Rigid/magic_potion/00000",
+        "Rigid/mini_fan/00000",
+        "Rigid/power_bank/00000",
+        "Rigid/scale/00001",
+        "Rigid/screwdriver/00000",
+        "Rigid/sound_card/00000",
+        "Rigid/tissue/00001",
+        "Rigid/toy_car/00001",
+        "Rigid/walkie_talkie/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.9781700372695923,
+          [
+            298.0777587890625,
+            139.8243865966797,
+            380.5358581542969,
+            271.50384521484375
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100002_cam_head.png",
+      "theta": 0.1,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/baseball_bat/00000",
+        "Rigid/bread/00000",
+        "Rigid/cereal/00000",
+        "Rigid/clip/00000",
+        "Rigid/comb/00000",
+        "Rigid/darts_board/00000",
+        "Rigid/eraser/00000",
+        "Rigid/game_machine/00000",
+        "Rigid/mini_fan/00001",
+        "Rigid/notes_holder/00000",
+        "Rigid/pencil_case/00000",
+        "Rigid/plane/00000",
+        "Rigid/shampoo/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.977939784526825,
+          [
+            307.8836669921875,
+            133.3387908935547,
+            396.1650390625,
+            263.0101013183594
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100002_cam_head.png",
+      "theta": 0.3,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/baseball_bat/00000",
+        "Rigid/bread/00000",
+        "Rigid/cereal/00000",
+        "Rigid/clip/00000",
+        "Rigid/comb/00000",
+        "Rigid/darts_board/00000",
+        "Rigid/eraser/00000",
+        "Rigid/game_machine/00000",
+        "Rigid/mini_fan/00001",
+        "Rigid/notes_holder/00000",
+        "Rigid/pencil_case/00000",
+        "Rigid/plane/00000",
+        "Rigid/shampoo/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.977939784526825,
+          [
+            307.8836669921875,
+            133.3387908935547,
+            396.1650390625,
+            263.0101013183594
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100002_cam_head.png",
+      "theta": 0.5,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/baseball_bat/00000",
+        "Rigid/bread/00000",
+        "Rigid/cereal/00000",
+        "Rigid/clip/00000",
+        "Rigid/comb/00000",
+        "Rigid/darts_board/00000",
+        "Rigid/eraser/00000",
+        "Rigid/game_machine/00000",
+        "Rigid/mini_fan/00001",
+        "Rigid/notes_holder/00000",
+        "Rigid/pencil_case/00000",
+        "Rigid/plane/00000",
+        "Rigid/shampoo/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.977939784526825,
+          [
+            307.8836669921875,
+            133.3387908935547,
+            396.1650390625,
+            263.0101013183594
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100003_cam_head.png",
+      "theta": 0.1,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/bottle/00000",
+        "Rigid/bread/00000",
+        "Rigid/gamepad/00000",
+        "Rigid/glasses/00000",
+        "Rigid/kettle/00001",
+        "Rigid/pencil_case/00000",
+        "Rigid/scale/00001",
+        "Rigid/toy_plane/00001",
+        "Rigid/trophy/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.975533664226532,
+          [
+            319.56158447265625,
+            151.69842529296875,
+            409.6333923339844,
+            285.1472473144531
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100003_cam_head.png",
+      "theta": 0.3,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/bottle/00000",
+        "Rigid/bread/00000",
+        "Rigid/gamepad/00000",
+        "Rigid/glasses/00000",
+        "Rigid/kettle/00001",
+        "Rigid/pencil_case/00000",
+        "Rigid/scale/00001",
+        "Rigid/toy_plane/00001",
+        "Rigid/trophy/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.975533664226532,
+          [
+            319.56158447265625,
+            151.69842529296875,
+            409.6333923339844,
+            285.1472473144531
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100003_cam_head.png",
+      "theta": 0.5,
+      "gt": [
+        "Articulation/toaster/00004"
+      ],
+      "predicted": [
+        "Articulation/toaster/00004",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/bottle/00000",
+        "Rigid/bread/00000",
+        "Rigid/gamepad/00000",
+        "Rigid/glasses/00000",
+        "Rigid/kettle/00001",
+        "Rigid/pencil_case/00000",
+        "Rigid/scale/00001",
+        "Rigid/toy_plane/00001",
+        "Rigid/trophy/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/toaster/00004",
+          0.975533664226532,
+          [
+            319.56158447265625,
+            151.69842529296875,
+            409.6333923339844,
+            285.1472473144531
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "make_toast_random_100004_cam_head.png",
+      "theta": 0.1,
+      "gt": [
+        "Articulation/toaster/00002"
+      ],
+      "predicted": [
+        "Articulation/toaster/00000",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/audio/00002",
+        "Rigid/baseball_bat/00000",
+        "Rigid/book_shelf/00000",
+        "Rigid/bread/00000",
+        "Rigid/cap/00000",
+        "Rigid/cereal/00000",
+        "Rigid/coin/00001",
+        "Rigid/comb/00000",
+        "Rigid/headphones/00000",
+        "Rigid/magic_potion/00000",
+        "Rigid/notes_holder/00000",
+        "Rigid/power_bank/00000",
+        "Rigid/toy_car/00001"
+      ],
+      "extra": []
+    },
+    {
+      "image": "make_toast_random_100004_cam_head.png",
+      "theta": 0.3,
+      "gt": [
+        "Articulation/toaster/00002"
+      ],
+      "predicted": [
+        "Articulation/toaster/00000",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/audio/00002",
+        "Rigid/baseball_bat/00000",
+        "Rigid/book_shelf/00000",
+        "Rigid/bread/00000",
+        "Rigid/cap/00000",
+        "Rigid/cereal/00000",
+        "Rigid/coin/00001",
+        "Rigid/comb/00000",
+        "Rigid/headphones/00000",
+        "Rigid/magic_potion/00000",
+        "Rigid/notes_holder/00000",
+        "Rigid/power_bank/00000",
+        "Rigid/toy_car/00001"
+      ],
+      "extra": []
+    },
+    {
+      "image": "make_toast_random_100004_cam_head.png",
+      "theta": 0.5,
+      "gt": [
+        "Articulation/toaster/00002"
+      ],
+      "predicted": [
+        "Articulation/toaster/00000",
+        "Geometry/bread_shelf/00000",
+        "Geometry/camera_stand/00000",
+        "Rigid/audio/00002",
+        "Rigid/baseball_bat/00000",
+        "Rigid/book_shelf/00000",
+        "Rigid/bread/00000",
+        "Rigid/cap/00000",
+        "Rigid/cereal/00000",
+        "Rigid/coin/00001",
+        "Rigid/comb/00000",
+        "Rigid/headphones/00000",
+        "Rigid/magic_potion/00000",
+        "Rigid/notes_holder/00000",
+        "Rigid/power_bank/00000",
+        "Rigid/toy_car/00001"
+      ],
+      "extra": []
+    },
+    {
+      "image": "pour_liquid_into_cup_random_100000_cam_head.png",
+      "theta": 0.1,
+      "gt": [
+        "Rigid/mug/00017",
+        "Rigid/wuliangye/00001"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Rigid/balance/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/coin/00001",
+        "Rigid/comb/00000",
+        "Rigid/foosball_table/00000",
+        "Rigid/keyboard/00001",
+        "Rigid/microscope/00000",
+        "Rigid/mug/00017",
+        "Rigid/piano/00000",
+        "Rigid/sculpture/00002",
+        "Rigid/shampoo/00000",
+        "Rigid/toy/00002",
+        "Rigid/wuliangye/00001"
+      ],
+      "extra": [
+        [
+          "Rigid/mug/00017",
+          0.97718346118927,
+          [
+            317.087158203125,
+            176.04232788085938,
+            365.17724609375,
+            225.01596069335938
+          ]
+        ],
+        [
+          "Rigid/wuliangye/00001",
+          0.9698516726493835,
+          [
+            407.0738220214844,
+            139.32077026367188,
+            473.4229431152344,
+            235.08456420898438
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "pour_liquid_into_cup_random_100000_cam_head.png",
+      "theta": 0.3,
+      "gt": [
+        "Rigid/mug/00017",
+        "Rigid/wuliangye/00001"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Rigid/balance/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/coin/00001",
+        "Rigid/comb/00000",
+        "Rigid/foosball_table/00000",
+        "Rigid/keyboard/00001",
+        "Rigid/microscope/00000",
+        "Rigid/mug/00017",
+        "Rigid/piano/00000",
+        "Rigid/sculpture/00002",
+        "Rigid/shampoo/00000",
+        "Rigid/toy/00002",
+        "Rigid/wuliangye/00001"
+      ],
+      "extra": [
+        [
+          "Rigid/mug/00017",
+          0.97718346118927,
+          [
+            317.087158203125,
+            176.04232788085938,
+            365.17724609375,
+            225.01596069335938
+          ]
+        ],
+        [
+          "Rigid/wuliangye/00001",
+          0.9698516726493835,
+          [
+            407.0738220214844,
+            139.32077026367188,
+            473.4229431152344,
+            235.08456420898438
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "pour_liquid_into_cup_random_100000_cam_head.png",
+      "theta": 0.5,
+      "gt": [
+        "Rigid/mug/00017",
+        "Rigid/wuliangye/00001"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Rigid/balance/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/coin/00001",
+        "Rigid/comb/00000",
+        "Rigid/foosball_table/00000",
+        "Rigid/keyboard/00001",
+        "Rigid/microscope/00000",
+        "Rigid/mug/00017",
+        "Rigid/piano/00000",
+        "Rigid/sculpture/00002",
+        "Rigid/shampoo/00000",
+        "Rigid/toy/00002",
+        "Rigid/wuliangye/00001"
+      ],
+      "extra": [
+        [
+          "Rigid/mug/00017",
+          0.97718346118927,
+          [
+            317.087158203125,
+            176.04232788085938,
+            365.17724609375,
+            225.01596069335938
+          ]
+        ],
+        [
+          "Rigid/wuliangye/00001",
+          0.9698516726493835,
+          [
+            407.0738220214844,
+            139.32077026367188,
+            473.4229431152344,
+            235.08456420898438
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "pour_liquid_into_cup_random_100000_cam_left_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Rigid/mug/00017",
+        "Rigid/wuliangye/00001"
+      ],
+      "predicted": [
+        "Rigid/baseball_bat/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/foosball_table/00000",
+        "Rigid/keyboard/00001"
+      ],
+      "extra": []
+    },
+    {
+      "image": "pour_liquid_into_cup_random_100000_cam_left_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Rigid/mug/00017",
+        "Rigid/wuliangye/00001"
+      ],
+      "predicted": [
+        "Rigid/baseball_bat/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/foosball_table/00000",
+        "Rigid/keyboard/00001"
+      ],
+      "extra": []
+    },
+    {
+      "image": "pour_liquid_into_cup_random_100000_cam_left_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Rigid/mug/00017",
+        "Rigid/wuliangye/00001"
+      ],
+      "predicted": [
+        "Rigid/baseball_bat/00000",
+        "Rigid/coffee_bag/00000",
+        "Rigid/foosball_table/00000",
+        "Rigid/keyboard/00001"
+      ],
+      "extra": []
+    },
+    {
+      "image": "pour_liquid_into_cup_random_100000_cam_right_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Rigid/mug/00017",
+        "Rigid/wuliangye/00001"
+      ],
+      "predicted": [
+        "Rigid/balance/00000",
+        "Rigid/calculator/00001",
+        "Rigid/candle/00000",
+        "Rigid/mug/00017",
+        "Rigid/trophy/00001",
+        "Rigid/wuliangye/00001"
+      ],
+      "extra": [
+        [
+          "Rigid/wuliangye/00001",
+          0.9605370163917542,
+          [
+            137.19491577148438,
+            2.8935141563415527,
+            278.707275390625,
+            377.2813720703125
+          ]
+        ],
+        [
+          "Rigid/mug/00017",
+          0.8144654631614685,
+          [
+            0.0572713240981102,
+            217.22750854492188,
+            55.1859245300293,
+            302.76153564453125
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "pour_liquid_into_cup_random_100000_cam_right_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Rigid/mug/00017",
+        "Rigid/wuliangye/00001"
+      ],
+      "predicted": [
+        "Rigid/balance/00000",
+        "Rigid/calculator/00001",
+        "Rigid/candle/00000",
+        "Rigid/mug/00017",
+        "Rigid/trophy/00001",
+        "Rigid/wuliangye/00001"
+      ],
+      "extra": [
+        [
+          "Rigid/wuliangye/00001",
+          0.9605370163917542,
+          [
+            137.19491577148438,
+            2.8935141563415527,
+            278.707275390625,
+            377.2813720703125
+          ]
+        ],
+        [
+          "Rigid/mug/00017",
+          0.8144654631614685,
+          [
+            0.0572713240981102,
+            217.22750854492188,
+            55.1859245300293,
+            302.76153564453125
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "pour_liquid_into_cup_random_100000_cam_right_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Rigid/mug/00017",
+        "Rigid/wuliangye/00001"
+      ],
+      "predicted": [
+        "Rigid/balance/00000",
+        "Rigid/calculator/00001",
+        "Rigid/candle/00000",
+        "Rigid/mug/00017",
+        "Rigid/trophy/00001",
+        "Rigid/wuliangye/00001"
+      ],
+      "extra": [
+        [
+          "Rigid/wuliangye/00001",
+          0.9605370163917542,
+          [
+            137.19491577148438,
+            2.8935141563415527,
+            278.707275390625,
+            377.2813720703125
+          ]
+        ],
+        [
+          "Rigid/mug/00017",
+          0.8144654631614685,
+          [
+            0.0572713240981102,
+            217.22750854492188,
+            55.1859245300293,
+            302.76153564453125
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "sort_nesting_dolls_by_size_random_100000_cam_head.png",
+      "theta": 0.1,
+      "gt": [
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Rigid/book/00000",
+        "Rigid/bottle/00000",
+        "Rigid/box/00001",
+        "Rigid/box/00004",
+        "Rigid/can/00000",
+        "Rigid/cap/00000",
+        "Rigid/chocolate/00000",
+        "Rigid/coin/00000",
+        "Rigid/cutter/00000",
+        "Rigid/dice/00000",
+        "Rigid/graphics_card/00000",
+        "Rigid/kettle/00001",
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019",
+        "Rigid/meta_quest/00000",
+        "Rigid/plane/00000",
+        "Rigid/pokeball/00000",
+        "Rigid/sculpture/00000",
+        "Rigid/sound_card/00000",
+        "Rigid/tissue/00002"
+      ],
+      "extra": [
+        [
+          "Rigid/matryoshka_dolls/00015",
+          0.9780651926994324,
+          [
+            81.24101257324219,
+            203.7337646484375,
+            137.54852294921875,
+            249.0935516357422
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00018",
+          0.9477099180221558,
+          [
+            154.49951171875,
+            243.2869873046875,
+            174.4761199951172,
+            263.2281494140625
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00018",
+          0.8545604348182678,
+          [
+            161.6146697998047,
+            285.9806823730469,
+            187.2087860107422,
+            313.42535400390625
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00016",
+          0.7373674511909485,
+          [
+            465.4361267089844,
+            238.6541748046875,
+            508.4610290527344,
+            275.70050048828125
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00017",
+          0.5743975639343262,
+          [
+            161.68994140625,
+            285.150634765625,
+            186.90185546875,
+            313.7043762207031
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00019",
+          0.5469931364059448,
+          [
+            153.980224609375,
+            243.45896911621094,
+            174.3206024169922,
+            263.241943359375
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "sort_nesting_dolls_by_size_random_100000_cam_head.png",
+      "theta": 0.3,
+      "gt": [
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Rigid/book/00000",
+        "Rigid/bottle/00000",
+        "Rigid/box/00001",
+        "Rigid/box/00004",
+        "Rigid/can/00000",
+        "Rigid/cap/00000",
+        "Rigid/chocolate/00000",
+        "Rigid/coin/00000",
+        "Rigid/cutter/00000",
+        "Rigid/dice/00000",
+        "Rigid/graphics_card/00000",
+        "Rigid/kettle/00001",
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019",
+        "Rigid/meta_quest/00000",
+        "Rigid/plane/00000",
+        "Rigid/pokeball/00000",
+        "Rigid/sculpture/00000",
+        "Rigid/sound_card/00000",
+        "Rigid/tissue/00002"
+      ],
+      "extra": [
+        [
+          "Rigid/matryoshka_dolls/00015",
+          0.9780651926994324,
+          [
+            81.24101257324219,
+            203.7337646484375,
+            137.54852294921875,
+            249.0935516357422
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00018",
+          0.9477099180221558,
+          [
+            154.49951171875,
+            243.2869873046875,
+            174.4761199951172,
+            263.2281494140625
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00018",
+          0.8545604348182678,
+          [
+            161.6146697998047,
+            285.9806823730469,
+            187.2087860107422,
+            313.42535400390625
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00016",
+          0.7373674511909485,
+          [
+            465.4361267089844,
+            238.6541748046875,
+            508.4610290527344,
+            275.70050048828125
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00018",
+          0.7342363595962524,
+          [
+            111.62126922607422,
+            277.2371520996094,
+            132.70411682128906,
+            292.51678466796875
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00017",
+          0.5743975639343262,
+          [
+            161.68994140625,
+            285.150634765625,
+            186.90185546875,
+            313.7043762207031
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00019",
+          0.5469931364059448,
+          [
+            153.980224609375,
+            243.45896911621094,
+            174.3206024169922,
+            263.241943359375
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "sort_nesting_dolls_by_size_random_100000_cam_head.png",
+      "theta": 0.5,
+      "gt": [
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Rigid/book/00000",
+        "Rigid/bottle/00000",
+        "Rigid/box/00001",
+        "Rigid/box/00004",
+        "Rigid/can/00000",
+        "Rigid/cap/00000",
+        "Rigid/chocolate/00000",
+        "Rigid/coin/00000",
+        "Rigid/cutter/00000",
+        "Rigid/dice/00000",
+        "Rigid/graphics_card/00000",
+        "Rigid/kettle/00001",
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019",
+        "Rigid/meta_quest/00000",
+        "Rigid/plane/00000",
+        "Rigid/pokeball/00000",
+        "Rigid/sculpture/00000",
+        "Rigid/sound_card/00000",
+        "Rigid/tissue/00002"
+      ],
+      "extra": [
+        [
+          "Rigid/matryoshka_dolls/00015",
+          0.9780651926994324,
+          [
+            81.24101257324219,
+            203.7337646484375,
+            137.54852294921875,
+            249.0935516357422
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00018",
+          0.9477099180221558,
+          [
+            154.49951171875,
+            243.2869873046875,
+            174.4761199951172,
+            263.2281494140625
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00018",
+          0.8545604348182678,
+          [
+            161.6146697998047,
+            285.9806823730469,
+            187.2087860107422,
+            313.42535400390625
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00016",
+          0.7373674511909485,
+          [
+            465.4361267089844,
+            238.6541748046875,
+            508.4610290527344,
+            275.70050048828125
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00018",
+          0.7342363595962524,
+          [
+            111.62126922607422,
+            277.2371520996094,
+            132.70411682128906,
+            292.51678466796875
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00017",
+          0.5743975639343262,
+          [
+            161.68994140625,
+            285.150634765625,
+            186.90185546875,
+            313.7043762207031
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00019",
+          0.5469931364059448,
+          [
+            153.980224609375,
+            243.45896911621094,
+            174.3206024169922,
+            263.241943359375
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "sort_nesting_dolls_by_size_random_100000_cam_left_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019"
+      ],
+      "predicted": [
+        "Rigid/bottle/00000",
+        "Rigid/box/00004",
+        "Rigid/can/00000",
+        "Rigid/coin/00000",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00019",
+        "Rigid/meta_quest/00000",
+        "Rigid/toy_car/00000"
+      ],
+      "extra": [
+        [
+          "Rigid/matryoshka_dolls/00019",
+          0.9625595211982727,
+          [
+            254.10287475585938,
+            383.74267578125,
+            318.4921569824219,
+            478.81512451171875
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00016",
+          0.8732925653457642,
+          [
+            19.47589111328125,
+            229.6944580078125,
+            177.20591735839844,
+            423.48846435546875
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "sort_nesting_dolls_by_size_random_100000_cam_left_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019"
+      ],
+      "predicted": [
+        "Rigid/bottle/00000",
+        "Rigid/box/00004",
+        "Rigid/can/00000",
+        "Rigid/coin/00000",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00019",
+        "Rigid/meta_quest/00000",
+        "Rigid/toy_car/00000"
+      ],
+      "extra": [
+        [
+          "Rigid/matryoshka_dolls/00019",
+          0.9625595211982727,
+          [
+            254.10287475585938,
+            383.74267578125,
+            318.4921569824219,
+            478.81512451171875
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00016",
+          0.8732925653457642,
+          [
+            19.47589111328125,
+            229.6944580078125,
+            177.20591735839844,
+            423.48846435546875
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "sort_nesting_dolls_by_size_random_100000_cam_left_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019"
+      ],
+      "predicted": [
+        "Rigid/bottle/00000",
+        "Rigid/box/00004",
+        "Rigid/can/00000",
+        "Rigid/coin/00000",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00019",
+        "Rigid/meta_quest/00000",
+        "Rigid/toy_car/00000"
+      ],
+      "extra": [
+        [
+          "Rigid/matryoshka_dolls/00019",
+          0.9625595211982727,
+          [
+            254.10287475585938,
+            383.74267578125,
+            318.4921569824219,
+            478.81512451171875
+          ]
+        ],
+        [
+          "Rigid/matryoshka_dolls/00016",
+          0.8732925653457642,
+          [
+            19.47589111328125,
+            229.6944580078125,
+            177.20591735839844,
+            423.48846435546875
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "sort_nesting_dolls_by_size_random_100000_cam_right_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019"
+      ],
+      "predicted": [
+        "Rigid/helmets/00001",
+        "Rigid/kettle/00001",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/meta_quest/00000",
+        "Rigid/sculpture/00000",
+        "Rigid/tissue/00002"
+      ],
+      "extra": [
+        [
+          "Rigid/matryoshka_dolls/00017",
+          0.9360204935073853,
+          [
+            304.4251708984375,
+            345.8399353027344,
+            440.1031494140625,
+            479.45208740234375
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "sort_nesting_dolls_by_size_random_100000_cam_right_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019"
+      ],
+      "predicted": [
+        "Rigid/helmets/00001",
+        "Rigid/kettle/00001",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/meta_quest/00000",
+        "Rigid/sculpture/00000",
+        "Rigid/tissue/00002"
+      ],
+      "extra": [
+        [
+          "Rigid/matryoshka_dolls/00017",
+          0.9360204935073853,
+          [
+            304.4251708984375,
+            345.8399353027344,
+            440.1031494140625,
+            479.45208740234375
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "sort_nesting_dolls_by_size_random_100000_cam_right_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Rigid/matryoshka_dolls/00015",
+        "Rigid/matryoshka_dolls/00016",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/matryoshka_dolls/00018",
+        "Rigid/matryoshka_dolls/00019"
+      ],
+      "predicted": [
+        "Rigid/helmets/00001",
+        "Rigid/kettle/00001",
+        "Rigid/matryoshka_dolls/00017",
+        "Rigid/meta_quest/00000",
+        "Rigid/sculpture/00000",
+        "Rigid/tissue/00002"
+      ],
+      "extra": [
+        [
+          "Rigid/matryoshka_dolls/00017",
+          0.9360204935073853,
+          [
+            304.4251708984375,
+            345.8399353027344,
+            440.1031494140625,
+            479.45208740234375
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "store_laptop_and_headphones_random_100000_cam_head.png",
+      "theta": 0.1,
+      "gt": [
+        "Articulation/laptop/00001",
+        "Rigid/headset/00008"
+      ],
+      "predicted": [
+        "Articulation/laptop/00001",
+        "Geometry/camera_stand/00000",
+        "Geometry/laptop_stand/00001",
+        "Rigid/bridge/00000",
+        "Rigid/card/00001",
+        "Rigid/cereal/00000",
+        "Rigid/earbuds/00000",
+        "Rigid/gamepad/00000",
+        "Rigid/headset/00008",
+        "Rigid/lamp/00000",
+        "Rigid/pencil_case/00000",
+        "Rigid/pokeball/00004",
+        "Rigid/sandwich/00000",
+        "Rigid/sculpture/00001",
+        "Rigid/tape_measure/00000",
+        "Rigid/toy_car/00001",
+        "Rigid/trophy/00001"
+      ],
+      "extra": [
+        [
+          "Rigid/headset/00008",
+          0.9739683270454407,
+          [
+            321.7071533203125,
+            258.7272644042969,
+            414.4910888671875,
+            359.52081298828125
+          ]
+        ],
+        [
+          "Articulation/laptop/00001",
+          0.9269619584083557,
+          [
+            329.73944091796875,
+            95.75865173339844,
+            425.845947265625,
+            157.96710205078125
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "store_laptop_and_headphones_random_100000_cam_head.png",
+      "theta": 0.3,
+      "gt": [
+        "Articulation/laptop/00001",
+        "Rigid/headset/00008"
+      ],
+      "predicted": [
+        "Articulation/laptop/00001",
+        "Geometry/camera_stand/00000",
+        "Geometry/laptop_stand/00001",
+        "Rigid/bridge/00000",
+        "Rigid/card/00001",
+        "Rigid/cereal/00000",
+        "Rigid/earbuds/00000",
+        "Rigid/gamepad/00000",
+        "Rigid/headset/00008",
+        "Rigid/lamp/00000",
+        "Rigid/pencil_case/00000",
+        "Rigid/pokeball/00004",
+        "Rigid/sandwich/00000",
+        "Rigid/sculpture/00001",
+        "Rigid/tape_measure/00000",
+        "Rigid/toy_car/00001",
+        "Rigid/trophy/00001"
+      ],
+      "extra": [
+        [
+          "Rigid/headset/00008",
+          0.9739683270454407,
+          [
+            321.7071533203125,
+            258.7272644042969,
+            414.4910888671875,
+            359.52081298828125
+          ]
+        ],
+        [
+          "Articulation/laptop/00001",
+          0.9269619584083557,
+          [
+            329.73944091796875,
+            95.75865173339844,
+            425.845947265625,
+            157.96710205078125
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "store_laptop_and_headphones_random_100000_cam_head.png",
+      "theta": 0.5,
+      "gt": [
+        "Articulation/laptop/00001",
+        "Rigid/headset/00008"
+      ],
+      "predicted": [
+        "Articulation/laptop/00001",
+        "Geometry/camera_stand/00000",
+        "Geometry/laptop_stand/00001",
+        "Rigid/bridge/00000",
+        "Rigid/card/00001",
+        "Rigid/cereal/00000",
+        "Rigid/earbuds/00000",
+        "Rigid/gamepad/00000",
+        "Rigid/headset/00008",
+        "Rigid/lamp/00000",
+        "Rigid/pencil_case/00000",
+        "Rigid/pokeball/00004",
+        "Rigid/sandwich/00000",
+        "Rigid/sculpture/00001",
+        "Rigid/tape_measure/00000",
+        "Rigid/toy_car/00001",
+        "Rigid/trophy/00001"
+      ],
+      "extra": [
+        [
+          "Rigid/headset/00008",
+          0.9739683270454407,
+          [
+            321.7071533203125,
+            258.7272644042969,
+            414.4910888671875,
+            359.52081298828125
+          ]
+        ],
+        [
+          "Articulation/laptop/00001",
+          0.9269619584083557,
+          [
+            329.73944091796875,
+            95.75865173339844,
+            425.845947265625,
+            157.96710205078125
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "store_laptop_and_headphones_random_100000_cam_left_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Articulation/laptop/00001",
+        "Rigid/headset/00008"
+      ],
+      "predicted": [
+        "Geometry/laptop_stand/00001",
+        "Rigid/audio/00000",
+        "Rigid/bottle/00000",
+        "Rigid/earbuds/00000",
+        "Rigid/foosball_table/00000",
+        "Rigid/lamp/00000",
+        "Rigid/pokeball/00004",
+        "Rigid/sculpture/00001",
+        "Rigid/tape_measure/00000",
+        "Rigid/toy_car/00001"
+      ],
+      "extra": []
+    },
+    {
+      "image": "store_laptop_and_headphones_random_100000_cam_left_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Articulation/laptop/00001",
+        "Rigid/headset/00008"
+      ],
+      "predicted": [
+        "Geometry/laptop_stand/00001",
+        "Rigid/audio/00000",
+        "Rigid/bottle/00000",
+        "Rigid/earbuds/00000",
+        "Rigid/foosball_table/00000",
+        "Rigid/lamp/00000",
+        "Rigid/pokeball/00004",
+        "Rigid/sculpture/00001",
+        "Rigid/tape_measure/00000",
+        "Rigid/toy_car/00001"
+      ],
+      "extra": []
+    },
+    {
+      "image": "store_laptop_and_headphones_random_100000_cam_left_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Articulation/laptop/00001",
+        "Rigid/headset/00008"
+      ],
+      "predicted": [
+        "Geometry/laptop_stand/00001",
+        "Rigid/audio/00000",
+        "Rigid/bottle/00000",
+        "Rigid/earbuds/00000",
+        "Rigid/foosball_table/00000",
+        "Rigid/lamp/00000",
+        "Rigid/pokeball/00004",
+        "Rigid/sculpture/00001",
+        "Rigid/tape_measure/00000",
+        "Rigid/toy_car/00001"
+      ],
+      "extra": []
+    },
+    {
+      "image": "store_laptop_and_headphones_random_100000_cam_right_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Articulation/laptop/00001",
+        "Rigid/headset/00008"
+      ],
+      "predicted": [
+        "Articulation/laptop/00001",
+        "Geometry/laptop_stand/00001",
+        "Rigid/bridge/00000",
+        "Rigid/kettle/00000",
+        "Rigid/pencil_case/00000",
+        "Rigid/sandwich/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/laptop/00001",
+          0.6830007433891296,
+          [
+            0.0,
+            20.80279541015625,
+            199.31655883789062,
+            212.21456909179688
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "store_laptop_and_headphones_random_100000_cam_right_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Articulation/laptop/00001",
+        "Rigid/headset/00008"
+      ],
+      "predicted": [
+        "Articulation/laptop/00001",
+        "Geometry/laptop_stand/00001",
+        "Rigid/bridge/00000",
+        "Rigid/kettle/00000",
+        "Rigid/pencil_case/00000",
+        "Rigid/sandwich/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/laptop/00001",
+          0.6830007433891296,
+          [
+            0.0,
+            20.80279541015625,
+            199.31655883789062,
+            212.21456909179688
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "store_laptop_and_headphones_random_100000_cam_right_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Articulation/laptop/00001",
+        "Rigid/headset/00008"
+      ],
+      "predicted": [
+        "Articulation/laptop/00001",
+        "Geometry/laptop_stand/00001",
+        "Rigid/bridge/00000",
+        "Rigid/kettle/00000",
+        "Rigid/pencil_case/00000",
+        "Rigid/sandwich/00000"
+      ],
+      "extra": [
+        [
+          "Articulation/laptop/00001",
+          0.6830007433891296,
+          [
+            0.0,
+            20.80279541015625,
+            199.31655883789062,
+            212.21456909179688
+          ]
+        ]
+      ]
+    },
+    {
+      "image": "sweep_blocks_random_100000_cam_head.png",
+      "theta": 0.1,
+      "gt": [
+        "Rigid/brick/00002",
+        "Rigid/paper_ball/00000"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Rigid/action_camera/00002",
+        "Rigid/broom/00000",
+        "Rigid/broom_shovel/00000",
+        "Rigid/factory_nut/00000",
+        "Rigid/small_cube/00002"
+      ],
+      "extra": []
+    },
+    {
+      "image": "sweep_blocks_random_100000_cam_head.png",
+      "theta": 0.3,
+      "gt": [
+        "Rigid/brick/00002",
+        "Rigid/paper_ball/00000"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Rigid/action_camera/00002",
+        "Rigid/broom/00000",
+        "Rigid/broom_shovel/00000",
+        "Rigid/factory_nut/00000",
+        "Rigid/small_cube/00002"
+      ],
+      "extra": []
+    },
+    {
+      "image": "sweep_blocks_random_100000_cam_head.png",
+      "theta": 0.5,
+      "gt": [
+        "Rigid/brick/00002",
+        "Rigid/paper_ball/00000"
+      ],
+      "predicted": [
+        "Geometry/camera_stand/00000",
+        "Rigid/action_camera/00002",
+        "Rigid/broom/00000",
+        "Rigid/broom_shovel/00000",
+        "Rigid/factory_nut/00000",
+        "Rigid/small_cube/00002"
+      ],
+      "extra": []
+    },
+    {
+      "image": "sweep_blocks_random_100000_cam_left_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Rigid/brick/00002",
+        "Rigid/paper_ball/00000"
+      ],
+      "predicted": [
+        "Rigid/broom/00000",
+        "Rigid/broom_shovel/00000"
+      ],
+      "extra": []
+    },
+    {
+      "image": "sweep_blocks_random_100000_cam_left_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Rigid/brick/00002",
+        "Rigid/paper_ball/00000"
+      ],
+      "predicted": [
+        "Rigid/broom/00000",
+        "Rigid/broom_shovel/00000"
+      ],
+      "extra": []
+    },
+    {
+      "image": "sweep_blocks_random_100000_cam_left_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Rigid/brick/00002",
+        "Rigid/paper_ball/00000"
+      ],
+      "predicted": [
+        "Rigid/broom/00000",
+        "Rigid/broom_shovel/00000"
+      ],
+      "extra": []
+    },
+    {
+      "image": "sweep_blocks_random_100000_cam_right_wrist.png",
+      "theta": 0.1,
+      "gt": [
+        "Rigid/brick/00002",
+        "Rigid/paper_ball/00000"
+      ],
+      "predicted": [
+        "Rigid/broom_shovel/00000",
+        "Rigid/factory_nut/00000",
+        "Rigid/small_cube/00002"
+      ],
+      "extra": []
+    },
+    {
+      "image": "sweep_blocks_random_100000_cam_right_wrist.png",
+      "theta": 0.3,
+      "gt": [
+        "Rigid/brick/00002",
+        "Rigid/paper_ball/00000"
+      ],
+      "predicted": [
+        "Rigid/broom_shovel/00000",
+        "Rigid/factory_nut/00000",
+        "Rigid/small_cube/00002"
+      ],
+      "extra": []
+    },
+    {
+      "image": "sweep_blocks_random_100000_cam_right_wrist.png",
+      "theta": 0.5,
+      "gt": [
+        "Rigid/brick/00002",
+        "Rigid/paper_ball/00000"
+      ],
+      "predicted": [
+        "Rigid/broom_shovel/00000",
+        "Rigid/factory_nut/00000",
+        "Rigid/small_cube/00002"
+      ],
+      "extra": []
+    }
+  ]
+}
