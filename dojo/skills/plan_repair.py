@@ -8,8 +8,8 @@ import numpy as np
 def repair_coordinates(q0, limits, evaluate, penetrations, budget_s=3.):
     """Return a monotone escape, never a partial executable motion.
 
-    No initially clear sphere may develop contact; no sphere's penetration may
-    increase (10 micrometres numerical slack). Reject self-contact and starts
+    No initially clear sphere/obstacle pair may develop contact; no pair's
+    penetration may increase (10 micrometres numerical slack). Reject self-contact and starts
     deeper than 15 mm. The caller still validates the entire joined trajectory.
     """
     started=time.perf_counter();q0=np.asarray(q0,float);q=q0.copy()

@@ -35,3 +35,15 @@ def test_prefix_cannot_dive_deeper_then_escape_at_its_endpoint():
     valid,why=check_escape_prefix(np.array([[.005],[.012],[0.]]),cost,penetration)
     assert not valid and why=="prefix_worsens_contact"
     assert check_escape_prefix(np.array([[.012],[.005],[0.]]),cost,penetration)[0]
+
+
+def test_escape_cannot_swap_obstacles_while_maximum_depth_decreases():
+    from dojo.skills.plan_geometry import world_penetrations
+    from dojo.skills.plan_repair import check_escape_prefix
+    boxes=[dict(dims=[.02,.02,.02],pose=[x,0.,0.,1.,0.,0.,0.]) for x in (0.,.04)]
+    penetration=lambda q:world_penetrations([[q[0],0.,0.,.01]],boxes,by_obstacle=True)
+    before,after=penetration([.012]),penetration([.025])
+    assert after.max()<before.max()  # Worst-depth-only checking would miss it.
+    assert before[0,1]==0. and after[0,1]>0.
+    valid,why=check_escape_prefix([[.012],[.025]],lambda q:{"self_collision":0.},penetration)
+    assert not valid and why=="prefix_worsens_contact"

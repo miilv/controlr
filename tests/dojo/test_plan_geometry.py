@@ -51,3 +51,15 @@ def test_hand_cover_follows_opening_and_covers_native_finger_surfaces():
             assert np.any(np.linalg.norm(spheres[:,:3]-point,axis=1)<=spheres[:,3]+1e-9)
     closed=hand_spheres(kin,0.);opened=hand_spheres(kin,1.)
     assert np.max(np.abs(opened[:180,1]))>np.max(np.abs(closed[:180,1]))
+
+
+def test_mesh_cover_remains_valid_when_guard_samples_reduce_capacity():
+    vertices=np.array([[0.,0.,0.],[.1,0.,0.],[0.,.1,0.]])
+    held=HeldBox(np.eye(4),np.zeros(3),np.ones(3)*.1,
+                 mesh=(vertices,np.array([[0,1,2]])))
+    # A held mesh may be reused across worlds with different guard capacity.
+    for capacity in (256,8,229,8):
+        spheres=mesh_spheres(held,0.,capacity=capacity)
+        assert len(spheres)<=capacity
+        for point in ([0.,0.,0.],[.1,0.,0.],[0.,.1,0.],[.03,.04,0.]):
+            assert np.any(np.linalg.norm(spheres[:,:3]-point,axis=1)<=spheres[:,3])

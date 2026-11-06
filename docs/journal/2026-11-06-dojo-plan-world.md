@@ -310,3 +310,31 @@ retains the same IDs (egg hard layout first, as in the previous fourth launch).
 Keep the full denominator and gate unchanged. The scene-free counterfactual
 will be repeated with the corrected distinct retry banks; it never executes
 any robot action. No new paired score comparison has begun.
+
+The first final-source scene-free replay retains the old request's native IK
+hint (or absence of one). A second numeric-only counterfactual refreshes that
+hint with the final profile's four native random seeds, then uses the same
+native limits, distinct GPU banks and no scene obstacles. This separates an
+old hint-bank artifact from a fixed-endpoint limitation. It executes no action,
+uses the strict light admission wrapper, and writes a distinct results file.
+
+The v5 check finishes: tools 4/31 fallbacks (12.9%); egg 240/276 (87.0%).
+The hard egg layout generates 235 failures in 256 requests: actual legacy
+routing also rejects 232 (129 IK, 103 collision). Recorded endpoint evidence
+there has 129 native IK failures, 95 hand/held collisions and eleven native-clear
+fallback goals. Candidate count inflation follows changed earlier motions;
+this is not an isolated A/B attribution to any one recovery change. Keep the
+regression and the earlier v4 40.4% egg result, rather than selecting the best
+pilot. The paired four-cell score comparison stays gated off.
+
+The refreshed four-seed native-hint counterfactual still has one native/GPU IK
+success among twelve scene-free requests. The other eleven retain 7–42 mm
+position residuals. No global-unreachability claim is made.
+
+A final review catches an escape-guard edge case: maximum depth per sphere
+could decrease while the same sphere starts touching another obstacle. Track
+penetration per sphere/obstacle pair instead. A regression test covers the
+swap despite decreasing maximum depth. This tightens proposal checks; the
+original native validator remains mandatory. Recheck the same two layouts per
+cell on this stricter source, with the same all-request denominator and gate;
+no score A/B or new candidate tuning is dispatched.

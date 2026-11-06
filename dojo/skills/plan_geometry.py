@@ -85,14 +85,14 @@ def hand_spheres(kin, gripper, capacity=256):
     return result
 
 
-def world_penetrations(spheres, boxes):
-    """Per-sphere geometric penetration (metres) into the believed cuboids."""
+def world_penetrations(spheres, boxes, *, by_obstacle=False):
+    """Geometric penetration in metres; retain obstacle identity for escapes."""
     from dojo.skills.geometry import quat_to_R
     spheres=np.asarray(spheres).reshape(-1,4)
-    worst=np.zeros(len(spheres))
-    for box in boxes:
+    depths=np.zeros((len(spheres),len(boxes)))
+    for index,box in enumerate(boxes):
         pose=box["pose"]
         distance=np.abs((spheres[:,:3]-pose[:3])@quat_to_R(pose[3:]))-np.asarray(box["dims"])/2
         signed=np.linalg.norm(np.maximum(distance,0),axis=1)+np.minimum(distance.max(axis=1),0)-spheres[:,3]
-        worst=np.maximum(worst,np.where(spheres[:,3]>0,-signed,0.))
-    return worst
+        depths[:,index]=np.maximum(0.,np.where(spheres[:,3]>0,-signed,0.))
+    return depths if by_obstacle else np.max(depths,axis=1,initial=0.)

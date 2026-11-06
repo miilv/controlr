@@ -258,7 +258,7 @@ class _GPUBackend:
                 return JointState.from_position(torch.as_tensor(q,device=device,dtype=full.dtype).reshape(1,-1),joint_names=names)
             def prefix_penetration(q):
                 spheres=p.compute_kinematics(prefix_state(q)).robot_spheres.detach().cpu().numpy()
-                return world_penetrations(spheres,payload["boxes"])
+                return world_penetrations(spheres,payload["boxes"],by_obstacle=True)
             valid, reason=check_escape_prefix(payload["prefix"],lambda q:self._constraints(prefix_state(q)),prefix_penetration)
             self.diagnostics["prefix"]={"valid":valid,"reason":reason}
             if not valid:
@@ -271,7 +271,7 @@ class _GPUBackend:
                 return self._constraints(joint_state(q))
             def penetrations(q):
                 spheres=p.compute_kinematics(joint_state(q)).robot_spheres.detach().cpu().numpy()
-                return world_penetrations(spheres,payload["boxes"])
+                return world_penetrations(spheres,payload["boxes"],by_obstacle=True)
             repair_path, repair = repair_coordinates(payload["q0"],self.query_limits,evaluate,penetrations)
             self.diagnostics["repair"] = repair
             self.emit({"stage":"repair","diagnostics":self.diagnostics})
