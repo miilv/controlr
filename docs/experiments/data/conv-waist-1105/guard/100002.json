@@ -1,0 +1,497 @@
+{
+ "Dynamic": {
+  "conveyor": [
+   {
+    "category": "conveyor",
+    "category_idx": 1,
+    "group": null,
+    "xlim": [
+     -2.08,
+     -2.08
+    ],
+    "ylim": [
+     0.175,
+     0.175
+    ],
+    "zlim": [
+     0.0,
+     0.0
+    ],
+    "qpos": [
+     0,
+     0,
+     0,
+     1
+    ],
+    "rotate_deg": 0,
+    "rotate_rand": true,
+    "relative_plane": "Ground",
+    "place_tag": null,
+    "margin": 0.01,
+    "check_mode": "bbox",
+    "need_check_stable": true,
+    "label": "conveyor",
+    "default_pos": [
+     -2.08,
+     0.175,
+     0.05
+    ],
+    "default_ori": [
+     0.0,
+     0.0,
+     0.0,
+     1.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "size": [
+      3.6012,
+      1.1764,
+      0.924
+     ],
+     "mass": 0.0,
+     "friction": 0.0,
+     "type": "dynamic"
+    },
+    "visual": {}
+   }
+  ]
+ },
+ "Geometry": {
+  "camera_stand": [
+   {
+    "category": "camera_stand",
+    "category_idx": 0,
+    "group": null,
+    "xlim": [
+     0.0,
+     0.0
+    ],
+    "ylim": [
+     -0.47,
+     -0.47
+    ],
+    "zlim": [
+     0.715,
+     0.715
+    ],
+    "qpos": [
+     0.707,
+     -0.707,
+     0.0,
+     0.0
+    ],
+    "rotate_deg": 0,
+    "rotate_rand": false,
+    "relative_plane": "Ground",
+    "place_tag": null,
+    "margin": 0.01,
+    "check_mode": "bbox",
+    "need_check_stable": true,
+    "label": "camera_stand",
+    "default_pos": [
+     0.0,
+     -0.47,
+     0.765
+    ],
+    "default_ori": [
+     0.7071067811865476,
+     -0.7071067811865476,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "type": "geometry"
+    },
+    "visual": {}
+   }
+  ],
+  "photo": [
+   {
+    "category": "photo",
+    "category_idx": 5,
+    "group": null,
+    "xlim": [
+     2.08,
+     2.08
+    ],
+    "ylim": [
+     -0.55,
+     -0.55
+    ],
+    "zlim": [
+     0.05,
+     0.05
+    ],
+    "qpos": [
+     0.92,
+     -0.38,
+     0.0,
+     0.0
+    ],
+    "rotate_deg": 0,
+    "rotate_rand": false,
+    "relative_plane": "conveyor",
+    "place_tag": null,
+    "margin": 0.01,
+    "check_mode": "bbox",
+    "need_check_stable": true,
+    "label": "photo",
+    "default_pos": [
+     0.0,
+     -0.37500000000000006,
+     1.0244
+    ],
+    "default_ori": [
+     0.924261426490025,
+     -0.38176015441979294,
+     0.0,
+     0.0
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "mass": 0.5,
+     "friction": 0.4,
+     "type": "geometry"
+    },
+    "visual": {}
+   }
+  ]
+ },
+ "Rigid": {
+  "basket_grasp": [
+   {
+    "category": "basket_grasp",
+    "category_idx": 2,
+    "group": null,
+    "xlim": [
+     1.5,
+     2.0
+    ],
+    "ylim": [
+     -0.2,
+     -0.1
+    ],
+    "zlim": [
+     -0.1,
+     -0.1
+    ],
+    "qpos": [
+     0.707,
+     0,
+     0,
+     0.707
+    ],
+    "rotate_deg": 0,
+    "rotate_rand": false,
+    "relative_plane": "conveyor",
+    "place_tag": null,
+    "margin": 0.01,
+    "check_mode": "bbox",
+    "need_check_stable": true,
+    "label": "basket",
+    "default_pos": [
+     -0.5453602666488675,
+     -0.021770386269886366,
+     0.8744000000000001
+    ],
+    "default_ori": [
+     0.7071067811865476,
+     0.0,
+     0.0,
+     0.7071067811865476
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "mass": 0.2,
+     "friction": 0.42,
+     "type": "rigid"
+    },
+    "visual": {}
+   }
+  ],
+  "cup": [
+   {
+    "category": "cup",
+    "category_idx": 7,
+    "group": null,
+    "xlim": [
+     0.0,
+     0.8
+    ],
+    "ylim": [
+     -0.2,
+     -0.05
+    ],
+    "zlim": null,
+    "qpos": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "rotate_deg": 35,
+    "rotate_rand": true,
+    "relative_plane": "conveyor",
+    "place_tag": null,
+    "margin": 0.01,
+    "check_mode": "bbox",
+    "need_check_stable": true,
+    "label": "target",
+    "default_pos": [
+     -1.2459886203934125,
+     0.036390865351726025,
+     0.7680002810676564
+    ],
+    "default_ori": [
+     -0.9916963633530204,
+     -0.0007189786565517882,
+     -0.0006950199218094263,
+     0.1285975230297766
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "mass": 0.35,
+     "friction": 0.45,
+     "type": "rigid"
+    },
+    "visual": {}
+   }
+  ],
+  "glue": [
+   {
+    "category": "glue",
+    "category_idx": 0,
+    "group": null,
+    "xlim": [
+     0.0,
+     0.8
+    ],
+    "ylim": [
+     -0.2,
+     -0.05
+    ],
+    "zlim": null,
+    "qpos": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "rotate_deg": 35,
+    "rotate_rand": true,
+    "relative_plane": "conveyor",
+    "place_tag": null,
+    "margin": 0.01,
+    "check_mode": "bbox",
+    "need_check_stable": true,
+    "label": "object1",
+    "default_pos": [
+     -0.9417951782786568,
+     -0.02277916882187567,
+     0.8281001380232167
+    ],
+    "default_ori": [
+     -0.9653519219461116,
+     -0.0003752366134827189,
+     0.0006238564448675242,
+     0.26095044892770086
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "mass": 0.025,
+     "friction": 0.45,
+     "type": "rigid"
+    },
+    "visual": {}
+   }
+  ],
+  "correction_tape": [
+   {
+    "category": "correction_tape",
+    "category_idx": 0,
+    "group": null,
+    "xlim": [
+     0.0,
+     0.8
+    ],
+    "ylim": [
+     -0.2,
+     -0.05
+    ],
+    "zlim": null,
+    "qpos": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "rotate_deg": 35,
+    "rotate_rand": true,
+    "relative_plane": "conveyor",
+    "place_tag": null,
+    "margin": 0.01,
+    "check_mode": "bbox",
+    "need_check_stable": true,
+    "label": "object2",
+    "default_pos": [
+     -1.3260154761937792,
+     0.12126818375181543,
+     0.7801999115612871
+    ],
+    "default_ori": [
+     -0.9559730941301325,
+     9.56265592176656e-05,
+     2.924980465234766e-05,
+     0.2934543121156532
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "mass": 0.12,
+     "friction": 0.3,
+     "type": "rigid"
+    },
+    "visual": {}
+   }
+  ],
+  "yogurt": [
+   {
+    "category": "yogurt",
+    "category_idx": 1,
+    "group": null,
+    "xlim": [
+     0.0,
+     0.8
+    ],
+    "ylim": [
+     -0.2,
+     -0.05
+    ],
+    "zlim": null,
+    "qpos": [
+     1,
+     0,
+     0,
+     0
+    ],
+    "rotate_deg": 35,
+    "rotate_rand": true,
+    "relative_plane": "conveyor",
+    "place_tag": null,
+    "margin": 0.01,
+    "check_mode": "bbox",
+    "need_check_stable": true,
+    "label": "object3",
+    "default_pos": [
+     -1.139016353210764,
+     0.11214554007506834,
+     0.800503479407582
+    ],
+    "default_ori": [
+     -0.9885317973911071,
+     0.004310120370168247,
+     -0.0015210835293475774,
+     -0.1509436806030604
+    ],
+    "scale": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "physics": {
+     "mass": 0.12,
+     "friction": 0.3,
+     "type": "rigid"
+    },
+    "visual": {}
+   }
+  ]
+ },
+ "Room": {
+  "default": "Simple_Room",
+  "default_pos": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "default_rot": [
+   1.0,
+   0.0,
+   0.0,
+   0.0
+  ],
+  "scale": [
+   0.5,
+   0.5,
+   0.5
+  ]
+ },
+ "Ground": {
+  "geometry": "cube",
+  "thickness": 0.1,
+  "axis": "Z",
+  "default_pos": [
+   0.0,
+   0.0,
+   0.0
+  ],
+  "materials": {
+   "type": "mdl",
+   "default": "material_0564",
+   "random": false
+  },
+  "physics_material": {
+   "static_friction": 1.0,
+   "dynamic_friction": 1.0,
+   "restitution": 0.0,
+   "friction_combine_mode": "multiply",
+   "restitution_combine_mode": "multiply",
+   "compliant_contact_stiffness": 0.0,
+   "compliant_contact_damping": 0.0
+  }
+ },
+ "Background": {
+  "intensity": 1000,
+  "category_name": "brown_photostudio_02_4k.hdr"
+ },
+ "_simlab": {
+  "task": "pick_from_conveyor_by_image",
+  "id": 100002,
+  "seed": 446049745,
+  "attempt": 0,
+  "generator": "simlab/v15",
+  "n_clutter": 0,
+  "clutter_wanted": 0,
+  "robot_keepout": true,
+  "seed_salt": "sha256:4578672183296b65"
+ }
+}

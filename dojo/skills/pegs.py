@@ -366,6 +366,10 @@ def _one_piece(sk: Skills, lab: str, b, base: str, peg: dict, on_this: list[str]
         # mode B: the guarded tail (its arm-lag stop sees a piece caught on the peg's top, the servo's held pose cannot),
         # on the held-object read when there is one (``Skills._held_protocol``)
         pkw["guarded"] = True
+        if getattr(sk, "peg_held_read", "off") == "on":
+            # The runtime reads held poses only on request. Correct the in-hand transform at the hover,
+            # with a gate below the hole clearance; keep threading and the contact guard (never seat blind).
+            pkw.update({"held_read": True, "held_tol": SEAT_SIGMA, "held_gate": SEAT_SIGMA})
         if seat:
             # seat only on a read this good; without one thread it (``blind_up``: up to the threaded target), never
             # push it down to its seat blind

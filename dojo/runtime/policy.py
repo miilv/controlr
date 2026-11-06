@@ -302,6 +302,8 @@ class RuntimeConfig:
     # (unknown: the object stays in the jaws; the place / post-place checks decide). 5.1 deposit_coin 100000 / 03: the
     # 1.9 mm coin held at the handover pose read "closed on nothing", and the skill opened the jaws
     held_thin: str = "off"
+    # Disc-only scope of the opening-resolution guard; leaves other thin objects on the baseline path.
+    disc_hold_evidence: str = "off"
     held_drop_conf: float = 0.9         # a held_look "not held" at this confidence drops the grasp unless the head check sees
                                         # the object in the jaws (before: only when the head also saw it at the pick pose,
                                         # which kept 51 of 52 truly empty grasps on the proxy); > 1 = the old rule
@@ -449,6 +451,8 @@ class RuntimeConfig:
     # wrist look from the hover that finds nothing at the track aborts the pick, and match_and_pick waits for the next
     # match: compute4 camera rows, every pick after such a look missed)
     belt_wrist_veto: str = "off"
+    # Wide belt objects: try a mesh waist before shallow surface/rim interception grasps.
+    belt_waist_first: str = "off"
     # pick_from_conveyor_by_image (``interactive.pick_into_held``; ``Skills.belt_container`` / ``Skills.belt_deposit``):
     # belt_container off (today) | on (a rectangular container by its real rim, ``grasps.box_rim_grasps``);
     # belt_deposit off | on (with belt_container on: the container by its handle, held up toward the robot's middle,
@@ -500,6 +504,8 @@ class RuntimeConfig:
     # grasp-place pairs" for the rest). "on": (a) re-pick only when a second read (``RuntimeProvider.recheck``)
     # confirms the judgment; (b) after a re-pick that slips, re-read the piece and keep its measured pose. off | on
     peg_stuck_confirm: str = "off"
+    # Request a held-ring measurement at the peg hover; retain blind guarded threading on a rejected read.
+    peg_held_read: str = "off"
     # insert_key's rest handover (``regrasp.plan_rest_handover``, ``Skills.key_handover``): v1 (today) | v2 (all four
     # lengthwise giver picks, an upright handover pass when the as-lifted one finds none, 16 taker places checked, vias
     # 8 / 5 / 3 / 12 cm over the receptacle). v15 dev layouts 100030-49, G3 mode A: 7/20 failed in the handover search
@@ -636,14 +642,17 @@ class RuntimePolicy:
                 or self.cfg.row_size_read not in ("off", "look", "look_union")
                 or self.cfg.series_labels not in ("keep", "numbered") or self.cfg.place_verdict not in ("belief", "measured")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
+                or self.cfg.belt_waist_first not in ("off", "on")
                 or self.cfg.nest_verify not in ("target", "support") or self.cfg.search_identity not in ("first", "unknown")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3") or self.cfg.peg_base_refine not in ("off", "local")
                 or self.cfg.peg_stuck_confirm not in ("off", "on")
+                or self.cfg.peg_held_read not in ("off", "on")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
                 or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
+                or self.cfg.disc_hold_evidence not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
@@ -849,6 +858,7 @@ class RuntimePolicy:
             prov.held_checker = lambda obs, arm, lab: self._held_look(obs, arm, lab)
             prov.held_drop_conf = float(cfg.held_drop_conf)
             prov.held_thin = cfg.held_thin
+            prov.disc_hold_evidence = cfg.disc_hold_evidence
             prov.held_confirm = lambda obs, arm, lab: self._held_head_confirm(prov, obs, arm, lab)
         prov.confirm_wrists = bool(cfg.confirm_wrists)
         prov.fallen_check = bool(cfg.fallen_check)
@@ -952,12 +962,14 @@ class RuntimePolicy:
             sk_.imitate_keep_sides = bool(cfg.imitate_keep_sides)
             sk_.imitate_repair = bool(cfg.imitate_repair)
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
+            sk_.belt_waist_first = cfg.belt_waist_first
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
             sk_.disc_handover_read = cfg.disc_handover_read
             sk_.kong_draw_read = cfg.kong_draw_read
             sk_.peg_base_refine = cfg.peg_base_refine
             sk_.peg_stuck_confirm = cfg.peg_stuck_confirm
+            sk_.peg_held_read = cfg.peg_held_read
             sk_.key_handover = cfg.key_handover
             sk_.key_lean = cfg.key_lean
             sk_.stack_reach = cfg.stack_reach
@@ -1937,9 +1949,17 @@ class RuntimePolicy:
                                       **{k: r.get(k) for k in ("ok", "why", "shift_mm", "turn_deg", "lead_shift_mm", "sigma")}})
         if r.get("ok") and r.get("T_tcp_obj") is not None and arm in prov.belief.attached:
             lab, _ = prov.belief.attached[arm]
+            audit_held = self.cfg.peg_held_read == "on" and self.report.get("skill") == "stack_on_pegs"
+            before = prov.belief.objects[lab].T.copy() if audit_held else None
             prov.belief.attached[arm] = (lab, np.asarray(r["T_tcp_obj"], float))
             prov.belief.sync_robot(self.bridge.observe()["state"])
             prov.stats["held_pose"] = prov.stats.get("held_pose", 0) + 1
+            if before is not None:
+                from dojo.skills.geometry import T_to_pose7
+                self.report["events"].append({"kind": "belief_write", "writer": "held_pose", "label": lab,
+                                              "step": self.bridge.steps_used,
+                                              "before7": T_to_pose7(before).tolist(),
+                                              "after7": T_to_pose7(prov.belief.objects[lab].T).tolist()})
         return r
 
     def _watch_read(self, region: dict, prior: dict | None, scene: str) -> dict:

@@ -27,7 +27,7 @@ def test_opening_resolution_from_the_margin_and_the_finger_geometry():
     assert opening_resolution_gap(0.5) > full                 # a partial close needs a wider object to read "held"
 
 
-def _prov(label, extents, read, held_thin):
+def _prov(label, extents, read, held_thin, disc_hold_evidence="off"):
     from dojo.runtime.belief import RuntimeProvider
     env = _env()
     b = Bridge()
@@ -35,6 +35,7 @@ def _prov(label, extents, read, held_thin):
     prov = RuntimeProvider(b, "stack_blocks", STACK, "perception", FakeAssets())
     prov.init_objects(objects_from_gt_rows(env.gt_objects(), None))
     prov.held_thin = held_thin
+    prov.disc_hold_evidence = disc_hold_evidence
     prov.held_checker = lambda obs, arm, lab: dict(read)
     prov.held_confirm = lambda obs, arm, lab: dict(HEAD_CONFIRM)
     bel = prov.belief
@@ -78,3 +79,24 @@ def test_held_thin_default_off_and_validated():
     assert RuntimeConfig().held_thin == "off"
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(held_thin="maybe"))
+
+
+@pytest.mark.parametrize("extents,read,kept", [
+    (COIN_EXTENTS, COIN_READ, True),
+    ([0.0285, 0.0019, 0.0285], COIN_READ, True),
+    ([0.0285, 0.020, 0.0019], COIN_READ, False),  # thin key / rectangular tool
+    (None, COIN_READ, False),                   # thick block
+    (COIN_EXTENTS, {**COIN_READ, "evidence": "colour", "opening": None}, False),
+    (COIN_EXTENTS, {**COIN_READ, "opening": {}}, False),
+])
+def test_disc_scope_preserves_only_unresolved_opening_negatives(extents, read, kept):
+    prov, bel = _prov("block_1", extents, read, "off", "on")
+    assert ("left" in bel.attached) == kept
+    assert bool(prov.events[-1].get("disc_hold_evidence")) == kept
+
+
+def test_disc_hold_evidence_is_default_off_and_validated():
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    assert RuntimeConfig().disc_hold_evidence == "off"
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(disc_hold_evidence="maybe"))

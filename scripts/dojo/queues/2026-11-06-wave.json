@@ -1,0 +1,1966 @@
+{
+  "code_sha": "df09500e723d21674a8c7825fc2da6deab8d79b8",
+  "candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "salted_blocks": {
+    "reloc-gain1": {
+      "task": "make_kong",
+      "n": 5,
+      "salt": "queue-wave-20261106-reloc-gain1"
+    },
+    "reloc-gain2": {
+      "task": "make_kong",
+      "n": 5,
+      "salt": "queue-wave-20261106-reloc-gain2"
+    },
+    "reloc-guard1": {
+      "task": "imitate_sorting_sequence",
+      "n": 5,
+      "salt": "queue-wave-20261106-reloc-guard1"
+    },
+    "reloc-guard2": {
+      "task": "imitate_sorting_sequence",
+      "n": 5,
+      "salt": "queue-wave-20261106-reloc-guard2"
+    },
+    "key-gain1": {
+      "task": "insert_key",
+      "n": 5,
+      "salt": "queue-wave-20261106-key-gain1"
+    },
+    "key-gain2": {
+      "task": "insert_key",
+      "n": 5,
+      "salt": "queue-wave-20261106-key-gain2"
+    },
+    "key-guard1": {
+      "task": "plug_in_charger",
+      "n": 5,
+      "salt": "queue-wave-20261106-key-guard1"
+    },
+    "key-guard2": {
+      "task": "plug_in_charger",
+      "n": 5,
+      "salt": "queue-wave-20261106-key-guard2"
+    },
+    "tie-primary1": {
+      "task": "imitate_sorting_sequence",
+      "n": 5,
+      "salt": "queue-wave-20261106-tie-primary1"
+    },
+    "tie-guard1": {
+      "task": "imitate_sorting_sequence",
+      "n": 2,
+      "salt": "queue-wave-20261106-tie-guard1"
+    }
+  },
+  "pairs": [
+    {
+      "family": "waist",
+      "task": "match_and_pick_from_conveyor",
+      "role": "gain",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_matchpicksg_waistAr1_100005",
+        "c4b_matchpicksg_waistBr1_100005"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "match_and_pick_from_conveyor",
+      "role": "gain",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_matchpicksg_waistBr1_100006",
+        "c4b_matchpicksg_waistAr1_100006"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "match_and_pick_from_conveyor",
+      "role": "gain",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_matchpicksg_waistAr1_100007",
+        "c4b_matchpicksg_waistBr1_100007"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "match_and_pick_from_conveyor",
+      "role": "gain",
+      "block": null,
+      "id": 100008,
+      "repeat": 1,
+      "order": [
+        "c4b_matchpicksg_waistBr1_100008",
+        "c4b_matchpicksg_waistAr1_100008"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "match_and_pick_from_conveyor",
+      "role": "gain",
+      "block": null,
+      "id": 100009,
+      "repeat": 1,
+      "order": [
+        "c4b_matchpicksg_waistAr1_100009",
+        "c4b_matchpicksg_waistBr1_100009"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "match_and_pick_from_conveyor",
+      "role": "gain",
+      "block": null,
+      "id": 100020,
+      "repeat": 1,
+      "order": [
+        "c4b_matchpicksg_waistBr1_100020",
+        "c4b_matchpicksg_waistAr1_100020"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "match_and_pick_from_conveyor",
+      "role": "gain",
+      "block": null,
+      "id": 100021,
+      "repeat": 1,
+      "order": [
+        "c4b_matchpicksg_waistAr1_100021",
+        "c4b_matchpicksg_waistBr1_100021"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "match_and_pick_from_conveyor",
+      "role": "gain",
+      "block": null,
+      "id": 100022,
+      "repeat": 1,
+      "order": [
+        "c4b_matchpicksg_waistBr1_100022",
+        "c4b_matchpicksg_waistAr1_100022"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "match_and_pick_from_conveyor",
+      "role": "gain",
+      "block": null,
+      "id": 100023,
+      "repeat": 1,
+      "order": [
+        "c4b_matchpicksg_waistAr1_100023",
+        "c4b_matchpicksg_waistBr1_100023"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "match_and_pick_from_conveyor",
+      "role": "gain",
+      "block": null,
+      "id": 100024,
+      "repeat": 1,
+      "order": [
+        "c4b_matchpicksg_waistBr1_100024",
+        "c4b_matchpicksg_waistAr1_100024"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "pick_from_conveyor_by_image",
+      "role": "guard",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_pickconveyorsg_waistAr1_100005",
+        "c4b_pickconveyorsg_waistBr1_100005"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "pick_from_conveyor_by_image",
+      "role": "guard",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_pickconveyorsg_waistBr1_100006",
+        "c4b_pickconveyorsg_waistAr1_100006"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "pick_from_conveyor_by_image",
+      "role": "guard",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_pickconveyorsg_waistAr1_100007",
+        "c4b_pickconveyorsg_waistBr1_100007"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "pick_from_conveyor_by_image",
+      "role": "guard",
+      "block": null,
+      "id": 100008,
+      "repeat": 1,
+      "order": [
+        "c4b_pickconveyorsg_waistBr1_100008",
+        "c4b_pickconveyorsg_waistAr1_100008"
+      ]
+    },
+    {
+      "family": "waist",
+      "task": "pick_from_conveyor_by_image",
+      "role": "guard",
+      "block": null,
+      "id": 100009,
+      "repeat": 1,
+      "order": [
+        "c4b_pickconveyorsg_waistAr1_100009",
+        "c4b_pickconveyorsg_waistBr1_100009"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "make_kong",
+      "role": "gain",
+      "block": "reloc-gain1",
+      "id": 100000,
+      "repeat": 1,
+      "order": [
+        "c4b_makekongsg_relocBr1b1_100000",
+        "c4b_makekongsg_relocAr1b1_100000"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "make_kong",
+      "role": "gain",
+      "block": "reloc-gain1",
+      "id": 100001,
+      "repeat": 1,
+      "order": [
+        "c4b_makekongsg_relocAr1b1_100001",
+        "c4b_makekongsg_relocBr1b1_100001"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "make_kong",
+      "role": "gain",
+      "block": "reloc-gain1",
+      "id": 100002,
+      "repeat": 1,
+      "order": [
+        "c4b_makekongsg_relocBr1b1_100002",
+        "c4b_makekongsg_relocAr1b1_100002"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "make_kong",
+      "role": "gain",
+      "block": "reloc-gain1",
+      "id": 100003,
+      "repeat": 1,
+      "order": [
+        "c4b_makekongsg_relocAr1b1_100003",
+        "c4b_makekongsg_relocBr1b1_100003"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "make_kong",
+      "role": "gain",
+      "block": "reloc-gain1",
+      "id": 100004,
+      "repeat": 1,
+      "order": [
+        "c4b_makekongsg_relocBr1b1_100004",
+        "c4b_makekongsg_relocAr1b1_100004"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "make_kong",
+      "role": "gain",
+      "block": "reloc-gain2",
+      "id": 100000,
+      "repeat": 1,
+      "order": [
+        "c4b_makekongsg_relocBr1b2_100000",
+        "c4b_makekongsg_relocAr1b2_100000"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "make_kong",
+      "role": "gain",
+      "block": "reloc-gain2",
+      "id": 100001,
+      "repeat": 1,
+      "order": [
+        "c4b_makekongsg_relocAr1b2_100001",
+        "c4b_makekongsg_relocBr1b2_100001"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "make_kong",
+      "role": "gain",
+      "block": "reloc-gain2",
+      "id": 100002,
+      "repeat": 1,
+      "order": [
+        "c4b_makekongsg_relocBr1b2_100002",
+        "c4b_makekongsg_relocAr1b2_100002"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "make_kong",
+      "role": "gain",
+      "block": "reloc-gain2",
+      "id": 100003,
+      "repeat": 1,
+      "order": [
+        "c4b_makekongsg_relocAr1b2_100003",
+        "c4b_makekongsg_relocBr1b2_100003"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "make_kong",
+      "role": "gain",
+      "block": "reloc-gain2",
+      "id": 100004,
+      "repeat": 1,
+      "order": [
+        "c4b_makekongsg_relocBr1b2_100004",
+        "c4b_makekongsg_relocAr1b2_100004"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "reloc-guard1",
+      "id": 100000,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_relocBr1b1_100000",
+        "c4b_imitatesg_relocAr1b1_100000"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "reloc-guard1",
+      "id": 100001,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_relocAr1b1_100001",
+        "c4b_imitatesg_relocBr1b1_100001"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "reloc-guard1",
+      "id": 100002,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_relocBr1b1_100002",
+        "c4b_imitatesg_relocAr1b1_100002"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "reloc-guard1",
+      "id": 100003,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_relocAr1b1_100003",
+        "c4b_imitatesg_relocBr1b1_100003"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "reloc-guard1",
+      "id": 100004,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_relocBr1b1_100004",
+        "c4b_imitatesg_relocAr1b1_100004"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "reloc-guard2",
+      "id": 100000,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_relocBr1b2_100000",
+        "c4b_imitatesg_relocAr1b2_100000"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "reloc-guard2",
+      "id": 100001,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_relocAr1b2_100001",
+        "c4b_imitatesg_relocBr1b2_100001"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "reloc-guard2",
+      "id": 100002,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_relocBr1b2_100002",
+        "c4b_imitatesg_relocAr1b2_100002"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "reloc-guard2",
+      "id": 100003,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_relocAr1b2_100003",
+        "c4b_imitatesg_relocBr1b2_100003"
+      ]
+    },
+    {
+      "family": "reloc",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "reloc-guard2",
+      "id": 100004,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_relocBr1b2_100004",
+        "c4b_imitatesg_relocAr1b2_100004"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "insert_key",
+      "role": "gain",
+      "block": "key-gain1",
+      "id": 100000,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_keyBr1b1_100000",
+        "c4b_insertkeysg_keyAr1b1_100000"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "insert_key",
+      "role": "gain",
+      "block": "key-gain1",
+      "id": 100001,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_keyAr1b1_100001",
+        "c4b_insertkeysg_keyBr1b1_100001"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "insert_key",
+      "role": "gain",
+      "block": "key-gain1",
+      "id": 100002,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_keyBr1b1_100002",
+        "c4b_insertkeysg_keyAr1b1_100002"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "insert_key",
+      "role": "gain",
+      "block": "key-gain1",
+      "id": 100003,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_keyAr1b1_100003",
+        "c4b_insertkeysg_keyBr1b1_100003"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "insert_key",
+      "role": "gain",
+      "block": "key-gain1",
+      "id": 100004,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_keyBr1b1_100004",
+        "c4b_insertkeysg_keyAr1b1_100004"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "insert_key",
+      "role": "gain",
+      "block": "key-gain2",
+      "id": 100000,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_keyBr1b2_100000",
+        "c4b_insertkeysg_keyAr1b2_100000"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "insert_key",
+      "role": "gain",
+      "block": "key-gain2",
+      "id": 100001,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_keyAr1b2_100001",
+        "c4b_insertkeysg_keyBr1b2_100001"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "insert_key",
+      "role": "gain",
+      "block": "key-gain2",
+      "id": 100002,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_keyBr1b2_100002",
+        "c4b_insertkeysg_keyAr1b2_100002"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "insert_key",
+      "role": "gain",
+      "block": "key-gain2",
+      "id": 100003,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_keyAr1b2_100003",
+        "c4b_insertkeysg_keyBr1b2_100003"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "insert_key",
+      "role": "gain",
+      "block": "key-gain2",
+      "id": 100004,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_keyBr1b2_100004",
+        "c4b_insertkeysg_keyAr1b2_100004"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "plug_in_charger",
+      "role": "guard",
+      "block": "key-guard1",
+      "id": 100000,
+      "repeat": 1,
+      "order": [
+        "c4b_pluginchargersg_keyBr1b1_100000",
+        "c4b_pluginchargersg_keyAr1b1_100000"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "plug_in_charger",
+      "role": "guard",
+      "block": "key-guard1",
+      "id": 100001,
+      "repeat": 1,
+      "order": [
+        "c4b_pluginchargersg_keyAr1b1_100001",
+        "c4b_pluginchargersg_keyBr1b1_100001"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "plug_in_charger",
+      "role": "guard",
+      "block": "key-guard1",
+      "id": 100002,
+      "repeat": 1,
+      "order": [
+        "c4b_pluginchargersg_keyBr1b1_100002",
+        "c4b_pluginchargersg_keyAr1b1_100002"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "plug_in_charger",
+      "role": "guard",
+      "block": "key-guard1",
+      "id": 100003,
+      "repeat": 1,
+      "order": [
+        "c4b_pluginchargersg_keyAr1b1_100003",
+        "c4b_pluginchargersg_keyBr1b1_100003"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "plug_in_charger",
+      "role": "guard",
+      "block": "key-guard1",
+      "id": 100004,
+      "repeat": 1,
+      "order": [
+        "c4b_pluginchargersg_keyBr1b1_100004",
+        "c4b_pluginchargersg_keyAr1b1_100004"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "plug_in_charger",
+      "role": "guard",
+      "block": "key-guard2",
+      "id": 100000,
+      "repeat": 1,
+      "order": [
+        "c4b_pluginchargersg_keyBr1b2_100000",
+        "c4b_pluginchargersg_keyAr1b2_100000"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "plug_in_charger",
+      "role": "guard",
+      "block": "key-guard2",
+      "id": 100001,
+      "repeat": 1,
+      "order": [
+        "c4b_pluginchargersg_keyAr1b2_100001",
+        "c4b_pluginchargersg_keyBr1b2_100001"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "plug_in_charger",
+      "role": "guard",
+      "block": "key-guard2",
+      "id": 100002,
+      "repeat": 1,
+      "order": [
+        "c4b_pluginchargersg_keyBr1b2_100002",
+        "c4b_pluginchargersg_keyAr1b2_100002"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "plug_in_charger",
+      "role": "guard",
+      "block": "key-guard2",
+      "id": 100003,
+      "repeat": 1,
+      "order": [
+        "c4b_pluginchargersg_keyAr1b2_100003",
+        "c4b_pluginchargersg_keyBr1b2_100003"
+      ]
+    },
+    {
+      "family": "key",
+      "task": "plug_in_charger",
+      "role": "guard",
+      "block": "key-guard2",
+      "id": 100004,
+      "repeat": 1,
+      "order": [
+        "c4b_pluginchargersg_keyBr1b2_100004",
+        "c4b_pluginchargersg_keyAr1b2_100004"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "play_stacking_toy",
+      "role": "gain",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_playstackingtoysg_pegAr1_100005",
+        "c4b_playstackingtoysg_pegBr1_100005"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "play_stacking_toy",
+      "role": "gain",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_playstackingtoysg_pegBr1_100006",
+        "c4b_playstackingtoysg_pegAr1_100006"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "play_stacking_toy",
+      "role": "gain",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_playstackingtoysg_pegAr1_100007",
+        "c4b_playstackingtoysg_pegBr1_100007"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "play_stacking_toy",
+      "role": "gain",
+      "block": null,
+      "id": 100008,
+      "repeat": 1,
+      "order": [
+        "c4b_playstackingtoysg_pegBr1_100008",
+        "c4b_playstackingtoysg_pegAr1_100008"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "play_stacking_toy",
+      "role": "gain",
+      "block": null,
+      "id": 100009,
+      "repeat": 1,
+      "order": [
+        "c4b_playstackingtoysg_pegAr1_100009",
+        "c4b_playstackingtoysg_pegBr1_100009"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "play_stacking_toy",
+      "role": "gain",
+      "block": null,
+      "id": 100020,
+      "repeat": 1,
+      "order": [
+        "c4b_playstackingtoysg_pegBr1_100020",
+        "c4b_playstackingtoysg_pegAr1_100020"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "play_stacking_toy",
+      "role": "gain",
+      "block": null,
+      "id": 100021,
+      "repeat": 1,
+      "order": [
+        "c4b_playstackingtoysg_pegAr1_100021",
+        "c4b_playstackingtoysg_pegBr1_100021"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "play_stacking_toy",
+      "role": "gain",
+      "block": null,
+      "id": 100022,
+      "repeat": 1,
+      "order": [
+        "c4b_playstackingtoysg_pegBr1_100022",
+        "c4b_playstackingtoysg_pegAr1_100022"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "play_stacking_toy",
+      "role": "gain",
+      "block": null,
+      "id": 100023,
+      "repeat": 1,
+      "order": [
+        "c4b_playstackingtoysg_pegAr1_100023",
+        "c4b_playstackingtoysg_pegBr1_100023"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "play_stacking_toy",
+      "role": "gain",
+      "block": null,
+      "id": 100024,
+      "repeat": 1,
+      "order": [
+        "c4b_playstackingtoysg_pegBr1_100024",
+        "c4b_playstackingtoysg_pegAr1_100024"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_pegAr1_100005",
+        "c4b_stackblockssg_pegBr1_100005"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_pegBr1_100006",
+        "c4b_stackblockssg_pegAr1_100006"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_pegAr1_100007",
+        "c4b_stackblockssg_pegBr1_100007"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100008,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_pegBr1_100008",
+        "c4b_stackblockssg_pegAr1_100008"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100009,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_pegAr1_100009",
+        "c4b_stackblockssg_pegBr1_100009"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100020,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_pegBr1_100020",
+        "c4b_stackblockssg_pegAr1_100020"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100021,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_pegAr1_100021",
+        "c4b_stackblockssg_pegBr1_100021"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100022,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_pegBr1_100022",
+        "c4b_stackblockssg_pegAr1_100022"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100023,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_pegAr1_100023",
+        "c4b_stackblockssg_pegBr1_100023"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100024,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_pegBr1_100024",
+        "c4b_stackblockssg_pegAr1_100024"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "insert_tubes",
+      "role": "guard",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_inserttubessg_pegAr1_100005",
+        "c4b_inserttubessg_pegBr1_100005"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "insert_tubes",
+      "role": "guard",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_inserttubessg_pegBr1_100006",
+        "c4b_inserttubessg_pegAr1_100006"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "insert_tubes",
+      "role": "guard",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_inserttubessg_pegAr1_100007",
+        "c4b_inserttubessg_pegBr1_100007"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "insert_tubes",
+      "role": "guard",
+      "block": null,
+      "id": 100008,
+      "repeat": 1,
+      "order": [
+        "c4b_inserttubessg_pegBr1_100008",
+        "c4b_inserttubessg_pegAr1_100008"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "insert_tubes",
+      "role": "guard",
+      "block": null,
+      "id": 100009,
+      "repeat": 1,
+      "order": [
+        "c4b_inserttubessg_pegAr1_100009",
+        "c4b_inserttubessg_pegBr1_100009"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "insert_tubes",
+      "role": "guard",
+      "block": null,
+      "id": 100020,
+      "repeat": 1,
+      "order": [
+        "c4b_inserttubessg_pegBr1_100020",
+        "c4b_inserttubessg_pegAr1_100020"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "insert_tubes",
+      "role": "guard",
+      "block": null,
+      "id": 100021,
+      "repeat": 1,
+      "order": [
+        "c4b_inserttubessg_pegAr1_100021",
+        "c4b_inserttubessg_pegBr1_100021"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "insert_tubes",
+      "role": "guard",
+      "block": null,
+      "id": 100022,
+      "repeat": 1,
+      "order": [
+        "c4b_inserttubessg_pegBr1_100022",
+        "c4b_inserttubessg_pegAr1_100022"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "insert_tubes",
+      "role": "guard",
+      "block": null,
+      "id": 100023,
+      "repeat": 1,
+      "order": [
+        "c4b_inserttubessg_pegAr1_100023",
+        "c4b_inserttubessg_pegBr1_100023"
+      ]
+    },
+    {
+      "family": "peg",
+      "task": "insert_tubes",
+      "role": "guard",
+      "block": null,
+      "id": 100024,
+      "repeat": 1,
+      "order": [
+        "c4b_inserttubessg_pegBr1_100024",
+        "c4b_inserttubessg_pegAr1_100024"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "deposit_coin",
+      "role": "gain",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_depositcoinsg_discAr1_100005",
+        "c4b_depositcoinsg_discBr1_100005"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "deposit_coin",
+      "role": "gain",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_depositcoinsg_discBr1_100006",
+        "c4b_depositcoinsg_discAr1_100006"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "deposit_coin",
+      "role": "gain",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_depositcoinsg_discAr1_100007",
+        "c4b_depositcoinsg_discBr1_100007"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "deposit_coin",
+      "role": "gain",
+      "block": null,
+      "id": 100008,
+      "repeat": 1,
+      "order": [
+        "c4b_depositcoinsg_discBr1_100008",
+        "c4b_depositcoinsg_discAr1_100008"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "deposit_coin",
+      "role": "gain",
+      "block": null,
+      "id": 100009,
+      "repeat": 1,
+      "order": [
+        "c4b_depositcoinsg_discAr1_100009",
+        "c4b_depositcoinsg_discBr1_100009"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "deposit_coin",
+      "role": "gain",
+      "block": null,
+      "id": 100020,
+      "repeat": 1,
+      "order": [
+        "c4b_depositcoinsg_discBr1_100020",
+        "c4b_depositcoinsg_discAr1_100020"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "deposit_coin",
+      "role": "gain",
+      "block": null,
+      "id": 100021,
+      "repeat": 1,
+      "order": [
+        "c4b_depositcoinsg_discAr1_100021",
+        "c4b_depositcoinsg_discBr1_100021"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "deposit_coin",
+      "role": "gain",
+      "block": null,
+      "id": 100022,
+      "repeat": 1,
+      "order": [
+        "c4b_depositcoinsg_discBr1_100022",
+        "c4b_depositcoinsg_discAr1_100022"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "deposit_coin",
+      "role": "gain",
+      "block": null,
+      "id": 100023,
+      "repeat": 1,
+      "order": [
+        "c4b_depositcoinsg_discAr1_100023",
+        "c4b_depositcoinsg_discBr1_100023"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "deposit_coin",
+      "role": "gain",
+      "block": null,
+      "id": 100024,
+      "repeat": 1,
+      "order": [
+        "c4b_depositcoinsg_discBr1_100024",
+        "c4b_depositcoinsg_discAr1_100024"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "insert_key",
+      "role": "guard",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_discAr1_100005",
+        "c4b_insertkeysg_discBr1_100005"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "insert_key",
+      "role": "guard",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_discBr1_100006",
+        "c4b_insertkeysg_discAr1_100006"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "insert_key",
+      "role": "guard",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_insertkeysg_discAr1_100007",
+        "c4b_insertkeysg_discBr1_100007"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "play_tic_tac_toe",
+      "role": "guard",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_playtictactoesg_discAr1_100005",
+        "c4b_playtictactoesg_discBr1_100005"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "play_tic_tac_toe",
+      "role": "guard",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_playtictactoesg_discBr1_100006",
+        "c4b_playtictactoesg_discAr1_100006"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "play_tic_tac_toe",
+      "role": "guard",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_playtictactoesg_discAr1_100007",
+        "c4b_playtictactoesg_discBr1_100007"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_discAr1_100005",
+        "c4b_stackblockssg_discBr1_100005"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_discBr1_100006",
+        "c4b_stackblockssg_discAr1_100006"
+      ]
+    },
+    {
+      "family": "disc",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_discAr1_100007",
+        "c4b_stackblockssg_discBr1_100007"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieAr1_100005",
+        "c4b_imitatesg_tieBr1_100005"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100005,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieBr2_100005",
+        "c4b_imitatesg_tieAr2_100005"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieBr1_100006",
+        "c4b_imitatesg_tieAr1_100006"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100006,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieAr2_100006",
+        "c4b_imitatesg_tieBr2_100006"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieAr1_100007",
+        "c4b_imitatesg_tieBr1_100007"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100007,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieBr2_100007",
+        "c4b_imitatesg_tieAr2_100007"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100008,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieBr1_100008",
+        "c4b_imitatesg_tieAr1_100008"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100008,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieAr2_100008",
+        "c4b_imitatesg_tieBr2_100008"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100009,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieAr1_100009",
+        "c4b_imitatesg_tieBr1_100009"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100009,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieBr2_100009",
+        "c4b_imitatesg_tieAr2_100009"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100020,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieBr1_100020",
+        "c4b_imitatesg_tieAr1_100020"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100020,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieAr2_100020",
+        "c4b_imitatesg_tieBr2_100020"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100021,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieAr1_100021",
+        "c4b_imitatesg_tieBr1_100021"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100021,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieBr2_100021",
+        "c4b_imitatesg_tieAr2_100021"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100022,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieBr1_100022",
+        "c4b_imitatesg_tieAr1_100022"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100022,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieAr2_100022",
+        "c4b_imitatesg_tieBr2_100022"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100023,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieAr1_100023",
+        "c4b_imitatesg_tieBr1_100023"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100023,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieBr2_100023",
+        "c4b_imitatesg_tieAr2_100023"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100024,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieBr1_100024",
+        "c4b_imitatesg_tieAr1_100024"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100024,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieAr2_100024",
+        "c4b_imitatesg_tieBr2_100024"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100025,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieAr1_100025",
+        "c4b_imitatesg_tieBr1_100025"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100025,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieBr2_100025",
+        "c4b_imitatesg_tieAr2_100025"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100026,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieBr1_100026",
+        "c4b_imitatesg_tieAr1_100026"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100026,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieAr2_100026",
+        "c4b_imitatesg_tieBr2_100026"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100027,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieAr1_100027",
+        "c4b_imitatesg_tieBr1_100027"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100027,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieBr2_100027",
+        "c4b_imitatesg_tieAr2_100027"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100028,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieBr1_100028",
+        "c4b_imitatesg_tieAr1_100028"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100028,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieAr2_100028",
+        "c4b_imitatesg_tieBr2_100028"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100029,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieAr1_100029",
+        "c4b_imitatesg_tieBr1_100029"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": null,
+      "id": 100029,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieBr2_100029",
+        "c4b_imitatesg_tieAr2_100029"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": "tie-primary1",
+      "id": 100000,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieBr1pb1_100000",
+        "c4b_imitatesg_tieAr1pb1_100000"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": "tie-primary1",
+      "id": 100000,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieAr2pb1_100000",
+        "c4b_imitatesg_tieBr2pb1_100000"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": "tie-primary1",
+      "id": 100001,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieAr1pb1_100001",
+        "c4b_imitatesg_tieBr1pb1_100001"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": "tie-primary1",
+      "id": 100001,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieBr2pb1_100001",
+        "c4b_imitatesg_tieAr2pb1_100001"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": "tie-primary1",
+      "id": 100002,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieBr1pb1_100002",
+        "c4b_imitatesg_tieAr1pb1_100002"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": "tie-primary1",
+      "id": 100002,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieAr2pb1_100002",
+        "c4b_imitatesg_tieBr2pb1_100002"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": "tie-primary1",
+      "id": 100003,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieAr1pb1_100003",
+        "c4b_imitatesg_tieBr1pb1_100003"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": "tie-primary1",
+      "id": 100003,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieBr2pb1_100003",
+        "c4b_imitatesg_tieAr2pb1_100003"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": "tie-primary1",
+      "id": 100004,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieBr1pb1_100004",
+        "c4b_imitatesg_tieAr1pb1_100004"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "block": "tie-primary1",
+      "id": 100004,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieAr2pb1_100004",
+        "c4b_imitatesg_tieBr2pb1_100004"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "tie-guard1",
+      "id": 100000,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieBr1gb1_100000",
+        "c4b_imitatesg_tieAr1gb1_100000"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "tie-guard1",
+      "id": 100000,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieAr2gb1_100000",
+        "c4b_imitatesg_tieBr2gb1_100000"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "tie-guard1",
+      "id": 100001,
+      "repeat": 1,
+      "order": [
+        "c4b_imitatesg_tieAr1gb1_100001",
+        "c4b_imitatesg_tieBr1gb1_100001"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "imitate_sorting_sequence",
+      "role": "guard",
+      "block": "tie-guard1",
+      "id": 100001,
+      "repeat": 2,
+      "order": [
+        "c4b_imitatesg_tieBr2gb1_100001",
+        "c4b_imitatesg_tieAr2gb1_100001"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "classify_objects",
+      "role": "guard",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_classifysg_tieAr1_100005",
+        "c4b_classifysg_tieBr1_100005"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "classify_objects",
+      "role": "guard",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_classifysg_tieBr1_100006",
+        "c4b_classifysg_tieAr1_100006"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "classify_objects",
+      "role": "guard",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_classifysg_tieAr1_100007",
+        "c4b_classifysg_tieBr1_100007"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "classify_objects",
+      "role": "guard",
+      "block": null,
+      "id": 100008,
+      "repeat": 1,
+      "order": [
+        "c4b_classifysg_tieBr1_100008",
+        "c4b_classifysg_tieAr1_100008"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "classify_objects",
+      "role": "guard",
+      "block": null,
+      "id": 100009,
+      "repeat": 1,
+      "order": [
+        "c4b_classifysg_tieAr1_100009",
+        "c4b_classifysg_tieBr1_100009"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100005,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_tieAr1_100005",
+        "c4b_stackblockssg_tieBr1_100005"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100006,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_tieBr1_100006",
+        "c4b_stackblockssg_tieAr1_100006"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100007,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_tieAr1_100007",
+        "c4b_stackblockssg_tieBr1_100007"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100008,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_tieBr1_100008",
+        "c4b_stackblockssg_tieAr1_100008"
+      ]
+    },
+    {
+      "family": "tie",
+      "task": "stack_blocks",
+      "role": "guard",
+      "block": null,
+      "id": 100009,
+      "repeat": 1,
+      "order": [
+        "c4b_stackblockssg_tieAr1_100009",
+        "c4b_stackblockssg_tieBr1_100009"
+      ]
+    }
+  ],
+  "physics_blocks": {
+    "physics-waist1": {
+      "task": "match_and_pick_from_conveyor",
+      "n": 5,
+      "salt": "queue-wave-20261106-physics-waist1"
+    },
+    "physics-waist2": {
+      "task": "match_and_pick_from_conveyor",
+      "n": 5,
+      "salt": "queue-wave-20261106-physics-waist2"
+    }
+  }
+}

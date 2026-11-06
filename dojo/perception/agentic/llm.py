@@ -8,6 +8,8 @@ reason is a safe label. ``FakeChat`` replays scripted replies for tests (no netw
 from __future__ import annotations
 
 import base64
+import email.utils
+import math
 import os
 import time
 from dataclasses import dataclass, field
@@ -52,6 +54,21 @@ def _http_error_text(e) -> str:
     return f"HTTP {e.code}: {body}" if body else f"HTTP {e.code}"
 
 
+def retry_delay(attempt: int, retry_after: str | None = None) -> float:
+    """Stdlib fallback's bounded delay; Retry-After seconds or HTTP date, capped at 60 s."""
+    if retry_after:
+        try:
+            delay = float(retry_after)
+        except ValueError:
+            try:
+                delay = email.utils.parsedate_to_datetime(retry_after).timestamp() - time.time()
+            except (TypeError, ValueError, OverflowError):
+                delay = float("nan")
+        if math.isfinite(delay):
+            return min(60.0, max(0.0, delay))
+    return min(20.0, 2.0 * 2 ** attempt)
+
+
 def degenerate(text: str) -> bool:
     """Stop a reply that has turned into repeated call markup (seen on claude/ routes: dozens of empty <invoke> blocks)."""
     return text.count("<invoke") >= 4 or text.count("</invoke>") >= 3 or text.count("<parameter") >= 6
@@ -64,7 +81,7 @@ class UrllibChat:
     def __init__(self, timeout_s: float = 240.0, max_retries: int = 2):
         self.url, self._key = router_credentials()
         keyguard.register(self._key, *keyguard.url_secrets(self.url))   # also when router_credentials is replaced
-        self.timeout_s, self.max_retries = timeout_s, max_retries
+        self.timeout_s, self.max_retries = timeout_s, max(0, int(max_retries))
 
     def __call__(self, model: str, messages: list[dict], max_tokens: int = 8000, extra_body: dict | None = None) -> ChatReply:
         import json
@@ -77,6 +94,7 @@ class UrllibChat:
         t0 = time.time()
         err = None
         for attempt in range(self.max_retries + 1):
+            retry_after = None
             req = urllib.request.Request(self.url.rstrip("/") + "/chat/completions", data=data, method="POST", headers={
                 "Authorization": f"Bearer {self._key}", "Content-Type": "application/json", "Accept": "text/event-stream"})
             text, usage, finish = [], {}, None
@@ -123,11 +141,14 @@ class UrllibChat:
                                  finish_reason=keyguard.safe_label(finish))
             except urllib.error.HTTPError as e:
                 err = _http_error_text(e)
-                if e.code not in (408, 429, 500, 502, 503, 504, 529):  # 529: Anthropic "overloaded"
+                retry_after = e.headers.get("Retry-After") if e.headers else None
+                e.close()
+                if e.code not in (408, 429) and not 500 <= e.code < 600:
                     break
             except Exception as e:  # network / timeout
                 err = keyguard.clip(f"{type(e).__name__}: {e}", ERR_CHARS)
-            time.sleep(min(20.0, 2.0 * 2 ** attempt))
+            if attempt < self.max_retries:
+                time.sleep(retry_delay(attempt, retry_after))
         return ChatReply(text="", error=err, wall_s=time.time() - t0, request_bytes=len(data))
 
     def close(self):

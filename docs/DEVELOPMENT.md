@@ -445,6 +445,19 @@ asset. This kind is gated by the switch, and uses the existing identity/pose acc
 three or more pairs and unassigned objects are outside this tie detector. Camera validation must audit the existing
 look writer and budget costs before adoption; G3's perfect identities only test the no-tie path.
 
+### Stacking-toy held-ring read
+
+`RuntimeConfig.peg_held_read: on` (default `off`; G3 `--skill-attr peg_held_read=on`) asks the existing held-pose protocol
+for a ring-to-TCP measurement at the peg hover in mode B. It requires lateral uncertainty <= 0.5 mm and axis uncertainty
+<= 7.5 degrees, may use the existing bounded look/show protocol, and retains guarded threading on an accepted transform.
+A rejected/missing read uses the original predicted transform. It does not enable seating or change stuck-piece retries.
+Use with `held_pose: request` and the adopted base refinement; validate camera scores and belief writes before adoption.
+The dev-only `scripts/skills/toy_release_audit.py` compares hover attachment and pre-release hole/peg errors against a
+physics replay captured with `m95_replay.py --every 1`; its GT is never used by a policy.
+The provider can reanchor belief on an ok read before the tail's uncertainty gate. For this lever, explicit
+`belief_write` events with writer `held_pose` capture those changes, including tail-rejected reads; include them in the
+harmful-write audit. The safe tail fallback alone does not establish harmless belief writes.
+
 ## 5. What lives where
 
 | What | Where | Rule |
@@ -487,3 +500,53 @@ parameter handler. Older PyOpenGL plugin lists can omit Python 3.12's output
 pointer type, causing `glGenTextures` to fail on textured assets even with working
 CUDA / EGL. Changing this setup requires a fresh paired baseline, not dropping
 failed frames from the gate.
+## RoboDojo research board
+
+The durable 54-cell research board lives in [scripts/dojo/board](../scripts/dojo/board/README.md).
+It replays a hashed recovery checkpoint and can refresh only the permitted compute4 integration
+rows over read-only SSH. State defaults to `~/dojo-board`; `--state-dir` changes it.
+Sealed measurement ids are excluded before report reads and at ingestion; sealed scoring is unsupported.
+Historical pre-registered decisions are preserved; new experiments follow the Camera A/B rule.
+
+## Replaying agentic route requests
+
+`scripts/perception/route_request_replay.py ROOT --out rows.jsonl` reconstructs
+teacher-forced answer requests from copied dev workspaces (`ROOT/<name>-<layout>/call_*/*`).
+It runs no tools, renderer or robot. It requires the original prompt pin, saved
+PNGs, untruncated tool output and historical request byte counts. It rejects
+repeated tool-image filenames (the stored image may have been overwritten).
+Only ids 100000–04 / 100030–49 are accepted. `--live --model cx/gpt-6-sol`
+permits at most 200 cx/ requests, with automatic retries disabled; credentials
+come only from the named `AGENTIC_ENV_FILE` or OMNIROUTE environment source.
+Saved rows include historical replies, new replies, latency and token usage.
+The probe compares single decisions conditioned on the stored Sonnet history;
+it cannot measure a new model's full tool trajectory or episode success.
+
+### Aggregate-only imitation infrastructure census
+
+`scripts/dojo/imit_infra_census.py ROOT` summarizes old `c4b_imitatesg` candidate attempts using only category,
+success, rc and steps_used. It restricts reads to measurement ids 100005-09 / 100020-29 and known suffixes,
+separates archived rows, and emits no episode ids or diagnostics. Pipe it over SSH to inspect a read-only host
+without copying a script there. It does not select the board's counted family or diagnose scoring episodes.
+
+### Wide conveyor interceptions
+
+`RuntimeConfig.belt_waist_first` (`off` by default; G3 `--skill-attr belt_waist_first=on`)
+tries mesh waist grasps before shallow slice/rim grasps when the rider has no top grasp.
+An unreachable waist falls back to the existing surface search. Narrow top grasps retain
+their search. This changes grasp selection, not tracking or identity; keep `belt_wrist_veto`
+independently configured. Both conveyor skills share this interception planner.
+
+### Integration camera queue
+
+The compute4 Integration runner is versioned at `scripts/dojo/queues/lane2.sh`.
+Set `LANE_REPO` to a merged deployment and use private heavy1/heavy2 locks.
+Admission waits at used VRAM >16384 MiB (failed queries also wait), checks a
+50 GB disk floor, and serializes startups until perception readiness plus a
+150-second startup window. These guards coordinate our lanes; other GPU users
+must retain their own admission gates. `wave_status.py` reads only our lane logs
+and reports launcher completion/rc and prospective remaining occupancy.
+
+The shared boot protocol reads only `~/coord/lane_gate.stamp`, waits until its
+epoch is at least 120 seconds old, then writes `<epoch> <iso> ilia-ab`. While the
+other team runs its single Isaac, use one Integration lane (`lane2.caps: 1 4`).

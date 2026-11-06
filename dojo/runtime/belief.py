@@ -423,6 +423,7 @@ class RuntimeProvider:
         self.fallen_check = True                # policy: fallen_check
         self.confirm_wrists = True              # confirm_pose also scores the wrist views (policy: confirm_wrists)
         self.held_drop_conf = 0.9               # a "not held" this sure drops unless the head sees the object in the jaws
+        self.disc_hold_evidence = "off"
         self.held_thin = "off"                  # RuntimeConfig.held_thin: "on" = an opening-only "not held" on an object
                                                 # thinner than the opening's resolution is unknown (kept)
         # mode perception, stream H: RoboDojo's official gripper value (``<arm>_ee_joint_state_official``: strict v2,
@@ -1237,12 +1238,19 @@ class RuntimeProvider:
                 ev["unknown"], ev["kept"] = True, True
                 self.stats["held_look_unknown"] = self.stats.get("held_look_unknown", 0) + 1
                 continue
-            thin = self._thinner_than_opening(r, lab) if self.held_thin == "on" else None
+            disc_guard = False
+            if self.disc_hold_evidence == "on":
+                from dojo.skills.precision import disc_axis
+                o = self.belief.objects.get(lab)
+                disc_guard = o is not None and o.asset is not None and disc_axis(o) is not None
+            thin = self._thinner_than_opening(r, lab) if self.held_thin == "on" or disc_guard else None
             if r.get("held") is False and thin is not None:
                 # the verdict rests on the jaw opening alone, and the object is thinner than the opening can resolve:
                 # held or not, the jaws read "closed on nothing" (5.1 deposit_coin 100000 / 03: the 1.9 mm coin, held
                 # 149 mm up at the handover pose, "dropped"; the skill gave up the handover and opened the jaws)
                 ev["unknown"], ev["kept"], ev["thin_mm"] = True, True, thin
+                if disc_guard:
+                    ev["disc_hold_evidence"] = True
                 self.stats["held_look_thin"] = self.stats.get("held_look_thin", 0) + 1
                 continue
             if r.get("held") is False and float(r.get("confidence") or 0) >= 0.5 and self.held_confirm is not None:

@@ -6,6 +6,8 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Durable board exact replay:** pin `PYTHONHASHSEED` as well as inputs/history; hash iteration can change drift audit selections. Native Python 3.11/3.12 `sum()` differs in low-order float digits in `northstar.json`; define a stable summation/serialization policy before promising cross-version byte identity.
+
 - [ ] **dojo D-C19: agree the sealed-block mode with Misha's side.** `official_eval.sh --sealed-block DIR --manifest FILE
   --lock FILE` exists (`dojo.simlab.sealed`):
   - it runs manifest ids only (>= 100100), each md5-verified before staging and again in RoboDojo's process;
@@ -117,6 +119,11 @@
   hang_mugs_random, make_toast_random, store_laptop_random, sweep_blocks_random rigid2 (sweep_blocks' two brooms are
   `KNOWN_UNSHIPPED`, not a gap). Before a rendered round on a box: compare `index.json` md5 with compute3's and
   list the gap labels (stream W is adding a per-box coverage check). Journal 2026-10-28-dojo-integ-c4-round2.
+- [ ] **dojo infra: imitate rendered Kit stalls need causal stacks.** Dev camera failures repeat zenity display
+  errors during reset/initial capture and mid-episode; the Integration watchdog ends them at 300 s. Archived logs
+  have no stacks, so OOM / capture / step / RPC causality remains unresolved. Reproduce on dev ids only after a
+  rendering host is released, capture bounded Python/native stacks and per-process Kit/VRAM diagnostics. A
+  physics-only pass cannot qualify a render fix. See journal `2026-11-05-dojo-imit-watchdog-audit.md`.
 - [ ] **dojo infra (landmine): store_laptop 100000 freezes Isaac 5.1's Kit on compute2.** No env step after step
   ~20, then Kit's zenity "cannot open display" every 2 min until the integ_eval watchdog kills the scope
   (infra_failure). It happened in 4 of 4 runs of the default-perception arms on compute2 (bbc9b3a,
@@ -941,6 +948,10 @@
   so the ring was let go tilted on the top (G3 `--mode-b`, 2 mm belief offsets: 0.6 / 0.6 / 0.1). Pegs now pass
   `guard_lag` 1.2 mm / `guard_seated` 1.5 mm and retry a piece left tilted. The real fix is a held-object or peg
   measurement at the hover, like plug_in_charger's.
+  Candidate `peg_held_read` requests the existing held-pose protocol with a 0.5 mm gate; camera adoption remains open
+  ([TOY diagnosis](journal/2026-11-05-dojo-toy-held-hover.md), [pre-registration](experiments/2026-11-05-toy-held-read-ab.md)).
+  GPU validation is blocked by the compute3 driver outage. KitLogWatch omitted the CUDA-unavailable failure while
+  the environment ran software PhysX; require hardware/startup-log checks before accepting those rows as G3 evidence.
   - Seated blind (v4.6), a ring pushed 30-50 mm down the peg on a predicted pose binds and tilts: 0/5, 0.30. v4.7 threads
     4 mm blind instead: 1/3, 0.73.
   - ~~Open gap for the insertion-tail stream: the seat target ran blind when the `held_pose` read failed.~~ Closed
@@ -970,6 +981,11 @@
 - [ ] **Export runs to LeRobotDataset** — data for a future light action head.
 - [ ] **Action head** (transformer/diffusion) closing the ~1 s between model turns.
 
+- [ ] **Research board historical input recovery:** the durable board reproduces the strict checkpoint,
+  but raw gt/proxy/breadth/other-system ledgers were missing from the backup. Recover only permitted
+  historical inputs if needed; never substitute proxy or dev results for strict camera evidence.
+  See [board README](../scripts/dojo/board/README.md).
+
 ## compute3 infrastructure
 
 - [x] ~~**Slow VPN on compute3**~~ — Happ/AmneziaVPN/OpenVPN removed, machine-wide `controlr-vpn` (sing-box tun, router direct: 740 KB in 0.43–0.48 s) (journal/2026-10-04-compute3-network.md). Remaining: ethernet on `eno1` (Ilia).
@@ -996,3 +1012,18 @@
   calibrated sigma a test tube's read is almost never ok (sigma about 3x its error, perception-held's report), so the
   tubes stay on the fallback; a coin's own-camera read under-covers (perception-held: never adopt it without a second
   view), which the protocol does not enforce yet (`disc_into_slot` places pass no `held_tol`).
+
+- [ ] **dojo coin: validate disc_hold_evidence in strict CAMERA.** Isolated default-off disc scope of held_thin; historical dev rows have 12 opening-negative belief drops in six handover failures, but one has no demonstrated lift. No camera gain claimed. See journal/2026-11-05-dojo-coin-disc-hold-evidence.md and experiments/2026-11-05-coin-disc-hold-evidence-prereg.md. slot_read remains parked.
+- [ ] **Agentic transport accounting / quota fallback:** `ChatReply` drops httpx attempt counts;
+  runtime `agentic.calls` is logical calls, so retries are invisible in the request budget.
+  Track attempts/status (also held checks), and dev-A/B a cx/ route or explicit 429 fallback
+  before adoption. Request-only replay is insufficient: 6/13 cx/gpt-6-sol replies requested
+  more tools where Sonnet answered (experiments/2026-11-05-dojo-route-replay.md).
+- [ ] **dojo conveyor: validate the default-off waist-first intercept candidate.**
+  `belt_waist_first` prioritizes mesh waist grasps over shallow surface grasps on riders with
+  no graspable top. Historical dev G3 has a cone slip; there are no surviving post-veto camera
+  dev rows. Run the fresh-variant G3 pair after compute3 CUDA is restored, then the prospective
+  camera protocol (journal `2026-11-05-conv-waist-intercept`, experiment
+  `2026-11-05-conv-waist-camera-prereg`). Keep wrist veto on; no adoption from old pre-veto rows.
+
+- G3 launch disk floor: `scripts/skills/g3.sh` takes its own lock then sets `SIMLAB_GPU=0`, so child `rdpy.sh` skips its disk guard. Add the existing disk guard to the G3 entrypoint; until then invoke `disk_guard` explicitly before each G3 job. See [QUEUE dispatch notes](experiments/2026-11-06-dojo-ab-wave.md#physics-head-388-and-389-before-camera-dispatch).

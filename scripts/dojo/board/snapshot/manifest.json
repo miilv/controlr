@@ -1,0 +1,16 @@
+{
+  "source": "31 Oct 02:00Z local backup; compute4 permitted integration rows refreshed 2026-11-05",
+  "historical_missing": [
+    "gt_rows.json",
+    "rh_ledger.jsonl",
+    "integ3_ledger_breadth3_r2a.jsonl",
+    "proxy_perc.json"
+  ],
+  "expected_strict": 51.53,
+  "inputs": {
+    "g3c_rows.json": "14d2280aa220f0a00bf77c98eb259f9a076649910d6ca052513b095c8c8cd3fa",
+    "rows_c4.json": "7276923f5f2dd7361022de1eff95e8f7d55c5ca08f5f9d9873b48e2f1a130a17",
+    "rows_c1m4.json": "96dfcb1ead77e5210f338451217d9ee02842867420ed5c683f6cf32a79b1ff76"
+  },
+  "repo_main": "20903bc2f8e4f94714240afff6679ce3d86afcd5"
+}

@@ -136,6 +136,25 @@ class LLMClient:
   `id` / `model` / `provider` are safe labels. Request bytes and the reply text are untouched (cache invariants).
 * Idle connections are kept 120 s (`KEEPALIVE_S`; httpx's 5 s default re-handshakes between slow turns).
 
+### Dojo agentic perception transport
+
+The perception service's `agentic_estimate` and `held_look` share
+`dojo.perception.agentic.j1._cfg()["model"]`: explicit `model=` overrides
+`AGENTIC_MODEL`, whose default is `claude/claude-sonnet-5-5`. Candidate files can
+pin it with `--setenv AGENTIC_MODEL=cx/gpt-6-sol`. It is independent of
+`controlr.config.LLMConfig.model` and `dojo.agent.loop.AgentConfig.model`.
+`RuleSupervisor` makes no model calls.
+
+`make_chat()` uses `OmniChat` / `LLMClient` (240 s read timeout, two extra attempts,
+exponential backoff with jitter, `Retry-After` seconds/date capped at 60 s).
+Without httpx, or with `AGENTIC_HTTP=urllib`, `UrllibChat` uses the same attempt
+limit, 2/4/... s exponential delays capped at 20 s and `Retry-After` capped at
+60 s for 429 / 5xx (also 408). Neither client sleeps after its last attempt;
+`max_retries=0` disables transport retries. Exhaustion returns an error, after
+which the perceiver runner can retry the logical turn once before B1 fallback;
+held looks return unknown if neither of their two logical calls yields yes/no.
+Transport attempts and logical agent calls are distinct accounting units.
+
 ### Decision head (`controlr/llm/decisions.py`, `llm.backend=decisions`)
 A decision model (`openai/gpt-6-luna-decisions`) writes no text: it reads a `state` and returns
 probabilities for named, typed questions — `score` (ordered levels), `choice`, `noul` (yes/no).
@@ -480,3 +499,9 @@ in error/llm_error/interrupted. Pin `planner.plan_file` for control-side ablatio
 Code runs on **compute3** (`physicalai`, RTX 5090, Ubuntu 24.04, py3.12, Isaac Sim 6.0) under
 `~/controlr` with a uv venv; the Isaac server runs under Isaac's own python. `scripts/deploy.sh` rsyncs the repo (no
 `.env` in git — copied separately).
+
+The dojo runtime's `disc_hold_evidence` switch (default `off`) scopes the
+opening-resolution guard to thin disc geometry. An opening-only negative that
+cannot resolve the disc's thickness is unknown; other held evidence retains its
+normal interpretation. The existing `held_thin` switch applies the same guard to
+all unresolved thin objects. Neither switch measures a pose or guarantees a grasp.
