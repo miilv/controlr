@@ -41,7 +41,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--state', type=Path, default=Path.home() / 'dojo-integ-c4-state')
     ap.add_argument('--schedule', type=Path, default=Path(__file__).with_name('2026-11-06-wave.json'))
-    ap.add_argument('--lanes', type=int, default=2)
+    ap.add_argument('--lanes', type=int, default=1)
     a = ap.parse_args()
     if a.lanes < 1:
         ap.error('--lanes must be positive')

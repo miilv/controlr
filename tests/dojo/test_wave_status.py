@@ -32,3 +32,19 @@ cap_ok
     for used, ok in [('16384', True), ('16385', False), ('', False), ('error', False)]:
         result = subprocess.run(['bash', '-c', 'USED='+repr(used)+'\n'+base])
         assert (result.returncode == 0) == ok
+
+
+def test_boot_stamp_only_authorized_coord_file(tmp_path):
+    import subprocess
+    lane = (Path(__file__).parents[2] / 'scripts/dojo/queues/lane2.sh').read_text()
+    gate = lane[lane.index('boot_gate()'):lane.index('take_lock()')]
+    (tmp_path / 'coord').mkdir()
+    stamp = tmp_path / 'coord/lane_gate.stamp'
+    stamp.write_text('9999999999 future other\n')
+    # A future or recent stamp waits; STOP exits before overwriting it.
+    script = f'HOME={tmp_path}\nlog() {{ :; }}\nstopped() {{ return 0; }}\n{gate}\nboot_gate'
+    assert subprocess.run(['bash', '-c', script]).returncode == 1
+    assert stamp.read_text() == '9999999999 future other\n'
+    stamp.write_text('1 old other\n')
+    assert subprocess.run(['bash', '-c', script]).returncode == 0
+    assert stamp.read_text().split()[-1] == 'ilia-ab'
