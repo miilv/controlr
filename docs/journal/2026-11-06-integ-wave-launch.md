@@ -113,3 +113,46 @@ Conveyor's five image guard records all passed RAW validation. Peg B resumed at
 05:33:33Z with unchanged inputs and queue order. Ready waist/disc manifests and
 queues are frozen separately; the full launch evidence and preparation shortfall
 are recorded in [the launch report](../experiments/2026-11-06-dojo-ab-wave-launch.md).
+
+## PREP amendments before reloc/key/tie collection
+
+PREP attempted the 47 fresh camera settles on the pinned 416a2a03 deployment,
+holding the heavy1 lane lock for every job and honoring the shared 120-second
+boot stamp, 16 GiB used-VRAM admission and 50 GB disk floor. Forty-two passed.
+Insert-key records key-gain1/100000,100001 and key-gain2/100001,100002,100003
+failed the unchanged settled-record stability check and are excluded.
+
+Before camera collection for these families, the lead authorized a bounded key
+refill: generate key-gain3 (insert_key, 100000–04), select valid ids in ascending
+order to restore ten gain pairs, and try key-gain4 only if still short; then stop
+and report. Guards are unchanged. Salts were fixed before generation:
+
+- `queue-wave-20261106-key-gain3`, SHA256
+  `a096bcb74f74544545e69be2141eecc3c12720aad8c193b0d814d9e64fd80053`.
+- `queue-wave-20261106-key-gain4`, SHA256
+  `57021c3517641457453f7d465ad62a14b90adff3a4ef5107be3869915ea94f79`.
+
+The lead also amended failed/unattempted fresh imitation demos to `--speed 1.5`,
+matching the prior dev generation recipe. Keep completed validated speed-1.0
+demos; record speed per record and use the identical pkl for both camera arms.
+Existing M15 scoring demos remain unchanged. Exclude remaining failures and, if
+needed, refill from one additional salted block of the same task, lowest valid
+ids first, then stop. The original speed-1.0 attempts and indices are retained.
+
+The lead approved correcting eight tie-primary queue rows whose DOJO_DATA
+pointed to tie-guard1 despite loading tie-primary1 layouts. The staged tie queue
+now uses the matching tie-primary1 root for demo lookup. All 188 original queue
+RuntimeConfigs and 94 registered pair deltas validated. PREP does not append to
+queue2. Timestamped amendments, chosen salts, exclusions and attempt logs live
+under compute4 `~/dojo-data/wave-1106/`, including
+`prep-lead-amendments.json` and `prep-amendment-journal.md`; these amendments were
+recorded there before amended preparation. Final refill/demo results and
+manifest hashes remain pending.
+
+The two authorized key refill blocks each yielded two stable records: gain3
+100000/100003 and gain4 100001/100004. Before any key camera data, the lead then
+authorized **nine gain pairs**, keeping the five original valid records and these
+four additions, with all ten charger guard pairs unchanged (38 camera jobs).
+The decision rule is unchanged: pooled B at least A + 5 gain-cell points,
+success flips wins at least twice losses with at least two net wins, and the
+existing EXPERIMENTS guard bound. State n=9; no further generation is authorized.
