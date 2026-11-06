@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-06 | [seg-v2n-camera-ab-endbox](2026-11-06-seg-v2n-camera-ab-endbox.md) | Does additive v2n improve fresh variant camera pairs? | Pending: 57/70 pairs at cutoff; guards tied, pour 50→40 provisionally; one unscored reset retry needs adjudication; lanes continue |
 | 2026-11-06 | [PLAN recovery paired G3](2026-11-06-plan-recover-g3.md) | Do recovered object routes improve ten-pair skill panels? | Tools 77.5→75; stack 100→100; HANG 67.5→58; sweep 20→0; pilots do not generalize; defaults off, no new camera dispatch |
 | 2026-11-06 | [plan-coverage-round2](2026-11-06-plan-coverage-round2.md) | Can typed failures and bounded recovery activate object planning? | Six two-layout pilots: final tools fallback 12.9%, egg 87.0%; gate fails, no new score A/B; stage-count diagnostic and scene-free IK evidence |
 | 2026-11-06 | [pen-conditional-g3](2026-11-06-pen-conditional-g3.md) | Can geometry retain PEN gains without baseline regressions? | 20 pairs: 14.75→20.75, 7 up/0 down; original 34 retained; added five all ties |

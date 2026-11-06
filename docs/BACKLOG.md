@@ -6,6 +6,12 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Account for reset-rejected attempts before retrying or scoring camera A/Bs.**
+  `eval` can report `n=0, unstable=1` without an episode JSONL; the lane retries
+  every no-row job and the episode-only collector then omits the original.
+  Require explicit retry eligibility and retain an attempt record for every
+  START ([SEGAB incident](incidents/2026-11-06-segab-unscored-reset.md)).
+
 - [ ] **Gate camera dispatch on a genuine-render startup smoke.** CUDA availability,
   package parity and a passing physics-only settle do not certify Isaac RTX.
   Require a bounded dev render on the exact deployment before consuming a

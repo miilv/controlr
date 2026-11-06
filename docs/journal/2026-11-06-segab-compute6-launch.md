@@ -193,3 +193,14 @@ to the approximately eight-hour monitoring box ending **21:51Z**. It verifies
 subsequent actual workers, reports progress and
 publishes an end-of-box report, then removes itself. Missing pairs retain a
 pending verdict. Authorized camera lanes may continue after the monitoring box.
+
+## End of monitoring box
+
+The [21:51Z cutoff report](../experiments/2026-11-06-seg-v2n-camera-ab-endbox.md)
+freezes 57 paired results / 70 scheduled pairs. Monitoring was deleted and both
+authorized lanes were left running. The verdict remains pending; 13 pairs are
+missing and the [end audit](../incidents/2026-11-06-segab-unscored-reset.md) found
+an unscored unstable-reset attempt followed by an automatic retry. Earlier
+episode-only checkpoints omitted that attempt. Retry-selected pour statistics
+are provisional until eligibility is adjudicated; no production adoption or
+default change is made. All input hashes reverified unchanged.
