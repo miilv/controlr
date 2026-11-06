@@ -338,3 +338,19 @@ swap despite decreasing maximum depth. This tightens proposal checks; the
 original native validator remains mandatory. Recheck the same two layouts per
 cell on this stricter source, with the same all-request denominator and gate;
 no score A/B or new candidate tuning is dispatched.
+
+Compute6's strict tools recheck admitted, but egg remained queued while shared
+VRAM exceeded the 20 GiB start bound. Compute3's incident was read; current lead
+authorization explicitly permits physics there. `who` shows the desktop session;
+GPU is idle apart from ~3.4 GiB baseline, ~28 GiB free, RAM ~54 GiB, load <1.
+URDF and cuRobo planner/attachment hashes match compute6; robot YAML differs only
+in absolute home paths. No public install or system changes.
+
+Move only the unadmitted strict egg recheck to that lane under a separate
+[host registration](../experiments/2026-11-06-plan-round2-v6-compute3-config.json).
+While holding PLAN's compute6 admission lock, checked own waiter PID 499273,
+its full command and empty log, then sent SIGTERM. It had no G3 admission.
+Compute3 code/data writes stay inside ~/controlr-plan; copy results back to the
+PLAN data root on compute6. Use one light job, `who`/GPU checks before launch,
+>=24 GiB free at admission and leave >=16 GiB free. Tools and egg final timings
+will be host-specific and not pooled as a latency comparison.
