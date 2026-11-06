@@ -25,17 +25,37 @@ specification rather than substitution after viewing camera data.
 
 ## Sampling and execution
 
-Gain cell: fill_egg_holder, at least 10 distinct settled **v6** dev layouts, one paired repeat each.
-The lead must freeze 10 layouts never run through either candidate's camera arm. EGG's G3 tuning
-ids are 100000, 100001, 100010, 100012, 100015, 100016, 100019, 100053-55. Do not use the held-out
-100005-09 / 100020-29 or any id >=100100 for this tuning-stream test.
-The frozen gain ids are **100067, 100071, 100072, 100075, 100080, 100084, 100091,
-100096, 100097, 100098**: the ten stable fresh v6 draws beyond the tuning set.
-Their [SHA-256 manifest](2026-11-06-egg-camera-layouts.json) is frozen before any camera outcome.
-Records reside on compute6 under `~/dojo-data/egg/simlab/layouts/fill_egg_holder/`.
-Do not use these ten for further G3 tuning.
+Gain cell: fill_egg_holder, at least **10 distinct settled v6 variant draws**, one paired
+repeat each. Rendered/proxy ownership is restricted to our namespace by `dojo.simlab.paths`:
+100010-19 and 100050-99 are the other team's rendered slices. They must not be used here.
+The [unused G3-only draws](2026-11-06-egg-unused-g3-layouts.json) are **not** a camera manifest.
 
-Guard cells: fill_pen_holder and insert_tubes, each 10 paired settled dev layouts frozen by the lead.
+The pre-registered gain sampling procedure is:
+
+1. Use only base ids **100000-04**, with fresh variants **v=1..50**; never the original records.
+   Candidate G3 tuning used the original 100000/01, not these new variant draws. Do not use
+   held-out 100005-09 / 100020-29 for tuning, training-block ids, or any id >=100100.
+2. Preserve the archived **v6** placement algorithm (`0434230e:dojo/simlab/gen_layouts.py`).
+   For each `(id, v, attempt)`, replace only its RNG sub-seed with the first four SHA-256 bytes,
+   interpreted as an unsigned big-endian integer, of the UTF-8 string
+   `EGG-camera-v6-2026-11-06-r1:{id}:{v}:{attempt}`. This replaces the original expression
+   `seed * 1000 + attempt`; it does not replace task sampling/placement semantics with v15.
+   Record `_simlab.variant=v`, the exact algorithm/source hash, and this protocol name.
+3. Generate/presettle in ascending `(v, id)` order. Choose the **first ten stable records**,
+   based only on settling, before any camera/skill outcome is read. Stop and report a sampling
+   failure if fewer than ten survive 250 draws; do not lower n or choose by arm performance.
+4. Stage each variant under its own private layout root with its actual base id. Freeze the
+   ten `(variant, id, SHA-256)` tuples, settle exclusions, source and config in a manifest
+   before dispatch. Pair by that tuple, so reused base ids are not counted as the same layout.
+   Neither G3 tuning nor camera runs may use the selected fresh draws before the frozen A/B.
+
+This is a frozen sampling **protocol**, not an already-generated camera manifest. Its generation
+stage remains deferred with the failed G3 prerequisite; no camera inputs have been generated or
+rendered under it. The lead must retain the manifest produced by the protocol if a new, separately
+registered implementation later justifies dispatch.
+
+Guard cells: fill_pen_holder and insert_tubes, each 10 paired settled **owned-namespace** dev
+variant draws frozen by the lead using the same manifest-before-outcomes rule.
 These exercise neighboring precision paths; neither calls `egg_grasps`, so an effect there signals
 configuration drift or simulator noise. They use their normal generator, identical within each pair.
 Alternate A/B versus B/A execution order by pair index on the same box. Record technical failures,

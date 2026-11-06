@@ -26,8 +26,10 @@ No shared layout records were modified. No tuning on 100005-09, 100020-29 or >=1
 
 Frozen ten-layout tuning set: 100000,100001,100010,100012,100015,100016,100019,100053-55.
 All ten manifest generator tags are `simlab/v6`; private settled records and SHA-256 manifest:
-`~/dojo-data/egg/dev10/`. The other ten fresh survivors are reserved for the prospective
-[camera A/B](../experiments/2026-11-06-egg-camera-ab-spec.md), not further G3 tuning.
+`~/dojo-data/egg/dev10/`. The other ten fresh survivors are [unused G3-only draws](../experiments/2026-11-06-egg-unused-g3-layouts.json).
+IDs 100050-99 belong to the other team for rendered/proxy runs; they are not camera inputs.
+The [camera A/B protocol](../experiments/2026-11-06-egg-camera-ab-spec.md) uses fresh variants
+in our owned 100000-04 namespace, with settling-only selection and a manifest frozen before outcomes.
 
 ## Switches (all default off)
 
@@ -148,7 +150,7 @@ suite/subprocesses ran; a complete rerun and focused parity checks passed. No te
 
 Draft PR [#399](https://github.com/miilv/controlr/pull/399) is for lead review of a negative
 feasibility investigation. All five knobs remain off; it is not an adopt candidate and is not merged.
-The prospective camera spec reserves ten fresh v6 survivors and the repository's default gate;
+The prospective camera spec defines ten fresh owned-namespace v6 variant draws and the repository's default gate;
 its G3 prerequisite failed, so leave it undispatched. Next work needs a demonstrated physical
 grasp/escape construction, not another slower carry or a larger episode budget.
 
@@ -167,3 +169,8 @@ candidates per arm (the same pose at different opening widths); **both failed IK
 arm. No new grasp was executed or ceiling gain established. This stricter probe is not a
 shipped switch. Its script/log is `~/dojo-data/egg/strict-probe.py` / `strict-probe.log`.
 All EGG diagnostic CPU/GPU processes and retained waiters have now finished.
+
+Camera-spec correction: the first draft mistakenly labeled unused 100050-99 G3 hashes as
+camera inputs. No rendered/proxy run occurred. The final spec excludes that foreign rendered
+slice, relabels the hash artifact as G3-only, and pre-registers an exact fresh-variant sampling
+protocol in 100000-04. Since the G3 prerequisite failed, that generation stage is unarmed.

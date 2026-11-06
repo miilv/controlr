@@ -34,8 +34,8 @@ a replacement for it. Scores below are in board points (100 × the raw G3 ladder
 The [journal](../journal/2026-11-06-dojo-egg-ceiling.md) contains the individual switches,
 negative/null screens, original failure counts, sampling exclusions and deployment receipts.
 The [camera specification](2026-11-06-egg-camera-ab-spec.md) is prospective and conditional:
-no camera run is dispatched or adopted from a G3 score alone. Its ten fresh v6 survivors
-are untouched by skill tuning. The board's task dimension labels differ between the brief
+no camera run is dispatched or adopted from a G3 score alone. It defines fresh variant draws in the owned 100000-04 rendered namespace; unused G3
+survivors in 100050-99 are explicitly excluded from camera/proxy runs. The board's task dimension labels differ between the brief
 and the historical points table; both assign weight 1/40, and this report does not reclassify it.
 
 G3 produces no camera frames, so no `turn_video.py` video can be made from these episodes.
