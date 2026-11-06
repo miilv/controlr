@@ -228,6 +228,11 @@ while true; do
     printf '{"catalog_dir": "%s", "index_md5": "%s", "manifest_md5": "%s"}\n' "$cat_dir" \
       "$(md5sum "$cat_dir/index.json" 2>/dev/null | cut -c1-32)" "$(cat "$cat_dir"/*manifest* 2>/dev/null | md5sum | cut -c1-32)"
   } > "$RUNS/$name.catalog"
+  # Retain provenance even if the watchdog emits a synthetic infrastructure row without eval's `code` field.
+  if [[ -f "$repo/.deployed.json" ]]; then
+    mkdir -p "$RUNS/$name"
+    cp "$repo/.deployed.json" "$RUNS/$name/provenance.json"
+  fi
   echo $$ > "$S/running.$LANE"; echo "$name" > "$S/job.$LANE"
   log "start $name (lock after ${waited} s, repo ${repo#$HOME/}${jenv[*]:+, env ${jenv[*]}}, gpu others $(others), ours $(mine), $(nvidia-smi --query-gpu=power.draw,memory.used,memory.free --format=csv,noheader | head -1 | sed 's/, / \/ /g'), MemAvailable $(awk '/MemAvailable/ {print int($2/1048576)}' /proc/meminfo) GB)"
   # shellcheck disable=SC2086

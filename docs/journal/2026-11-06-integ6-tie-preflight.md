@@ -109,8 +109,10 @@ differences and explicitly prohibited modifying the RoboDojo environment.
 Both arms remain on compute6. The deployment's `.deployed.json` carries
 `host=compute6`, `family_prefix=c6b_`, and a `simulation_environment` object
 with both versions and the lead's acceptance. Existing runtime serialization
-places this complete metadata object in every episode row's `code` field;
-no episode serializer or controller code changes are needed.
+places this complete metadata object in normal episode rows' `code` field.
+The lane also saves it in each job's `provenance.json` before starting, covering
+synthetic watchdog infrastructure rows that do not carry eval's `code` field.
+No episode serializer or controller code changes are needed.
 
 The lead authorized syncing the exact 794 differing perception files from
 compute4: 693 missing catalogue files plus its index, 96 backgrounds/calibration
