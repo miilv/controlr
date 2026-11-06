@@ -9,6 +9,7 @@ set -uo pipefail
 LANE=$1 LOCK=$2
 S=${LANE_STATE:-$HOME/dojo-integ-c4-state}; Q=$S/queue2.txt; RUNS=${LANE_RUNS:-$HOME/dojo-data/integ-c4/runs2}; REPO=${LANE_REPO:?set LANE_REPO to the merged deployment}
 STREAM=${LANE_STREAM:-integ-c4}
+MODELS=${LANE_MODELS:-$HOME/dojo-data/segtrain/models}
 JOB_MAX=${LANE_JOB_MAX_S:-1980}   # 33 min: boot + a 25-min episode cap + teardown (28 min while R2 ran)
 mkdir -p "$RUNS"; touch "$Q" "$Q.lock"
 source "${LANE_ENV_FILE:-$HOME/dojo-env.sh}"
@@ -199,21 +200,21 @@ while true; do
     # run from the JOB's own pinned deploy venv (+ ultralytics), never another stream's dir (lead, 28 Oct 20:20Z)
     side_start seg "$S/seg.$LANE.sock" DOJO_SEG_ADDR 120 env YOLO_CONFIG_DIR="$S/ultra_cfg" \
       "$repo/.venv/bin/python" -u -m dojo.perception.seg_twin serve --sock "$S/seg.$LANE.sock" \
-      --weights "$HOME/dojo-data/segtrain/models/$seg/best.pt" --classes "$HOME/dojo-data/segtrain/models/$seg/classes.json" \
+      --weights "$MODELS/$seg/best.pt" --classes "$MODELS/$seg/classes.json" \
       --conf 0.25 --max-hours 1 \
       || { side_stop; drop_lock; log "seg server not ready (see $name.seg.log): $name put back, lane stops"; front "$line"; touch "$S/STOP.$LANE"; break; }
   fi
   if [[ -n "$glyph" ]]; then       # S's glyph reader (#277, dojo.perception.glyph_read; ~1 GB VRAM) -> DOJO_GLYPH_ADDR, from the job's deploy
     side_start glyph "$S/glyph.$LANE.sock" DOJO_GLYPH_ADDR 120 env PYTHONPATH="$repo" \
       "$repo/.venv/bin/python" -u -m dojo.perception.glyph_read serve --sock "$S/glyph.$LANE.sock" \
-      --model "$HOME/dojo-data/segtrain/models/$glyph/model.pt" --max-hours 1 \
+      --model "$MODELS/$glyph/model.pt" --max-hours 1 \
       || { side_stop; drop_lock; log "glyph server not ready (see $name.glyph.log): $name put back, lane stops"; front "$line"; touch "$S/STOP.$LANE"; break; }
     jenv+=("DOJO_GLYPH_ADDR_DIGIT=$S/glyph.$LANE.sock")   # #284's explicit digit address (DOJO_GLYPH_ADDR stays: older shas)
   fi
   if [[ -n "$glyphk" ]]; then      # W's #284 routing: mahjong tiles -> DOJO_GLYPH_ADDR_KONG only (S's kong_v1b), numerals stay on --glyph
     side_start glyphk "$S/glyphk.$LANE.sock" DOJO_GLYPH_ADDR_KONG 120 env PYTHONPATH="$repo" \
       "$repo/.venv/bin/python" -u -m dojo.perception.glyph_read serve --sock "$S/glyphk.$LANE.sock" \
-      --model "$HOME/dojo-data/segtrain/models/$glyphk/model.pt" --max-hours 1 \
+      --model "$MODELS/$glyphk/model.pt" --max-hours 1 \
       || { side_stop; drop_lock; log "glyph-kong server not ready (see $name.glyphk.log): $name put back, lane stops"; front "$line"; touch "$S/STOP.$LANE"; break; }
   fi
   if [[ -n "$mv3d" ]]; then        # VGGT-1B (bf16 trunk) + DINOv2-base features: DOJO_EMBED_MODELS must hold dinov2-base
