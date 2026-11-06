@@ -46,7 +46,7 @@ an eight-epoch rehearsal candidate with the exact v2b prefix and 32 additions.
 The historical v2d recipe used 8 epochs; a two-epoch result would only be a cheap
 hypothesis check, not a comparison claiming to reproduce its final weights.
 Both candidate and historical narrow arm need re-rendered data: their old
-images/labels were deleted. No fresh model has been trained at this checkpoint. Both arms share every
+images/labels were deleted. Both two-epoch ablation models have now been trained; the fixed eight-epoch candidate is training. Both arms share every
 appended-class image and its exact full-export RFS repetition count; the control
 omits only old-class-only rehearsal images. This controls new-class exposure.
 
@@ -59,6 +59,47 @@ A registered targeted repair cycles these missing assets, one per draw, through
 stack_blocks variants 12–17 on training ids only. That public task has no
 clutter, avoiding the out-of-vocabulary clutter filtering that cost coverage.
 The requirement remains every old class ≥1 training image.
+
+## Strict support and short ablation
+
+Targeted repair passed the support gate: **5067 images / 543 classes / 36822
+instances**, including 4816 train images listed 9181 times by RFS, plus 251 val
+images. Every one of the 511 old classes has ≥1 training image (min / median /
+max: 1 / 19 / 1627). This establishes coverage, not adequate diversity for every
+class. The control keeps 1723 unique images, shares every new-class image and
+its repetition count, and has 324 unsupported old classes. It is a deliberately
+starved control, **not an exact reconstruction of v2d's deleted mixed-domain
+training data** (v2d had 140 unsupported old classes).
+
+[Full support](../experiments/data/seg-v2e-dev/support-full-round2.json),
+[control support](../experiments/data/seg-v2e-dev/support-narrow-round2.json),
+[data hashes](../experiments/data/seg-v2e-dev/training-data-sha256.json).
+AutoBatch selected 16 under an 8 GiB reserve / allocator cap; a larger profiling
+attempt hit the process cap while 8.03 GiB remained free globally. Both ablation
+arms used batch 16, seed 0, two epochs, 960 px and identical expanded v2b init.
+The short control took ~0.02 h; rehearsal ~0.04 h. No power-throttle stalls.
+
+| arm | found | identity | pose10 | identity+10 | category / asset losers vs v2b |
+|---|---:|---:|---:|---:|---:|
+| v2b | 913 | 637 | 767 | 571 | — |
+| narrow2 | 900 | 628 | 754 | 560 | 10 / 15 |
+| rehearsal2 | 909 | 635 | 764 | 570 | 4 / 5 |
+
+All gates have 162 paired frames / 975 objects and zero frame errors. Full tables:
+[narrow categories](../experiments/data/seg-v2e-dev/narrow2-per-class.md),
+[narrow assets](../experiments/data/seg-v2e-dev/narrow2-per-asset.md),
+[rehearsal categories](../experiments/data/seg-v2e-dev/rehearsal2-per-class.md),
+[rehearsal assets](../experiments/data/seg-v2e-dev/rehearsal2-per-asset.md).
+
+The control reproduces the arrange loss: number and cube_cushion found 22→20.
+Rehearsal preserves the dev organize_table garage identity/pose10 (3→3, versus
+3→2 in the control), but **the same arrange loss persists**. Other remaining
+rehearsal losses are put_bottles' pose10 (28→27) and classify's toy_car found
+(7→6). Thus rehearsal improves retention in this single-seed short proxy test,
+but missing support is not a sufficient explanation/repair of the recurring
+arrange failure. This is directional evidence, not proof of the cause of the
+historical v2d losses. Neither short model qualifies. The eight-epoch v2e run
+starts fresh from the same expanded v2b init, as registered before these gates.
 
 ## Blocker and shared-machine checks
 
