@@ -6,6 +6,8 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-06 | [PLAN recovery paired G3](2026-11-06-plan-recover-g3.md) | Do recovered object routes improve ten-pair skill panels? | Tools 77.5→75; stack 100→100; HANG 67.5→58; sweep 20→0; pilots do not generalize; defaults off, no new camera dispatch |
+| 2026-11-06 | [plan-coverage-round2](2026-11-06-plan-coverage-round2.md) | Can typed failures and bounded recovery activate object planning? | Six two-layout pilots: final tools fallback 12.9%, egg 87.0%; gate fails, no new score A/B; stage-count diagnostic and scene-free IK evidence |
 | 2026-11-06 | [pen-conditional-g3](2026-11-06-pen-conditional-g3.md) | Can geometry retain PEN gains without baseline regressions? | 20 pairs: 14.75→20.75, 7 up/0 down; original 34 retained; added five all ties |
 | 2026-11-06 | [pen-conditional-camera-prereg](2026-11-06-pen-conditional-camera-prereg.md) | Does the conditional profile transfer to camera belief? | Parked; default decision rule; no camera run |
 | 2026-11-06 | [pen-inset-camera-prereg](2026-11-06-pen-inset-camera-prereg.md) | Does inset packing transfer to camera belief? | Supersedes centered-fit spec; default decision rule; no camera run |
@@ -79,6 +81,10 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 | 2026-11-06 | [dojo-ab-wave-launch](2026-11-06-dojo-ab-wave-launch.md) | physics gates and safe camera-wave dispatch after D-C19 | toy A3/5 B4/5; conveyor A8/10 B8/10; lead approved smoke gates; peg camera block launched on one lane, adoption pending |
 | 2026-11-06 | [egg-camera-ab-spec](2026-11-06-egg-camera-ab-spec.md) | egg shell/lateral/drop-spin feasibility under camera-only state | Prospective default gate; deferred after null G3, no camera runs |
 | 2026-11-06 | [egg-skill-ceiling](2026-11-06-egg-skill-ceiling.md) | v6 egg grasp/drop feasibility with perfect state | G3 10 pairs: A=B 23.5, success 0/10 both; raised 19.0; no gain, defaults off |
+| 2026-11-06 | [PLAN CPU object routes](2026-11-06-plan-world-g3.md) | bounded belief/attachment-aware free-space search | 10 pairs each: tools 77.5→75; egg 23.5→28.5 (0 full successes); stack 100→100; defaults off |
+| 2026-11-06 | [PLAN cuRobo object world](2026-11-06-plan-curobo-g3.md) | belief collision world and held attachment, two-second GPU budget | 10 pairs each: tools 77.5→80; egg 23.5→22; stack 100→100; no full-success gain, defaults off |
+| 2026-11-06 | [PLAN HANG/sweep extension](2026-11-06-plan-extension-g3.md) | frozen cuRobo object-world screen on two further cells | 10 pairs each: HANG 61.5→57.5; sweep 20→20; full-success counts unchanged; no camera dispatch |
+| 2026-11-06 | [PLAN routes camera spec](2026-11-06-plan-routes-camera-ab.md) | transfer the partial-score egg signal to camera belief | prospective 10 gain + 20 guard pairs, standard score/flip gate; no camera dispatch |
 | 2026-11-06 | [TOOLS slot camera A/B](2026-11-06-tools-slot-camera-ab.md) | Cartesian carry to matching-slot hover | prospective 20 gain pairs + 10 guard pairs; requires G3 support and lead release; not run |
 | 2026-11-06 | [TOOLS measured carry camera A/B](2026-11-06-tools-carry-read-camera-ab.md) | gated attachment reads between checked carry hops | prospective 20 gain + 10 guard pairs; blocked until ten-pair G3 support and lead release; not run |
 | 2026-11-06 | [TOOLS slot G3](2026-11-06-tools-slot-g3.md) | slot approach, hover and measured placement | baseline v1 52.5 (10); lower hover −10 points (10 pairs); linear/carry-read negative, tail servo null; no adoption |

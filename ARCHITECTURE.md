@@ -506,6 +506,57 @@ cannot resolve the disc's thickness is unknown; other held evidence retains its
 normal interpretation. The existing `held_thin` switch applies the same guard to
 all unresolved thin objects. Neither switch measures a pose or guarantees a grasp.
 
+### Belief-object free-space routing
+
+Dojo RuntimeConfig.plan_world defaults to table (legacy routing, retaining its
+existing object checks). Objects adds a free-space proposer using the current
+Collision world, static Geometry, container parts and TCP-relative held geometry.
+RuntimeConfig.plan_solver selects routes (bounded CPU Cartesian/midpoint search)
+or curobo (an optional cuRobo v2 worker). Neither changes explicit contact lines,
+joint commands, executor step rates, the safety envelope or simlab's Mover.
+
+The GPU worker receives only numeric believed cuboids, joints, a base-frame
+flange goal and link-local held-geometry covering spheres. It reads the public X5
+robot configuration, never an eval env, layout or checker. Obstacles retain the
+skill model's margins (normally 6 mm); held spheres cover the box with another
+6 mm. The fixed mounting base is omitted from the GPU model's collision links;
+the existing skill Collision model still validates all returned paths.
+
+The default plan_profile=legacy has a two-second GPU deadline, plus bounded worker shutdown. Cold
+startup has a separate 60-second budget. A failed worker is stopped and its
+failure cached for that Motion instance; legacy planning remains available.
+Workers are closed on Skills replacement, runtime reset/finalization and G3
+episode completion. The CPU route search has a cooperative 0.75-second budget.
+
+The opt-in recover profile uses a ten-second request budget, 64 IK seeds and
+four attempts with distinct deterministic banks: one quarter near a native IK
+seed, the remainder across the current native joint bounds. The GPU model is
+tightened to those bounds before solver construction. It adds a current-opening
+native finger proxy, held mesh covers and existing height-field columns; regular
+held boxes retain their native guard samples against height fields. An accepted
+held label is excluded from world obstacles while attached.
+
+A shallow initial world contact can propose a bounded coordinate repair or a
+checked upward, tool-axis or inward retract before the GPU tail. Repair refuses
+self-contact or initial penetration above 15 mm, limits departure to 0.3 rad and
+increments to 0.03 rad, and allows no sphere/obstacle-pair penetration to increase beyond
+10 micrometres numerical slack. CPU retract prefixes pass the same GPU contact
+check. The complete joined path must pass the original native validator; no
+prefix executes separately. Timeouts close their owned worker and permit a
+fresh worker on the next query. Other backend failures stay cached.
+plan_capture=requests (default off) records numeric belief requests, native goal
+diagnostics and proposed joints for development replay. Stage flags and configured
+tolerances supplement cuRobo v2 results, which expose no MotionGenStatus enum.
+
+
+Every GPU path is checked for finite/current-limit joints, endpoint accuracy
+and the original Collision model at <=0.04 rad intervals, with the limited
+initial-contact escape allowance. Accepted paths become ordinary Segments
+with the caller's rate/easing. No partial or unvalidated proposal executes.
+G3 and runtime reports retain world_plans timing, startup, worker PID, route
+and fallback records, including speculative candidates. This is sampled
+geometry, not continuous collision certification or other-arm avoidance.
+
 ### Pen-holder skill experiments
 
 `RuntimeConfig` and G3 expose four independent, default-off fill-container switches:

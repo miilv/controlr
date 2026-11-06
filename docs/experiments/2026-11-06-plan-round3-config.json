@@ -1,0 +1,173 @@
+{
+  "source_commit": "4dc81fce1e14f39fe4fd8021e8549b4d4fe4e924",
+  "phase": "round3 paired G3 after tools coverage gate; conditional HANG/sweep expansion",
+  "mode": "G3 mode A physics-only, one independent run per arm/layout",
+  "LLM_calls": 0,
+  "arms": {
+    "A": {
+      "plan_world": "table",
+      "plan_solver": "curobo",
+      "plan_profile": "recover",
+      "plan_capture": "off"
+    },
+    "B": {
+      "plan_world": "objects",
+      "plan_solver": "curobo",
+      "plan_profile": "recover",
+      "plan_capture": "off"
+    }
+  },
+  "all_other_flags": "defaults; no skill-specific tweaks",
+  "paired_layouts": {
+    "store_tools_in_toolbox": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004,
+      100030,
+      100031,
+      100032,
+      100033,
+      100034
+    ],
+    "stack_blocks": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004,
+      100010,
+      100011,
+      100012,
+      100013,
+      100014
+    ]
+  },
+  "coverage_pilots": {
+    "hang_mugs": [
+      100030,
+      100031
+    ],
+    "sweep_blocks": [
+      100000,
+      100001
+    ]
+  },
+  "conditional_paired_layouts": {
+    "hang_mugs": [
+      100030,
+      100031,
+      100032,
+      100033,
+      100034,
+      100035,
+      100036,
+      100037,
+      100038,
+      100039
+    ],
+    "sweep_blocks": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004,
+      100010,
+      100011,
+      100012,
+      100013,
+      100014
+    ]
+  },
+  "conditional_gate": "fallback <25% across both pilot layouts per cell; all requests/speculative goals/native rejects count; no change of planner after pilots; rerun all ten paired layouts excluding pilot outcomes from score comparison",
+  "counterbalance": "even layout index A then B; odd B then A; both arms of each pair on same host",
+  "input_sha256": {
+    "store_tools_in_toolbox/100000": "591e3b4c97fbf606434eb93dd7254bb94dac8ab68bfd3f078a3369b0ef4d064f",
+    "store_tools_in_toolbox/100001": "7902526fafa9e1bf7015d79c7cbc941db86b1be1c2b114011f49e86bbcaf8a4e",
+    "store_tools_in_toolbox/100002": "2344086dc030c7f6468405fa6a16bd917329e4139312d3c9cc53540edf4c651c",
+    "store_tools_in_toolbox/100003": "8425b6720567477832b43fbfa285fb671e4b2fc21a0242c08db86095595eb440",
+    "store_tools_in_toolbox/100004": "596895eac3c09881b4c3137980b45c5115c4630f4d5bc6af5fe0ad43d67960b7",
+    "store_tools_in_toolbox/100030": "4afe56ef21cbff30717ba1ea4071328cf6c73f2dfee67f37f6df32dea9a14202",
+    "store_tools_in_toolbox/100031": "4d02bf7f8eec32b4406f036207ce07518398bedeee1bd866c21f44989bd91836",
+    "store_tools_in_toolbox/100032": "b6dd0b066e8fa2c32b447ced5b529a21022f1393f4ab9d091ca1a728c4bc391e",
+    "store_tools_in_toolbox/100033": "849ef2da26bc463d36fca12548ac78c8477361e37d15fd03034db44bb4f18b15",
+    "store_tools_in_toolbox/100034": "c6216ff7ccbbe0ad784537d96e820347c4e82b822c03b2bc88f4d965f915f470",
+    "stack_blocks/100000": "d65a585f761f352c8f87a9ec23504deb4995a3461c944c1f86fdb1767cde8e11",
+    "stack_blocks/100001": "de26d8c680ea94735caed99b8922f6895c21fbc6dc5728a2837ee08e23e9ba6d",
+    "stack_blocks/100002": "8de016cca3dc507001e8fb03329720651d29a3917f212a7f803080dbc7b8a5ad",
+    "stack_blocks/100003": "438680fd444c2829158e0629e41aed0eec672904df456febc253cb2c4ea62e07",
+    "stack_blocks/100004": "a802df56ac2cfe2828c60155d7f144e57c8dca632d5e13f042c42402589a54c4",
+    "stack_blocks/100010": "a14bd409511129fca5ed25888d4b629e9292d69234645cd23e2bceb347061026",
+    "stack_blocks/100011": "06d84ae902357bc583ae1d5aebdcf6934e94b640d33128a3a0d8773d59fcc983",
+    "stack_blocks/100012": "49723d8dd5aec55bb86b2cd24f603443741bb21b64e0b0be6f22e198da927c71",
+    "stack_blocks/100013": "f90ea71e006d6a4d05b2e5db221384aad3fe28d97b6177674b69bb226968b942",
+    "stack_blocks/100014": "e7a892dcefd84bff66d04936aaf05c96f8cd6706a31b3981f4ead95972c3a16b",
+    "hang_mugs/100030": "717fae6550bbaebe9568281186cd32a09550ebe942fe5c2314205e9261ab48e9",
+    "hang_mugs/100031": "24d7d1b726bdc2433fd3ffe22da81151696d9ead820ba97090d8780a49299c15",
+    "hang_mugs/100032": "0bc0dc042a9a7332f113a11ef5d759f4f0563d100df5eeb2376954e174dc599c",
+    "hang_mugs/100033": "5ebe1d68b9005b2c9c2cc5a8790399521786fbae722fac54eaaafbe74cda9754",
+    "hang_mugs/100034": "68dfd2ed36e1a422bba235fc2e68fe654621bb8323f13d8c83c1375d92735353",
+    "hang_mugs/100035": "26b1f28f9b03bc1395f6d45f3209a4d70b407af216fc0bc489079bba10eaf4af",
+    "hang_mugs/100036": "9f24263ba14810f35b81bb4bcdeea59ca1ed190609f82781392e484ededac637",
+    "hang_mugs/100037": "137ee2be36c67bad685c5f657387782deef49699e655eea82367c9042f279c9e",
+    "hang_mugs/100038": "4fac7bc380c2b71781ef9bcd1a3599645977f4ee690c82ebdee7dfdec20d7c31",
+    "hang_mugs/100039": "f71a7747ba30debc27ceb3142e612fd3757d70e13ff0c5c5e9d94ac4e69deb0b",
+    "sweep_blocks/100000": "0606d0e94dbfadac314ce23192d8f2defaaeefb94d73f8b0a1a86332bb33854f",
+    "sweep_blocks/100001": "495eaa81220e84d77796d8a12e580b18c27362858baefbaef18920a0307a0b3e",
+    "sweep_blocks/100002": "a9223dcde7aefaa0fc6876c5fc51d21b8868ed87430f8fc86f2f87240127ec6b",
+    "sweep_blocks/100003": "93322f6c8771473759e8df71359cabfa1a6d304f8cc6293d959d0f9acb7f40de",
+    "sweep_blocks/100004": "dcd2faae325bd72212604714d187437e033947f5b55e4153dbb16aa79e916c1a",
+    "sweep_blocks/100010": "18c62021562a5d6326f435254b3be9649fc85a010a932a907ac2b2436a9357ca",
+    "sweep_blocks/100011": "f937409443d58f5183d3d46bdf099a22151d0526772e5407289afb5759429213",
+    "sweep_blocks/100012": "377210be217e66624da757a2afa681c97d1732d295ee07699aa315ea4609a2a7",
+    "sweep_blocks/100013": "5bf4612681eef78e8c71b1c2b7dda2c4fbf9400246e008c47fa8fa94f15eaba7",
+    "sweep_blocks/100014": "afdb8e5e27348eb1ec178766494c3c843ed5a5a5d244e25b3d7ab6e4dd9dab7d"
+  },
+  "hosts": {
+    "tools_preferred": "compute3",
+    "stack_preferred": "compute6",
+    "pilot_preferred": "compute3",
+    "conditional_comparison_preferred": "compute6",
+    "resource_fallback": "An unadmitted pair/job waiting >=15 minutes may move to the other authorized host before either arm starts. This decision depends only on admission availability, never outcomes. Both arms of a pair stay on that host; report host-specific timing and per-pair hosts."
+  },
+  "admission": {
+    "compute6": {
+      "max_jobs": 4,
+      "max_used_vram_mib": 20480,
+      "min_available_ram_mib": 12288,
+      "max_load1": 26,
+      "light_slots": [
+        5,
+        6,
+        1,
+        2
+      ]
+    },
+    "compute3": {
+      "max_jobs": 2,
+      "min_free_vram_mib_before_start": 24576,
+      "min_free_vram_mib_during_job": 16384,
+      "min_available_ram_mib": 16384,
+      "max_load1": 26,
+      "who_and_nvidia_smi_before_each_job": true,
+      "serialized_admission_s": 45
+    }
+  },
+  "output_roots": {
+    "compute6": "~/dojo-data/plan/round3",
+    "compute3_temporary": "~/controlr-plan/plan-data/round3",
+    "final_data": "compute6:~/dojo-data/plan/round3"
+  },
+  "score_rule": {
+    "source": "origin/main docs/EXPERIMENTS.md at 18d97e56; explicitly requested by lead for this registration despite date-based grandfather clause",
+    "pair_win_or_loss_threshold_points": 10,
+    "pooled_gain_points": 5,
+    "wins_at_least_twice_losses": true,
+    "minimum_net_wins": 2,
+    "guard_max_score_loss_points": 5,
+    "guard_no_excess_success_flip_losses": true,
+    "success_flips": "report separately, not gain pair-win definition"
+  },
+  "camera_if_tools_gains": "Write a new prospective camera A/B spec using this current score rule, fresh dev layouts and the stack guard; do not dispatch model calls."
+}
