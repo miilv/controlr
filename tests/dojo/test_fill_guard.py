@@ -25,7 +25,8 @@ def scene(xy, rolled=False, rigid=True):
     ((0., -.18), False, True, False),  # overlap: both arms comfortably reach
     ((.06, -.14), False, True, False), # near arm has clearance to spare
     ((.286, -.044), False, True, True),
-    ((.342, -.04), False, True, True),
+    ((.342, -.04), False, True, False),  # outside arm-base span
+    ((-.342, -.04), False, True, False),
     ((.1, .1), False, True, True),
     ((.234, .004), True, True, False), # all slender shafts rolled
     ((.3, 0.), False, False, False),

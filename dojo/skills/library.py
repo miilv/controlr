@@ -2034,6 +2034,8 @@ def _fill_guard_features(sk, objects, container, comfy):
     overlap, reserve the existing finger-clearance band near the reach edge.
     Require a flat slender shaft: when every slender shaft is rolled, the
     score depends on fitting both wide bodies, where inset packing regressed.
+    Outside the arm-base lateral span, retain the baseline: the changed idle-arm
+    route can hit a holder that the baseline left upright.
     """
     w = sk.refresh()
     c = w.obj(container)
@@ -2049,8 +2051,12 @@ def _fill_guard_features(sk, objects, container, comfy):
         flat |= bool(slender and abs(float(o.R[2, k])) < 0.2
                      and float(np.max(np.abs(o.R[2]))) >= math.cos(math.radians(10)))
     near, far = min(distances), max(distances)
-    active = bool(c.obj_type == "Rigid" and flat and near > comfy - FILL_FINGER_CLEAR and far > comfy)
-    return {"active": active, "nearest_m": near, "farthest_m": far, "flat_shaft": flat}
+    base_x = [float(sk.kin.base(a)[0, 3]) for a in ARMS]
+    inside_span = min(base_x) <= float(c.center_w[0]) <= max(base_x)
+    active = bool(c.obj_type == "Rigid" and flat and inside_span
+                  and near > comfy - FILL_FINGER_CLEAR and far > comfy)
+    return {"active": active, "nearest_m": near, "farthest_m": far,
+            "flat_shaft": flat, "inside_base_span": inside_span}
 
 
 def fill_container(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
