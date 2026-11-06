@@ -117,9 +117,28 @@ class _GPUBackend:
                 result = _original(*args, **kwargs)
                 from dojo.skills.plan_diagnostics import result_flags
                 self.diagnostics[_stage] = result_flags(result)
+                if _stage == "ik" and result is not None and not any(self.diagnostics[_stage].get("success", [])):
+                    try:
+                        self.diagnostics[_stage]["constraints"] = self._constraints(result.js_solution)
+                    except Exception as error:
+                        self.diagnostics[_stage]["diagnostic_error"] = str(error)
                 self.emit({"stage": _stage, "diagnostics": self.diagnostics})
                 return result
             setattr(owner, method, observed)
+
+    def _constraints(self, state):
+        import torch
+        from curobo.types import JointState
+        from curobo._src.state.state_robot import RobotState
+        from dojo.skills.plan_diagnostics import constraint_flags
+        js = JointState.from_position(state.position.reshape(1, -1, self.planner.action_dim),
+                                      joint_names=self.planner.joint_names)
+        js.velocity = torch.zeros_like(js.position)
+        js.acceleration = torch.zeros_like(js.position)
+        js.jerk = torch.zeros_like(js.position)
+        robot_state = RobotState(js, cuda_robot_model_state=self.planner.compute_kinematics(js))
+        constraints = self.planner.trajopt_solver.metrics_rollout._compute_costs_and_constraints_metrics_impl(robot_state)
+        return constraint_flags(constraints)
 
     def propose(self, payload):
         import torch
@@ -148,12 +167,7 @@ class _GPUBackend:
         goal = GoalToolPose.from_poses({"link6": pose}, ordered_tool_frames=list(p.tool_frames), num_goalset=1)
         # Use cuRobo's own collision/feasibility constraints for the start state.
         try:
-            from curobo._src.state.state_robot import RobotState
-            from dojo.skills.plan_diagnostics import constraint_flags
-            js = JointState.from_position(full.reshape(1, 1, -1), joint_names=names)
-            robot_state = RobotState(js, cuda_robot_model_state=p.compute_kinematics(js))
-            constraints = p.trajopt_solver.metrics_rollout._compute_costs_and_constraints_metrics_impl(robot_state)
-            self.diagnostics["start"] = {"constraints": constraint_flags(constraints)}
+            self.diagnostics["start"] = {"constraints": self._constraints(state)}
         except Exception as error:
             self.diagnostics["start"] = {"diagnostic_error": f"{type(error).__name__}: {error}"}
         self.emit({"stage": "start", "diagnostics": self.diagnostics})
