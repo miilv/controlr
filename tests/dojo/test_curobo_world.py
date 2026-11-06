@@ -163,3 +163,27 @@ def test_failed_startup_is_not_double_counted_as_query_time(monkeypatch):
     assert motion.world_plans[-1]["init_s"] == 10.
     assert motion.world_plans[-1]["seconds"] == 1.
     assert motion.world_plans[-1]["worker_pid"] == 123
+
+
+def test_rotated_attachment_uses_object_rotation_after_tcp_translation():
+    rotation = np.array([[0., -1., 0.], [1., 0., 0.], [0., 0., 1.]])
+    held = HeldBox(T_from((.02, .03, .04), rotation),
+                   np.array([.01, 0., 0.]), np.array([.10, .02, .01]))
+    spheres = attachment_spheres(held, .145)
+    # Independent 90-degree-frame oracle: object center (1cm,0,0)
+    # becomes (0,1cm,0), then object-root and native TCP translations.
+    assert np.allclose(spheres[:, :3].mean(0), [.165, .04, .04])
+    corner = np.array([.145, .14, .05])
+    assert np.any(np.linalg.norm(spheres[:, :3]-corner, axis=1) <= spheres[:, 3])
+
+
+def test_asymmetric_world_box_orientation_is_transformed_to_each_arm_base():
+    rotation = np.array([[0., -1., 0.], [1., 0., 0.], [0., 0., 1.]])
+    coll = SimpleNamespace(obstacles=lambda ignore: [
+        (np.array([.1, .2, .9]), rotation, np.array([.03, .015, .07]), "holder")])
+    for arm, expected in (("left", [.65, -.4, .135]), ("right", [.65, .2, .135])):
+        box = scene_boxes(X5Kin(), coll, arm, ())[1]
+        assert np.allclose(box["pose"][:3], expected)
+        assert abs(box["pose"][3]) == pytest.approx(1.)
+        assert np.allclose(box["pose"][4:], 0., atol=1e-8)
+        assert np.allclose(box["dims"], [.06, .03, .14])

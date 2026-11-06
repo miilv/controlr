@@ -9,9 +9,9 @@ both November 6 failure reports, and RoboDojo's deployed cuRobo wrapper.
 Important distinction: the current **Skills** planner already checks object OBBs,
 mesh-part containers and TCP-relative held geometry. It does not invoke cuRobo;
 the **simlab Mover** invokes the simulator-owned table-only cuRobo world.
-This implementation extends the former. It does **not** implement a dynamic
-cuRobo collision world, nor change the dev-only Mover. That remains a limitation
-relative to the original proposed implementation.
+The first phase extended the former with CPU routes; the second phase adds a
+belief-backed cuRobo world and attachment through an isolated optional worker.
+The dev-only simlab Mover remains unchanged.
 
 New RuntimeConfig/Skills/G3 switch: `plan_world=table|objects`, default `table`.
 "table" names the legacy routing behavior, including existing skill-specific
@@ -71,7 +71,7 @@ batch, using light wildcard slots and still at most two PLAN jobs. Receipt:
 Initial full unit suite: 1837 passed / 187 skipped. A port review added an
 unknown-attachment guard (52 focused tests passed): a closed ported gripper
 without an accepted attachment retains legacy routing. Native cells above do
-not use that port path. Full tests are being rerun with the GPU adapter.
+not use that port path. Final GPU-adapter validation is recorded below.
 
 ## Dynamic cuRobo phase
 
@@ -100,3 +100,47 @@ GPU validation source freeze: db8daddda4937402f6da1dcd2c19a3b650d4c021.
 Both arms use the same 30-layout manifest, with plan_solver = curobo fixed
 and only plan_world varying. Baselines are rerun from this source too. Separate g3-curobo outputs prevent overwriting the CPU
 comparison. The light-lock/VRAM/resource rules are unchanged. No model calls.
+
+
+## GPU results and handoff
+
+The separate [cuRobo report](../experiments/2026-11-06-plan-curobo-g3.md) and
+[compact data](../experiments/2026-11-06-plan-curobo-results.json) contain all
+60 completed episodes (30 pairs), with no unstable layouts or infrastructure
+failures. Tools: 77.5→80, success 4/10 both; egg: 23.5→22, success 0/10 both;
+stack: 100→100, success 10/10 both. Paired score SDs are 14.19, 4.74 and 0.
+No full-success ceiling improved. Defaults stay off and no GPU camera test is
+dispatched. The earlier CPU egg partial-score signal has an undispatched
+prospective camera spec, with the standard full-success gate intact.
+
+Fallback rates are 88.7%, 97.5% and 59.1%. Actual worker deadlines are 10, 5
+and 8; subsequent cached fallbacks are 193, 1546 and 121. These counts include
+speculative skill candidates. This budget/coverage limit is recorded in BACKLOG;
+negative task evidence cannot establish that unrestricted object planning is
+ineffective. Both primary arms reproduce the CPU-phase table baseline scores
+and step counts. RoboDojo/cuRobo source and robot-asset fingerprints match
+before/after the study. All primary chains and workers exited.
+
+Recorded GPU episode/load time is 2.13 lane-hours, excluding process startup,
+queueing, probes and cleanup. Both phases used zero LLM calls, tokens or model
+spend. Admission used light wildcard locks, at most two PLAN jobs and <=22 GiB
+used VRAM. No shared system or foreign processes were changed. Local footprint
+at report completion was 150 MB plus 49 MB of pytest temporary data.
+
+Validation: frozen-source full suite 1855 passed / 187 skipped; after integrating
+concurrent main changes 1881 passed / 191 skipped; after the independent PEN
+merge 261 focused passed / 2 skipped. Additional asymmetric world-frame and
+rotated attachment checks bring the two planner modules to 25 passing tests.
+CI passed on merged head 8f6a9d26. A fresh compute6 stack smoke on that head
+reproduced candidate layout 100000: success, 100 points, 206 steps, no infra
+failure. Further integration changes are queue/docs only.
+
+Two short rendered tools action replays use exactly the saved GPU candidate
+joint actions, not a camera-policy rerun. Layout 100000 reproduces success / 100;
+100003 reproduces failure / 50. Existing turn_video.py produces the clips;
+three real RGB views were checked nonblank. They are diagnostic media excluded
+from the paired results. Replay metadata/action hashes remain in the private
+PLAN data directory. Both media and smoke processes exited.
+
+PR #401 is draft and unmerged for the lead's review. No default or adoption
+change is proposed.
