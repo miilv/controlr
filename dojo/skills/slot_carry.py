@@ -27,7 +27,7 @@ def measured_approach(sk, pp, commands, tol_xy, tol_tilt):
         return False, None
     request = copy.copy(pp)
     request.tail_kw = {**pp.tail_kw, 'servo': False, 'held_read': True}
-    start = sk.kin.tcp(arm, sk.ex.q[arm]) @ original.T_tcp_obj
+    start = None
     end = sk.kin.tcp(arm, commands[-1][0]) @ original.T_tcp_obj
     stops = sorted({math.ceil(len(commands) * k / 4) - 1 for k in range(1, 5)})
     rate = pp.approach.segments[0].step_rad
@@ -43,6 +43,8 @@ def measured_approach(sk, pp, commands, tol_xy, tol_tilt):
         if measured is not None:
             h = Held(h.label, measured, held_box(obj, measured), h.grasp)
             sk.held[arm] = h
+        if hop == 0:
+            start = sk.kin.tcp(arm, world.arms[arm].q) @ h.T_tcp_obj
         target = sk.kin.tcp(arm, commands[index][0]) @ original.T_tcp_obj
         # The object stays level between the measured start and the intended hover;
         # joint interpolation's intermediate wrist tilt is not an object target.

@@ -88,7 +88,7 @@ def test_camera_path_uses_shared_uncertainty_gate_without_reading_true_object_po
             raise AssertionError('camera controller read true object pose')
     obj = CameraObject()
     obj.asset = asset
-    world = SimpleNamespace(obj=lambda _: obj, arms={})
+    world = SimpleNamespace(obj=lambda _: obj, arms={'left': SimpleNamespace(q=np.zeros(6))})
     sk.refresh = lambda: world
     sk.provider.held_pose = Mock(return_value={'ok': True, 'T_tcp_obj': np.eye(4),
                                              'sigma': {'lead_lat_mm': 99, 'axis_deg': 1}})
@@ -104,3 +104,13 @@ def test_camera_path_uses_shared_uncertainty_gate_without_reading_true_object_po
     sk.provider.held_pose.return_value['sigma']['lead_lat_mm'] = 1
     assert measured_approach(sk, pp, commands, 0.02, 10) == (True, None)
     assert sum(e['adopted'] for e in sk.held_events) == 4
+
+
+def test_carry_orientation_starts_at_first_accepted_pose_not_stale_attachment():
+    from dojo.skills.geometry import rot_z
+    measured = np.eye(4)
+    measured[:3, :3] = rot_z(0.4)
+    sk, pp, commands = rig([measured, None, None, None])
+    assert measured_approach(sk, pp, commands, 0.02, 10) == (True, None)
+    first_tcp = sk.motion.line.call_args_list[0].args[2]
+    np.testing.assert_allclose(first_tcp[:3, :3] @ measured[:3, :3], rot_z(0.3), atol=1e-8)

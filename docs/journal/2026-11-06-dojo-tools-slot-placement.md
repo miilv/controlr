@@ -138,3 +138,10 @@ new module from deployed commit 3bb99584; later code cleanup only removes an unu
 No improvement to the ~0.55 variant-1 skill ceiling was achieved. This is a negative experimental PR for the lead,
 with all switches off and no merge/adoption. All checked worker and queue PIDs exited; no Isaac worker remains
 from TOOLS. Compute3 was not used. Local checkout/venv remain below 1 GB.
+
+### Carry-read review correction
+
+Review found that the first carry version interpolated orientation from the stored pick attachment rather than
+its first accepted current read. The regression test fails on 3bb99584 and passes with interpolation anchored to
+the measured TCP + accepted attachment. Re-run both carry screens on this corrected source before disposition;
+retain v1 rows above as separate, bug-confounded observations, not evidence against the corrected lever.
