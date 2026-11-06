@@ -345,6 +345,7 @@ class Motion:
         self.coll = coll or Collision(self.kin)
         self.plan_world = "table"
         self.plan_solver = "routes"
+        self.plan_capture = "off"
         self.world_plans = []
 
     def close(self):

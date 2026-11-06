@@ -101,7 +101,7 @@ def test_worker_request_timeout_closes_only_owned_worker():
     client.close.assert_called_once()
     payload = client.connection.send.call_args.args[0]
     assert set(payload) == {"q0", "boxes", "spheres", "flange"}
-    client.connection.poll.assert_called_once_with(2.0)
+    assert 0 < client.connection.poll.call_args.args[0] <= 2.0
 
 
 def test_robot_schema_conversion_preserves_source_and_drops_legacy_keys():
@@ -187,3 +187,30 @@ def test_asymmetric_world_box_orientation_is_transformed_to_each_arm_base():
         assert abs(box["pose"][3]) == pytest.approx(1.)
         assert np.allclose(box["pose"][4:], 0., atol=1e-8)
         assert np.allclose(box["dims"], [.06, .03, .14])
+
+
+@pytest.mark.parametrize("evidence, expected", [
+    ({"start": {"constraints": {"robot_world_collision": .002}}}, "start_state_collision"),
+    ({"ik": {"success": [False], "position_error": [.0005], "rotation_error": [.001],
+             "constraints": {"robot_world_collision": .002}}}, "goal_collision"),
+    ({"ik": {"success": [False], "position_error": [.02]}}, "ik_fail"),
+    ({"ik": {"success": [True]}, "graph": {"success": [False]}}, "graph_fail"),
+    ({"ik": {"success": [True]}, "trajopt": {"success": [False]}}, "trajopt_fail"),
+])
+def test_stage_status_uses_actual_flags(evidence, expected):
+    from dojo.skills.plan_diagnostics import failure_category
+    assert failure_category(evidence) == expected
+
+
+def test_progress_does_not_restart_request_deadline(monkeypatch):
+    from dojo.skills import curobo_world
+    client = object.__new__(curobo_world.CuroboWorld)
+    client.close = Mock()
+    client.connection = SimpleNamespace(send=Mock(), poll=Mock(side_effect=[True, False]),
+        recv=Mock(return_value={"progress": {"stage": "ik", "diagnostics": {"ik": {"success": [False]}}}}))
+    monkeypatch.setattr(curobo_world.time, "perf_counter", Mock(side_effect=[0., .1, 1.5]))
+    with pytest.raises(TimeoutError) as raised:
+        client.propose(Motion(), SimpleNamespace(obstacles=lambda ignore: []),
+                       "left", np.zeros(6), np.eye(4), (), None)
+    assert raised.value.diagnostics == {"ik": {"success": [False]}}
+    assert [c.args[0] for c in client.connection.poll.call_args_list] == [1.9, .5]

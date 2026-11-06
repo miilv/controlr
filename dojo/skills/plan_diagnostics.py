@@ -1,0 +1,62 @@
+"""Serializable cuRobo-v2 stage evidence; no simulator or GPU imports."""
+from __future__ import annotations
+
+import numpy as np
+
+
+def values(value):
+    if value is None:
+        return None
+    if hasattr(value, "detach"):
+        value = value.detach().cpu().numpy()
+    return np.asarray(value)
+
+
+def result_flags(result):
+    if result is None:
+        return {"returned": False}
+    out = {"returned": True}
+    status = getattr(result, "status", None)
+    if status is not None:
+        out["native_status"] = str(status)
+    for name in ("success", "feasible", "position_error", "rotation_error"):
+        data = values(getattr(result, name, None))
+        if data is not None:
+            out[name] = data.reshape(-1).tolist()
+    metrics = getattr(result, "metrics", None)
+    constraints = getattr(metrics, "costs_and_constraints", None)
+    if constraints is not None:
+        out["constraints"] = constraint_flags(constraints)
+    return out
+
+
+def constraint_flags(collection):
+    out = {}
+    for group in ("constraints", "hybrid_costs_constraints"):
+        items = getattr(collection, group, None)
+        if items is None:
+            continue
+        for name, value in zip(items.names, items.values):
+            data = values(value)
+            out[name] = float(np.max(data)) if data.size else 0.
+    return out
+
+
+def failure_category(diagnostics):
+    """Stage-derived labels: installed v2 has no MotionGenStatus enum."""
+    start = diagnostics.get("start", {})
+    collision = lambda data: any(v > 0 for k, v in data.get("constraints", {}).items()
+                                 if "collision" in k)
+    if collision(start):
+        return "start_state_collision"
+    ik = diagnostics.get("ik", {})
+    if ik and not any(ik.get("success", [])):
+        pos, rot = ik.get("position_error", []), ik.get("rotation_error", [])
+        if collision(ik) and pos and rot and min(pos) < .001 and min(rot) < .02:
+            return "goal_collision"
+        return "ik_fail"
+    if diagnostics.get("graph") and not any(diagnostics["graph"].get("success", [])):
+        return "graph_fail"
+    if diagnostics.get("trajopt"):
+        return "trajopt_fail"
+    return "unclassified"

@@ -523,6 +523,16 @@ class Skills:
 
     # ------------------------------------------------------------------ world
     @property
+    def plan_capture(self):
+        return self.motion.plan_capture
+
+    @plan_capture.setter
+    def plan_capture(self, value):
+        if value not in ("off", "requests"):
+            raise ValueError(f"unknown plan_capture: {value}")
+        self.motion.plan_capture = value
+
+    @property
     def plan_solver(self):
         return self.motion.plan_solver
 

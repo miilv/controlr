@@ -105,12 +105,28 @@ class _GPUBackend:
                   self.planner.graph_planner.kinematics]
         self.attachments = [AttachmentManager(model, self.planner.scene_collision_checker, self.device)
                             for model in models]
+        self.emit = lambda event: None
+        self.diagnostics = {}
+        # Observe the deployed v2 stages without replacing their algorithms.
+        for stage, owner, method in (("ik", self.planner.ik_solver, "solve_pose"),
+                                     ("trajopt", self.planner.trajopt_solver, "solve_pose"),
+                                     ("graph", self.planner.graph_planner, "find_path")):
+            original = getattr(owner, method)
+            def observed(*args, _original=original, _stage=stage, **kwargs):
+                self.emit({"stage": _stage})
+                result = _original(*args, **kwargs)
+                from dojo.skills.plan_diagnostics import result_flags
+                self.diagnostics[_stage] = result_flags(result)
+                self.emit({"stage": _stage, "diagnostics": self.diagnostics})
+                return result
+            setattr(owner, method, observed)
 
     def propose(self, payload):
         import torch
         from curobo.scene import Cuboid, Scene
         from curobo.types import GoalToolPose, JointState, Pose
         p = self.planner
+        self.diagnostics = {}
         device = self.device.device
         names = list(p.joint_names)
         active = [names.index(f"joint{i}") for i in range(1, 7)]
@@ -130,17 +146,29 @@ class _GPUBackend:
                     quaternion=torch.as_tensor(flange[3:], device=device,
                                                dtype=torch.float32).reshape(1, 4))
         goal = GoalToolPose.from_poses({"link6": pose}, ordered_tool_frames=list(p.tool_frames), num_goalset=1)
+        # Use cuRobo's own collision/feasibility constraints for the start state.
+        try:
+            from curobo._src.state.state_robot import RobotState
+            from dojo.skills.plan_diagnostics import constraint_flags
+            js = JointState.from_position(full.reshape(1, 1, -1), joint_names=names)
+            robot_state = RobotState(js, cuda_robot_model_state=p.compute_kinematics(js))
+            constraints = p.trajopt_solver.metrics_rollout._compute_costs_and_constraints_metrics_impl(robot_state)
+            self.diagnostics["start"] = {"constraints": constraint_flags(constraints)}
+        except Exception as error:
+            self.diagnostics["start"] = {"diagnostic_error": f"{type(error).__name__}: {error}"}
+        self.emit({"stage": "start", "diagnostics": self.diagnostics})
         p.reset_seed()
         result = p.plan_pose(goal_tool_poses=goal, current_state=state,
                              max_attempts=2, enable_graph_attempt=1)
         if result is None or result.success is None or not bool(result.success.any().item()):
-            return None
+            return {"q": None, "diagnostics": self.diagnostics}
         trajectory = result.get_interpolated_plan()
         q = trajectory.position.detach().cpu().numpy()
         while q.ndim > 2:
             q = q[0]
         trajectory_names = list(trajectory.joint_names)
-        return q[:, [trajectory_names.index(f"joint{i}") for i in range(1, 7)]]
+        return {"q": q[:, [trajectory_names.index(f"joint{i}") for i in range(1, 7)]],
+                "diagnostics": self.diagnostics}
 
 
 
@@ -168,12 +196,13 @@ def _worker(connection):
     # Spawned without Isaac. Fatal CUDA errors can poison only this owned process.
     try:
         backend = _GPUBackend()
+        backend.emit = lambda event: connection.send({"progress": event})
         connection.send({"ready": True})
         while True:
             payload = connection.recv()
             if payload is None:
                 break
-            connection.send({"q": backend.propose(payload)})
+            connection.send(backend.propose(payload))
     except (EOFError, BrokenPipeError):
         pass
     except Exception as error:
@@ -232,18 +261,30 @@ class CuroboWorld:
 
     def propose(self, motion, coll, arm, q0, target, ignore, held):
         flange = inv_T(motion.kin.base(arm)) @ motion.kin.flange_from_tcp(target)
-        self.connection.send(dict(
-            q0=np.asarray(q0), boxes=scene_boxes(motion.kin, coll, arm, ignore),
-            spheres=None if held is None else attachment_spheres(held, motion.kin.tcp_offset),
-            flange=np.r_[flange[:3, 3], R_to_quat(flange[:3, :3])]))
-        if not self.connection.poll(BUDGET_S):
-            self.close()
-            raise TimeoutError("cuRobo planning budget (2 s)")
-        reply = self.connection.recv()
-        if "error" in reply:
-            self.close()
-            raise RuntimeError(reply["error"])
-        return reply["q"]
+        payload = dict(
+            q0=np.asarray(q0).tolist(), boxes=scene_boxes(motion.kin, coll, arm, ignore),
+            spheres=None if held is None else attachment_spheres(held, motion.kin.tcp_offset).tolist(),
+            flange=np.r_[flange[:3, 3], R_to_quat(flange[:3, :3])].tolist())
+        self.last_payload = payload
+        self.last_diagnostics = {}
+        self.connection.send(payload)
+        deadline = time.perf_counter() + BUDGET_S
+        while True:
+            if not self.connection.poll(max(0., deadline-time.perf_counter())):
+                self.close()
+                error = TimeoutError("cuRobo planning budget (2 s)")
+                error.diagnostics = self.last_diagnostics
+                raise error
+            reply = self.connection.recv()
+            if "progress" in reply:
+                self.last_stage = reply["progress"]["stage"]
+                self.last_diagnostics = reply["progress"].get("diagnostics", self.last_diagnostics)
+                continue
+            if "error" in reply:
+                self.close()
+                raise RuntimeError(reply["error"])
+            self.last_diagnostics = reply.get("diagnostics", self.last_diagnostics)
+            return reply["q"]
 
 
 def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, ease):
@@ -264,6 +305,8 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
         started = time.perf_counter()
         if isinstance(motion._world_gpu, str):
             event["reason"] = motion._world_gpu
+            event["cached"] = True
+            event["failure_category"] = getattr(motion, "_world_gpu_failure", "backend_error")
             return None
         process = getattr(motion._world_gpu, "process", None)
         if process is not None:
@@ -271,7 +314,12 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
         coll = copy.copy(motion.coll)
         coll.include = set(coll.include) | {o.label for o in coll.world.objects.values() if o.obj_type == "Geometry"}
         q = motion._world_gpu.propose(motion, coll, arm, q0, target, ignore, held)
+        event["diagnostics"] = getattr(motion._world_gpu, "last_diagnostics", {})
+        if getattr(motion, "plan_capture", "off") == "requests":
+            event["request"] = getattr(motion._world_gpu, "last_payload", None)
         if q is None:
+            from dojo.skills.plan_diagnostics import failure_category
+            event["failure_category"] = failure_category(event["diagnostics"])
             event["reason"] = "no_plan"
             return None
         q = np.vstack([q0, np.asarray(q).reshape(-1, 6)])
@@ -305,9 +353,16 @@ def plan_curobo(motion, arm, q0, target, step_rad, name, gripper, ignore, held, 
         event.update(fallback=False, route="curobo")
         return MoveResult("reached", arm, [Segment(q, step_rad, name, ease)], goal)
     except Exception as error:
+        event["diagnostics"] = getattr(error, "diagnostics", getattr(getattr(motion, "_world_gpu", None), "last_diagnostics", {}))
+        if getattr(motion, "plan_capture", "off") == "requests":
+            event["request"] = getattr(getattr(motion, "_world_gpu", None), "last_payload", None)
+        event["failure_category"] = "timeout" if isinstance(error, TimeoutError) else "backend_error"
+        motion._world_gpu_failure = event["failure_category"]
         motion._world_gpu = f"{type(error).__name__}: {error}"
         event["reason"] = motion._world_gpu
         return None
     finally:
+        if event["fallback"] and "failure_category" not in event:
+            event["failure_category"] = "validation_reject"
         event["seconds"] = round(time.perf_counter()-started, 6)
         motion.world_plans.append(event)
