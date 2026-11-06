@@ -46,7 +46,19 @@ an eight-epoch rehearsal candidate with the exact v2b prefix and 32 additions.
 The historical v2d recipe used 8 epochs; a two-epoch result would only be a cheap
 hypothesis check, not a comparison claiming to reproduce its final weights.
 Both candidate and historical narrow arm need re-rendered data: their old
-images/labels were deleted. No fresh model has been trained.
+images/labels were deleted. No fresh model has been trained at this checkpoint. Both arms share every
+appended-class image and its exact full-export RFS repetition count; the control
+omits only old-class-only rehearsal images. This controls new-class exposure.
+
+The initial export has 3483 images (3313 train / 170 val), 543 classes and
+32901 instances, all with Isaac instance labels. `--new-keep` excluded 558
+images containing 30 other assets. The strict support gate found **54 old
+classes still without training images**, and stopped before expansion/training.
+[Initial support audit](../experiments/data/seg-v2e-dev/support-initial-round2.json).
+A registered targeted repair cycles these missing assets, one per draw, through
+stack_blocks variants 12–17 on training ids only. That public task has no
+clutter, avoiding the out-of-vocabulary clutter filtering that cost coverage.
+The requirement remains every old class ≥1 training image.
 
 ## Blocker and shared-machine checks
 
@@ -63,7 +75,7 @@ arrays. A bounded single-worker retry produced valid 640×480 RGB and masks.
 The committed capture wrapper now checks readiness of both buffers, with a
 20-attempt cap; it never accepts empty captures as training data.
 
-Full proxy rehearsal rendering is running with two workers on disjoint output
+Base proxy rehearsal used two workers; focused extras use three on disjoint output
 roots and a four-physical-core CPU affinity reservation. The heavy lock is held;
 G3 light locks are untouched. The supervisor monitors disk and VRAM every two
 seconds and can terminate only the subprocess sessions it created.
@@ -76,7 +88,16 @@ normal task asset is absent, preserving the canonical Rigid class key and
 writing the required cluttered record type. Ordinary task generation is unchanged.
 An actual CPU-generated book extra verifies this record; a focused test checks
 both the extra path and rejection on the unchanged native path. A repair pass
-retries only our explicitly diagnosed missing-asset failures.
+retried only our 50 explicitly diagnosed missing-asset failures.
+
+An app restart interrupted the agent, but the remote pipeline remained alive:
+launcher PID 654489 held the heavy lock and three focused workers continued with
+CPUs 0–27. No duplicate was started. Later a 6.0 worker segfaulted at native
+startup (exit -11), leaving completed outputs and saved stages intact. After
+confirming the launcher/workers had exited and the lock was free, the unfinished
+focused phase resumed from those stages. Its crash log was preserved. No model
+checkpoint existed yet. The targeted coverage phase staggers Kit startups by
+25 seconds to reduce concurrent startup contention.
 
 Before each job: `who`, `uptime`, `nvidia-smi`; one heavy job under the existing
 `~/dojo-gpu.lock`. The pre-existing GPU service (PID 3613, 2418 MiB), Xorg and
