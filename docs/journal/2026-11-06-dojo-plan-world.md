@@ -240,3 +240,20 @@ fixes tools and egg layouts 100000/01 before outcomes. Every speculative request
 and validation rejection stays in the denominator. Require <20% fallback in
 each cell before the four-cell paired score study. Raw request-only diagnostic
 replays are distinct from usable, fully validated G3 paths.
+
+
+The first recover pilot fails its gate: tools 16/31 fallbacks, egg 250/263.
+Timeouts no longer disable later queries, but graph failure remains for tools.
+Many egg requests fit the goal pose but have collision-infeasible IK solutions;
+raw result tolerance fields were zero placeholders, now supplemented with the
+configured thresholds rather than mistaken for actual tolerances. Earlier
+pilot goal-collision labels will be corrected from the retained flags.
+
+Second pilot source 9eeb7756 warm-starts cuRobo IK from the native nearby IK
+solution with deterministic small perturbations, retaining GPU collision checks.
+It also supplies a current-opening native finger-box cover: the public X5 GPU
+collision links omit the moving finger links, and native validation caught basket
+hits after GPU-successful paths. Neither change weakens final validation.
+The same two layouts per cell, full denominator and <20% gate are frozen in
+[the v2 config](../experiments/2026-11-06-plan-round2-v2-coverage-config.json).
+No paired score comparison has begun.
