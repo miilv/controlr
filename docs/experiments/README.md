@@ -72,3 +72,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 | 2026-11-06 | [dojo-ab-wave-launch](2026-11-06-dojo-ab-wave-launch.md) | physics gates and safe camera-wave dispatch after D-C19 | toy A3/5 B4/5; conveyor A8/10 B8/10; lead approved smoke gates; peg camera block launched on one lane, adoption pending |
 | 2026-11-06 | [egg-camera-ab-spec](2026-11-06-egg-camera-ab-spec.md) | egg shell/lateral/drop-spin feasibility under camera-only state | Prospective default gate; deferred after null G3, no camera runs |
 | 2026-11-06 | [egg-skill-ceiling](2026-11-06-egg-skill-ceiling.md) | v6 egg grasp/drop feasibility with perfect state | G3 10 pairs: A=B 23.5, success 0/10 both; raised 19.0; no gain, defaults off |
+| 2026-11-06 | [TOOLS slot camera A/B](2026-11-06-tools-slot-camera-ab.md) | Cartesian carry to matching-slot hover | prospective 20 gain pairs + 10 guard pairs; requires G3 support and lead release; not run |
+| 2026-11-06 | [TOOLS measured carry camera A/B](2026-11-06-tools-carry-read-camera-ab.md) | gated attachment reads between checked carry hops | prospective 20 gain + 10 guard pairs; blocked until ten-pair G3 support and lead release; not run |
+| 2026-11-06 | [TOOLS slot G3](2026-11-06-tools-slot-g3.md) | slot approach, hover and measured placement | baseline v1 52.5 (10); lower hover −10 points (10 pairs); linear/carry-read negative, tail servo null; no adoption |
+

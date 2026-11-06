@@ -1,0 +1,3246 @@
+{
+  "catalog": {
+    "c4_files": 2427,
+    "c6_files": 1734,
+    "differences": {
+      "Articulation/laptop/00001/geom.npz": {
+        "c4": "b67c3f28e3c4e4fc97bb03ccc26d45592d7456a2ed6be06c942f1fb8b113764d",
+        "c6": null
+      },
+      "Articulation/laptop/00001/info.json": {
+        "c4": "5cbdee742b0c3a42292d803db34d43c18ada5a0e6f4ec8f06883b9d9b32d47dd",
+        "c6": null
+      },
+      "Articulation/laptop/00001/links.json": {
+        "c4": "f7bacfb7a938c305a8c59a8d89f9663072591ec32bea01045a3fbde9ecfb8a10",
+        "c6": null
+      },
+      "Articulation/laptop/00001/shape_cache.json": {
+        "c4": "9aafd7006c8dc3cf547f30f8ac868e049c86bab07ddee5e4f252e89db737da6e",
+        "c6": null
+      },
+      "Articulation/laptop/00001/sil.npz": {
+        "c4": "54dbaaac9cbc03755117268b71f15f28b044dfbcf72e79e0b009d719669459e1",
+        "c6": null
+      },
+      "Articulation/laptop/00001/visual.glb": {
+        "c4": "d23a91b721af05238461baaddf166bc4582cffd93ab7d7bde7fe4cbf4c1998fc",
+        "c6": null
+      },
+      "Articulation/laptop/00002/geom.npz": {
+        "c4": "55456b61dfa6eafb510893d5ad538dfcf09a3e3efc1dc80712348f3bac3c6d0e",
+        "c6": null
+      },
+      "Articulation/laptop/00002/info.json": {
+        "c4": "92553b4cf1279bf84469a41597f5062d36dc65629ee57e4279e5206ff8f98c69",
+        "c6": null
+      },
+      "Articulation/laptop/00002/links.json": {
+        "c4": "f7bacfb7a938c305a8c59a8d89f9663072591ec32bea01045a3fbde9ecfb8a10",
+        "c6": null
+      },
+      "Articulation/laptop/00002/shape_cache.json": {
+        "c4": "9aafd7006c8dc3cf547f30f8ac868e049c86bab07ddee5e4f252e89db737da6e",
+        "c6": null
+      },
+      "Articulation/laptop/00002/sil.npz": {
+        "c4": "54dbaaac9cbc03755117268b71f15f28b044dfbcf72e79e0b009d719669459e1",
+        "c6": null
+      },
+      "Articulation/laptop/00002/visual.glb": {
+        "c4": "3f4a923e2f834a9b3505ef33e38adbfee855ba9f1fc23d4a541dd73a4047797b",
+        "c6": null
+      },
+      "Articulation/laptop/00003/geom.npz": {
+        "c4": "b9df1a33114eb3e8011161722a79b934f319e7522a72ba92d717754e32da4fa8",
+        "c6": null
+      },
+      "Articulation/laptop/00003/info.json": {
+        "c4": "fc77bf3d2d52a2e667bca5d883486eb2b23bc5d02819e2f05f06992aab7fdfa7",
+        "c6": null
+      },
+      "Articulation/laptop/00003/links.json": {
+        "c4": "f7bacfb7a938c305a8c59a8d89f9663072591ec32bea01045a3fbde9ecfb8a10",
+        "c6": null
+      },
+      "Articulation/laptop/00003/shape_cache.json": {
+        "c4": "9aafd7006c8dc3cf547f30f8ac868e049c86bab07ddee5e4f252e89db737da6e",
+        "c6": null
+      },
+      "Articulation/laptop/00003/sil.npz": {
+        "c4": "54dbaaac9cbc03755117268b71f15f28b044dfbcf72e79e0b009d719669459e1",
+        "c6": null
+      },
+      "Articulation/laptop/00003/visual.glb": {
+        "c4": "ee9d389bdf47cbc43f4fb232c928a4546e8a365b33f318a134f91598e0692de2",
+        "c6": null
+      },
+      "Articulation/toaster/00002/geom.npz": {
+        "c4": "9ceff6aca320199bc1811e38c60cf7e4c9dcf56e22e99ddfd2b8dc70c7b952ec",
+        "c6": null
+      },
+      "Articulation/toaster/00002/info.json": {
+        "c4": "6a529f303a18b2d24a7c5d7fc4b654364e5f000e09d30d3f5c3855ed8629914a",
+        "c6": null
+      },
+      "Articulation/toaster/00002/links.json": {
+        "c4": "dd6cafff4d3d1b5b185d2bf171d44704e21dbb4967541c490896ca7379cf60a8",
+        "c6": null
+      },
+      "Articulation/toaster/00002/shape_cache.json": {
+        "c4": "4457919bcb48bbc29fa07ffb5550a4065ce6d416f6f0a2227802f03db85d7c45",
+        "c6": null
+      },
+      "Articulation/toaster/00002/sil.npz": {
+        "c4": "e56ca2c7b8f766ae974ecd098bedaef7bc312aa10b065827a6be414a7570567c",
+        "c6": null
+      },
+      "Articulation/toaster/00002/visual.glb": {
+        "c4": "c22ca44023ece63c03ea2991093de1ebc0e20c2ff7731cead106b0be11dbb5a9",
+        "c6": null
+      },
+      "Articulation/toaster/00004/geom.npz": {
+        "c4": "62f2da4d5fc6534f2c3a8efc2544d5f7fd9ec8fd87f37898a5591770a2aa5b17",
+        "c6": null
+      },
+      "Articulation/toaster/00004/info.json": {
+        "c4": "7866b262275b3fb9698155166fdb73e4b1934d906c7df5dca09fc3ed3af15f7b",
+        "c6": null
+      },
+      "Articulation/toaster/00004/links.json": {
+        "c4": "66f0c69f1f54a61508b3af812fb19cc41adbedef86cbb7ccb4eecceb4ed0a59c",
+        "c6": null
+      },
+      "Articulation/toaster/00004/shape_cache.json": {
+        "c4": "62129041dfd7e59cefd77486777b921a7cc72de8a241cab6757f54c1d4034e60",
+        "c6": null
+      },
+      "Articulation/toaster/00004/sil.npz": {
+        "c4": "40b52b2c47b758ff03c886486437ed3e126571a3ba9c0e5e2040c75cfe05456d",
+        "c6": null
+      },
+      "Articulation/toaster/00004/visual.glb": {
+        "c4": "70e809d7f165a10c946b1eb75fafe81c2834b9279667d68da865dd9476746aef",
+        "c6": null
+      },
+      "Fluid/wuliangye/00000/geom.npz": {
+        "c4": "796feb23670dbf19c491ed63529edf9586e99d047c68af5786b10a2bf9f444ce",
+        "c6": null
+      },
+      "Fluid/wuliangye/00000/info.json": {
+        "c4": "b6ebbc4f189c12159f1dadc65f045943de8048e4ea5418fc82c783204692ff3e",
+        "c6": null
+      },
+      "Fluid/wuliangye/00000/shape_cache.json": {
+        "c4": "dc85737a553bea9e87058d8c69efc5bf9ac4bdb4b61b06ec9c8fcc5e915f4b26",
+        "c6": null
+      },
+      "Fluid/wuliangye/00000/visual.glb": {
+        "c4": "6346ea9ac3e5eebee7ff9431d45e775bb3fd5f896a5ac35b76c1785b2fb4632f",
+        "c6": null
+      },
+      "Fluid/wuliangye/00001/geom.npz": {
+        "c4": "cdb925ea873c5dcc7eee19847d006db9d26127da29e1db88f2f107bf217d4f28",
+        "c6": null
+      },
+      "Fluid/wuliangye/00001/info.json": {
+        "c4": "622821cc0b354573c514f0f624e47770bb280065ec0e5f80735495ef61ecea7d",
+        "c6": null
+      },
+      "Fluid/wuliangye/00001/shape_cache.json": {
+        "c4": "dc85737a553bea9e87058d8c69efc5bf9ac4bdb4b61b06ec9c8fcc5e915f4b26",
+        "c6": null
+      },
+      "Fluid/wuliangye/00001/visual.glb": {
+        "c4": "2907c77c6cc71641fd52e9d6960e8da5697d57ba18495b03b351009656e4d40a",
+        "c6": null
+      },
+      "Fluid/wuliangye/00002/geom.npz": {
+        "c4": "cdb925ea873c5dcc7eee19847d006db9d26127da29e1db88f2f107bf217d4f28",
+        "c6": null
+      },
+      "Fluid/wuliangye/00002/info.json": {
+        "c4": "e6f6658746fcee7ba5458bead392880f95f3495df83429d47e492bfa7098b3d8",
+        "c6": null
+      },
+      "Fluid/wuliangye/00002/shape_cache.json": {
+        "c4": "dc85737a553bea9e87058d8c69efc5bf9ac4bdb4b61b06ec9c8fcc5e915f4b26",
+        "c6": null
+      },
+      "Fluid/wuliangye/00002/visual.glb": {
+        "c4": "2907c77c6cc71641fd52e9d6960e8da5697d57ba18495b03b351009656e4d40a",
+        "c6": null
+      },
+      "Fluid/wuliangye/00003/geom.npz": {
+        "c4": "cdb925ea873c5dcc7eee19847d006db9d26127da29e1db88f2f107bf217d4f28",
+        "c6": null
+      },
+      "Fluid/wuliangye/00003/info.json": {
+        "c4": "28f88054ab854a178c688bf1236ac1b5eb09ebc5b9f9baa585ff2f512a2dae60",
+        "c6": null
+      },
+      "Fluid/wuliangye/00003/shape_cache.json": {
+        "c4": "dc85737a553bea9e87058d8c69efc5bf9ac4bdb4b61b06ec9c8fcc5e915f4b26",
+        "c6": null
+      },
+      "Fluid/wuliangye/00003/visual.glb": {
+        "c4": "2907c77c6cc71641fd52e9d6960e8da5697d57ba18495b03b351009656e4d40a",
+        "c6": null
+      },
+      "Garment/Top_Long/00006/geom.npz": {
+        "c4": "6fcbd5680b8be7c2ddaeaa565f67c075ea530277cbbdc3eabb5d1d5420f6fe4c",
+        "c6": null
+      },
+      "Garment/Top_Long/00006/info.json": {
+        "c4": "bcfef2b10cba4cc145a58ea0594dd30147eb714f05c7c7cd9ae88b08875aa7eb",
+        "c6": null
+      },
+      "Garment/Top_Long/00006/shape_cache.json": {
+        "c4": "859a971a467f01b5bbbfcc8c8e72b3d1e38eb685de0f5aeee3443959d1e84fb1",
+        "c6": null
+      },
+      "Garment/Top_Long/00006/sil.npz": {
+        "c4": "5392251f5315bfda964fbb16eadd7fd38b68af261aef43a1415d0bdc748b687b",
+        "c6": null
+      },
+      "Garment/Top_Long/00006/visual.glb": {
+        "c4": "397a76a1d6271b1b77c5d73b98fca54d624a5c20de04ffb89b558435ae1e6a73",
+        "c6": null
+      },
+      "Garment/Top_Long/00007/geom.npz": {
+        "c4": "24dc8500ece5938b443ed6c65026f87c6398929f25458f48d91e38e3bceac253",
+        "c6": null
+      },
+      "Garment/Top_Long/00007/info.json": {
+        "c4": "0a3f9411cff53b3a0ad61a598e412e1265fd591770eefb7069d1e3da5b6796cc",
+        "c6": null
+      },
+      "Garment/Top_Long/00007/shape_cache.json": {
+        "c4": "18078b1589b7b1085f2781d95e4f6171652c7c6fef825ab452b8c46765d5162b",
+        "c6": null
+      },
+      "Garment/Top_Long/00007/sil.npz": {
+        "c4": "101f65b8394d715567d9d2717c3cc6c968bf8feb37a3f2ad2213b309d38039fe",
+        "c6": null
+      },
+      "Garment/Top_Long/00007/visual.glb": {
+        "c4": "043e3829ab6f251bba61ca3a65973cd535041084947a69860274c09c39bb106a",
+        "c6": null
+      },
+      "Garment/Top_Long/00011/geom.npz": {
+        "c4": "144b87cd8c311f16eb8719b826c51a7efb1aadc014663d44b1ec2dd3568aefc4",
+        "c6": null
+      },
+      "Garment/Top_Long/00011/info.json": {
+        "c4": "0ab56c0811bdf63bdd3a09036c84680cc8a651ac9b585009ea2805a8fa07f157",
+        "c6": null
+      },
+      "Garment/Top_Long/00011/shape_cache.json": {
+        "c4": "b40c06201d06997b3b285c373b0a4a923de3ae63907edd0c28ab28d95fe223f1",
+        "c6": null
+      },
+      "Garment/Top_Long/00011/sil.npz": {
+        "c4": "1b0068cc228e827721b40901c51eb728d41f8271158e2fbb057d7cbedd3ae8af",
+        "c6": null
+      },
+      "Garment/Top_Long/00011/visual.glb": {
+        "c4": "40548d9a4cbbb4963d1a8e1f7b82a4af933cf621d11a094269b9e5bba62d57ef",
+        "c6": null
+      },
+      "Geometry/basket/00002/geom.npz": {
+        "c4": "f301e990cbca1c4629df1207ce5395820a5daa9cfc775fb80fab7b5950fbf3b5",
+        "c6": null
+      },
+      "Geometry/basket/00002/info.json": {
+        "c4": "4f0ed9d75ca1c42007d79612f3501cd00e095eb46dafa0476e7b2fd9b385f91c",
+        "c6": null
+      },
+      "Geometry/basket/00002/shape_cache.json": {
+        "c4": "9e49f9b3ef49e14caba78736986feca698159d77e88bae72eea06ee96c80a32b",
+        "c6": null
+      },
+      "Geometry/basket/00002/sil.npz": {
+        "c4": "1d9cd9ef7cb7c481e2ea44b5008b2b2e195aec3ab75b4ea5fcaf2cde200fbf27",
+        "c6": null
+      },
+      "Geometry/basket/00002/visual.glb": {
+        "c4": "c74d7727a1aee0a57534517a3f275cf9f630daca120db7cd13987ca270d7a831",
+        "c6": null
+      },
+      "Geometry/basket/00003/geom.npz": {
+        "c4": "262f50201b873123afef7df63fd1cff4014d60e758982f391a3bee2e1ef55a50",
+        "c6": null
+      },
+      "Geometry/basket/00003/info.json": {
+        "c4": "536e522b23c00ba1520a549d280f9fcd4f61ad7cd43ebf06705e9ad6b9f3dfa7",
+        "c6": null
+      },
+      "Geometry/basket/00003/shape_cache.json": {
+        "c4": "9e49f9b3ef49e14caba78736986feca698159d77e88bae72eea06ee96c80a32b",
+        "c6": null
+      },
+      "Geometry/basket/00003/sil.npz": {
+        "c4": "1d9cd9ef7cb7c481e2ea44b5008b2b2e195aec3ab75b4ea5fcaf2cde200fbf27",
+        "c6": null
+      },
+      "Geometry/basket/00003/visual.glb": {
+        "c4": "5cd8cb86ddc9ec5017ae2e338d10643d48313c545c05b49dab6d5b714acb7aa5",
+        "c6": null
+      },
+      "Geometry/basket/00004/geom.npz": {
+        "c4": "262f50201b873123afef7df63fd1cff4014d60e758982f391a3bee2e1ef55a50",
+        "c6": null
+      },
+      "Geometry/basket/00004/info.json": {
+        "c4": "1a94e4e39704ddf92e895b7b4dc8381538c336b7bc6b316dd716686704f51336",
+        "c6": null
+      },
+      "Geometry/basket/00004/shape_cache.json": {
+        "c4": "9e49f9b3ef49e14caba78736986feca698159d77e88bae72eea06ee96c80a32b",
+        "c6": null
+      },
+      "Geometry/basket/00004/sil.npz": {
+        "c4": "1d9cd9ef7cb7c481e2ea44b5008b2b2e195aec3ab75b4ea5fcaf2cde200fbf27",
+        "c6": null
+      },
+      "Geometry/basket/00004/visual.glb": {
+        "c4": "5cd8cb86ddc9ec5017ae2e338d10643d48313c545c05b49dab6d5b714acb7aa5",
+        "c6": null
+      },
+      "Geometry/cup_holder/00001/geom.npz": {
+        "c4": "bdc667f80dc58cf2984bfc5b63f734678fd8ea1bb92269b726f221588e302dbc",
+        "c6": null
+      },
+      "Geometry/cup_holder/00001/info.json": {
+        "c4": "db4355d98f1d17d6356e2e1cf900c2d6cad8ced3c52be58809ae883302503df6",
+        "c6": null
+      },
+      "Geometry/cup_holder/00001/shape_cache.json": {
+        "c4": "56da4cc8a60d82948a50090b0b5d818ed3dd9ec020e3b83ff4f1502c36bb8980",
+        "c6": null
+      },
+      "Geometry/cup_holder/00001/visual.glb": {
+        "c4": "796b38396c2d1048204e0ce4a14b58c02bbdb39f5fe469affd014d4c647c6085",
+        "c6": null
+      },
+      "Rigid/brick/00000/geom.npz": {
+        "c4": "69d81513cdaf6fd1c2fbb8100f0044c403884fc6eb5c93bbadfba3da13f76b34",
+        "c6": null
+      },
+      "Rigid/brick/00000/info.json": {
+        "c4": "ed746ec22158f36227fe0f275f2de50732366d23bc6ccc0ac671225f0baf0514",
+        "c6": null
+      },
+      "Rigid/brick/00000/shape_cache.json": {
+        "c4": "b861dfc31adf8e365a9f5746585fada09b3dd3ed28f339572522d08a3e6ba566",
+        "c6": null
+      },
+      "Rigid/brick/00000/sil.npz": {
+        "c4": "2a8b27a9fd0e3a2d0834861aa82fc06e1a885cbf5a33dc6e5eb28f10ec674248",
+        "c6": null
+      },
+      "Rigid/brick/00000/visual.glb": {
+        "c4": "c21faf8dd29f6e8d3f260c1cf5c742c63990b7d39e6b058f1968cf4bba64c848",
+        "c6": null
+      },
+      "Rigid/brick/00001/geom.npz": {
+        "c4": "de32914a284b08f21313b0c0e5177000b9c78d51ea4e0c716f9b9be8c9343d31",
+        "c6": null
+      },
+      "Rigid/brick/00001/info.json": {
+        "c4": "a0479cfd523944c2dd787ccdba7f5cdb43c1284223ab3d1fa3c058cda7c65d06",
+        "c6": null
+      },
+      "Rigid/brick/00001/shape_cache.json": {
+        "c4": "33d5233dfe4f1c5981457884fba00f448af0da5b753effcdc7492504b65cf4a2",
+        "c6": null
+      },
+      "Rigid/brick/00001/sil.npz": {
+        "c4": "9c2467115ff67ce3234b8ac50366e9137dfa2db827199a4a0535f3ea5dc2fc2f",
+        "c6": null
+      },
+      "Rigid/brick/00001/visual.glb": {
+        "c4": "69285b8d5bf1cf20e1ba3f658ff5f37fc60a391421dd92400bf2c712739be703",
+        "c6": null
+      },
+      "Rigid/brick/00002/geom.npz": {
+        "c4": "7dce2e64b170f873629161b5863ca67c5b556c8a126dcef2e436c59e60397c88",
+        "c6": null
+      },
+      "Rigid/brick/00002/info.json": {
+        "c4": "f6e88eab7f3124b13f63aa4d1dce5bedb9c78ebd8dfc8a1dcc3553557ac22150",
+        "c6": null
+      },
+      "Rigid/brick/00002/shape_cache.json": {
+        "c4": "33d5233dfe4f1c5981457884fba00f448af0da5b753effcdc7492504b65cf4a2",
+        "c6": null
+      },
+      "Rigid/brick/00002/sil.npz": {
+        "c4": "9c5e4800b15562e2d162954ce01c2c81d077eb567f4bf382a5f83dcc8f3a82a5",
+        "c6": null
+      },
+      "Rigid/brick/00002/visual.glb": {
+        "c4": "c78699865a58d74df0e4f8a22a43fbc624f0ec02c47ece8b62853c534d1be23d",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00001/geom.npz": {
+        "c4": "bf38ae71c202238ef358d91771bf0d240b6a4d5ec519f1c8c6772b5032ff98a8",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00001/info.json": {
+        "c4": "0dbb4b4d2a065b1856298c857e28b3a811f47924d829e70656a9eba6b3a897e3",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00001/shape_cache.json": {
+        "c4": "b6b46dddad3f4a315897e528ba190a4d5140f4947570755b1655786be3e8dc38",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00001/sil.npz": {
+        "c4": "098b6402793cd75c661c9243c4e259b3fa26e366277e5905d2b6eb11c1ada49d",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00001/visual.glb": {
+        "c4": "b8cb06bb9fb142fb19b166f495fb3fb8e50d90c12cbf1330c57e414ea072b39c",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00002/geom.npz": {
+        "c4": "d1d2ad55bac7922099aee2d8e94f16ef38d5e7e6e7fb700794c89970ba5b5516",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00002/info.json": {
+        "c4": "f4c20475f67115483000b58f7e812a67e3589bfd4a4fc239d49074607468c139",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00002/shape_cache.json": {
+        "c4": "5c987f3022570315256ad8548702deb3fcdc4b32ee582ea098862ff556d8d461",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00002/sil.npz": {
+        "c4": "51b0db76734fdbbee8a288041efde68e5e5cccb3febc2ae4286fa33a0e43bdef",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00002/visual.glb": {
+        "c4": "d68bbdd679c1e9f87f076b017e8c9e2c65fea4a9761106c80e41bff609227835",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00003/geom.npz": {
+        "c4": "e98625f1e9e04157e97745b1a1841aa62021229df35ab3b7ddeae4de7e139b33",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00003/info.json": {
+        "c4": "e0f5e1ec292eb17fcf836240bf0db113e4afb7eb8539704d052d90142176cd29",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00003/shape_cache.json": {
+        "c4": "38a14834df98a8920b1b34def62600d746b04865f47b3bf45bcb9688dbc42678",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00003/sil.npz": {
+        "c4": "309da4a3250f5edbc8764afe61f6e1c035a63f5827333537e101b9e941093358",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00003/visual.glb": {
+        "c4": "9e672fe32e78c230b2cb4ebbba46a00b2f7547438a21adf66b0ccc61d28aa585",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00004/geom.npz": {
+        "c4": "915d531c4e30ffb514d8d52c6b6c4e99884abbb710cf7dd57e115b5aacc1b65b",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00004/info.json": {
+        "c4": "04187f7bec6a93882802ad3907a70a719270c1e1e43288eab806e669a60ab420",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00004/shape_cache.json": {
+        "c4": "9e1c8645b695edd3f43630ae58b6f1be3278ba1f44d9ff902baec942fc7f70eb",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00004/sil.npz": {
+        "c4": "336c83ea087c1ecf64a48d2dcc2585e82bfd853365429c7e05c74fffb3d44fc9",
+        "c6": null
+      },
+      "Rigid/chocolate_bar/00004/visual.glb": {
+        "c4": "7cff6a853ae449ea700d15c067bd19df2758aec01aaa69c596d015e63103f227",
+        "c6": null
+      },
+      "Rigid/division/00000/geom.npz": {
+        "c4": "c0fefdad86613916c6c51273aba34d774c774b4441895667ec512a8158f84b8e",
+        "c6": null
+      },
+      "Rigid/division/00000/info.json": {
+        "c4": "063f5ba85540dad93f1d9fdccefc7bd8797d8af04a6978e66a52b9306b187edd",
+        "c6": null
+      },
+      "Rigid/division/00000/shape_cache.json": {
+        "c4": "fed57dc578be778c3dc81b642f222c93142cea4057c1549072bb242b1b9055c7",
+        "c6": null
+      },
+      "Rigid/division/00000/visual.glb": {
+        "c4": "ed0ab6339cf531c917b1b30430764c96ecd2077b9aa079e55dcb10b5e9d97542",
+        "c6": null
+      },
+      "Rigid/earbuds/00000/geom.npz": {
+        "c4": "ef0e1d4153ef9d1da91e4674bac68ac7a9b4568cd48d81b4e07f469c6d10084b",
+        "c6": null
+      },
+      "Rigid/earbuds/00000/info.json": {
+        "c4": "f08ed0f33d63ef1d224fb9631e1df49030397d789947f800a30a0a3865c23846",
+        "c6": null
+      },
+      "Rigid/earbuds/00000/shape_cache.json": {
+        "c4": "fb615c44216b0cac6a7f8d19e76b8e456748f9517e0deec3826710823283bc70",
+        "c6": null
+      },
+      "Rigid/earbuds/00000/sil.npz": {
+        "c4": "cc13e128f93b49136f909186f91a4d39097cdce4b387e12608c44e02c57a14f6",
+        "c6": null
+      },
+      "Rigid/earbuds/00000/visual.glb": {
+        "c4": "4821083328d0d29117fbf91a6ad7b7b7cbd4b91e61e7fea669e7f81f18cdda4a",
+        "c6": null
+      },
+      "Rigid/earbuds/00001/geom.npz": {
+        "c4": "dd82786b979fd82d82350992bf3fd3c276cdf5f4821cd7072a8ff898004dbf96",
+        "c6": null
+      },
+      "Rigid/earbuds/00001/info.json": {
+        "c4": "5a3bd6d9224387c949babbc970a4da63b7b1a29819344ce8fd954cbc06f1e623",
+        "c6": null
+      },
+      "Rigid/earbuds/00001/shape_cache.json": {
+        "c4": "298bcc8f7311c361b46dfc3bf971a4f9773783874faf49618dc7db73d2edf7ea",
+        "c6": null
+      },
+      "Rigid/earbuds/00001/sil.npz": {
+        "c4": "11ec4e14af43083cb9b5b4710b1caf9ea52bc45b117b2f20f1d0adc9f66979c7",
+        "c6": null
+      },
+      "Rigid/earbuds/00001/visual.glb": {
+        "c4": "07ceb2a0517799d0b5f5407e8a7fedafaf66b54e2846fb20b2fb868b08148162",
+        "c6": null
+      },
+      "Rigid/earbuds/00002/geom.npz": {
+        "c4": "c6b0e13e5dfd77aacd6263d0cd1301688b0603cff7053576e264d2f04591a31b",
+        "c6": null
+      },
+      "Rigid/earbuds/00002/info.json": {
+        "c4": "aa12842eed09c5993bbb4b38a2a4181c5fe0c007a5bc7f50d77ebf8244929256",
+        "c6": null
+      },
+      "Rigid/earbuds/00002/shape_cache.json": {
+        "c4": "adb074c7b3a8a4358f6b9466e792f5d7054440e810d208c6fe6efb64814c1d45",
+        "c6": null
+      },
+      "Rigid/earbuds/00002/sil.npz": {
+        "c4": "0fd8140b4d4a3e589491cb1ef030716cb03e8df2bc35cfc3e1670d4624a290dd",
+        "c6": null
+      },
+      "Rigid/earbuds/00002/visual.glb": {
+        "c4": "a9534574d6eb85862a409149b29bd767dacfab4c438a34d844b38ec951c8fb98",
+        "c6": null
+      },
+      "Rigid/equal/00000/geom.npz": {
+        "c4": "2aeef6d47b817753d64a09da7ae1d238d491d73cda69970b6e9b4508c731aae0",
+        "c6": null
+      },
+      "Rigid/equal/00000/info.json": {
+        "c4": "ef1ea23076be760ff7b568a71ab88616cac083aa3fc458a2fd45025f325c6f60",
+        "c6": null
+      },
+      "Rigid/equal/00000/shape_cache.json": {
+        "c4": "f6dae3d3e8df6cea3d49b0f8d8adc15c23d6e9c0b84be3d6973dd35ad05a0d5c",
+        "c6": null
+      },
+      "Rigid/equal/00000/visual.glb": {
+        "c4": "b2c6a8ac6dff14fedbe7d0dfc5b1746ce72ca2fee16f70dc2f42105eded81861",
+        "c6": null
+      },
+      "Rigid/goblet/00006/geom.npz": {
+        "c4": "6c09ad004bb4009e49c11c90b5e26f2132a5e610727d87d94c8ca594a2bd4aa1",
+        "c6": null
+      },
+      "Rigid/goblet/00006/info.json": {
+        "c4": "ecd4dd60a31a694d2c57cea8b4db497b658663e6575b1d229052b85602adad72",
+        "c6": null
+      },
+      "Rigid/goblet/00006/shape_cache.json": {
+        "c4": "2d78fa4c960fccff8473675d9129401a1811d53a6850180ed07d62acb4c45c53",
+        "c6": null
+      },
+      "Rigid/goblet/00006/sil.npz": {
+        "c4": "3dbe14fb6c96b810776c6678401a08b7777a5fd9dbe25ccbdde145ab0cd1a4ff",
+        "c6": null
+      },
+      "Rigid/goblet/00006/visual.glb": {
+        "c4": "1100a73d38fe99cc60e4560d17d967dac8fdd26e2dffd455f69ea9991321591c",
+        "c6": null
+      },
+      "Rigid/headset/00008/geom.npz": {
+        "c4": "6aa478c053e9529773925c24adf1281b24689b4bb78b016aa82471fc747116ff",
+        "c6": null
+      },
+      "Rigid/headset/00008/info.json": {
+        "c4": "581a92d7da9e2fcf3104648d44b355e89b01b71abc38b2a7a604f13a9e79e586",
+        "c6": null
+      },
+      "Rigid/headset/00008/shape_cache.json": {
+        "c4": "e274dc8b52f5b8779336dcd6d736148787cae1caba0e8ec2cbc567e3d29ef1a2",
+        "c6": null
+      },
+      "Rigid/headset/00008/sil.npz": {
+        "c4": "21ce8d68213c27a1e7e78323acca342d8b858a8b9563e1dd144dc0f8f4bde4ef",
+        "c6": null
+      },
+      "Rigid/headset/00008/visual.glb": {
+        "c4": "62e0d1c9e125b031453108f68ef3d30a36a864bc3281b60d65620acc9833180e",
+        "c6": null
+      },
+      "Rigid/headset/00009/geom.npz": {
+        "c4": "851d8a4dab44a91d561ca85e8d9c020afebff6d34f30c5f1433b572551847bdf",
+        "c6": null
+      },
+      "Rigid/headset/00009/info.json": {
+        "c4": "1bbcd20ad6b7dbda22804aff8c0256d455fedec8a3b8f47f15a4534e9b141378",
+        "c6": null
+      },
+      "Rigid/headset/00009/shape_cache.json": {
+        "c4": "235e315f24d51b6275eb4ead8ef55140892db80bc786b7458807ce73c4b66851",
+        "c6": null
+      },
+      "Rigid/headset/00009/sil.npz": {
+        "c4": "41606a58994705cf9b0c75b1c1327c6c2883ede6b4192b4125a85d94007eac13",
+        "c6": null
+      },
+      "Rigid/headset/00009/visual.glb": {
+        "c4": "167d57c2219a98257143771035151dfc57b85c92e9aa6d0f72427955250a2412",
+        "c6": null
+      },
+      "Rigid/headset/00010/geom.npz": {
+        "c4": "ab05478102d97d7b77fcd27f08be015fe25f0c98c477fbfc367a62b06d3d62b1",
+        "c6": null
+      },
+      "Rigid/headset/00010/info.json": {
+        "c4": "a3f942876bb4d5d1c4d6381b0d4637e924ee82e11a670fe501f51a11c1c737f3",
+        "c6": null
+      },
+      "Rigid/headset/00010/shape_cache.json": {
+        "c4": "51a9a2d72b292cf26567b7baa1c99c263d0f46151c1e1cf65afc754d86d1003d",
+        "c6": null
+      },
+      "Rigid/headset/00010/sil.npz": {
+        "c4": "95b9a79940856622454d1699e9294444de8b25c66d62f9badcd5fae975001605",
+        "c6": null
+      },
+      "Rigid/headset/00010/visual.glb": {
+        "c4": "434766c72cc815076b1e4a187da7c5d693b76a634af6d39e4a6c067f693517db",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00000/geom.npz": {
+        "c4": "c97d86a197052325115221148672c22b8eebbe2d386ae4f7a1d0111a549a2974",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00000/info.json": {
+        "c4": "a2e37df95f7629cbc9145fd5f8aff3d234de75798e92a472d267f9c3dda8b3b8",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00000/shape_cache.json": {
+        "c4": "9149ef4764db1abead7c396b077406c073f5698296ad836dde0710ba69feb735",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00000/sil.npz": {
+        "c4": "dd06b47bf833ee07fdea7c4924c33c5e33b74c0e3fc63125d85d5b73e9031444",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00000/visual.glb": {
+        "c4": "55e51b8ed1ef7206ee80cb65057ac5127e7f002c774b76673ce003d52930c47c",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00001/geom.npz": {
+        "c4": "691627c444f44113ff08cb198d15c3f1e44cb302b2d0f19f78009d31c8a1b5f7",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00001/info.json": {
+        "c4": "9adbb128b5a645e46f233ee480b928cf9848326a174df7ed5c6ac36dce7b951f",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00001/shape_cache.json": {
+        "c4": "9149ef4764db1abead7c396b077406c073f5698296ad836dde0710ba69feb735",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00001/sil.npz": {
+        "c4": "fa89f524ec335f49b28eb93d99126337e17154a6a5af49367d561a719b3c62a5",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00001/visual.glb": {
+        "c4": "eea3a0083a1fb6851cf3416a42bdc7cd8c2868e56ff2c6634ff61e34a7401dbd",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00002/geom.npz": {
+        "c4": "87add692b8e02e3e17088e07487d0ba6af3441158e436562ef6ab83a00a5ede9",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00002/info.json": {
+        "c4": "044974a3110e63b05e2f95d8d17e5e31fe2ebaa8e62637c00c920eab8a25e11d",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00002/shape_cache.json": {
+        "c4": "9149ef4764db1abead7c396b077406c073f5698296ad836dde0710ba69feb735",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00002/sil.npz": {
+        "c4": "0256d1ff3c905224683273afe189fac975c022a752d11a68c4b2277e87dffe72",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00002/visual.glb": {
+        "c4": "df8ab6c79348e4f5388be60499c1147deda060b6b52a6e7c77922722d9d4d523",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00003/geom.npz": {
+        "c4": "71239179ce44ebfab46ebddfff20add241523b601d04ba67dd50a28fcaadb357",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00003/info.json": {
+        "c4": "cefd3a8c5b8fa39d81c66771c616ef59e02855e69a937f70a3a3d3c812b7122c",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00003/shape_cache.json": {
+        "c4": "9149ef4764db1abead7c396b077406c073f5698296ad836dde0710ba69feb735",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00003/sil.npz": {
+        "c4": "76175b24a491e66126ef078d69da562cd6a115ba5e5bdcb585b774f7e8a99178",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00003/visual.glb": {
+        "c4": "ff19c4388a233f6668f205abd96a23673acfc547e76bab0bf9467af332a38a72",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00004/geom.npz": {
+        "c4": "b00ab4f1693f03fa1b222563b57b8e3e769be8913889a7b00b4902ed3cc99eb8",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00004/info.json": {
+        "c4": "f8d400ce64837010fd47ed02025626d751ab8247b08bdd7dafdbff85c96c2ed6",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00004/shape_cache.json": {
+        "c4": "9149ef4764db1abead7c396b077406c073f5698296ad836dde0710ba69feb735",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00004/sil.npz": {
+        "c4": "242f7903b47b4b28a5ab93a2b7e9ca1f742f4f766f78a7809b86d655f5dd8244",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00004/visual.glb": {
+        "c4": "329f84019f38c1cd4be19e3c0fceef5fcafc39ff1c495e6508b87933fa89758b",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00005/geom.npz": {
+        "c4": "616d3d190bf0f7d4348dea1ce56e3df6e84fd1b3912f6c4f9467c11be9dab3dc",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00005/info.json": {
+        "c4": "196ba439c126825a6bac23fecfdbc0a22d56aab9c3fd6975faaa79537657e88d",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00005/shape_cache.json": {
+        "c4": "f9c75e6575906efe3eda81142429b635da57d42b0c76ef5c0133aff881570abc",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00005/sil.npz": {
+        "c4": "88bc0642deb7cd39eae77dd5f5ae2ae517aaffb999c0564824c88564d067ca39",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00005/visual.glb": {
+        "c4": "8fb5576c6d97b3534e36bc0441161fd72a3124968319dd501d3b20adb1dade7c",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00006/geom.npz": {
+        "c4": "b5c4807300f7278bd86cededf07d442ca3d87bd4c1767dc74f97cc1b36d82567",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00006/info.json": {
+        "c4": "1eab675616bd9f5c7d67f71a7faf311cc2612281161b55a46aca05e7ada61097",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00006/shape_cache.json": {
+        "c4": "f9c75e6575906efe3eda81142429b635da57d42b0c76ef5c0133aff881570abc",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00006/sil.npz": {
+        "c4": "89b28613193ad780408a95f5c37db9d12c8a0c814dd332e70aa8066baab2b8e0",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00006/visual.glb": {
+        "c4": "970cc9f0fe2fb2cce1364e576fe2e13a9b437a98a174982de94c92b4c204a1a1",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00007/geom.npz": {
+        "c4": "f029983bd5bb2ed0be8575208f68f6e0fe6e3dec1dd60827433d9827f12f6223",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00007/info.json": {
+        "c4": "c98848139c78ea661e4b8da1092a32cd157351a390a7509031f45780ed705f76",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00007/shape_cache.json": {
+        "c4": "f9c75e6575906efe3eda81142429b635da57d42b0c76ef5c0133aff881570abc",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00007/sil.npz": {
+        "c4": "2c2b351acb97f90bc20498b277466ad501137dd8964b9d79ee706166bb55e9a8",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00007/visual.glb": {
+        "c4": "7add9358576edd30021fcc8648eb37778396520648c029769c5b2d8c1a213b05",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00008/geom.npz": {
+        "c4": "c710af04abcd42c5b5e196b628ef8248ab03c35a5401be014d573618262ec346",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00008/info.json": {
+        "c4": "643a6ce7c53c5987e84b1eefc73c0c9816122d14a7356b9e1a40df6a8d60ed16",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00008/shape_cache.json": {
+        "c4": "f9c75e6575906efe3eda81142429b635da57d42b0c76ef5c0133aff881570abc",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00008/sil.npz": {
+        "c4": "4a5734516fc44d43ac0bff18c08d7215847f2ea4a31b2e8e835e9c90cddef7e4",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00008/visual.glb": {
+        "c4": "823d413e38b68a599cc6491d4482bd85477e2c855fafecd0e38760dc7abf823f",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00009/geom.npz": {
+        "c4": "068f62df503fd444ec36270f1c3da35d396393e666414f7bc0e24c63659dfb15",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00009/info.json": {
+        "c4": "f7924e8dc038608d02b4855d53817031f2b44dcf73784fceb11c8be9b853f694",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00009/shape_cache.json": {
+        "c4": "f9c75e6575906efe3eda81142429b635da57d42b0c76ef5c0133aff881570abc",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00009/sil.npz": {
+        "c4": "b94abc114338ad2a6880f91c21409aa389ae9a773c6865cecb560c20c65ccb17",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00009/visual.glb": {
+        "c4": "f85a418a2a927131f804ce113287db77b2aba6e3860cca9a9e82e317f69944a1",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00010/geom.npz": {
+        "c4": "97e1e8865fcfef6631d5775ae1d599ba8c42185d3b7807257e94161fd885c6a9",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00010/info.json": {
+        "c4": "459b12d6ec5c02a0ee338c4e0e16073622e46b5e399a6e769c3a54d07301b25a",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00010/shape_cache.json": {
+        "c4": "f444735d54cc60792163b76b60cddbcf91099c1d4961ac2e36bf08d73504da32",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00010/sil.npz": {
+        "c4": "6cd6cd225848914c01a692e5ee41c325c5399be13d6fc8c8d8cba493a3863306",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00010/visual.glb": {
+        "c4": "db0b2bbd2f3acba6f65970597cbbf0ba583c1f3d52923fd9877eb3e84d80a8f4",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00011/geom.npz": {
+        "c4": "f4a14f26fdffe75927cf16ac0956690af1fda2174a69dc78c49ba662de5e01be",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00011/info.json": {
+        "c4": "c253b7e16943d024e1379269be4196a2eb6c4778600338c48ea9b9939613b3c0",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00011/shape_cache.json": {
+        "c4": "f444735d54cc60792163b76b60cddbcf91099c1d4961ac2e36bf08d73504da32",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00011/sil.npz": {
+        "c4": "a2b4d0830fac93dafadea801e0c83f4c16016e9c587f7dd44afd2ab488c0384b",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00011/visual.glb": {
+        "c4": "3848ad42445f2d20ff23c185121cff830615970863e05703a9c98a406d5ee62c",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00012/geom.npz": {
+        "c4": "43959bb4ad9340d8d3ccc43e7f8a706e5c37adcb6a69741bdd47321a1ebb14d3",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00012/info.json": {
+        "c4": "b3118b9469c93b21bc76786c9fd60bd4c305456c08cdf6eb2cfa7336bba946fc",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00012/shape_cache.json": {
+        "c4": "f444735d54cc60792163b76b60cddbcf91099c1d4961ac2e36bf08d73504da32",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00012/sil.npz": {
+        "c4": "ca0f26c119dcd2206e41cb082671896810644b67ac349395ab7a177c4bce3521",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00012/visual.glb": {
+        "c4": "7edc1823ce63b74f99ac97b10b25625d635788a95da5a25a535c055c3082dd57",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00013/geom.npz": {
+        "c4": "75e44e928e179904217d951b29337b55829f6f7cc1d039d6c922987d16107d17",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00013/info.json": {
+        "c4": "4f14c07a4e6f3022bb151d8b2b12c81af54f62c82e208df0f1aecc40f864499d",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00013/shape_cache.json": {
+        "c4": "f444735d54cc60792163b76b60cddbcf91099c1d4961ac2e36bf08d73504da32",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00013/sil.npz": {
+        "c4": "9ecf3b46a83674333b8f4d55f716b5e5ba2c4df81e0eea101d6c14d89c4dad64",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00013/visual.glb": {
+        "c4": "f6d0e440e84371f8fbc82eb0748e388b53c9f5439ae853c143dfb2c4e5fa6af8",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00014/geom.npz": {
+        "c4": "8ee390dad9221a01a2a246a5b94e43bcc33eeed05adf350a5b15bb1039a89227",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00014/info.json": {
+        "c4": "79acea6dfdae1a9d9f645f5ec90676e3f6cd80071dec6eb6aae05af2a726b56f",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00014/shape_cache.json": {
+        "c4": "f444735d54cc60792163b76b60cddbcf91099c1d4961ac2e36bf08d73504da32",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00014/sil.npz": {
+        "c4": "9956da980f00e52849780ab20710ead2a47a27aa921e43ed694aa7dc9894ad21",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00014/visual.glb": {
+        "c4": "27881cb7421359300722a0c8eb174ff0b3ac63a516beb2cd89792bcd9d872705",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00015/geom.npz": {
+        "c4": "a39e7dad461c6d6db746e5fd8823208145408e17516e137a64a9d6b17873182e",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00015/info.json": {
+        "c4": "ca326012870d98c10dff19de1d67158adfe01252ac971cfa0a67943bedc47958",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00015/shape_cache.json": {
+        "c4": "a83573a503ab52fcb3232ff5a93d5c64436eaa61af5decb0d7835327694a13b1",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00015/sil.npz": {
+        "c4": "df9c7e8397348f64c9a75b4a269b2d00aa78d95ac133eff081a816ff07a530f8",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00015/visual.glb": {
+        "c4": "efc626bcddc7f46fd1b8ad6a431db04dead2eab3c6cf8f4ac67fe850743ae013",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00016/geom.npz": {
+        "c4": "9c558f5fb7b71f6788e63a7c44e51d9a7c00cd95c98af03b45518dbc14ff6d7d",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00016/info.json": {
+        "c4": "10fca084b6241c0398d2fcdb4fd50349d149a52cbe87e63f5cfb4b7628d38385",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00016/shape_cache.json": {
+        "c4": "a83573a503ab52fcb3232ff5a93d5c64436eaa61af5decb0d7835327694a13b1",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00016/sil.npz": {
+        "c4": "503c041a575cb91ecec96dc1bddc21a5e30825c986013e4813049e389a6d768b",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00016/visual.glb": {
+        "c4": "e59f38eab7f727f3bc194a84aba25b4e442a05ff863c7d92d9c69b2abff3e9b9",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00017/geom.npz": {
+        "c4": "c3837ff0396e5d8d4abc502b48c8b9384f4bdeceae203564b316651c1d9c85f6",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00017/info.json": {
+        "c4": "953c491833ad1a2479c93d4c5c91272b76532aca5d9f354efee5cad4b2649b28",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00017/shape_cache.json": {
+        "c4": "a83573a503ab52fcb3232ff5a93d5c64436eaa61af5decb0d7835327694a13b1",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00017/sil.npz": {
+        "c4": "8ca395cba0c7731df36d5e7bcca32b38eb7ea41f1a1e6820a57695253c4c4934",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00017/visual.glb": {
+        "c4": "af6e7a464b8d0710bcdbfa78c4ebe02b50e97b65a2598dc0a31fcb902ee3b362",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00018/geom.npz": {
+        "c4": "e23eeeedec8ea80d244a2f5baf8cb2ae76529eac63bbbb2f9fbc99c520dace2e",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00018/info.json": {
+        "c4": "3d7db43e4017099ec4d35ec3285766b2ffefa2429ac8991dc37a29e12a663889",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00018/shape_cache.json": {
+        "c4": "a83573a503ab52fcb3232ff5a93d5c64436eaa61af5decb0d7835327694a13b1",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00018/sil.npz": {
+        "c4": "eaa972f77b7c83186e4cd1d06721d026265c956b86ba49c35fb76770489c4708",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00018/visual.glb": {
+        "c4": "a7df42b11d2b90838641bc2ede78d357116d5a1ca32ea970e96c7e767ec4d74b",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00019/geom.npz": {
+        "c4": "a014b83b00162003df9e6cb7c3f0b663a821110d07c74ab9dd05f9609be2c339",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00019/info.json": {
+        "c4": "fe28444df4aa1d76e838beb54f1a40cd170088852077f1065f99b159b783afbe",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00019/shape_cache.json": {
+        "c4": "a83573a503ab52fcb3232ff5a93d5c64436eaa61af5decb0d7835327694a13b1",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00019/sil.npz": {
+        "c4": "6cd6dac629294b31bf1567fe1147f91dac3b96ca6f71f338861668dcbd668c36",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00019/visual.glb": {
+        "c4": "01e21b0472f3d76b3d69c7b21b8ea43a1e99dbb2c46c399a897eda8739e20b22",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00020/geom.npz": {
+        "c4": "061bc7f5a7fcaf69782d7b860b08c9ba1b5a5f5bf1fff9db348e9bfed2bcea3a",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00020/info.json": {
+        "c4": "b30fed4af2ef8f1863542ec29750e33e69407accf4649aad6e2e1f9967046707",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00020/shape_cache.json": {
+        "c4": "2b44495484e50b5a1d49851008d9370c3f74f102fcd0c7e9412abfdd1c7de3dd",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00020/sil.npz": {
+        "c4": "ff2af2b7f4c7b6fc3181d4dcf24221eba5cb25e1373bf7abd4d7c8b4723abe07",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00020/visual.glb": {
+        "c4": "afa00bac05e9eaf4694fb1a12953b963258969c11634b772d01ada7b35029812",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00021/geom.npz": {
+        "c4": "364e0ae5f10ceed31e8a0c0ad7726000be399b3f0087d6cff181a4801a7299e3",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00021/info.json": {
+        "c4": "5696e1e88da3943f52fe54e9f1bdee19801de4d5d6a6c187a1f40628d8230496",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00021/shape_cache.json": {
+        "c4": "2b44495484e50b5a1d49851008d9370c3f74f102fcd0c7e9412abfdd1c7de3dd",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00021/sil.npz": {
+        "c4": "835eeabcb4ba2cb4b5596ed1678267b0e40cd63194a4ee07513126dfc3d1e554",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00021/visual.glb": {
+        "c4": "8fbdaa8767068fbad21dc79ee619797fd0228856e45bbd5b5a29147ab94d3924",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00022/geom.npz": {
+        "c4": "1df2c14de57781a3ea2c9c27f68d5ffac98c09a374cd52aae7c6b3f4de1c45be",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00022/info.json": {
+        "c4": "e38871c8d86f6359399c351a802306835fceff3ece616b2b2219afd8c80514a2",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00022/shape_cache.json": {
+        "c4": "2b44495484e50b5a1d49851008d9370c3f74f102fcd0c7e9412abfdd1c7de3dd",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00022/sil.npz": {
+        "c4": "c7b12fae98e84f856c0f9864802854e349c1dbca09748a96a217b36f7f8871d8",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00022/visual.glb": {
+        "c4": "9fc3204a3ef45684ad6a89f139a402b86691976c27ba08d7e44b26c57ea3f1d6",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00023/geom.npz": {
+        "c4": "887c60c6974d074e0b759bf5fde1bbb2551237185b20303f8a7c5355287b41aa",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00023/info.json": {
+        "c4": "ae1e6914582879e9a868fdbe0f2d5d2e5a7cad1fd0562d4ad3305cbcfd26440e",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00023/shape_cache.json": {
+        "c4": "2b44495484e50b5a1d49851008d9370c3f74f102fcd0c7e9412abfdd1c7de3dd",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00023/sil.npz": {
+        "c4": "f816fcadd731fdc7208c775258dd2adc7bb4f5d79e16db11cbaa1a66f6a8f924",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00023/visual.glb": {
+        "c4": "c208cb656578500312d5a5b26d49702676535101980344cbed38f66dccb99601",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00024/geom.npz": {
+        "c4": "bc3e16481880cea3c0eb2d5d257ed18143c6f8e34625d46081a1bad685d94c55",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00024/info.json": {
+        "c4": "da9f5266f0c946c34da80c130f498de7f1921f9c5058e343918dd9607a95e3a2",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00024/shape_cache.json": {
+        "c4": "2b44495484e50b5a1d49851008d9370c3f74f102fcd0c7e9412abfdd1c7de3dd",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00024/sil.npz": {
+        "c4": "eed2eec6ae959a5a1ff2e17a54573ecdac2fc7c7eead96a676f644dd9ab1e1a5",
+        "c6": null
+      },
+      "Rigid/matryoshka_dolls/00024/visual.glb": {
+        "c4": "06ec62e6532f68a9cf70ce68e2ed5ac739d7d6770700bea97affae20212696bc",
+        "c6": null
+      },
+      "Rigid/minus/00000/geom.npz": {
+        "c4": "92129399034aeee91897c7fdb5e6345b785870fdfcff7c2582344d3ab6bc2f79",
+        "c6": null
+      },
+      "Rigid/minus/00000/info.json": {
+        "c4": "bf2db5d0525b9423d1eeeef36fe9b260b6fdd01d447439b1c2268d4256f285b0",
+        "c6": null
+      },
+      "Rigid/minus/00000/shape_cache.json": {
+        "c4": "62bb4fa065923a9871c68eaf650e5768a77b561b33f8caefec01de181f778d2f",
+        "c6": null
+      },
+      "Rigid/minus/00000/visual.glb": {
+        "c4": "9581c4ba443dc02977ff97e03d0214e14a28cffc66ba55fbc6b385510db710af",
+        "c6": null
+      },
+      "Rigid/mug/00010/geom.npz": {
+        "c4": "861cbef8a5a76a207170f291cef437af58dfab7c89315b8e0316a16d3df46e78",
+        "c6": null
+      },
+      "Rigid/mug/00010/info.json": {
+        "c4": "5c1f63038616e41067030ed90d1a8f451a30967b089234253b42d0f36e1285f5",
+        "c6": null
+      },
+      "Rigid/mug/00010/shape_cache.json": {
+        "c4": "9796b28f3045d7f4553862e62462e6a1822d1877e7051f1c6e0426755281e5ee",
+        "c6": null
+      },
+      "Rigid/mug/00010/sil.npz": {
+        "c4": "b8168b54a0ec7f8ac1cfdc253fc76cafec750aab6754793d0689c51850a26bf5",
+        "c6": null
+      },
+      "Rigid/mug/00010/visual.glb": {
+        "c4": "fdd813a665ffb420aba06a7d359aa659bdcca898480258c8e9e4b60d8764e49c",
+        "c6": null
+      },
+      "Rigid/mug/00011/geom.npz": {
+        "c4": "9a2ddbb2cce24e7a864f3c3ba39ff44b788806953ea7aa6433dc1305dbe71bba",
+        "c6": null
+      },
+      "Rigid/mug/00011/info.json": {
+        "c4": "c9c9587c6f5d769cb8ec2e4ffe285802a5389bc52f78daf2dc300a33757f50bc",
+        "c6": null
+      },
+      "Rigid/mug/00011/shape_cache.json": {
+        "c4": "a56c6ee549bd2134711b56da61818f2746cc462b01c2c181f5c5b35ae56bcaf1",
+        "c6": null
+      },
+      "Rigid/mug/00011/sil.npz": {
+        "c4": "e715970a728b93a0576fcc1c3047db22620c4900e975d25d38a3c3136d9effed",
+        "c6": null
+      },
+      "Rigid/mug/00011/visual.glb": {
+        "c4": "916df6336788d8612424b6c7a8bebf4f3ab6c5d0ee050f2c6522131f35154f97",
+        "c6": null
+      },
+      "Rigid/mug/00012/geom.npz": {
+        "c4": "cfb6fea59d70f3f6206cf285046666f0cd2cc79eb9150eaeecc57c0d548936f6",
+        "c6": null
+      },
+      "Rigid/mug/00012/info.json": {
+        "c4": "3a4e6a6fbbd76e422c7ff771256105b5912c14a9e2fb42d50ff7566530c97a50",
+        "c6": null
+      },
+      "Rigid/mug/00012/shape_cache.json": {
+        "c4": "78a248e18eb14f4271290713b886aa342aa5862e1ca7eb516429f53091768b8c",
+        "c6": null
+      },
+      "Rigid/mug/00012/sil.npz": {
+        "c4": "ad10292b9a924fbc433b460ebbcd4d31598ed3b77d60e78ef9229e6f39ae6918",
+        "c6": null
+      },
+      "Rigid/mug/00012/visual.glb": {
+        "c4": "813480556d04030728977b46ff571d6c8e6362c385b07a176672c35e37b78b94",
+        "c6": null
+      },
+      "Rigid/mug/00013/geom.npz": {
+        "c4": "e80858fd40bec0fa909e363c9b25a95939cb5ab8d4efd1a75d88bddf43fca719",
+        "c6": null
+      },
+      "Rigid/mug/00013/info.json": {
+        "c4": "63e6a2ead246f2fa275d17c7e6d29824a4b88c54acf97359eb83fceeff0f5cbd",
+        "c6": null
+      },
+      "Rigid/mug/00013/shape_cache.json": {
+        "c4": "78a248e18eb14f4271290713b886aa342aa5862e1ca7eb516429f53091768b8c",
+        "c6": null
+      },
+      "Rigid/mug/00013/sil.npz": {
+        "c4": "ad10292b9a924fbc433b460ebbcd4d31598ed3b77d60e78ef9229e6f39ae6918",
+        "c6": null
+      },
+      "Rigid/mug/00013/visual.glb": {
+        "c4": "30a5fa391b579d9a1ecbb962588697038c4262ddce83e4688966c8376deb1cfd",
+        "c6": null
+      },
+      "Rigid/mug/00014/geom.npz": {
+        "c4": "b4bb6048093f9fb374f659a6d3346d813c13885a68009e45e1c9bd1faf560cad",
+        "c6": null
+      },
+      "Rigid/mug/00014/info.json": {
+        "c4": "02fe13f4056d445ac08f4b03e2a345be7850db9718e4e0ff9b521bb92b7458d1",
+        "c6": null
+      },
+      "Rigid/mug/00014/shape_cache.json": {
+        "c4": "cd64b2bee0c10995d42415187e0a416e96c90a1f036da665da1fb1b87f005f9b",
+        "c6": null
+      },
+      "Rigid/mug/00014/sil.npz": {
+        "c4": "b1df6f49121414a30ea094ab7783c2a4abc2ddc2da16d7c136c1424acdcd81e9",
+        "c6": null
+      },
+      "Rigid/mug/00014/visual.glb": {
+        "c4": "7d37c38c69f19bd884a91c2317f1bc21011142217ca4288a331f98109f705baa",
+        "c6": null
+      },
+      "Rigid/mug/00015/geom.npz": {
+        "c4": "d3346a4d0c86de863919fd365fde07c1ff9514323c8d51e1bc1eed58d613c601",
+        "c6": null
+      },
+      "Rigid/mug/00015/info.json": {
+        "c4": "563492757d612939ef068b7632360efbbe66b2df6094f3d3cc44c1d4fad14dc9",
+        "c6": null
+      },
+      "Rigid/mug/00015/shape_cache.json": {
+        "c4": "556805f0dcfa0d33fe6413c04c1f4a584b83a47992a5cbf7fa072c44176a130b",
+        "c6": null
+      },
+      "Rigid/mug/00015/sil.npz": {
+        "c4": "35e8d2c64c77b283718f05aab69e9629fe695da4cffd91da5f0345c6c6333bb4",
+        "c6": null
+      },
+      "Rigid/mug/00015/visual.glb": {
+        "c4": "6ca919f3c31e4fb4326326bee762c676c0d3e0ace358a1d0bc38bbda6137d61b",
+        "c6": null
+      },
+      "Rigid/mug/00016/geom.npz": {
+        "c4": "861cbef8a5a76a207170f291cef437af58dfab7c89315b8e0316a16d3df46e78",
+        "c6": null
+      },
+      "Rigid/mug/00016/info.json": {
+        "c4": "39b99d12d0194560a5ec14c273b0ad89c528c83674ba3b443bbe7e5db07151a1",
+        "c6": null
+      },
+      "Rigid/mug/00016/shape_cache.json": {
+        "c4": "9796b28f3045d7f4553862e62462e6a1822d1877e7051f1c6e0426755281e5ee",
+        "c6": null
+      },
+      "Rigid/mug/00016/sil.npz": {
+        "c4": "b8168b54a0ec7f8ac1cfdc253fc76cafec750aab6754793d0689c51850a26bf5",
+        "c6": null
+      },
+      "Rigid/mug/00016/visual.glb": {
+        "c4": "fdd813a665ffb420aba06a7d359aa659bdcca898480258c8e9e4b60d8764e49c",
+        "c6": null
+      },
+      "Rigid/mug/00017/geom.npz": {
+        "c4": "3f126ceb100a665451c0a429e3dd26a1606d1136fce0550b54c510e2e3a769d5",
+        "c6": null
+      },
+      "Rigid/mug/00017/info.json": {
+        "c4": "4772ca3358c73af6ff4a84212a2aff460e3979d69538d259f4f7ab8b99aba98a",
+        "c6": null
+      },
+      "Rigid/mug/00017/shape_cache.json": {
+        "c4": "050244847def0fd93f6385cfc1a5ccbf4b612e97262586afef7f8983ea2d403f",
+        "c6": null
+      },
+      "Rigid/mug/00017/sil.npz": {
+        "c4": "b96a8c27ec29d5c14dc6d6a02a7c88280b9a20ffd3491deb4fbadaf1cfbdf7dd",
+        "c6": null
+      },
+      "Rigid/mug/00017/visual.glb": {
+        "c4": "7f959b6eb661692d768df33fd9875c12ff1b6d160a63333ed612f41a80569862",
+        "c6": null
+      },
+      "Rigid/mug/00018/geom.npz": {
+        "c4": "55ac0caa177322a2904ccd7d375f29c1dc3ba28fb93799a384b1aea8ba443f5d",
+        "c6": null
+      },
+      "Rigid/mug/00018/info.json": {
+        "c4": "a7d913991b5779cf059f65d0b442474bb9ffd3050f051b4749edb32fb46f0086",
+        "c6": null
+      },
+      "Rigid/mug/00018/shape_cache.json": {
+        "c4": "bb3fb28df2d79a31947514ad4923dd02191e750d3396f3711e596105cd75bab6",
+        "c6": null
+      },
+      "Rigid/mug/00018/sil.npz": {
+        "c4": "57d16fcd3b51fc7bd3c0a23c2bcd0918256c8186b9b2d73535ec47982002240c",
+        "c6": null
+      },
+      "Rigid/mug/00018/visual.glb": {
+        "c4": "a1cbc06c7cb6ff110460597d4ac2fd4f8702f3931b0505c58ee3d6fe5e1d7be3",
+        "c6": null
+      },
+      "Rigid/mug/00019/geom.npz": {
+        "c4": "0d3d7b691320b67220540af992adb1e5293d3638a7877339b63b997563240c2d",
+        "c6": null
+      },
+      "Rigid/mug/00019/info.json": {
+        "c4": "091f7ac9ed58659df8595ae7c351ad976a246cf4b038204e502a83ba63f4688f",
+        "c6": null
+      },
+      "Rigid/mug/00019/shape_cache.json": {
+        "c4": "beb5f556c50571f3ff88d47ebe93a5137662d781a11c9044eefb842acc9f4392",
+        "c6": null
+      },
+      "Rigid/mug/00019/sil.npz": {
+        "c4": "1707d7e5e0a81daffff9d79cc5b8b0e355d5e129e3bd5793be0d257df6986c5a",
+        "c6": null
+      },
+      "Rigid/mug/00019/visual.glb": {
+        "c4": "177aa69a9091b04f3c761c91175351caabcf16d4ec4f7c822ca19987d569dabd",
+        "c6": null
+      },
+      "Rigid/multiplication/00000/geom.npz": {
+        "c4": "77b43b9c909ee203be75ab3c78a693c95186712b0d18795ed31d7bc48c5c9b0e",
+        "c6": null
+      },
+      "Rigid/multiplication/00000/info.json": {
+        "c4": "dbf68846218791bbf3bc6cda7f90a36d4950a6b8e3298ffbd87ed0e5abfc8e9d",
+        "c6": null
+      },
+      "Rigid/multiplication/00000/shape_cache.json": {
+        "c4": "87b2fb0980a0d8aed77b7b93a157acb821fed7f4018bd25e1206f5c17d3effe6",
+        "c6": null
+      },
+      "Rigid/multiplication/00000/visual.glb": {
+        "c4": "da2751f334205c1f3ad50e447e538b94c508e52f3f674947743399f276695fd2",
+        "c6": null
+      },
+      "Rigid/number/00000/geom.npz": {
+        "c4": "3c4c0016fd9d9a372be9213701ea8481cbb535510c39969131d923dfd09d2926",
+        "c6": null
+      },
+      "Rigid/number/00000/info.json": {
+        "c4": "cde7ff179e84e97e45bcd7cf5b3214a6df97034f30de0132bf125a0ac9504b32",
+        "c6": null
+      },
+      "Rigid/number/00000/shape_cache.json": {
+        "c4": "986cbc280ca42ccdc60943976e9f645699e783c6d13fd1ccb3daf9fadb792273",
+        "c6": null
+      },
+      "Rigid/number/00000/visual.glb": {
+        "c4": "924500e3b1ad96a620b675fa888522013055c4bbedd9b5c6f1bb88f1bc35f46d",
+        "c6": null
+      },
+      "Rigid/number/00001/geom.npz": {
+        "c4": "6901638a7fe68fe117c49af3fd57feeb2b07bfead332b5cbeb34bf45e04b08c0",
+        "c6": null
+      },
+      "Rigid/number/00001/info.json": {
+        "c4": "aa3c79fdcf808960b0e2c2283505416560b872e0614331a8e92b24057065066f",
+        "c6": null
+      },
+      "Rigid/number/00001/shape_cache.json": {
+        "c4": "992a2c11e911b5fa2315ac04ca968e3cb49920e207bc8750f59f75f739bbd8ca",
+        "c6": null
+      },
+      "Rigid/number/00001/visual.glb": {
+        "c4": "eb6eb1259e864b6d5e84f4b352c69e1dfd2e8d3c9d9704218421ac3b2c04af60",
+        "c6": null
+      },
+      "Rigid/number/00002/geom.npz": {
+        "c4": "a6679180a44b74bfda0d11309987c6cbe8c3bf60d777f74d91f901d76a971a86",
+        "c6": null
+      },
+      "Rigid/number/00002/info.json": {
+        "c4": "d3f293874497f63a8d8644e68824ad4d2d66dac980151df40fc4ae7768f16ace",
+        "c6": null
+      },
+      "Rigid/number/00002/shape_cache.json": {
+        "c4": "689ddc08a5d4c288315c304f9c0dbb6ebe3ccd4eb897ce2c2348931e91f82c37",
+        "c6": null
+      },
+      "Rigid/number/00002/sil.npz": {
+        "c4": "480afe603694f9a992c96f4c830067c6d00c5013553e4aeccbc6d551893d21a5",
+        "c6": null
+      },
+      "Rigid/number/00002/visual.glb": {
+        "c4": "6019e2f62ec737d74c1c5a6133ebfb709fd98b953ef9c2949d6cc6a93ff678a9",
+        "c6": null
+      },
+      "Rigid/number/00003/geom.npz": {
+        "c4": "1b2962b586b2e05318343c406c8c4ca0ca4576fb2cdfbf076c0f89e66f8ee0ca",
+        "c6": null
+      },
+      "Rigid/number/00003/info.json": {
+        "c4": "19462d6d35c0ff8cd7871af70b0bcd7bca16bd1a1d07ea971525ac03496749ad",
+        "c6": null
+      },
+      "Rigid/number/00003/shape_cache.json": {
+        "c4": "f188417b6b61ed31ad4f1f76db88bf4fd2da41ba8475f5a8339e156c5b59764d",
+        "c6": null
+      },
+      "Rigid/number/00003/sil.npz": {
+        "c4": "1aaf8a37db020da3e467f5afc4d070de1ac2355f138848bf6481ac73a4fe0081",
+        "c6": null
+      },
+      "Rigid/number/00003/visual.glb": {
+        "c4": "d90fcf1ed23689bafa7dd553b49eae322f5e93ea9eca11c58fbdaa533f00fa9b",
+        "c6": null
+      },
+      "Rigid/number/00004/geom.npz": {
+        "c4": "aa67c8c309d1a480e33afd8894be8b4bca58a45928a8002fe614d129968c0803",
+        "c6": null
+      },
+      "Rigid/number/00004/info.json": {
+        "c4": "5a9e02a9ce5515031f21cb03b2b2587e7b322b5e8bc4843c84c747364ec5379d",
+        "c6": null
+      },
+      "Rigid/number/00004/shape_cache.json": {
+        "c4": "81f2b5f930e93ac207382c68a4198f92f8971c0d3783a0c92b25296477754ecb",
+        "c6": null
+      },
+      "Rigid/number/00004/sil.npz": {
+        "c4": "8290eaa0c3396a994ead0550ec370290e183ce97294f4403a7fc5072f8ed2ebe",
+        "c6": null
+      },
+      "Rigid/number/00004/visual.glb": {
+        "c4": "48aac65026998bdc21b6e6786658c1b146eb31f6c2b07bf456863c3510e857b2",
+        "c6": null
+      },
+      "Rigid/number/00005/geom.npz": {
+        "c4": "0742edaedb77816cfea9eb363032d9ecf8bbb298d7f69443e1cad3be1ad86240",
+        "c6": null
+      },
+      "Rigid/number/00005/info.json": {
+        "c4": "8351238032335582591942e68cade8f28dd5e3e81e31bad456f9eac00c5a4780",
+        "c6": null
+      },
+      "Rigid/number/00005/shape_cache.json": {
+        "c4": "81f2b5f930e93ac207382c68a4198f92f8971c0d3783a0c92b25296477754ecb",
+        "c6": null
+      },
+      "Rigid/number/00005/sil.npz": {
+        "c4": "bf90d2fef2c46b067d9cf7f758b9ab75ab23845ecc77ece8064cd6ea08d9350c",
+        "c6": null
+      },
+      "Rigid/number/00005/visual.glb": {
+        "c4": "ac64972ea9ff67d79be0aa852ca45ba63f945227f9e98d10b22c40d5297569c5",
+        "c6": null
+      },
+      "Rigid/number/00006/geom.npz": {
+        "c4": "0474795c3151c1bcdb7c56790a9bac4f9d02684936c250890514ffb6def1dc19",
+        "c6": null
+      },
+      "Rigid/number/00006/info.json": {
+        "c4": "65a92d12d305b6857c7395244491dfd31eba6cd284a47454f5ed0590af5f3647",
+        "c6": null
+      },
+      "Rigid/number/00006/shape_cache.json": {
+        "c4": "cc35a5b128444566342bf9ec206764cff6854101bf5394c25c22633c291d1814",
+        "c6": null
+      },
+      "Rigid/number/00006/sil.npz": {
+        "c4": "21df30dd00351bddd98fc2f5d3afa4bf0da21c8a021d9817218b909a47346e84",
+        "c6": null
+      },
+      "Rigid/number/00006/visual.glb": {
+        "c4": "0abdd5099780e1ab81a9986dc432206d477674c7cbbc682eeac6e72fcdea9440",
+        "c6": null
+      },
+      "Rigid/number/00007/geom.npz": {
+        "c4": "93fa5683a92465d2a904d72fafbd54bea1ceae3c096669670dc77a719b6c9c62",
+        "c6": null
+      },
+      "Rigid/number/00007/info.json": {
+        "c4": "796bb85e46382285ec25c6f3e6e422a64f20a6e0351f4255f30a232a931094c4",
+        "c6": null
+      },
+      "Rigid/number/00007/shape_cache.json": {
+        "c4": "69b282ac34dab06d02681fe237b7542f3fc763e419333a9f97349c573ecede36",
+        "c6": null
+      },
+      "Rigid/number/00007/visual.glb": {
+        "c4": "65cb016bc53b965b7ddae2cc8ed458271c240186cecf0ba5fbc82f698c86135f",
+        "c6": null
+      },
+      "Rigid/number/00008/geom.npz": {
+        "c4": "9ca8abce57ec83d571f39a9751a0910700da36c714adcae3808150115bba4db3",
+        "c6": null
+      },
+      "Rigid/number/00008/info.json": {
+        "c4": "71a9a72e62094ca9afc44a6a7ee9831b65af8f062a3c65f9ca8de227cb46f62d",
+        "c6": null
+      },
+      "Rigid/number/00008/shape_cache.json": {
+        "c4": "30e6b2153e394312896603ccb0bdc80d87b2eb1b6b09d8a08bcc5e785699b561",
+        "c6": null
+      },
+      "Rigid/number/00008/sil.npz": {
+        "c4": "56e7dd3fd01784ae735c03daf5ddf33fde131c6b925f0717b95411e5c4a37f29",
+        "c6": null
+      },
+      "Rigid/number/00008/visual.glb": {
+        "c4": "71e8a21466d5597a48e9ff5697ed2843376908c13a778afea5a08cce6db109fb",
+        "c6": null
+      },
+      "Rigid/number/00009/geom.npz": {
+        "c4": "01a2bb58670a53d133461dfacb7a2d5b416e3090e4b8cb348dded7f8fd89639f",
+        "c6": null
+      },
+      "Rigid/number/00009/info.json": {
+        "c4": "c9940393dd42b350f9e58043f453ab11ddf0b75daaf413c655b6d711fd899851",
+        "c6": null
+      },
+      "Rigid/number/00009/shape_cache.json": {
+        "c4": "cc35a5b128444566342bf9ec206764cff6854101bf5394c25c22633c291d1814",
+        "c6": null
+      },
+      "Rigid/number/00009/sil.npz": {
+        "c4": "1a14437c034782020610036a85bafb3cac17bc108234f3cdf89a25a88a92fa61",
+        "c6": null
+      },
+      "Rigid/number/00009/visual.glb": {
+        "c4": "1088bc13a16d0b75e6c4cb08aa327f4eb45a2c129ddaa3bb41b2bf49a45d1235",
+        "c6": null
+      },
+      "Rigid/number/00010/geom.npz": {
+        "c4": "1934ec70417b2e300f1b1153705075d6a3d9b40cab678b077a97d0b282c627f7",
+        "c6": null
+      },
+      "Rigid/number/00010/info.json": {
+        "c4": "b37bf4d765a8067c611dda868998a3b52d40645f783c82453222d469192bb301",
+        "c6": null
+      },
+      "Rigid/number/00010/shape_cache.json": {
+        "c4": "986cbc280ca42ccdc60943976e9f645699e783c6d13fd1ccb3daf9fadb792273",
+        "c6": null
+      },
+      "Rigid/number/00010/visual.glb": {
+        "c4": "1bf3cd90f141fcec42b1a92bf0bee08bf91d5a6b491a13ecd896ffb0212a7075",
+        "c6": null
+      },
+      "Rigid/number/00011/geom.npz": {
+        "c4": "1c0e9f0a4a43307fbd1c525e85e99fb446be6e84eca1b84689ef316df651322a",
+        "c6": null
+      },
+      "Rigid/number/00011/info.json": {
+        "c4": "702a7475aded04037bd0c6c1af5b2a7b7727fc734abb8fa77b01c1e8fe7dd2ce",
+        "c6": null
+      },
+      "Rigid/number/00011/shape_cache.json": {
+        "c4": "992a2c11e911b5fa2315ac04ca968e3cb49920e207bc8750f59f75f739bbd8ca",
+        "c6": null
+      },
+      "Rigid/number/00011/visual.glb": {
+        "c4": "58bbf7777d0bc20704b79e027cddf1a91bf140f96134d450baf3b26e13e9d582",
+        "c6": null
+      },
+      "Rigid/number/00012/geom.npz": {
+        "c4": "1d6f757fcddaf0b1b4686e41aa7f8d64f77ba49d56328624d454c17bc42f0b43",
+        "c6": null
+      },
+      "Rigid/number/00012/info.json": {
+        "c4": "85453a3421ca4bd5dbfd7a9bbaaaab3e8792fc349f961bf5150796035e645bf8",
+        "c6": null
+      },
+      "Rigid/number/00012/shape_cache.json": {
+        "c4": "689ddc08a5d4c288315c304f9c0dbb6ebe3ccd4eb897ce2c2348931e91f82c37",
+        "c6": null
+      },
+      "Rigid/number/00012/sil.npz": {
+        "c4": "480afe603694f9a992c96f4c830067c6d00c5013553e4aeccbc6d551893d21a5",
+        "c6": null
+      },
+      "Rigid/number/00012/visual.glb": {
+        "c4": "42874cc17876fd4aa2bfbc053392bf175d7c9115cfe269ba6d905e50b2e48629",
+        "c6": null
+      },
+      "Rigid/number/00013/geom.npz": {
+        "c4": "e543f2446b686023564e2be75bbc9de271dadf29dd8eb12ed7f9c7415c79361f",
+        "c6": null
+      },
+      "Rigid/number/00013/info.json": {
+        "c4": "c12a2cbf3555df19d93488679cdfc2e6b7a5540629b756f16d38ccb958ae14e8",
+        "c6": null
+      },
+      "Rigid/number/00013/shape_cache.json": {
+        "c4": "f188417b6b61ed31ad4f1f76db88bf4fd2da41ba8475f5a8339e156c5b59764d",
+        "c6": null
+      },
+      "Rigid/number/00013/sil.npz": {
+        "c4": "1aaf8a37db020da3e467f5afc4d070de1ac2355f138848bf6481ac73a4fe0081",
+        "c6": null
+      },
+      "Rigid/number/00013/visual.glb": {
+        "c4": "02a209f6901b27a9b9522bb88549b2d93040867117619de527dc9be1bd26e5d7",
+        "c6": null
+      },
+      "Rigid/number/00014/geom.npz": {
+        "c4": "8c3643043c5c2efb4e5a489b613e2a4ea38258c783a2ee58548df4c2215af6eb",
+        "c6": null
+      },
+      "Rigid/number/00014/info.json": {
+        "c4": "5795ae5f024f3445ad63fa70abc03571c113a9fd49853dfba3b0f21977c8b90e",
+        "c6": null
+      },
+      "Rigid/number/00014/shape_cache.json": {
+        "c4": "81f2b5f930e93ac207382c68a4198f92f8971c0d3783a0c92b25296477754ecb",
+        "c6": null
+      },
+      "Rigid/number/00014/sil.npz": {
+        "c4": "8290eaa0c3396a994ead0550ec370290e183ce97294f4403a7fc5072f8ed2ebe",
+        "c6": null
+      },
+      "Rigid/number/00014/visual.glb": {
+        "c4": "33cb5c7d1ac6a8a6ec36d81535d5a57303481623dac98f20f2dd3d17c1bde149",
+        "c6": null
+      },
+      "Rigid/number/00015/geom.npz": {
+        "c4": "1ad80140d1381e423376c84ecd5720d3a6f129dd5059eac047b78d6b93444d94",
+        "c6": null
+      },
+      "Rigid/number/00015/info.json": {
+        "c4": "5ce318861326d1c5b08b5c3d193cb498d683731325b1881c4c3269306cc515ad",
+        "c6": null
+      },
+      "Rigid/number/00015/shape_cache.json": {
+        "c4": "81f2b5f930e93ac207382c68a4198f92f8971c0d3783a0c92b25296477754ecb",
+        "c6": null
+      },
+      "Rigid/number/00015/sil.npz": {
+        "c4": "bf90d2fef2c46b067d9cf7f758b9ab75ab23845ecc77ece8064cd6ea08d9350c",
+        "c6": null
+      },
+      "Rigid/number/00015/visual.glb": {
+        "c4": "29668c9f2d3b08143df0ddf84d6d8e45f1a9521319ea571bfd798f05446d10c4",
+        "c6": null
+      },
+      "Rigid/number/00016/geom.npz": {
+        "c4": "c7b8d817bcfd72f7a34bd38b1d5f446f31acc861cd8094bee663119f9e1b744a",
+        "c6": null
+      },
+      "Rigid/number/00016/info.json": {
+        "c4": "252be0931d3e9a51272a849e139ef8fa63246ab783cf0eedcc556fe0a3d3f3f8",
+        "c6": null
+      },
+      "Rigid/number/00016/shape_cache.json": {
+        "c4": "cc35a5b128444566342bf9ec206764cff6854101bf5394c25c22633c291d1814",
+        "c6": null
+      },
+      "Rigid/number/00016/sil.npz": {
+        "c4": "21df30dd00351bddd98fc2f5d3afa4bf0da21c8a021d9817218b909a47346e84",
+        "c6": null
+      },
+      "Rigid/number/00016/visual.glb": {
+        "c4": "3106d3baff977e16400201fb57a9f19bfb8b9ae703dd571b44accff01ed04028",
+        "c6": null
+      },
+      "Rigid/number/00017/geom.npz": {
+        "c4": "4a75124eb4359c644f5390e7374190b9940690b3e5dbdf600828ae75ba79819e",
+        "c6": null
+      },
+      "Rigid/number/00017/info.json": {
+        "c4": "4d76bb7e0a84c34fbe43360b4e887b1ede1023570e179da09a95ba55df377b43",
+        "c6": null
+      },
+      "Rigid/number/00017/shape_cache.json": {
+        "c4": "69b282ac34dab06d02681fe237b7542f3fc763e419333a9f97349c573ecede36",
+        "c6": null
+      },
+      "Rigid/number/00017/visual.glb": {
+        "c4": "b2a18ee52ac414d6e30e27c260206eb9a8b220642e4bffb825c58988ce823a8c",
+        "c6": null
+      },
+      "Rigid/number/00018/geom.npz": {
+        "c4": "78a03fde690a106be2b514c428d123d631fb11b888e39b79e4b9e59f819ea323",
+        "c6": null
+      },
+      "Rigid/number/00018/info.json": {
+        "c4": "4061992206ccb42d204c454d8dfb0392d35f09bdd0aff7eded7085a05f3ac19c",
+        "c6": null
+      },
+      "Rigid/number/00018/shape_cache.json": {
+        "c4": "30e6b2153e394312896603ccb0bdc80d87b2eb1b6b09d8a08bcc5e785699b561",
+        "c6": null
+      },
+      "Rigid/number/00018/sil.npz": {
+        "c4": "56e7dd3fd01784ae735c03daf5ddf33fde131c6b925f0717b95411e5c4a37f29",
+        "c6": null
+      },
+      "Rigid/number/00018/visual.glb": {
+        "c4": "4e5b51252ca5ae3998356b642f369cd4584cda13d6084af5fba728aa583f4340",
+        "c6": null
+      },
+      "Rigid/number/00019/geom.npz": {
+        "c4": "76011a5339b735e10b42a04218309ab5e837009dd67c94c9ce656bcb1421bc4a",
+        "c6": null
+      },
+      "Rigid/number/00019/info.json": {
+        "c4": "e91f5b10621f504d8d0d48ba116d52940bd14132a24dccac55525f3160fc90a0",
+        "c6": null
+      },
+      "Rigid/number/00019/shape_cache.json": {
+        "c4": "cc35a5b128444566342bf9ec206764cff6854101bf5394c25c22633c291d1814",
+        "c6": null
+      },
+      "Rigid/number/00019/sil.npz": {
+        "c4": "1a14437c034782020610036a85bafb3cac17bc108234f3cdf89a25a88a92fa61",
+        "c6": null
+      },
+      "Rigid/number/00019/visual.glb": {
+        "c4": "ad37d8a493a6fbf720c22829b1aa9a54348e66ea05f6098b74b73a74a7a268ad",
+        "c6": null
+      },
+      "Rigid/number/00020/geom.npz": {
+        "c4": "49f68e092809a7995eddbfaca53d0a77e30648dbf68900be56435cfa4e2c7b3c",
+        "c6": null
+      },
+      "Rigid/number/00020/info.json": {
+        "c4": "59cad70e6a65288286fa6ab280b809f8b32459ce1a3d6485f7a2de1512527c62",
+        "c6": null
+      },
+      "Rigid/number/00020/shape_cache.json": {
+        "c4": "986cbc280ca42ccdc60943976e9f645699e783c6d13fd1ccb3daf9fadb792273",
+        "c6": null
+      },
+      "Rigid/number/00020/visual.glb": {
+        "c4": "abefccfaf2ba30bc8274cec1cbcb6c4a61ae215a3d644c78696f868b49615c62",
+        "c6": null
+      },
+      "Rigid/number/00021/geom.npz": {
+        "c4": "74948d08894470066ea572a1013349e25bf4e02a421ee56818ce60e8e1350090",
+        "c6": null
+      },
+      "Rigid/number/00021/info.json": {
+        "c4": "83f56a7706ebc9727e038acf4dacaa74181986e7912f9a2dbaf7c9d0784050ad",
+        "c6": null
+      },
+      "Rigid/number/00021/shape_cache.json": {
+        "c4": "992a2c11e911b5fa2315ac04ca968e3cb49920e207bc8750f59f75f739bbd8ca",
+        "c6": null
+      },
+      "Rigid/number/00021/visual.glb": {
+        "c4": "fdec0f762c13df28a131e2486dcacf96ef4fe0860aca5a2002ed977300c1f35a",
+        "c6": null
+      },
+      "Rigid/number/00022/geom.npz": {
+        "c4": "ccbf078e41bdd949b6f3d7af79ccff9dc91e93b0303349cb85e6f1c7ee9b3d09",
+        "c6": null
+      },
+      "Rigid/number/00022/info.json": {
+        "c4": "3651fb9de5f89b7169edab3c3168951f320e5ee7004bccbb0efdce9f0ce1dc8e",
+        "c6": null
+      },
+      "Rigid/number/00022/shape_cache.json": {
+        "c4": "689ddc08a5d4c288315c304f9c0dbb6ebe3ccd4eb897ce2c2348931e91f82c37",
+        "c6": null
+      },
+      "Rigid/number/00022/sil.npz": {
+        "c4": "480afe603694f9a992c96f4c830067c6d00c5013553e4aeccbc6d551893d21a5",
+        "c6": null
+      },
+      "Rigid/number/00022/visual.glb": {
+        "c4": "c398e17011dff1e35de9dd7a1947b4e422f71650b7be550248ee124e79c73640",
+        "c6": null
+      },
+      "Rigid/number/00023/geom.npz": {
+        "c4": "025ff0db0d27caf199df000b5612152fb42ee9c6dce7e9db300f13affab7939f",
+        "c6": null
+      },
+      "Rigid/number/00023/info.json": {
+        "c4": "3058aaa3f0c88f1b9ced3ea890fde51beb4391ffc778eafcd9b04da8956768c9",
+        "c6": null
+      },
+      "Rigid/number/00023/shape_cache.json": {
+        "c4": "f188417b6b61ed31ad4f1f76db88bf4fd2da41ba8475f5a8339e156c5b59764d",
+        "c6": null
+      },
+      "Rigid/number/00023/sil.npz": {
+        "c4": "1aaf8a37db020da3e467f5afc4d070de1ac2355f138848bf6481ac73a4fe0081",
+        "c6": null
+      },
+      "Rigid/number/00023/visual.glb": {
+        "c4": "b1f8f02ed6a0074cb292d5b46b1f95305ab1a475d9a9660ccb2f5de9ca6481db",
+        "c6": null
+      },
+      "Rigid/number/00024/geom.npz": {
+        "c4": "517bf13ef3859c99b9242eeeb89235f37ab17e8cdf9c3789a5c81abd79e49cea",
+        "c6": null
+      },
+      "Rigid/number/00024/info.json": {
+        "c4": "1b5f437cf6c731679c70e2d6ec46af008fe5ab074e7cdd1caaff32e47363876e",
+        "c6": null
+      },
+      "Rigid/number/00024/shape_cache.json": {
+        "c4": "81f2b5f930e93ac207382c68a4198f92f8971c0d3783a0c92b25296477754ecb",
+        "c6": null
+      },
+      "Rigid/number/00024/sil.npz": {
+        "c4": "8290eaa0c3396a994ead0550ec370290e183ce97294f4403a7fc5072f8ed2ebe",
+        "c6": null
+      },
+      "Rigid/number/00024/visual.glb": {
+        "c4": "34278ee58d1739f510ced05be6b2aa666ffe2e281652839227a929c520df5fed",
+        "c6": null
+      },
+      "Rigid/number/00025/geom.npz": {
+        "c4": "38d84b4f32a79f9036dc5c99c8a881705a95779db46e1610e8fc6c4b84287b67",
+        "c6": null
+      },
+      "Rigid/number/00025/info.json": {
+        "c4": "6595309f15fb4943d48f1439101dd4d6c79b9a61c72507a01df645ffd3838b8c",
+        "c6": null
+      },
+      "Rigid/number/00025/shape_cache.json": {
+        "c4": "81f2b5f930e93ac207382c68a4198f92f8971c0d3783a0c92b25296477754ecb",
+        "c6": null
+      },
+      "Rigid/number/00025/sil.npz": {
+        "c4": "bf90d2fef2c46b067d9cf7f758b9ab75ab23845ecc77ece8064cd6ea08d9350c",
+        "c6": null
+      },
+      "Rigid/number/00025/visual.glb": {
+        "c4": "35a1f315a207b3f9c8404aa67dc0302cb56eb8750ae5b74e628303d31da697fb",
+        "c6": null
+      },
+      "Rigid/number/00026/geom.npz": {
+        "c4": "7d444d3516999825d54b5114f6b21c1188cdd2b6eedddbb99fc3bd378a7bca63",
+        "c6": null
+      },
+      "Rigid/number/00026/info.json": {
+        "c4": "8158b366ffe1c69892a474230ea58b03f9ac9741ba658361b3ac0e8ade58633b",
+        "c6": null
+      },
+      "Rigid/number/00026/shape_cache.json": {
+        "c4": "cc35a5b128444566342bf9ec206764cff6854101bf5394c25c22633c291d1814",
+        "c6": null
+      },
+      "Rigid/number/00026/sil.npz": {
+        "c4": "21df30dd00351bddd98fc2f5d3afa4bf0da21c8a021d9817218b909a47346e84",
+        "c6": null
+      },
+      "Rigid/number/00026/visual.glb": {
+        "c4": "6c70e0c37eee3f18dd802a1d9460086483ff965776c347b25ed826515fa4d0e4",
+        "c6": null
+      },
+      "Rigid/number/00027/geom.npz": {
+        "c4": "c5188a87dc3a16def8eca2e878ebee6d639c292bb434fcdbac65affe93590517",
+        "c6": null
+      },
+      "Rigid/number/00027/info.json": {
+        "c4": "f7755fabbec55f47ed8fa5034d332b7a40957f4b2c822b7dd02e2d31f119f58c",
+        "c6": null
+      },
+      "Rigid/number/00027/shape_cache.json": {
+        "c4": "69b282ac34dab06d02681fe237b7542f3fc763e419333a9f97349c573ecede36",
+        "c6": null
+      },
+      "Rigid/number/00027/visual.glb": {
+        "c4": "26dbe9a66cb66f49572a36f40d98c741cf747a83d0fffc061c79276177982833",
+        "c6": null
+      },
+      "Rigid/number/00028/geom.npz": {
+        "c4": "252ad1b490084e4d72a0be05e5d8ac4d34b075a479f4048aa25cc570ab7d93ec",
+        "c6": null
+      },
+      "Rigid/number/00028/info.json": {
+        "c4": "b5d9d9b87defbddd66957ead7199aa658b8f7e9e183ce156c6038664773b5cb9",
+        "c6": null
+      },
+      "Rigid/number/00028/shape_cache.json": {
+        "c4": "30e6b2153e394312896603ccb0bdc80d87b2eb1b6b09d8a08bcc5e785699b561",
+        "c6": null
+      },
+      "Rigid/number/00028/sil.npz": {
+        "c4": "56e7dd3fd01784ae735c03daf5ddf33fde131c6b925f0717b95411e5c4a37f29",
+        "c6": null
+      },
+      "Rigid/number/00028/visual.glb": {
+        "c4": "e92d1182375f7e1b93570eb4d6f2a97fb06983ccf34fafdb909690a3789f845b",
+        "c6": null
+      },
+      "Rigid/number/00029/geom.npz": {
+        "c4": "3af54444050dd44f110f30bf2885f0f2a0bcb41335fb25965667c0ee5f1aa99a",
+        "c6": null
+      },
+      "Rigid/number/00029/info.json": {
+        "c4": "f4864e98e9e406b7f1aa99f2c71bee2066e87647a95b05dba9561918f9d9e619",
+        "c6": null
+      },
+      "Rigid/number/00029/shape_cache.json": {
+        "c4": "cc35a5b128444566342bf9ec206764cff6854101bf5394c25c22633c291d1814",
+        "c6": null
+      },
+      "Rigid/number/00029/sil.npz": {
+        "c4": "1a14437c034782020610036a85bafb3cac17bc108234f3cdf89a25a88a92fa61",
+        "c6": null
+      },
+      "Rigid/number/00029/visual.glb": {
+        "c4": "d5776f4814cf45e3f57e14343544822734ef0d6485ec6240847ff93d268b61df",
+        "c6": null
+      },
+      "Rigid/number/00030/geom.npz": {
+        "c4": "b8fe6773394df9fbad3d7f11c61773d84447ae936d8a9337f68ad790b7a97e0b",
+        "c6": null
+      },
+      "Rigid/number/00030/info.json": {
+        "c4": "20e8664c05804984fcb6084427a68763798d568308c267b8a1e5e275a9298c12",
+        "c6": null
+      },
+      "Rigid/number/00030/shape_cache.json": {
+        "c4": "986cbc280ca42ccdc60943976e9f645699e783c6d13fd1ccb3daf9fadb792273",
+        "c6": null
+      },
+      "Rigid/number/00030/visual.glb": {
+        "c4": "2a6424e8424d80205c0e001bfcd633513fa37000a8e057acc2a26bbd9ed17aa2",
+        "c6": null
+      },
+      "Rigid/number/00031/geom.npz": {
+        "c4": "a60f2cb4a0dca714df30bc9985d6320bd0980e6dfb6f32bccb1d0a12bda86153",
+        "c6": null
+      },
+      "Rigid/number/00031/info.json": {
+        "c4": "2b6e3f65e88c0071b883e51a87112e4318bd12ded31394d534dbf805610260c0",
+        "c6": null
+      },
+      "Rigid/number/00031/shape_cache.json": {
+        "c4": "992a2c11e911b5fa2315ac04ca968e3cb49920e207bc8750f59f75f739bbd8ca",
+        "c6": null
+      },
+      "Rigid/number/00031/visual.glb": {
+        "c4": "6dee7bdea52c5feb79d868f2c9b23b8ee5c8be712c4719aaaf9cbd1612c4800f",
+        "c6": null
+      },
+      "Rigid/number/00032/geom.npz": {
+        "c4": "ed95c862df0b59b590f5fe0e97ff55fd3e153564497d196ca848f9057cb8811d",
+        "c6": null
+      },
+      "Rigid/number/00032/info.json": {
+        "c4": "5b4f9b336334c527d633e6f7f4eb04876e6d2d259cb5ba5657773c969d7cac8a",
+        "c6": null
+      },
+      "Rigid/number/00032/shape_cache.json": {
+        "c4": "689ddc08a5d4c288315c304f9c0dbb6ebe3ccd4eb897ce2c2348931e91f82c37",
+        "c6": null
+      },
+      "Rigid/number/00032/sil.npz": {
+        "c4": "480afe603694f9a992c96f4c830067c6d00c5013553e4aeccbc6d551893d21a5",
+        "c6": null
+      },
+      "Rigid/number/00032/visual.glb": {
+        "c4": "20c14c6bccbbdf1d7a8bc2c0f5316c27fedf0dcff64b68483b5f24c69dce03ae",
+        "c6": null
+      },
+      "Rigid/number/00033/geom.npz": {
+        "c4": "7d0e72c84a3cbcad82c1ae5c5b9863717fa82b5298f18a0ad66cec14311a436f",
+        "c6": null
+      },
+      "Rigid/number/00033/info.json": {
+        "c4": "bd1335e42d3a963623d9e3157e7d4321f222bc5363749c9976e4f62bbec93881",
+        "c6": null
+      },
+      "Rigid/number/00033/shape_cache.json": {
+        "c4": "f188417b6b61ed31ad4f1f76db88bf4fd2da41ba8475f5a8339e156c5b59764d",
+        "c6": null
+      },
+      "Rigid/number/00033/sil.npz": {
+        "c4": "1aaf8a37db020da3e467f5afc4d070de1ac2355f138848bf6481ac73a4fe0081",
+        "c6": null
+      },
+      "Rigid/number/00033/visual.glb": {
+        "c4": "2bb39eda6b761f6a8cffc89a75d051382319af9b46b17178ad493b5ef50af98d",
+        "c6": null
+      },
+      "Rigid/number/00034/geom.npz": {
+        "c4": "4a58210a42da3381f8ba8477069f7e39114caecefdb31e57912dec85f966be13",
+        "c6": null
+      },
+      "Rigid/number/00034/info.json": {
+        "c4": "e877e80f18d58b07755b680b7fecfa744f6cfed5e6661a3c6a99734dd19b8f14",
+        "c6": null
+      },
+      "Rigid/number/00034/shape_cache.json": {
+        "c4": "81f2b5f930e93ac207382c68a4198f92f8971c0d3783a0c92b25296477754ecb",
+        "c6": null
+      },
+      "Rigid/number/00034/sil.npz": {
+        "c4": "8290eaa0c3396a994ead0550ec370290e183ce97294f4403a7fc5072f8ed2ebe",
+        "c6": null
+      },
+      "Rigid/number/00034/visual.glb": {
+        "c4": "7725fce7e2eda3ac8264b10f51f88071e47f72985db2ec09fd72dca92d6414c8",
+        "c6": null
+      },
+      "Rigid/number/00035/geom.npz": {
+        "c4": "d54fcf5e29308f803e29df17bae7cd9ec8116e6a57267ee297dc79059138d91b",
+        "c6": null
+      },
+      "Rigid/number/00035/info.json": {
+        "c4": "d46ae3d69b97c7acca0feac85004b62c59f23a77e3ee251e66c8b3802f2bf431",
+        "c6": null
+      },
+      "Rigid/number/00035/shape_cache.json": {
+        "c4": "81f2b5f930e93ac207382c68a4198f92f8971c0d3783a0c92b25296477754ecb",
+        "c6": null
+      },
+      "Rigid/number/00035/sil.npz": {
+        "c4": "bf90d2fef2c46b067d9cf7f758b9ab75ab23845ecc77ece8064cd6ea08d9350c",
+        "c6": null
+      },
+      "Rigid/number/00035/visual.glb": {
+        "c4": "c2d82c5e1d84d4b99c5a52f10dbb2d35e4ed4ed848e5c7add58adacc5641c8fe",
+        "c6": null
+      },
+      "Rigid/number/00036/geom.npz": {
+        "c4": "67a4834839607ca76adce5bc630a426e1b5583d352b4a50edc477485da651a4f",
+        "c6": null
+      },
+      "Rigid/number/00036/info.json": {
+        "c4": "1ff0a01a3471e47392f68de8e386e21a797a5c951c6b69f81bc16e707cdfbd8f",
+        "c6": null
+      },
+      "Rigid/number/00036/shape_cache.json": {
+        "c4": "cc35a5b128444566342bf9ec206764cff6854101bf5394c25c22633c291d1814",
+        "c6": null
+      },
+      "Rigid/number/00036/sil.npz": {
+        "c4": "21df30dd00351bddd98fc2f5d3afa4bf0da21c8a021d9817218b909a47346e84",
+        "c6": null
+      },
+      "Rigid/number/00036/visual.glb": {
+        "c4": "2861fd0e9db905a57864edc560788d5bde71e3b8fa5f55dd63724e1e0d6d68fe",
+        "c6": null
+      },
+      "Rigid/number/00037/geom.npz": {
+        "c4": "cf40589aa25ccf9731d89249d4ddc84488e878d84c2be881b17a190c00eda924",
+        "c6": null
+      },
+      "Rigid/number/00037/info.json": {
+        "c4": "23ebfe40ef8bfbb60dcf127dea6f7f83da29014036574c98676d8003e4f2fa75",
+        "c6": null
+      },
+      "Rigid/number/00037/shape_cache.json": {
+        "c4": "69b282ac34dab06d02681fe237b7542f3fc763e419333a9f97349c573ecede36",
+        "c6": null
+      },
+      "Rigid/number/00037/visual.glb": {
+        "c4": "82a8919cdb170908afa114bfcd8d9c5ffe57fc7374b011af26b77f1b3cd2f7bd",
+        "c6": null
+      },
+      "Rigid/number/00038/geom.npz": {
+        "c4": "fc8a4736b16d0ed496644196e0f2a721687ccdc641771187c3b93fe9fe277a79",
+        "c6": null
+      },
+      "Rigid/number/00038/info.json": {
+        "c4": "bbd61d88d922bc4b7a41b589c1d7afd79ba02b36cc461e0a93c19e6c834c43f2",
+        "c6": null
+      },
+      "Rigid/number/00038/shape_cache.json": {
+        "c4": "30e6b2153e394312896603ccb0bdc80d87b2eb1b6b09d8a08bcc5e785699b561",
+        "c6": null
+      },
+      "Rigid/number/00038/sil.npz": {
+        "c4": "56e7dd3fd01784ae735c03daf5ddf33fde131c6b925f0717b95411e5c4a37f29",
+        "c6": null
+      },
+      "Rigid/number/00038/visual.glb": {
+        "c4": "fbf520b2ef7c3d60b2a0289b3af92f2d04811ab03afb62d77382891f6279df5a",
+        "c6": null
+      },
+      "Rigid/number/00039/geom.npz": {
+        "c4": "6dd83ec237efeb92a3f7e89b7f47d43520a8f001da0756aad444267a8b76a322",
+        "c6": null
+      },
+      "Rigid/number/00039/info.json": {
+        "c4": "70c2f5990d607f880fcedcd5ba83643973aab5f1367866dd6c6f4a15ff09d3cb",
+        "c6": null
+      },
+      "Rigid/number/00039/shape_cache.json": {
+        "c4": "cc35a5b128444566342bf9ec206764cff6854101bf5394c25c22633c291d1814",
+        "c6": null
+      },
+      "Rigid/number/00039/sil.npz": {
+        "c4": "1a14437c034782020610036a85bafb3cac17bc108234f3cdf89a25a88a92fa61",
+        "c6": null
+      },
+      "Rigid/number/00039/visual.glb": {
+        "c4": "f6c9317371202be0f3ca17fabf9a4633d973ebeb7dc0e3b165bce231cd20ccc8",
+        "c6": null
+      },
+      "Rigid/number/00040/geom.npz": {
+        "c4": "64b36b870fd5f2425b3deff87420888b1477a989341fa12772965348149b9a54",
+        "c6": null
+      },
+      "Rigid/number/00040/info.json": {
+        "c4": "d673d76d3b865f7c9d027b07996e4ac28a3233e17d2f5fcebd14bf764714ab13",
+        "c6": null
+      },
+      "Rigid/number/00040/shape_cache.json": {
+        "c4": "986cbc280ca42ccdc60943976e9f645699e783c6d13fd1ccb3daf9fadb792273",
+        "c6": null
+      },
+      "Rigid/number/00040/visual.glb": {
+        "c4": "1cb8597dbd9afc136e05465b2ff2b0796579b814bca128f410d99f4d667d0bec",
+        "c6": null
+      },
+      "Rigid/number/00041/geom.npz": {
+        "c4": "ac402ba69a6452cf6a3355b41b46e4c7681d11c8da33b82d2056285ad0533ce0",
+        "c6": null
+      },
+      "Rigid/number/00041/info.json": {
+        "c4": "02a49ed49c690ff9b38fa5128afceff06c7aa96a007813b2b59e0d7101419441",
+        "c6": null
+      },
+      "Rigid/number/00041/shape_cache.json": {
+        "c4": "992a2c11e911b5fa2315ac04ca968e3cb49920e207bc8750f59f75f739bbd8ca",
+        "c6": null
+      },
+      "Rigid/number/00041/visual.glb": {
+        "c4": "74d1627915fd41d557c91e33a21f4383d2e3ae9faba5800a1a702cf261722e44",
+        "c6": null
+      },
+      "Rigid/number/00042/geom.npz": {
+        "c4": "299dd432d2999cecfe9385579ff90673bd7e5944ba0f8c9e6406eba8aece0883",
+        "c6": null
+      },
+      "Rigid/number/00042/info.json": {
+        "c4": "8642aa2920a3ddc8a65d0320a01eff50faf259c34c2937a1e10303e9a3c4fe37",
+        "c6": null
+      },
+      "Rigid/number/00042/shape_cache.json": {
+        "c4": "689ddc08a5d4c288315c304f9c0dbb6ebe3ccd4eb897ce2c2348931e91f82c37",
+        "c6": null
+      },
+      "Rigid/number/00042/sil.npz": {
+        "c4": "480afe603694f9a992c96f4c830067c6d00c5013553e4aeccbc6d551893d21a5",
+        "c6": null
+      },
+      "Rigid/number/00042/visual.glb": {
+        "c4": "fdcb802080cc91fe6264c4f4a01f8c057c79ed0f4cb3c1809fb79e7cfc094467",
+        "c6": null
+      },
+      "Rigid/number/00043/geom.npz": {
+        "c4": "337844f05c1e715592c0ca3c305087951217d56383e6ceb63a6b8e40094c8457",
+        "c6": null
+      },
+      "Rigid/number/00043/info.json": {
+        "c4": "e95e5bf88067e3d407821af90fb5c72904b249599d4684455fee761fd58ab88f",
+        "c6": null
+      },
+      "Rigid/number/00043/shape_cache.json": {
+        "c4": "f188417b6b61ed31ad4f1f76db88bf4fd2da41ba8475f5a8339e156c5b59764d",
+        "c6": null
+      },
+      "Rigid/number/00043/sil.npz": {
+        "c4": "1aaf8a37db020da3e467f5afc4d070de1ac2355f138848bf6481ac73a4fe0081",
+        "c6": null
+      },
+      "Rigid/number/00043/visual.glb": {
+        "c4": "44bbd5ff98edc4b4c793327ef918779cd6630013d9cfa6ac418f775d5cdc2154",
+        "c6": null
+      },
+      "Rigid/number/00044/geom.npz": {
+        "c4": "70304930bd2a09ef2502b49b8e9c0cacbdcb4067115a677a8641acc2a302940d",
+        "c6": null
+      },
+      "Rigid/number/00044/info.json": {
+        "c4": "cd5dda826893f8bae89e3035f960c57aa1446f2586816c05f7a37c4843a3d4a7",
+        "c6": null
+      },
+      "Rigid/number/00044/shape_cache.json": {
+        "c4": "81f2b5f930e93ac207382c68a4198f92f8971c0d3783a0c92b25296477754ecb",
+        "c6": null
+      },
+      "Rigid/number/00044/sil.npz": {
+        "c4": "8290eaa0c3396a994ead0550ec370290e183ce97294f4403a7fc5072f8ed2ebe",
+        "c6": null
+      },
+      "Rigid/number/00044/visual.glb": {
+        "c4": "2d841f63365064565b010de4c1df76b7fe933715fc64b22498bdb2505061c27e",
+        "c6": null
+      },
+      "Rigid/number/00045/geom.npz": {
+        "c4": "5c7c6d6fa6d7c205c5fcf8a8fe0e5f2e797bf6fb0bf398247f895b52eaf1ee88",
+        "c6": null
+      },
+      "Rigid/number/00045/info.json": {
+        "c4": "4c3d958b0bada814de94b3b41a3cec502de5146d899be69d842a9d49de5bc5bb",
+        "c6": null
+      },
+      "Rigid/number/00045/shape_cache.json": {
+        "c4": "81f2b5f930e93ac207382c68a4198f92f8971c0d3783a0c92b25296477754ecb",
+        "c6": null
+      },
+      "Rigid/number/00045/sil.npz": {
+        "c4": "bf90d2fef2c46b067d9cf7f758b9ab75ab23845ecc77ece8064cd6ea08d9350c",
+        "c6": null
+      },
+      "Rigid/number/00045/visual.glb": {
+        "c4": "ee65406c145ccf4ea30333cf5aa2f1ee4bcd906d3f2ca1a87fae980fcbee4c55",
+        "c6": null
+      },
+      "Rigid/number/00046/geom.npz": {
+        "c4": "c16b10b561f631a801f3f682364c38c53a1a0dfdaf40f7c8dc9a143046519b5d",
+        "c6": null
+      },
+      "Rigid/number/00046/info.json": {
+        "c4": "cce6d87abda9a12b7bd3f6ea76f26b9a22455704eee6b9a92b6ae567594a3928",
+        "c6": null
+      },
+      "Rigid/number/00046/shape_cache.json": {
+        "c4": "cc35a5b128444566342bf9ec206764cff6854101bf5394c25c22633c291d1814",
+        "c6": null
+      },
+      "Rigid/number/00046/sil.npz": {
+        "c4": "21df30dd00351bddd98fc2f5d3afa4bf0da21c8a021d9817218b909a47346e84",
+        "c6": null
+      },
+      "Rigid/number/00046/visual.glb": {
+        "c4": "6e9c365ac8bb58104fdd754340ba021960122c577eaa8f1ee5436661928e3bfb",
+        "c6": null
+      },
+      "Rigid/number/00047/geom.npz": {
+        "c4": "b437071d622262b16d9abca84c0103d6c7ec1ff4cf68e2efb4ac9836406a58a3",
+        "c6": null
+      },
+      "Rigid/number/00047/info.json": {
+        "c4": "f71f923cdd6d8b39e3e70d5a4da6baf68100d195512e7a1f3d2116fe3169a98c",
+        "c6": null
+      },
+      "Rigid/number/00047/shape_cache.json": {
+        "c4": "69b282ac34dab06d02681fe237b7542f3fc763e419333a9f97349c573ecede36",
+        "c6": null
+      },
+      "Rigid/number/00047/visual.glb": {
+        "c4": "edfa3c6305b91ccccaaa2a51d69ca0374dd52238e26c2bac00a4ce32ea0e3c87",
+        "c6": null
+      },
+      "Rigid/number/00048/geom.npz": {
+        "c4": "0422dd86a7a23808abd900a7596ab38dbb64c7d1fc35ac98826b3310fa5f26fe",
+        "c6": null
+      },
+      "Rigid/number/00048/info.json": {
+        "c4": "a6b4a6cd972d2f422a7b9f7e7337d2e465b594716114d4c6ae8765cb730e4fbb",
+        "c6": null
+      },
+      "Rigid/number/00048/shape_cache.json": {
+        "c4": "30e6b2153e394312896603ccb0bdc80d87b2eb1b6b09d8a08bcc5e785699b561",
+        "c6": null
+      },
+      "Rigid/number/00048/sil.npz": {
+        "c4": "56e7dd3fd01784ae735c03daf5ddf33fde131c6b925f0717b95411e5c4a37f29",
+        "c6": null
+      },
+      "Rigid/number/00048/visual.glb": {
+        "c4": "64c86a41c7dd03265f7e1ae8b670f6c4cdd4a528995a645e9f584e40d2ef3365",
+        "c6": null
+      },
+      "Rigid/number/00049/geom.npz": {
+        "c4": "731428adb791e01504ab5acd3c9caa2130c20b8c3dfba1d7664ac38c0f0aae20",
+        "c6": null
+      },
+      "Rigid/number/00049/info.json": {
+        "c4": "d1bc9168bc819b65216f45b57a430fe84effb87642d449322591fb84e6dda123",
+        "c6": null
+      },
+      "Rigid/number/00049/shape_cache.json": {
+        "c4": "cc35a5b128444566342bf9ec206764cff6854101bf5394c25c22633c291d1814",
+        "c6": null
+      },
+      "Rigid/number/00049/sil.npz": {
+        "c4": "1a14437c034782020610036a85bafb3cac17bc108234f3cdf89a25a88a92fa61",
+        "c6": null
+      },
+      "Rigid/number/00049/visual.glb": {
+        "c4": "dfd3b09881a058f480b2f7c82a55c81f513c8157fdb3c8ed442bb2a060a175a7",
+        "c6": null
+      },
+      "Rigid/paper_ball/00000/geom.npz": {
+        "c4": "b9fbf3805492bf81da1cb19561c055945c791ab85d466120ed19662973693657",
+        "c6": null
+      },
+      "Rigid/paper_ball/00000/info.json": {
+        "c4": "0a4d189b6b7fa6f237b13f1736b34a89264090897b1f0fdd7781ba7605048837",
+        "c6": null
+      },
+      "Rigid/paper_ball/00000/shape_cache.json": {
+        "c4": "4fd118c1c2ae391513e75e19401cb36bb5bf7f409cd0d5fdfbb867248b392f99",
+        "c6": null
+      },
+      "Rigid/paper_ball/00000/sil.npz": {
+        "c4": "4311f432cd3ea7d8e712243143fa8dcfd7981c2fe37fda9fa53d2a4f671cca45",
+        "c6": null
+      },
+      "Rigid/paper_ball/00000/visual.glb": {
+        "c4": "04bf48e41dde45453142ed54833101c62ce7e4992eb5fda0f7f45b442a21b195",
+        "c6": null
+      },
+      "Rigid/paper_ball/00001/geom.npz": {
+        "c4": "5d04805e3416741ca7976f2c260e8abd310d6024689904af7e678ed293f2b52d",
+        "c6": null
+      },
+      "Rigid/paper_ball/00001/info.json": {
+        "c4": "bb12edef7e78eb6c26f0e87b5a24def2163895ab96ef400f519c610479271f04",
+        "c6": null
+      },
+      "Rigid/paper_ball/00001/shape_cache.json": {
+        "c4": "5fd6f43cfeec5487c4b182c132cff03e3f10ec48d78fe8a13993538bff6e20d2",
+        "c6": null
+      },
+      "Rigid/paper_ball/00001/sil.npz": {
+        "c4": "f4de15d3c83e339f339c08d3e0989e7516c9594b6ef64ebb4a3df1db6412c79e",
+        "c6": null
+      },
+      "Rigid/paper_ball/00001/visual.glb": {
+        "c4": "2f416c07b75f4971d1bddaa6e0be6e8f9eafcfca32b125ef6e5a8d04f9768dde",
+        "c6": null
+      },
+      "Rigid/paper_ball/00002/geom.npz": {
+        "c4": "49817d22e3bd3d9294157d5f8912b9185e88f5170ed0fa7e73e1a13215ba2cdd",
+        "c6": null
+      },
+      "Rigid/paper_ball/00002/info.json": {
+        "c4": "89e58665e99d7991ee92334f7a726b1a8ff5543fbb8b93c84bafb2d875820b0c",
+        "c6": null
+      },
+      "Rigid/paper_ball/00002/shape_cache.json": {
+        "c4": "b560026162602f1fd00a9da2d622ab9559f032ad2548a25db42d8d0f1e6a2844",
+        "c6": null
+      },
+      "Rigid/paper_ball/00002/sil.npz": {
+        "c4": "8ca9da597df345a19796bf486f0d845b411ce0d58da0f3ea4f1ecdc539d981b1",
+        "c6": null
+      },
+      "Rigid/paper_ball/00002/visual.glb": {
+        "c4": "a3e0a304284e091056b5e28c5eeec0154471c95e41bc94da71dd22b291347c3b",
+        "c6": null
+      },
+      "Rigid/pepper/00001/geom.npz": {
+        "c4": "4df761da825010cfb706a11e1867828bdb6a0e4e555d4279500abc873be3e1e5",
+        "c6": null
+      },
+      "Rigid/pepper/00001/info.json": {
+        "c4": "7deab18df6147f60a7e0f688177d6fb59b584e870a0bde970bd8943eddb4ca9b",
+        "c6": null
+      },
+      "Rigid/pepper/00001/shape_cache.json": {
+        "c4": "69d58d6eff0055222dec6a00a1949b546f98f0ad09667bd9cc44b05ce90e7ec0",
+        "c6": null
+      },
+      "Rigid/pepper/00001/sil.npz": {
+        "c4": "cf60b0e3967f27d052adadcfbceccf0a7f62ef8b91dfe8a47378168585c38301",
+        "c6": null
+      },
+      "Rigid/pepper/00001/visual.glb": {
+        "c4": "33467bd1120901a8fe517a6c35f8f76c73cd4e593e84bb13fba4fa43490a095d",
+        "c6": null
+      },
+      "Rigid/pepper/00002/geom.npz": {
+        "c4": "32d235f27d84789dcf7c380d87ac1b908b4a7f0c869e92ff3267f38402cb160d",
+        "c6": null
+      },
+      "Rigid/pepper/00002/info.json": {
+        "c4": "849184ff7bc48544419371c97b7868f2aa3590cba07d823696d401b5b2ccad12",
+        "c6": null
+      },
+      "Rigid/pepper/00002/shape_cache.json": {
+        "c4": "cde7f14b25656d67c842f1a5f7565bc6db9c46406cb038682f6f1516e2dc5889",
+        "c6": null
+      },
+      "Rigid/pepper/00002/sil.npz": {
+        "c4": "83f8ea7e9b44c25f39238fc23e0c6d76280d54943141f33c18d6d72013650528",
+        "c6": null
+      },
+      "Rigid/pepper/00002/visual.glb": {
+        "c4": "3a6ec113c9311770903b29b7e031e42aa3c32cc7284e4abeeb3667d8e2ec947a",
+        "c6": null
+      },
+      "Rigid/plus/00000/geom.npz": {
+        "c4": "985ed78b6cd91e0b49e871406362e483923b634585a8c609b2f6c26acb264643",
+        "c6": null
+      },
+      "Rigid/plus/00000/info.json": {
+        "c4": "5063346e488f45ba5489496d4f186633125a62a53391ba5c073dcb9337b7add9",
+        "c6": null
+      },
+      "Rigid/plus/00000/shape_cache.json": {
+        "c4": "df27ac519a1ff48c3ba56f3cbeb47fde00bc82ff346f89a6619b58477df2d9e7",
+        "c6": null
+      },
+      "Rigid/plus/00000/visual.glb": {
+        "c4": "a4a66b74830db9b4d2e9bed6ac00ddf41a57c1638a6ef80c7336b65171730e4d",
+        "c6": null
+      },
+      "Rigid/watch/00004/geom.npz": {
+        "c4": "d782b4645e449118e59331772408baee4bc388dbb3c0832da250eb78e5f186b5",
+        "c6": null
+      },
+      "Rigid/watch/00004/info.json": {
+        "c4": "fe6d3273577269b0cab53117a67db51c645e67afe08c472f33eb88b788298dd7",
+        "c6": null
+      },
+      "Rigid/watch/00004/shape_cache.json": {
+        "c4": "7bb3a718cac274a348bf31fcc5bd3e9b22be5828250bb5d8faee7691cc25e4af",
+        "c6": null
+      },
+      "Rigid/watch/00004/sil.npz": {
+        "c4": "3684cb9d84b5b6d1f70864cb20412c268bbc03c517e6012522479304b6f89db1",
+        "c6": null
+      },
+      "Rigid/watch/00004/visual.glb": {
+        "c4": "07a6241b9ea4ba6e628ba6943d153be4e211a761d8dda4ba3c015f78eb6e6b0a",
+        "c6": null
+      },
+      "Rigid/watch/00005/geom.npz": {
+        "c4": "267471f67a948037acdbf08d7112a664388939790a1d5505bfcb7437d7ea8106",
+        "c6": null
+      },
+      "Rigid/watch/00005/info.json": {
+        "c4": "2c1c42e83293c94754d599258910017c1f98b4c9f36837fb4d62ab4dfcb03a9a",
+        "c6": null
+      },
+      "Rigid/watch/00005/shape_cache.json": {
+        "c4": "16f69fc5a9bd1442608e49ef364559cb373d0ffde22e9559c13b7d6b38e472b1",
+        "c6": null
+      },
+      "Rigid/watch/00005/sil.npz": {
+        "c4": "0e9a7731f3bad0ccc946862e7c5ae1f995667ec1a48338d3575f61c0141531ee",
+        "c6": null
+      },
+      "Rigid/watch/00005/visual.glb": {
+        "c4": "46037a9552e0decc366e291b5b0d1002123e2d7605ba67deb8cadc7ae017f722",
+        "c6": null
+      },
+      "Rigid/watch/00006/geom.npz": {
+        "c4": "f76c34ff512de7d3b115e5124514d8b4e44d8e58e4d78a540f6c5eba9f3281ea",
+        "c6": null
+      },
+      "Rigid/watch/00006/info.json": {
+        "c4": "a00e9cd8ed90ba2d93948dc7169fa71179a4394543e04ac7cdf4d220190932cc",
+        "c6": null
+      },
+      "Rigid/watch/00006/shape_cache.json": {
+        "c4": "838b212bbf0eaa1fded9e03b2c18258d4a4e377e7fd22f5dae8e119b5cde4a7e",
+        "c6": null
+      },
+      "Rigid/watch/00006/sil.npz": {
+        "c4": "be66d64f66fbcac325ac2c223a0e3b807e0938b100c8fa42ca9f5e6c846dc582",
+        "c6": null
+      },
+      "Rigid/watch/00006/visual.glb": {
+        "c4": "5fb11c51d38d351a6602a8a50ddb8040018a8ce9242a1d72558ff06e4aaa038a",
+        "c6": null
+      },
+      "Rigid/watch/00007/geom.npz": {
+        "c4": "7814cf562b2099f970c3a2952fb36b960b996729733090124a585e8ac9ae642b",
+        "c6": null
+      },
+      "Rigid/watch/00007/info.json": {
+        "c4": "ae5795efd0c27d35ffb854ec327fc772ad6fb8f7a0a1e9591b70381646cd7267",
+        "c6": null
+      },
+      "Rigid/watch/00007/shape_cache.json": {
+        "c4": "9d4f8cb1a5e58e109dfa9ed68ec42f9c6c46465b76fbeff49885b38655a6e2fe",
+        "c6": null
+      },
+      "Rigid/watch/00007/sil.npz": {
+        "c4": "9683cc93c88ea9f16714a83977091888f68ce9d1bafcb3b7653c95ed96a94176",
+        "c6": null
+      },
+      "Rigid/watch/00007/visual.glb": {
+        "c4": "295e6fb1d368ccb47b745046ac2e10cc8d8eaacfe43a4f962b580a08305cef0e",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00000/geom.npz": {
+        "c4": "ee7dda3f065b242523a6746f54350ca3fb4b8850dc3d24a62793f337447fbc6d",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00000/info.json": {
+        "c4": "1b3c3d059f530a83ec1497bf0e745bc32d36a195035745bf9a805828a383807f",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00000/shape_cache.json": {
+        "c4": "ff2a0137cc1750a206611c113d9ba9ed5fffeaf6470d34fc3b8815eb328d577c",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00000/visual.glb": {
+        "c4": "6f5733088c4fc710a9d1ff290ffc349fa63a9bfcaa5625d854e0857649a9f4cb",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00001/geom.npz": {
+        "c4": "2a247f1c42113ed4e58314af9055311e9f66eab3c3beb0dfd6f5999b50de87e2",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00001/info.json": {
+        "c4": "8f0a7f76703364e8555393e8bda1948e346b208ced40e410e31549488e9723df",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00001/shape_cache.json": {
+        "c4": "ff2a0137cc1750a206611c113d9ba9ed5fffeaf6470d34fc3b8815eb328d577c",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00001/visual.glb": {
+        "c4": "c7abf0d52ef253941d8e156ffee8f50352e450248c71061cbcea86666581a33a",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00002/geom.npz": {
+        "c4": "fcbab190ca1c80561fa7dd96281d166bc4cacad997bfd49334a7646a4d52a7bd",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00002/info.json": {
+        "c4": "804ff1dac8df515db7694a32bff608106ab8417d3a97cf9aeda6b1061c29b693",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00002/shape_cache.json": {
+        "c4": "ff2a0137cc1750a206611c113d9ba9ed5fffeaf6470d34fc3b8815eb328d577c",
+        "c6": null
+      },
+      "Rigid/wine_bottle/00002/visual.glb": {
+        "c4": "d2869d5c2f8fe7ff919411f6fe0792c1c66ecc0f2e7847921b770d5a4e0f82ed",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00000/geom.npz": {
+        "c4": "e41051a3854ab11fc20af21442fa777a6e60f87ac99b9faff618ca4fb04eb369",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00000/info.json": {
+        "c4": "0a1056973f65b645a0a9a83beb53f2c525705e7e3e4d87c7d27b61dd8da3e51d",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00000/shape_cache.json": {
+        "c4": "cd83276ab0784623b5fd30ae707b16a7a216ec8634d3b9757a4c5992a1ba6e63",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00000/sil.npz": {
+        "c4": "e7951f5641858c3de304ddd65763558500194f207be6a916db0f338f50992b1a",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00000/visual.glb": {
+        "c4": "bac3e1cf0d8d497d59fd96712979db84b5b438536b2e045134d626881406a909",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00001/geom.npz": {
+        "c4": "02b439b9be3cf1994e34ffa56c38ead494c1450f68b4bb147b69d97c796901d0",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00001/info.json": {
+        "c4": "809ddbf8f3c1278ea1553646aad39b0fa176aba0f9da73f28bc02dd100a68d3b",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00001/shape_cache.json": {
+        "c4": "075cf5098a6135181352fbaefb1dfdf8b13e329e82e90cde3052986a7a746462",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00001/sil.npz": {
+        "c4": "3c0c530c9e6fb04748095723ac7aeac36b6d950b9395b06cdafdcb290646c76c",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00001/visual.glb": {
+        "c4": "8c4511faf94d53acd67acae11a4f33dbad21a1c710e90d5b899e0f4f32845a5f",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00002/geom.npz": {
+        "c4": "18fb5b37c3f9626f6b72845a05d83729860e55237012d48384cb8ad0801c61ad",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00002/info.json": {
+        "c4": "97582a81b1f94088426bc1cdbd6d8e3dbdbe0bd54d24c09a01e0c6b95bade573",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00002/shape_cache.json": {
+        "c4": "ec385d1b992023c0d9fb4ab5cea4321a8e653241ff1ad916a25503750145ac86",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00002/sil.npz": {
+        "c4": "45c4ced674521e053c00aff8e09c7135babefa87af170e45f64788132233bf7c",
+        "c6": null
+      },
+      "Rigid/wine_bowl/00002/visual.glb": {
+        "c4": "0da8c9ae85c3fd2a9829a67acd05e367ae9c60121ca97193ed0af240173b158f",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00001/geom.npz": {
+        "c4": "d24716b0bd9ad3269ecb78eb8624df01ffc7837a1075f1ab80d6703cc2ca14d0",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00001/info.json": {
+        "c4": "c49235ab1f8894911c49359e9a7e4895b49074a7d695b41d58de14a270b088e6",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00001/shape_cache.json": {
+        "c4": "f6ab8415abfafdaacde2d506c7fbee3b861660d516f472147676937009a55d84",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00001/sil.npz": {
+        "c4": "bf5230375f4fa54d5835298572fd38fc7519b4aeaa8b353e8d4b61058b405def",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00001/visual.glb": {
+        "c4": "e5db7e8e39ec02a5ee87858186b1044b19732ce0761b667fbeda12a8ee3a5c42",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00002/geom.npz": {
+        "c4": "d61ca598dbd19a67059e2cf691d305f6facdcfa32d4a60e4bfa1b829e15fee02",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00002/info.json": {
+        "c4": "4a7f99e0c1f3e5d3c790218e2bf1958baaa912b4b3753ae0265006dd3117c43e",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00002/shape_cache.json": {
+        "c4": "f61f0733bdfdb4da234ad4444965dc91728a1f71564295058a47635ff7b4fdf7",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00002/sil.npz": {
+        "c4": "cf2c57274fc9f5f11ac2882e809c77f34927cd5f5b6155db82453ff09f117242",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00002/visual.glb": {
+        "c4": "0d7e59094fe215a76d1c24f19e3d0f4257531a42af869491aae1de78a1ca0c0d",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00003/geom.npz": {
+        "c4": "11161250431f98747e414ef0e9148cf9f630b24d16d2be727f356cdb5a2d4254",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00003/info.json": {
+        "c4": "ad446e3be6cda8439ad6853ce896db6ca7b4e7dfcf71ae100681027603fd7329",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00003/shape_cache.json": {
+        "c4": "c68c8c9696f3cf4e65ea33e0bf304d8bef00d662b8f1ae06ee61809a6566b421",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00003/sil.npz": {
+        "c4": "a19d3c86991279b8d5dfd1a6d96116fa170da402b6f1432716af8c3277db7e37",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00003/visual.glb": {
+        "c4": "c4c6f3b742e5e9401998c930bd34fc8c4147cdaa699aaa3268dfe891d812c4b5",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00004/geom.npz": {
+        "c4": "4668f4a9c3e39bae25bc86fc75b1c6a8bd5277d1ef3a5c7f437f1cb40611c45e",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00004/info.json": {
+        "c4": "36b27fd4558d06abf24844d3a158909c3cbe9cb609b46db47768280c4e6296fe",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00004/shape_cache.json": {
+        "c4": "a16cff622732a5daa096b9e71f4818ab86b5ce3d83e72e869c310aa0ed23284d",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00004/sil.npz": {
+        "c4": "abdc06da0d2998ad29bc4505b61b559cbfe55c1d77ea256b0d2f39e41d7eb534",
+        "c6": null
+      },
+      "Rigid/wooden_toy/00004/visual.glb": {
+        "c4": "d4bda539e7d6f33ef51afefff22078ef1e2c5506e7d13f1e0041bb5f9b82cca6",
+        "c6": null
+      },
+      "Rigid/wuliangye/00000/geom.npz": {
+        "c4": "fb36b12c8734bb34b4ba9c4f28fa8ed9897447f4d4a5d796d30eb03f85287ed3",
+        "c6": null
+      },
+      "Rigid/wuliangye/00000/info.json": {
+        "c4": "d4d6f87b12bb5318b7176abcc4886a6cae3fa89f9eff1c43560dd7a804c197bf",
+        "c6": null
+      },
+      "Rigid/wuliangye/00000/shape_cache.json": {
+        "c4": "ff2a0137cc1750a206611c113d9ba9ed5fffeaf6470d34fc3b8815eb328d577c",
+        "c6": null
+      },
+      "Rigid/wuliangye/00000/visual.glb": {
+        "c4": "56166ba28b6849871ed8eeb806dd69047f4c9b178e928e089097c90d9050dce0",
+        "c6": null
+      },
+      "Rigid/wuliangye/00001/geom.npz": {
+        "c4": "fcb21a692c68fc59fd37c7c27700d3251f009834b2a1df16774425364f5283f1",
+        "c6": null
+      },
+      "Rigid/wuliangye/00001/info.json": {
+        "c4": "d099ac7fbce44108ed9e70dc9f388248ef6fc81ac0faad6ffcc24456106a334f",
+        "c6": null
+      },
+      "Rigid/wuliangye/00001/shape_cache.json": {
+        "c4": "ff2a0137cc1750a206611c113d9ba9ed5fffeaf6470d34fc3b8815eb328d577c",
+        "c6": null
+      },
+      "Rigid/wuliangye/00001/visual.glb": {
+        "c4": "e5bdde4f7e2b31a669ba5119ac05eb4fa9fbef80f8a2ffdea8778a7f15e7fe9c",
+        "c6": null
+      },
+      "Rigid/wuliangye/00002/geom.npz": {
+        "c4": "4f5ea8145aeacc5d735bb1bb784f5c66789bceb5db9645722470cb7a1a5d4604",
+        "c6": null
+      },
+      "Rigid/wuliangye/00002/info.json": {
+        "c4": "59a10b0f2ba389100b39417c1c2f01033c04b2e9ff4dfbab569e1261e774e224",
+        "c6": null
+      },
+      "Rigid/wuliangye/00002/shape_cache.json": {
+        "c4": "ff2a0137cc1750a206611c113d9ba9ed5fffeaf6470d34fc3b8815eb328d577c",
+        "c6": null
+      },
+      "Rigid/wuliangye/00002/visual.glb": {
+        "c4": "339d7c9561e6e904050b5c75046ec8af707ee8342ea6d83621214e6ff7e8f959",
+        "c6": null
+      },
+      "Rigid/wuliangye/00003/geom.npz": {
+        "c4": "2091832c253e29fd2dff3cf12140cc599efeb31cce044e21b5fca8fa4730f5d5",
+        "c6": null
+      },
+      "Rigid/wuliangye/00003/info.json": {
+        "c4": "b934c78da6280f9547c17db828a3685dc5331f2bd7c7a4bbd03a519977489f90",
+        "c6": null
+      },
+      "Rigid/wuliangye/00003/shape_cache.json": {
+        "c4": "ff2a0137cc1750a206611c113d9ba9ed5fffeaf6470d34fc3b8815eb328d577c",
+        "c6": null
+      },
+      "Rigid/wuliangye/00003/visual.glb": {
+        "c4": "cb44c0cace4fa3ada9c0fd57f920ea16ecd2e53e22dd7098abc07942777199c4",
+        "c6": null
+      },
+      "index.json": {
+        "c4": "0c49bf1d05d435f24c37ab3981fb1a7bb4de9dc663b785958768f937c2489cb1",
+        "c6": "53646ee94eabe17d34fcc244b6ca458c9465d9efe6a34de86750568650fdf9fc"
+      },
+      "index.json.bak_integ_c4_catchup": {
+        "c4": "41b097136dc9defdb8d26dc7024e649cd6580860b74666352c5ea0ab78115810",
+        "c6": null
+      },
+      "index.json.bak_integ_c4_pre_w117": {
+        "c4": "53646ee94eabe17d34fcc244b6ca458c9465d9efe6a34de86750568650fdf9fc",
+        "c6": null
+      },
+      "index.json.bak_integ_c4_pre_w26": {
+        "c4": "c3b0c8b1d536314a9e27e1175d2ec1011bc0baccbc3a14eecf73f02200dd906f",
+        "c6": null
+      },
+      "manifests/w_gaps_26.md5": {
+        "c4": "5bab5fbfdc821e95ba30984d36cca2d5bf787d2044f78193f7ee7cca304fc941",
+        "c6": null
+      },
+      "manifests/w_plan_none_117.md5": {
+        "c4": "0303295bcba2308c3b7da808659b89018365ca4ff842e24a859f6359fd6bc77d",
+        "c6": null
+      }
+    }
+  },
+  "backgrounds": {
+    "c4_files": 96,
+    "c6_files": 0,
+    "differences": {
+      "fold0/cam_head.png": {
+        "c4": "bd55ed6f183b15cd2909f704c934d6f71f45cb7187c634607246d9919b9a279b",
+        "c6": null
+      },
+      "fold0/cam_head_clean.png": {
+        "c4": "1e5c53c7cc0b448487e616e1aaa88043aff4bfc5749d853e2e9a7a213e588126",
+        "c6": null
+      },
+      "fold0/cam_head_clean_unseen.png": {
+        "c4": "c51cb73d85747c61f16877eb62ec9786622f2341a769e60a962b4996d1186fe9",
+        "c6": null
+      },
+      "fold0/cam_left_wrist.png": {
+        "c4": "4ff222269d3ba15eeb30385e43890d046d3e03fa841cf4eb753a840eb879f2b3",
+        "c6": null
+      },
+      "fold0/cam_right_wrist.png": {
+        "c4": "fb2784a5262890823880dfa961ed3ba82c8baceae0b9744c0b2f2b78be954155",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00000/cam_head.png": {
+        "c4": "6cbe1d1a0e050404a27348f772f8c1b035f686b021c8b183508e7d9729e8ac15",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00000/cam_head_clean.png": {
+        "c4": "f183ee83062f9b4a3879e20c7bcfeffaca276743688df329b8ddaa65a5462819",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00000/cam_head_clean_unseen.png": {
+        "c4": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00000/cam_left_wrist.png": {
+        "c4": "771bc26166e77aa99f710840f3351711704155e69786472f6a1d16ce83dea44e",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00000/cam_right_wrist.png": {
+        "c4": "af4fecd3399e6423843050eeacbbbe2deef7ff578bd73b0f0fd76a4fc890f0c1",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00000/provenance.json": {
+        "c4": "606667ad8d3442532464e5cbeb40f4ad8151778b0b2a95e9536538588890f36f",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00001/cam_head.png": {
+        "c4": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00001/cam_head_clean.png": {
+        "c4": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00001/cam_head_clean_unseen.png": {
+        "c4": "19ca316b103ac680f497c72b3f6bfe62b65dfe6741b3d2b4958184423fd81051",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00001/cam_left_wrist.png": {
+        "c4": "a9011fc794ac7048a2b9043977a7177e460c05ab25960b0cf36a4470f02f7ffd",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00001/cam_right_wrist.png": {
+        "c4": "969b41c88e0442d977ac82275f446194e6bb1520a191cf78ede63a2c09f4b3ef",
+        "c6": null
+      },
+      "fold0/scene/Dynamic_conveyor_00001/provenance.json": {
+        "c4": "2d21a65826e60a65fe3ca211152f2299716e42859f9395b40f09432b77f96599",
+        "c6": null
+      },
+      "fold0/scene/Geometry_basket_00005/cam_head.png": {
+        "c4": "ac5f41b7de931a5e8ab3f8ae68141a1c00bef5a8de37cc6946237561df16ad76",
+        "c6": null
+      },
+      "fold0/scene/Geometry_basket_00005/cam_head_actor_mask.png": {
+        "c4": "e04e558c73246b7343e23de7182c09ae74cd433ad4d51aba27063a32600836e8",
+        "c6": null
+      },
+      "fold0/scene/Geometry_basket_00005/cam_head_clean.png": {
+        "c4": "2f947887214ed62f3e4b6a4fa1fbc36f3cd1bd24c4eb2c1df34d040fb9dcc7a7",
+        "c6": null
+      },
+      "fold0/scene/Geometry_basket_00005/cam_head_clean_unseen.png": {
+        "c4": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+        "c6": null
+      },
+      "fold0/scene/Geometry_basket_00005/cam_head_noactor.png": {
+        "c4": "a6a04098ef3cd93fec55d31b6dad2aec9a9eb918a48c9d2effe52132dd9ffb79",
+        "c6": null
+      },
+      "fold0/scene/Geometry_basket_00005/cam_left_wrist.png": {
+        "c4": "e653d0761c52420686b393c791f97d418792d4a6adc79e8c0fd557f2cb8ded69",
+        "c6": null
+      },
+      "fold0/scene/Geometry_basket_00005/cam_right_wrist.png": {
+        "c4": "0fe60df8733d6a31cc4bd3b7cd42d868daed07ff4b516004265ba67fcd539e88",
+        "c6": null
+      },
+      "fold0/scene/Geometry_basket_00005/provenance.json": {
+        "c4": "5b9c9418c7307b2d6986cd9dd68f6b5cd763110923ccef73746d18cd846fcbbe",
+        "c6": null
+      },
+      "fold0/scene/Geometry_cube_cushion_00002/cam_head.png": {
+        "c4": "349de6a10637ddd4752817649e6691c9925cf34c919ba786ac8c961a0849f04a",
+        "c6": null
+      },
+      "fold0/scene/Geometry_cube_cushion_00002/cam_head_clean.png": {
+        "c4": "b97410a8b7500ec0d295b5eea87d3765f653ec48f3a4bbb67fe3469d1d1d6060",
+        "c6": null
+      },
+      "fold0/scene/Geometry_cube_cushion_00002/cam_head_clean_unseen.png": {
+        "c4": "fa5abb73d18755e3407bd402c1d22c70417ce1d2be49f692d67ed376e85d2c18",
+        "c6": null
+      },
+      "fold0/scene/Geometry_cube_cushion_00002/cam_left_wrist.png": {
+        "c4": "a00ea008bc8631b9b5539632484bbf9b09cf294734c26070fca1c3a5f92a566c",
+        "c6": null
+      },
+      "fold0/scene/Geometry_cube_cushion_00002/cam_right_wrist.png": {
+        "c4": "74e3390d6c065549b6eb0823620917e2c96e754a4ec6c9184047f25e62970908",
+        "c6": null
+      },
+      "fold0/scene/Geometry_cube_cushion_00002/provenance.json": {
+        "c4": "4c3da2251eacf768b9c7dd60481a5ff0aa9ac383261c2515f4aeb048b4a8590a",
+        "c6": null
+      },
+      "fold1/cam_head.png": {
+        "c4": "0b4df2c15213f2838d3641953b1eca0ee323a618c854c6d03e556a641023573d",
+        "c6": null
+      },
+      "fold1/cam_head_clean.png": {
+        "c4": "77ed0115a3a90c97670c584695a6475dd89dcc376a2397f2bcb77b47c6623057",
+        "c6": null
+      },
+      "fold1/cam_head_clean_unseen.png": {
+        "c4": "1c49409f62d5e6056cddfc902432f8dab83319caca63b4062e1762f7253574c7",
+        "c6": null
+      },
+      "fold1/cam_left_wrist.png": {
+        "c4": "f862a1d5871277c20db32288832d930d10530f587479fbfb34031ffe3dbadd52",
+        "c6": null
+      },
+      "fold1/cam_right_wrist.png": {
+        "c4": "9b9fb7e2b31b360f946890b2945e62a86d442b0884ce2138e5848ef37d2b5bfb",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00000/cam_head.png": {
+        "c4": "6cbe1d1a0e050404a27348f772f8c1b035f686b021c8b183508e7d9729e8ac15",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00000/cam_head_clean.png": {
+        "c4": "f183ee83062f9b4a3879e20c7bcfeffaca276743688df329b8ddaa65a5462819",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00000/cam_head_clean_unseen.png": {
+        "c4": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00000/cam_left_wrist.png": {
+        "c4": "771bc26166e77aa99f710840f3351711704155e69786472f6a1d16ce83dea44e",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00000/cam_right_wrist.png": {
+        "c4": "af4fecd3399e6423843050eeacbbbe2deef7ff578bd73b0f0fd76a4fc890f0c1",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00000/provenance.json": {
+        "c4": "606667ad8d3442532464e5cbeb40f4ad8151778b0b2a95e9536538588890f36f",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00001/cam_head.png": {
+        "c4": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00001/cam_head_clean.png": {
+        "c4": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00001/cam_head_clean_unseen.png": {
+        "c4": "19ca316b103ac680f497c72b3f6bfe62b65dfe6741b3d2b4958184423fd81051",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00001/cam_left_wrist.png": {
+        "c4": "a9011fc794ac7048a2b9043977a7177e460c05ab25960b0cf36a4470f02f7ffd",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00001/cam_right_wrist.png": {
+        "c4": "969b41c88e0442d977ac82275f446194e6bb1520a191cf78ede63a2c09f4b3ef",
+        "c6": null
+      },
+      "fold1/scene/Dynamic_conveyor_00001/provenance.json": {
+        "c4": "2d21a65826e60a65fe3ca211152f2299716e42859f9395b40f09432b77f96599",
+        "c6": null
+      },
+      "fold1/scene/Geometry_basket_00005/cam_head.png": {
+        "c4": "ac5f41b7de931a5e8ab3f8ae68141a1c00bef5a8de37cc6946237561df16ad76",
+        "c6": null
+      },
+      "fold1/scene/Geometry_basket_00005/cam_head_actor_mask.png": {
+        "c4": "4aa247e46ff3bd7d750ace6e07ddaf0c4ce6ca356211e0cd6cd742a7cffa2ea7",
+        "c6": null
+      },
+      "fold1/scene/Geometry_basket_00005/cam_head_clean.png": {
+        "c4": "2f947887214ed62f3e4b6a4fa1fbc36f3cd1bd24c4eb2c1df34d040fb9dcc7a7",
+        "c6": null
+      },
+      "fold1/scene/Geometry_basket_00005/cam_head_clean_unseen.png": {
+        "c4": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+        "c6": null
+      },
+      "fold1/scene/Geometry_basket_00005/cam_head_noactor.png": {
+        "c4": "78b2e7f41a8717416f9587bd598a41aa07d04f71b07a427e31de8cc5babd4f5f",
+        "c6": null
+      },
+      "fold1/scene/Geometry_basket_00005/cam_left_wrist.png": {
+        "c4": "e653d0761c52420686b393c791f97d418792d4a6adc79e8c0fd557f2cb8ded69",
+        "c6": null
+      },
+      "fold1/scene/Geometry_basket_00005/cam_right_wrist.png": {
+        "c4": "0fe60df8733d6a31cc4bd3b7cd42d868daed07ff4b516004265ba67fcd539e88",
+        "c6": null
+      },
+      "fold1/scene/Geometry_basket_00005/provenance.json": {
+        "c4": "3f953ab6455703b806838ead12b214c32f883efa1d55a8350c60f66178b75f97",
+        "c6": null
+      },
+      "fold1/scene/Geometry_cube_cushion_00002/cam_head.png": {
+        "c4": "35ff64145ace8b60d401b988fb87aa2085c2c8a6ca450f437fd3bd729c1685b7",
+        "c6": null
+      },
+      "fold1/scene/Geometry_cube_cushion_00002/cam_head_clean.png": {
+        "c4": "db7c43ccb3c63f46d71207938496485d7379d54a34f7278aabbc24b5f67d0bf6",
+        "c6": null
+      },
+      "fold1/scene/Geometry_cube_cushion_00002/cam_head_clean_unseen.png": {
+        "c4": "fa5abb73d18755e3407bd402c1d22c70417ce1d2be49f692d67ed376e85d2c18",
+        "c6": null
+      },
+      "fold1/scene/Geometry_cube_cushion_00002/cam_left_wrist.png": {
+        "c4": "1f8a0bd1be291c9d037fd32aafd4c9f1e9481283f5ba96c4c40bc0bd37ce9adc",
+        "c6": null
+      },
+      "fold1/scene/Geometry_cube_cushion_00002/cam_right_wrist.png": {
+        "c4": "f13d42adfa507603067ee3c2c8290d7040a5e10d8a67dd3ca02ddd0c20358353",
+        "c6": null
+      },
+      "fold1/scene/Geometry_cube_cushion_00002/provenance.json": {
+        "c4": "6f157cd5dbc2499d957a21154ff976c12603f6fef68554c0f2df0b1193675f81",
+        "c6": null
+      },
+      "frozen_d0_100040_49.color_calib.json": {
+        "c4": "c1b5f5672247291f53153115529fc73796f7f6a8cfcb9c2f6ddd4ef90336ca86",
+        "c6": null
+      },
+      "frozen_d0_100040_49/cam_head.png": {
+        "c4": "8f3bb24455dc4c447a9f0dfb0f00f7463431d696169548a67b33bd1259f9b5b2",
+        "c6": null
+      },
+      "frozen_d0_100040_49/cam_head_clean.png": {
+        "c4": "eda876a8eea7272fd8c1c22fc47077c3eeca57dbd531d1a407984cec8e9479ed",
+        "c6": null
+      },
+      "frozen_d0_100040_49/cam_head_clean_unseen.png": {
+        "c4": "88507c6ddbaaad62dfbf9a4b539f283e54bad7784da3d754ad13a60f12ae4555",
+        "c6": null
+      },
+      "frozen_d0_100040_49/cam_left_wrist.png": {
+        "c4": "3fa6a4854054cf3119de98802c191cad9b7496a3a958c3755d33f71d86c308da",
+        "c6": null
+      },
+      "frozen_d0_100040_49/cam_right_wrist.png": {
+        "c4": "864ec3b4880aecb4582a30ac9c0904cf80d70b85aaca76e0faf87e72cf00d9bf",
+        "c6": null
+      },
+      "frozen_d0_100040_49/color_M.json": {
+        "c4": "8ae724bb2a72815d36b76582bb908994536ef901431f9647c1e58a9ae12fb608",
+        "c6": null
+      },
+      "frozen_d0_100040_49/manifest.json": {
+        "c4": "b7b70b68d21152bf730727c7ec0f83816c4c8e729ff8bf4bfde79706e091c0c1",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00000/cam_head.png": {
+        "c4": "6cbe1d1a0e050404a27348f772f8c1b035f686b021c8b183508e7d9729e8ac15",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00000/cam_head_clean.png": {
+        "c4": "f183ee83062f9b4a3879e20c7bcfeffaca276743688df329b8ddaa65a5462819",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00000/cam_head_clean_unseen.png": {
+        "c4": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00000/cam_left_wrist.png": {
+        "c4": "771bc26166e77aa99f710840f3351711704155e69786472f6a1d16ce83dea44e",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00000/cam_right_wrist.png": {
+        "c4": "af4fecd3399e6423843050eeacbbbe2deef7ff578bd73b0f0fd76a4fc890f0c1",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00000/provenance.json": {
+        "c4": "606667ad8d3442532464e5cbeb40f4ad8151778b0b2a95e9536538588890f36f",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00001/cam_head.png": {
+        "c4": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00001/cam_head_clean.png": {
+        "c4": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00001/cam_head_clean_unseen.png": {
+        "c4": "19ca316b103ac680f497c72b3f6bfe62b65dfe6741b3d2b4958184423fd81051",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00001/cam_left_wrist.png": {
+        "c4": "a9011fc794ac7048a2b9043977a7177e460c05ab25960b0cf36a4470f02f7ffd",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00001/cam_right_wrist.png": {
+        "c4": "969b41c88e0442d977ac82275f446194e6bb1520a191cf78ede63a2c09f4b3ef",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Dynamic_conveyor_00001/provenance.json": {
+        "c4": "2d21a65826e60a65fe3ca211152f2299716e42859f9395b40f09432b77f96599",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_basket_00005/cam_head.png": {
+        "c4": "ac5f41b7de931a5e8ab3f8ae68141a1c00bef5a8de37cc6946237561df16ad76",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_basket_00005/cam_head_actor_mask.png": {
+        "c4": "e04e558c73246b7343e23de7182c09ae74cd433ad4d51aba27063a32600836e8",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_basket_00005/cam_head_clean.png": {
+        "c4": "2f947887214ed62f3e4b6a4fa1fbc36f3cd1bd24c4eb2c1df34d040fb9dcc7a7",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_basket_00005/cam_head_clean_unseen.png": {
+        "c4": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_basket_00005/cam_head_noactor.png": {
+        "c4": "a6a04098ef3cd93fec55d31b6dad2aec9a9eb918a48c9d2effe52132dd9ffb79",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_basket_00005/cam_left_wrist.png": {
+        "c4": "e653d0761c52420686b393c791f97d418792d4a6adc79e8c0fd557f2cb8ded69",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_basket_00005/cam_right_wrist.png": {
+        "c4": "0fe60df8733d6a31cc4bd3b7cd42d868daed07ff4b516004265ba67fcd539e88",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_basket_00005/provenance.json": {
+        "c4": "5b9c9418c7307b2d6986cd9dd68f6b5cd763110923ccef73746d18cd846fcbbe",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/cam_head.png": {
+        "c4": "349de6a10637ddd4752817649e6691c9925cf34c919ba786ac8c961a0849f04a",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/cam_head_clean.png": {
+        "c4": "b97410a8b7500ec0d295b5eea87d3765f653ec48f3a4bbb67fe3469d1d1d6060",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/cam_head_clean_unseen.png": {
+        "c4": "fa5abb73d18755e3407bd402c1d22c70417ce1d2be49f692d67ed376e85d2c18",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/cam_left_wrist.png": {
+        "c4": "a00ea008bc8631b9b5539632484bbf9b09cf294734c26070fca1c3a5f92a566c",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/cam_right_wrist.png": {
+        "c4": "74e3390d6c065549b6eb0823620917e2c96e754a4ec6c9184047f25e62970908",
+        "c6": null
+      },
+      "frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/provenance.json": {
+        "c4": "4c3da2251eacf768b9c7dd60481a5ff0aa9ac383261c2515f4aeb048b4a8590a",
+        "c6": null
+      }
+    }
+  },
+  "models": {
+    "c4_files": 4,
+    "c6_files": 0,
+    "differences": {
+      "digit_v2/model.pt": {
+        "c4": "a9c341e949d08afd806d0118d63b67e109430a918b612dbbddf37231ea8d548b",
+        "c6": null
+      },
+      "kong_v1b/model.pt": {
+        "c4": "dc35be09bfa6588203983668f0e3bf7b10061b42e824519a3a4126cb978d628e",
+        "c6": null
+      },
+      "v2b/best.pt": {
+        "c4": "d7b2f167a69584697628ba967c0f82f4ecfacd3152267f12b23644cc46e8ca88",
+        "c6": null
+      },
+      "v2b/classes.json": {
+        "c4": "900b4967d0ff4353b02efd782c065f556c8cb46289eb31d1e7f2cae56b5b027d",
+        "c6": null
+      }
+    }
+  },
+  "sim_python": [
+    "3.11.17 (main, Oct  1 2026, 20:17:42) [GCC 14.3.0]",
+    "3.11.18 (main, Oct 26 2026, 18:19:35) [GCC 14.3.0]"
+  ],
+  "sim_packages": {
+    "msgpack": [
+      "1.2.3",
+      "1.2.4"
+    ]
+  },
+  "robodojo": {
+    "XPolicyLab": [
+      {
+        "head": {
+          "rc": 0,
+          "stdout": "e08ba78888b233b77ed2bb2d92886a52360a1081\n",
+          "stderr": ""
+        },
+        "status": {
+          "rc": 0,
+          "stdout": "?? policy/harness/\n?? policy/harness_strict/\n",
+          "stderr": ""
+        },
+        "diff": {
+          "rc": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      },
+      {
+        "head": {
+          "rc": 0,
+          "stdout": "e08ba78888b233b77ed2bb2d92886a52360a1081\n",
+          "stderr": ""
+        },
+        "status": {
+          "rc": 0,
+          "stdout": "?? policy/dojo_replay/\n",
+          "stderr": ""
+        },
+        "diff": {
+          "rc": 0,
+          "stdout": "",
+          "stderr": ""
+        }
+      }
+    ]
+  },
+  "scope": "Read-only inventories of catalogue, named lane background root, four candidate side-model files, RoboDojo repositories and installed simulation package versions. Asset tree contents not exhaustively hashed.",
+  "phase": "Initial pre-sync barrier; see accompanying journal for released parity checks"
+}
