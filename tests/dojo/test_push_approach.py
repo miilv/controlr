@@ -72,3 +72,17 @@ def test_arrange_hover_config():
     RuntimePolicy(RuntimeConfig(arrange_hover="low"))
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(arrange_hover="bad"))
+
+
+def test_tilted_face_reaches_where_vertical_does_not():
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.skills import GTProvider, Skills
+    rows = [dict(label="wide", category="keyboard", category_idx=0, pos=[0., 0.1, 0.78],
+                 quat=[1, 0, 0, 0], half=[0.2, 0.06, 0.015])]
+    env = KinematicEnv(rows, step_lim=1000)
+    sk = Skills(env, GTProvider(env, None))
+    o = sk.world.obj("wide")
+    assert library._push_stroke(sk, o, "wide", np.array([1., 0.]), 0.05) is None
+    sk.push_approach = "tilted"
+    plan = library._push_stroke(sk, o, "wide", np.array([1., 0.]), 0.05)
+    assert plan is not None and plan.steps > 0
