@@ -2037,7 +2037,7 @@ def _fill_guard_features(sk, objects, container, comfy):
     Outside the arm-base lateral span, retain the baseline: the changed idle-arm
     route can hit a holder that the baseline left upright.
     """
-    w = sk.refresh()
+    w = sk.world
     c = w.obj(container)
     distances = [float(np.linalg.norm(sk.kin.base(a)[:2, 3] - c.center_w[:2])) for a in ARMS]
     flat = False

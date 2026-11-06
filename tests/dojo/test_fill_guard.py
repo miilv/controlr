@@ -18,7 +18,7 @@ def scene(xy, rolled=False, rigid=True):
         T = np.eye(4)
         T[:3, 3] = [-.3 if arm == "left" else .3, -.45, .765]
         return T
-    return SimpleNamespace(refresh=lambda: world, kin=SimpleNamespace(base=base))
+    return SimpleNamespace(world=world, refresh=lambda: world, kin=SimpleNamespace(base=base))
 
 
 @pytest.mark.parametrize("xy,rolled,rigid,active", [
@@ -34,6 +34,12 @@ def scene(xy, rolled=False, rigid=True):
 def test_geometry_gate(xy, rolled, rigid, active):
     sk = scene(xy, rolled, rigid)
     assert library._fill_guard_features(sk, ["s"], "h", .42)["active"] is active
+
+
+def test_gate_uses_existing_world_without_a_provider_refresh():
+    sk = scene((.1, .1))
+    sk.refresh = lambda: pytest.fail("gate triggered another provider refresh")
+    assert library._fill_guard_features(sk, ["s"], "h", .42)["active"]
 
 
 def test_wide_body_does_not_count_as_flat_shaft():
