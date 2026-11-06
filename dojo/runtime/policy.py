@@ -535,6 +535,7 @@ class RuntimeConfig:
     # reaches the other object's spot top-down; G3: at 0.86 the left arm cannot reach a T at x >= ~0.09)
     ported_swap: str = "fixed"
     # the IK's joint range (``Skills.joint_limits``): wide (today) | measured (joint 5 inside the sim's +-pi/2 stop)
+    plan_world: str = "table"  # legacy | bounded belief-object free-space routing
     joint_limits: str = "wide"
     # ... the drag onto a pad: v1 (Mikhail's planar_drag) | turn (planar_drag_p1: near a 180 deg turn both directions are
     # planned and the feasible one driven; v1 takes the sign of the yaw difference, which perception noise flips there and
@@ -680,6 +681,7 @@ class RuntimePolicy:
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
                 or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap")
+                or self.cfg.plan_world not in ("table", "objects")
                 or self.cfg.joint_limits not in ("wide", "measured")
                 or self.cfg.stack_reach not in ("centre", "grasp") or self.cfg.nest_height not in ("bins", "measured")):
             raise ValueError(f"bad runtime config {self.cfg}")
@@ -1008,6 +1010,7 @@ class RuntimePolicy:
             sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
             sk_.ported_swap = cfg.ported_swap
+            sk_.plan_world = cfg.plan_world
             sk_.joint_limits = cfg.joint_limits
             sk_.ported_drag = cfg.ported_drag
             sk_.ported_pour_aim = cfg.ported_pour_aim

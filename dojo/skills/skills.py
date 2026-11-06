@@ -513,6 +513,16 @@ class Skills:
             pass
 
     # ------------------------------------------------------------------ world
+    @property
+    def plan_world(self):
+        return self.motion.plan_world
+
+    @plan_world.setter
+    def plan_world(self, value):
+        if value not in ("table", "objects"):
+            raise ValueError(f"unknown plan_world: {value}")
+        self.motion.plan_world = value
+
     def refresh(self) -> WorldState:
         self.world = self.provider.refresh({a: (h.label if h else None) for a, h in self.held.items()})
         if getattr(self, "artic_geom", "authored") == "measured":

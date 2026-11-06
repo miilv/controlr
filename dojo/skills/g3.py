@@ -199,7 +199,7 @@ class FrozenGarmentProvider:
 
 
 # ``--skill-attr NAME=VALUE``: Skills switches a G3 run may set (each mirrors a ``RuntimeConfig`` field; first = default)
-SKILL_ATTRS = {"place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
+SKILL_ATTRS = {"plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
                "arrange_order": ("near", "big_first", "push_big_first"), "push_stroke": ("face", "press"),
                "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"),
                "artic_geom": ("authored", "measured"),
@@ -364,6 +364,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 "plan_s": round(wall - sim_time[0], 1), "result": res_j, "reward": reward, "skills": hist,
                 "final_objects": {o.label: np.round(np.r_[o.pos, o.quat], 4).tolist()
                                   for o in sk.refresh().task_objects()}})
+    rec["world_plans"] = sk.motion.world_plans
     rec["category"] = classify(res_j, reward, hist)
     if getattr(sk, "ported_runs", None):                 # stream P: the adapter's calls of each ported skill (tail)
         rec["ported"] = sk.ported_runs

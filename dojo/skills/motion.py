@@ -20,6 +20,7 @@ the joint waypoints by segment, the exact env-step cost, the TCP pose reached, a
 from __future__ import annotations
 
 import math
+import time
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -343,6 +344,8 @@ class Motion:
     def __init__(self, kin: X5Kin | None = None, coll: Collision | None = None):
         self.kin = kin or X5Kin()
         self.coll = coll or Collision(self.kin)
+        self.plan_world = "table"
+        self.world_plans = []
 
     # ---- IK
     def ik(self, arm: str, T_tcp, q_current, **kw):
@@ -420,6 +423,14 @@ class Motion:
                 ease: int = EASE) -> MoveResult:
         """Free-space move to a TCP pose: a straight joint move to the closest IK solution if it is
         collision-free; otherwise up to ``safe_z`` (line), across in joint space, down (line)."""
+        if self.plan_world == "objects" and check and self.coll.world is not None:
+            from dojo.skills.world_plan import plan_objects
+            result = plan_objects(self, arm, q0, T_goal, step_rad, name, gripper, ignore, held, ease)
+            if result is not None:
+                return result
+        return self._legacy_to_pose(arm, q0, T_goal, step_rad, name, gripper, ignore, held, check, safe_z, ease)
+
+    def _legacy_to_pose(self, arm, q0, T_goal, step_rad, name, gripper, ignore, held, check, safe_z, ease):
         r = self.kin.ik(arm, T_goal, q0)
         if not r.ok:
             return MoveResult("ik_fail", arm, [], self.kin.tcp(arm, q0), r.pos_err, r.rot_err,

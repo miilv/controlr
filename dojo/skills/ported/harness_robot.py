@@ -557,6 +557,33 @@ class HarnessRobot:
             qprev = qi
         return np.stack(qs)
 
+    def object_path(self, arm, flange, q0):
+        """Use only refreshed skill belief and its accepted in-hand attachment."""
+        from dojo.skills.motion import held_box
+        self.sk.refresh()
+        h = self.sk.held.get(arm)
+        held = h.box if h is not None else None
+        ignore = (h.label,) if h is not None else ()
+        # The port can close outside Skills.pick. The camera belief owns that
+        # attachment; never infer it from the simulator or nearest true object.
+        belief = getattr(self.sk.provider, "belief", None)
+        att = (getattr(belief, "attached", None) or {}).get(arm)
+        if h is None and att is not None:
+            label, T_tcp_obj = att
+            obj = self.sk.world.objects.get(label)
+            if obj is not None:
+                held = held_box(obj, T_tcp_obj)
+                ignore = (label,)
+        fl = np.asarray(flange, float)
+        T = np.eye(4)
+        T[:3, :3], T[:3, 3] = qmat(fl[3:]), tcp_of(fl)
+        from dojo.skills.world_plan import plan_objects
+        mv = plan_objects(self.sk.motion, arm, q0, T, LIM_HOLD if self.holding(arm) else LIM_EMPTY,
+                          "ported", float(self.ex.g[arm]), ignore, held, 2)
+        if mv is None or not mv.ok:
+            return None
+        return np.vstack([q0] + [s.q[1:] for s in mv.segments])
+
     def plan_path(self, arm, flange, q0):
         """Stand-in for cuRobo's ``plan_path``: our table-only free-space move (a joint move to the IK goal, else up,
         across and down)."""
@@ -597,7 +624,11 @@ class HarnessRobot:
                 info["plan_fail_reason"] = "workspace_limit"
                 return None, info
             path, mode = None, None
-            if want in ("auto", "joint"):
+            if getattr(self.sk, "plan_world", "table") == "objects" and want in ("auto", "plan"):
+                pp = self.object_path(arm, goal_flange, q0)
+                if pp is not None:
+                    path, mode = pp, "objects_plan"
+            if path is None and want in ("auto", "joint"):
                 qg = self.ik(arm, goal_flange, q0)
                 if qg is None:
                     info["plan_fail_reason"] = "ik_unreachable"
