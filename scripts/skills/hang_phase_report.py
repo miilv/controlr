@@ -66,7 +66,7 @@ def audit(root, layouts):
                 {'label': i['label'], 'type': typ, 'category': cat, 'category_idx': i['category_idx'],
                  'pos': i['default_pos'], 'quat': i['default_ori'], 'clutter': i.get('type') == 'cluttered'}
                 for typ, cat, i in iter_objects(layout) if i.get("label")], assets)
-            counts['mug14_instances'] += sum(o.category == 'mug' and o.idx == 14 for o in objects.values())
+            counts['mug14_instances'] += sum(o.category == 'mug' and o.idx == 14 and not o.clutter for o in objects.values())
             for s in r.get('skills', []):
                 if s['skill'] == 'pick':
                     counts['pick_attempts'] += 1

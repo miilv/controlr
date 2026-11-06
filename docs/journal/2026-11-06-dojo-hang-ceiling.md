@@ -1,6 +1,7 @@
 # 2026-11-06 — HANG: handle grasp and hook attainability
 
-Investigation in progress; no adoption claim. Lead review requested; do not merge.
+Completed negative G3 study: no ceiling gain under these probes. All switches
+remain off; camera prerequisite fails. Lead review requested; do not merge.
 
 ## Protocol
 
@@ -48,7 +49,7 @@ G3 jobs across streams; corrected to a single HANG slot. Checked HANG waiters
 214082/214083 were stopped, then checked HANG simulator 212365 was killed.
 Only random 100000 had been recorded; the interrupted next layout is not an
 outcome. Resume PID 215942 requests 100001-04, with completed rows retained.
-No other stream's process was signalled. Subsequent HANG jobs use light1 only,
+No other stream's process was signalled. Until the capacity update below, subsequent HANG jobs used light1 only,
 8G / 600% scopes, a 20 GB MemAvailable floor, disk guard and <=24 GB used VRAM
 admission. No heavy/camera lock is used.
 
@@ -102,13 +103,14 @@ snapshot was not measured. The unstarted exploratory waiter 218148 was
 checked and stopped during this source transition; no episode was lost.
 
 Generated standard settling: 20/20 stable, variant 2, ids 100030-49. The
-first ten stable draws per cell will be frozen in `dev10-manifest.json` before
-either paired arm. Random settling and the pair are pending shared-slot access.
+first ten stable draws per cell were to be frozen before either paired arm.
+At this checkpoint random settling and the pair were pending shared-slot access.
 To prevent polling starvation, checked unstarted HANG waiters 219200, 224477
 and 222924 were replaced by blocking single-lock waiters. Remaining pipeline
 PID 227675; screen waiter PID 227676. The launcher also waits if two other
 module-based G3/settling jobs are active. Never more than one HANG simulator
-after the initial correction. No other stream's process was signalled.
+after the initial correction and before the dedicated-capacity update below.
+No other stream's process was signalled.
 
 Rebased local full suite: **1842 passed / 187 skipped**, 17m56s. The new
 retry-deduplication audit test passes separately. Camera specification fixes
@@ -182,3 +184,48 @@ or a second loose-pick put-down, although the object never reached it. That
 reduces later objects' hook choices. No gain is attributed to fixing this:
 it is recorded in BACKLOG as a separate future lever, not folded into the
 frozen pair.
+
+## Final paired result and stop
+
+Both generated panels finished: twenty stable draws per cell, with the first
+ten frozen before their arms (variant 2, ids 100030–39). Twenty layout pairs,
+forty paired episodes, all usable. The same-source geometry bundle loses:
+
+| Cell | A mean ± sample SD; successes | B mean ± sample SD; successes | Paired delta | Score W/L/tie |
+|---|---|---|---:|---|
+| hang_mugs | 67.5 ±35.06; 5/10 | 50.5 ±35.86; 3/10 | -17 | 0/3/7 |
+| hang_mugs_random | 26.5 ±30.65; 1/10 | 25 ±31.62; 1/10 | -1.5 | 0/1/9 |
+
+Standard A/B failed lifts rise 1→3; random 1→4. Random loose picks rise 7→11
+and carry losses 1→3. Standard 100037/39 bar pinches fail the lift with
+38/33 mm drift; later assignments change. Random's nine mug14 instances
+in six layouts retain the documented pose/checker limitation; no exception
+was added. No arm exhausts its budget. No-plan exits are 1/2 standard and
+6/5 random, combining grasp, transfer and hook attainability rather than
+claiming every hook physically unreachable. The initial standard release/exit
+failure remains distinct from carry loss.
+
+A same-source diagnostic on random 100031 gives A 15, half-turn only 15,
+bundle 0. Removing bar grasps restores A on this one layout conditional on
+half-turn; this is not a ten-layout qualification of either lever. Pace is
+also parked after its null same-source screen. The G3 dispatch threshold
+(+5 in each cell without success loss) fails. Stop here under the user’s
+early-stop instruction; no camera batch or adoption claim.
+
+The [final experiment report](../experiments/2026-11-06-hang-skill-ceiling.md)
+and [result manifest](../experiments/2026-11-06-hang-g3-results.json) retain
+every paired score, phase diagnostic, source/config/layout receipt, 86 asset
+hashes, and all 13 admissions. Bootstrap intervals are descriptive. Host
+load varies during runs despite admission bounds; wall times are not a
+controlled speed comparison. The [camera registration](../experiments/2026-11-06-hang-camera-ab-spec.md)
+preserves the default rule and remains deferred.
+
+Total: 54 recorded G3 episodes (10 initial, 40 paired, 4 screens), one
+interrupted initial partial attempt with no outcome, and 40 settling draws.
+Recorded episode/load plus settling time is 3.71 lane-hours, excluding startup,
+queue and the partial attempt. LLM calls/tokens/spend: 0/0/$0. No camera runs
+or rendered videos. All 13 dedicated-lock admissions meet the updated limits:
+max VRAM 18033 MiB, min free RAM 13.915 GiB, max load1 25.69; 175 waiting
+checks retained. All HANG workers and simulators exited; light5/light6 are
+unheld. Final local validation: 1848 passed/187 skipped, focused 29 passed;
+final-head CI is checked before handoff. PR #400 stays open for lead review.
