@@ -565,3 +565,10 @@ have exited; only the two checked unadmitted CPU migration PIDs were signaled.
 Zero model calls/tokens/spend, no system/vendor changes or foreign-process
 signals, and local writes below 1 GB. Final CI and ready-for-review status are
 verified before handing PR #401 back; do not merge.
+
+Environment qualification: both GPUs are RTX 5090, but installed drivers differ
+(compute3 595.99.02, compute6 580.178.04). Keep their provenance explicit. HANG
+and sweep coverage pilots run on compute3, comparisons mainly on compute6, so
+their pilot-to-panel coverage shift cannot be attributed entirely to layouts.
+All performance pairs stay on one host/driver; tools pilot and full panel share
+compute3. No system/software changes are made to reconcile hosts.
