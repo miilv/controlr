@@ -291,3 +291,22 @@ never increase any sphere penetration or create contact (10 µm numerical slack)
 moves until the joined repair/tail passes the unchanged native validator.
 [The fourth gate config](../experiments/2026-11-06-plan-round2-v4-coverage-config.json)
 keeps the same four layouts and denominator. No paired score study is dispatched.
+
+
+Fourth recovery pilot: tools 4/30 (13.3%), egg 21/52 (40.4%). Eight egg
+requests used a successful bounded repair; no start-collision fallback remained.
+The residual egg counts are 12 IK failures, 5 goal collisions and 4 native
+validation rejects. Scene-free diagnostic replay of the 12 IK failures finds
+only one successful IK; the remaining residuals are 7–42 mm with the tested
+native bounds/seeds/budget. This is evidence of fixed-goal / workspace limits,
+not a proof of global unreachability or a refutation of object-aware planning.
+
+A final source fixes repeated identical IK retry banks, matches native IK's
+four random seeds, and logs the actual legacy fallback result. It adds the
+native regular-box samples on top of mesh coverage where height fields require
+them, and checks CPU retract prefixes against shallow monotone GPU contact
+escape too. [Final coverage configuration](../experiments/2026-11-06-plan-round2-v5-coverage-config.json)
+retains the same IDs (egg hard layout first, as in the previous fourth launch).
+Keep the full denominator and gate unchanged. The scene-free counterfactual
+will be repeated with the corrected distinct retry banks; it never executes
+any robot action. No new paired score comparison has begun.
