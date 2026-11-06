@@ -272,3 +272,22 @@ remain fixed. In parallel, five one-layout legacy-profile diagnostic episodes
 (tools/egg/stack/sweep 100000, HANG 100031) collect complete stage classifications
 on the corrected instrumentation. Their scores are not a paired performance
 comparison. Historical missing result codes remain unknown, not fabricated.
+
+
+Third egg probe remains above the gate: 22/48 fallbacks. Direct sphere/cuboid
+queries identify shallow fixture overlap at link3 (~11 mm) and a native-clear
+goal with link2/3 proxy overlap (~38 mm). These are not finger-padding-only
+cases. The native envelope's arm samples and the GPU volumetric model differ.
+Some failed targets also have no converged native IK or collide in native
+hand/held checks; do not treat a bad target as a routing failure.
+
+Fourth source a4a89797 retains broad IK exploration (one quarter nearby seeds,
+remaining deterministic global seeds). It tightens GPU limits to the current
+native envelope before constructing all solvers: URDF ±10 rad is not the
+working envelope, and broad IK previously found forbidden postures. It adds
+proposal-only, bounded start repair: reject >15 mm penetration or self-contact,
+never increase any sphere penetration or create contact (10 µm numerical slack),
+<=0.3 rad departure / 0.03 rad increments, <=12 iterations / 3 seconds. Nothing
+moves until the joined repair/tail passes the unchanged native validator.
+[The fourth gate config](../experiments/2026-11-06-plan-round2-v4-coverage-config.json)
+keeps the same four layouts and denominator. No paired score study is dispatched.
