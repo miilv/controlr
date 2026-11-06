@@ -526,6 +526,33 @@ The shared boot protocol reads only `~/coord/lane_gate.stamp`, waits until its
 epoch is at least 120 seconds old, then writes `<epoch> <iso> ilia-ab`. While the
 other team runs its single Isaac, use one Integration lane (`lane2.caps: 1 4`).
 
+### Matching-slot Cartesian approaches
+
+`RuntimeConfig.slot_approach` is `off` by default. `linear` makes matching-slot transfers use
+`plan_place(approach_line=True)`: a collision-checked Cartesian path to the placement hover.
+It applies to level carries and the reorienting/relay fallback. An infeasible Cartesian path
+rejects that candidate; it never falls back to a joint-space transit for the same candidate.
+G3 exposes the same switch with `--skill-attr slot_approach=linear`. Pick, descent, release,
+held-pose measurements and all non-slot places retain their existing settings.
+
+`RuntimeConfig.slot_hover=low` (default `off`) independently sets matching-slot pre-place
+height to 15 mm and support clearance to 3 mm. It retains collision-checked approaches;
+the container top and tool's lowest corner still set the minimum hover. G3 uses
+`--skill-attr slot_hover=low`. Do not combine it with Cartesian approaches without a separate comparison.
+
+`RuntimeConfig.slot_place=servo` (default `off`) uses the existing measured placement tail
+for matching slots, disables insertion probes, and requests the existing held-pose protocol
+at the hover. G3 re-measures the tool between tail moves; perception mode can only use the
+provider's accepted held transform. Configure a held-pose provider to test the camera effect;
+this switch does not turn on a perception service or supply ground truth.
+
+`RuntimeConfig.slot_carry_read=on` (default `off`) splits the slot approach into at most
+four checked Cartesian hops. It interpolates object orientation from lift to hover and
+updates attachment between hops. Perception uses gated current-view held reads only;
+it adds no show/observer moves. An unavailable first read keeps the legacy approach;
+a later missing read retains the last accepted attachment. Infeasible hops stop motion
+while retaining the grasp for the existing recovery path. G3 re-measures from its provider.
+
 For egg-holder feasibility screens, `RuntimeConfig.egg_grasp_height` (`off` / `raised`)
 adds upper-shell pinch candidates, and `egg_grasp_angles` (`off` / `wide`) adds steeper
 round grasps. `egg_wall_model` (`off` / `shell`) tests the lower/upper radial mesh envelope;
