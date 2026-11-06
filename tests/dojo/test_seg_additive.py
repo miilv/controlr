@@ -3,6 +3,7 @@ import importlib.util
 import json
 from pathlib import Path
 from types import SimpleNamespace
+import threading
 
 import numpy as np
 import pytest
@@ -78,6 +79,28 @@ def test_default_client_packet_and_additive_provenance():
     result['sources'] = ['extra']
     assert client.detect(None, additive=True, extra_allowed=['new'])[0].source == 'extra'
     assert calls[-1]['extra_allowed'] == ['new']
+
+
+def test_additive_socket_roundtrip_and_missing_model_is_loud(tmp_path):
+    from dojo.perception import sam_masks
+
+    mask = np.zeros((4, 4), bool)
+    mask[:2] = True
+    model = seg._AdditiveSegModel(Base(mask), Extra([(~mask, Extra.classes[0], .9, [])]))
+    ready = threading.Event()
+    sock = str(tmp_path / 'additive.sock')
+    threading.Thread(target=sam_masks.serve, args=(sock, ['seg'], .01),
+                     kwargs=dict(M=model, ready=ready), daemon=True).start()
+    assert ready.wait(5)
+    client = seg.SegClient(sock)
+    image = np.zeros((4, 4, 3), np.uint8)
+    assert len(client.detect(image)) == 1
+    result = client.detect(image, additive=True)
+    assert [d.source for d in result] == ['base', 'extra']
+    assert np.array_equal(result[0].mask, mask) and np.array_equal(result[1].mask, ~mask)
+    unloaded = object.__new__(seg._SegModel)
+    with pytest.raises(ValueError, match='without a new-class model'):
+        unloaded.handle(dict(op='detect', additive=True), image)
 
 
 def test_consumer_base_priority_and_exact_candidate_request():

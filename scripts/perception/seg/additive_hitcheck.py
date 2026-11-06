@@ -7,6 +7,7 @@ import argparse
 from collections import Counter, defaultdict
 import json
 from pathlib import Path
+import pickle
 import sys
 
 import numpy as np
@@ -45,8 +46,8 @@ def main():
         base = standalone.handle(req, image)
         off = combined.handle(req, image)
         result = combined.handle({**req, 'additive': True, 'extra_iou': theta, 'extra_conf': .5}, image)
-        assert off == base, 'disabled additive changed base response'
-        assert result['dets'][:len(base['dets'])] == base['dets'], 'base prefix changed'
+        assert pickle.dumps(off) == pickle.dumps(base), 'disabled additive changed base response'
+        assert pickle.dumps(result['dets'][:len(base['dets'])]) == pickle.dumps(base['dets']), 'base prefix changed'
         assert result['sources'][:len(base['dets'])] == ['base'] * len(base['dets'])
         parity['images'] += 1
         parity['base_detections'] += len(base['dets'])
