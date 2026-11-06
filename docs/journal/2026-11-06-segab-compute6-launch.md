@@ -114,6 +114,14 @@ again reports 511+32 classes and `add-only`. The receipt is
 `first-B-live-verification.json`. The launcher's log names wrapper301365;
 it is not substituted for this worker check.
 
+The bounded observer then verified actual A worker **304325** via
+`perception.ready` at **14:44:06Z**, for `c6b_tubessg_segA_a_100000` (START14:43:36Z).
+Its complete A estimator config, Claude route, readers, calibration/backgrounds
+and private dual-model server all match. Receipt:
+`first-A-actual-worker-verification.json`. This closes the direct A-worker audit
+gap while retaining the original wrapper-check limitation in the record.
+The observer exited normally after recording this evidence.
+
 Ready cells are prepended individually as they qualify; each insertion retains
 any queued mate of an already-started pair at the front. AB/BA parity is fixed
 by the original task/block/id indices. Thus the exact cell order reflects
