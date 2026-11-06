@@ -1082,3 +1082,10 @@
   Diagnose phases from cumulative `actions.json.gz` segment lengths (as
   `scripts/skills/hang_phase_report.py` does); a current-segment field would
   remove the ambiguity. See journal `2026-11-06-dojo-hang-ceiling`.
+
+- [ ] **Hang hook reservations survive failed picks.** `hang_on_hooks` adds a
+  hook to `used` before executing its pick. The first loose retry frees it,
+  but an ordinary failed lift or a second loose put-down can leave the empty
+  hook consumed for later mugs. Release verified empty reservations before
+  diagnosing the remaining hooks as unreachable; evaluate as a separate
+  default-off lever. See journal `2026-11-06-dojo-hang-ceiling`.

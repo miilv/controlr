@@ -159,3 +159,26 @@ reduce losses while a wall-held cup turns. It may instead consume budget or
 leave contact/reach failures unchanged. Original dev standard 100002 is the
 first same-source off/on screen. A separate immutable source snapshot will
 keep it independent of the ten-layout bundle pair at `8ff324fd`.
+
+## Carry-rate screen result
+
+Pace source `eac4a8b1de9630fac5c0b982049b8ac1c86b3081`, stored under
+`~/controlr-hang/pace`, was verified and stamped before either screen was
+admitted. Both arms use that same snapshot, with only `hang_carry_slow` on
+in B. Original dev standard 100002: A **40**, 359 steps; B **40**, 455 steps.
+Both lose the third cup during carry (in-hand shifts 83.9 / 78.5 mm at the
+failed place). The screen gives no score gain and costs 96 steps. It is a
+single-layout negative screen, not a population estimate; park the probe.
+The two-switch geometry pair remains unchanged at `8ff324fd`.
+
+The added positive cradle test initially failed because its stub also sees
+relay calls with no place options; the test-only fixture was corrected.
+Final full local suite: **1848 passed / 187 skipped**, 18m59s. Latest PR CI
+passes. No simulator result used the transient failing test fixture; policy
+code is identical between the pace snapshot and its test-only descendants.
+
+Another planning landmine: a hook can remain reserved after a failed lift
+or a second loose-pick put-down, although the object never reached it. That
+reduces later objects' hook choices. No gain is attributed to fixing this:
+it is recorded in BACKLOG as a separate future lever, not folded into the
+frozen pair.
