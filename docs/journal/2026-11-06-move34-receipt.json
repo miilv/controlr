@@ -1,0 +1,88 @@
+{
+  "validation": {
+    "frozen_manifest_hash": "f06c49ab2016a9dac47559baa5836e362c50468952117ccb7b98722653671a91",
+    "dispatch_hashes": {
+      "schedule.json": "b7bbc26cb222d34a8fd419fd2a35326d91d063ca870f78da4c0717de15b4b031",
+      "runtime-configs.json": "f87bea18907b93477287fd62c52ba88922daf9b3835dbcb5bd5c98799483dd9f",
+      "layout-manifest.json": "f06c49ab2016a9dac47559baa5836e362c50468952117ccb7b98722653671a91",
+      "CANDIDATE.txt": "b5bde8d98c7837c76535e03efd0c42c9d7af0d2d796490e5ae08ef6a74ad4df7",
+      "salts.json": "d468aea30f7d0917a941b78218a90c75b896d37fbf45dc874f0a14264cf5b0a7",
+      "pen-selected.json": "3b805af500b0e7967de33171fee61d0b12b45d66d7cab69128fe7be1b7bb971f"
+    },
+    "pairs": 80,
+    "layout_file_checks": 240,
+    "unique_layout_files": 145,
+    "source_asset_checks": 4540,
+    "shared_asset_checks": 100,
+    "rows": 158,
+    "counts": {
+      "fill_pen_holder": 18,
+      "play_stacking_toy": 40,
+      "stack_blocks": 20,
+      "insert_tubes": 20,
+      "match_and_pick_from_conveyor": 40,
+      "pick_from_conveyor_by_image": 20
+    },
+    "queue_sha256": "46d0e41e78913ae7d5da8158804a0ad970e1166a0c2093dd850c8e341b7b14cd",
+    "package_differences": 0,
+    "amendment_commit": "9cbf3d62",
+    "source_queue_sha256": "f426486ba3d4a65a8531a7e9e9a7ba09467a761b4c1edacd201bb85dd38e429b"
+  },
+  "enqueue": {
+    "utc": "2026-11-06T16:03:26.521759+00:00",
+    "rows_appended": 158,
+    "rows_ahead": 71,
+    "positions": [
+      72,
+      229
+    ],
+    "previous_tail": "c4b_pluginchargersg_keyAr1b2_100004",
+    "first": "c4b_fill_pen_holder_penBr1_penoriginal_100021__retry",
+    "last": "c4b_pick_from_conveyor_by_image_waistAr1_waistguard2_100004",
+    "queue_sha256": "46d0e41e78913ae7d5da8158804a0ad970e1166a0c2093dd850c8e341b7b14cd",
+    "before_sha256": "f625a1acec6476acd53b686e80a66923a2acb4061d67294862e33a2eea6aeb3e",
+    "amendment_commit": "9cbf3d62"
+  },
+  "packages_reference": {
+    "executable": "/home/haptics/dojo-integ-c4-416a2a03/.venv/bin/python",
+    "packages": {
+      "PyOpenGL": "3.1.9",
+      "networkx": "3.7",
+      "numpy": "2.5.4",
+      "opencv-python": "5.0.0.93",
+      "opencv-python-headless": "5.0.0.93",
+      "pillow": "13.0.0",
+      "pyrender": "0.1.45",
+      "scipy": "1.18.1",
+      "shapely": "2.2.0",
+      "timm": "1.0.30",
+      "torch": "2.11.0+cu128",
+      "torchvision": "0.26.0+cu128",
+      "transformers": "5.21.0",
+      "trimesh": "5.2.0",
+      "ultralytics": "8.4.191"
+    },
+    "python": "3.12.13"
+  },
+  "packages_deploy": {
+    "executable": "/home/haptics/dojo-integ-c4-86ad1987/.venv/bin/python",
+    "packages": {
+      "PyOpenGL": "3.1.9",
+      "networkx": "3.7",
+      "numpy": "2.5.4",
+      "opencv-python": "5.0.0.93",
+      "opencv-python-headless": "5.0.0.93",
+      "pillow": "13.0.0",
+      "pyrender": "0.1.45",
+      "scipy": "1.18.1",
+      "shapely": "2.2.0",
+      "timm": "1.0.30",
+      "torch": "2.11.0+cu128",
+      "torchvision": "0.26.0+cu128",
+      "transformers": "5.21.0",
+      "trimesh": "5.2.0",
+      "ultralytics": "8.4.191"
+    },
+    "python": "3.12.13"
+  }
+}
