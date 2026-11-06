@@ -471,7 +471,9 @@ an existing bake with provenance hashes; this reuses predictions, not inference.
 `dev_gate.py compare BASE CANDIDATE` requires matching frame/object keys, unique
 objects and no errored frames, and reports identity and 10 mm position separately.
 `--diagnostic` can inspect errored archives but marks them invalid for adoption.
-The genuine-dev new-class hitcheck remains a separate required gate.
+Use `--by-asset` to split categories by retained GT asset index; report both
+resolutions so a win on one asset cannot hide a loss on another. The genuine-dev
+new-class hitcheck remains a separate required gate.
 
 Before incremental segmenter training, run `audit_rehearsal.py --base-classes
 BASE/classes.json --export EXPORT --out support.json`. It checks the exact old

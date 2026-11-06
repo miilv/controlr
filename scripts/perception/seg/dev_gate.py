@@ -75,15 +75,22 @@ def metrics(rows):
     return found, identity, pose10, id10
 
 
-def compare(base, candidate, *, diagnostic=False):
+def compare(base, candidate, *, diagnostic=False, by_asset=False):
     a, fa = load(base, allow_errors=diagnostic)
     b, fb = load(candidate, allow_errors=diagnostic)
     if {object_key(r) for r in a} != {object_key(r) for r in b} or {frame_key(r) for r in fa} != {frame_key(r) for r in fb}:
         raise ValueError('unpaired gate: object/frame keys differ')
+    if by_asset:
+        if any(not isinstance(r.get('gt_idx'), int) for r in a + b):
+            raise ValueError('per-asset comparison requires integer gt_idx on every row')
+        if {object_key(r): (r['category'], r['gt_idx']) for r in a} != {
+                object_key(r): (r['category'], r['gt_idx']) for r in b}:
+            raise ValueError('unpaired gate: GT asset identities differ')
     groups = defaultdict(lambda: [[], []])
     for arm, rows in enumerate((a, b)):
         for r in rows:
-            groups[(r['set'], r['task'], r['category'])][arm].append(r)
+            cls = f"{r['category']}/{r['gt_idx']:05d}" if by_asset else r['category']
+            groups[(r['set'], r['task'], cls)][arm].append(r)
     lines = ['| set/task/category | n | found A → B | identity A → B | pose10 A → B | identity+10 A → B | gate |',
              '|---|---:|---:|---:|---:|---:|---|']
     losers = 0
@@ -112,12 +119,13 @@ def main():
     p.add_argument('base', type=Path)
     p.add_argument('candidate', type=Path)
     p.add_argument('--out', type=Path)
+    p.add_argument('--by-asset', action='store_true', help='split categories by retained GT asset index')
     p.add_argument('--diagnostic', action='store_true', help='report errors explicitly; never a qualifying gate')
     a = ap.parse_args()
     if a.cmd == 'cut':
         cut(a.source, a.out)
     else:
-        report = compare(a.base, a.candidate, diagnostic=a.diagnostic)
+        report = compare(a.base, a.candidate, diagnostic=a.diagnostic, by_asset=a.by_asset)
         if a.out:
             a.out.write_text(report)
         else:

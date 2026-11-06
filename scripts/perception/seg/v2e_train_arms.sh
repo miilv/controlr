@@ -64,6 +64,7 @@ gate() {
     --out "$D/bake/$name" --cfg "$(cat "$HOME/dojo-data/w-ready/cfg_link_off.json")" \
     --sets d0_51,d0_ext,series,w51,p60 --workers 6 --gl gpu > "$D/gate_$name.log" 2>&1
   "$PY" scripts/perception/seg/dev_gate.py compare "$D/bake/v2b-clean" "$D/bake/$name" --out "$D/$name-per-class.md"
+  "$PY" scripts/perception/seg/dev_gate.py compare "$D/bake/v2b-clean" "$D/bake/$name" --by-asset --out "$D/$name-per-asset.md"
 }
 train narrow2 "$D/yolo_narrow/data.yaml" 2 0 -1
 BATCH=$("$PY" - "$D/runs/narrow2/resolved_batch.json" <<'PY'

@@ -23,6 +23,13 @@ The corrected baseline has **162 frames / 975 objects / zero errors**: found
 [source/code/output hashes](../experiments/data/seg-v2e-dev/v2b-clean-manifest.json).
 The +25 recovered objects are the formerly errored press_by_number rows.
 
+Correction to the round-1 limitation: rows retain `gt_idx`, although the fully
+qualified catalogue type/key is absent. This is sufficient to split each
+(set, task, category) by asset index. The new `--by-asset` report and its
+within-category-cancellation test were added before training. Adoption requires
+zero losers at both category and asset-index resolution, not a pooled category
+win that hides a lost numeral. [Baseline per-asset counts](../experiments/data/seg-v2e-dev/v2b-clean-per-asset.md).
+
 ## Rehearsal hypothesis
 
 The new `audit_rehearsal.py` validates exact base-class prefix, unique-image
@@ -84,7 +91,7 @@ All requested output/deploy paths are under `~/controlr-seg-v2e` and
 ## Verification
 
 Focused segmenter suite: 34 passed / 5 skipped locally (optional dependencies).
-Compute3 gate tests: 6 passed, including ctypes pointer conversion.
+Compute3 focused gate/rehearsal/capture/layout tests: 60 passed, including ctypes pointer conversion and clutter injection.
 Focused suite after the training-extra/capture additions: 46 passed / 14 skipped.
 Compileall, pyflakes and `git diff --check` pass. Broad suite was bounded at
 900 seconds and did not complete (progress reached 74%, with one observed failure:

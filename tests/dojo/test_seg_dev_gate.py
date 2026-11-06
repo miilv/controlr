@@ -86,3 +86,16 @@ def test_gl_worker_supports_ctypes_output_pointer(monkeypatch):
     ptr = ctypes.byref(ctypes.c_uint())
     handler = ArrayDatatype.getHandler(ptr)
     assert handler.from_param(ptr) is ptr
+
+
+def test_asset_report_does_not_hide_within_category_cancellation(tmp_path):
+    a = bake(tmp_path / 'a', ('100000', '100001'))
+    b = bake(tmp_path / 'b', ('100000', '100001'))
+    for root, good in ((a, 0), (b, 1)):
+        p = root / 'objects.jsonl'
+        rows = [json.loads(s) for s in p.read_text().splitlines()]
+        for i, r in enumerate(rows):
+            r.update(gt_idx=i, id_ok=i == good)
+        p.write_text(''.join(json.dumps(r) + '\n' for r in rows))
+    assert '0 class losers' in gate.compare(a, b)
+    assert '1 class losers' in gate.compare(a, b, by_asset=True)

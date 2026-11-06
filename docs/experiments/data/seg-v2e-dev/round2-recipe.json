@@ -95,7 +95,8 @@
       "conf": 0.25,
       "imgsz": 960,
       "required": "positive naming gain versus v2b; per-asset hit/merged/missed with vocabulary denominators"
-    }
+    },
+    "class_resolution": "Both (set, task, category) and (set, task, category, retained gt_idx); zero losers in each. Frozen before training."
   },
   "resources": {
     "machine": "compute3",
