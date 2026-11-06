@@ -2096,7 +2096,15 @@ class RuntimePolicy:
                 return
             k = tuple(w.get("knocked") or ())
             if k and k == st["prev"]:
+                before_lay = {lab: [float(v) for v in np.r_[prov.belief.objects[lab].pos,
+                                                         prov.belief.objects[lab].quat]] for lab in k
+                              if prov.belief is not None and lab in prov.belief.objects}
                 laid = [lab for lab in k if self._lay_face_up(prov, lab)]
+                for lab in laid:
+                    events.append({"kind": "watch_lay", "label": lab, "step": b.steps_used,
+                                   "before7": before_lay[lab],
+                                   "after7": [float(v) for v in np.r_[prov.belief.objects[lab].pos,
+                                                                    prov.belief.objects[lab].quat]]})
                 events.append({"kind": "watch", "knocked": list(k), "laid": laid, "step": b.steps_used,
                                "detail": w.get("detail")})
                 st["on"] = False

@@ -171,3 +171,17 @@ def test_relocation_exact_writes_survive_version_log_without_double_counting():
                                                                ("watch_relocate", "tile"),
                                                                ("watch_relocate", "tile")]
     assert mixed[1:] == exact
+
+
+def test_lay_and_relocate_remain_two_writes_when_version_log_combines_them():
+    standing = [0.1, 0, 0.8, 1, 0, 0, 0]
+    laid = [0.1, 0, 0.79, 0.707, 0.707, 0, 0]
+    found = [0.1, -0.045, 0.79, 0.707, 0.707, 0, 0]
+    rep = {"events": [
+        {"kind": "watch_lay", "label": "tile", "step": 10, "before7": standing, "after7": laid},
+        {"kind": "watch_relocate", "label": "tile", "step": 10, "before7": laid, "after7": found},
+        {"kind": "belief_write", "writer": "perception", "version": 1, "label": "tile", "step": 10,
+         "before7": standing, "after7": found}]}
+    writes = ms.belief_writes(rep)
+    assert [w["writer"] for w in writes] == ["watch_lay", "watch_relocate"]
+    assert writes[0]["after"] == writes[1]["before"]

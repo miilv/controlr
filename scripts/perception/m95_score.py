@@ -68,14 +68,15 @@ def belief_writes(rep: dict) -> list[dict]:
     if any(e.get("kind") == "belief_write" for e in evs):
         # Exact relocation writes include sub-5-mm updates omitted by the coarse version log.
         # Replace the matching version event (its pose is rounded to 5 decimals), rather than count twice.
-        reloc = [e for e in evs if e.get("kind") == "watch_relocate" and e.get("before7") and e.get("after7")]
+        reloc = [e for e in evs if e.get("kind") in ("watch_lay", "watch_relocate")
+                 and e.get("before7") and e.get("after7")]
         covered = {(e["step"], e["label"], tuple(round(v, 5) for v in e["after7"])) for e in reloc}
         writes = [e for e in evs if e.get("kind") == "belief_write" and e.get("before7") and e.get("after7")
                   and not (e.get("writer") == "perception" and "version" in e
                            and (e["step"], e["label"], tuple(round(v, 5) for v in e["after7"])) in covered)]
         # runs with A1's write log: every semantic pose change (> 5 mm / 5 deg or an asset change, not held) is one
         # belief_write {writer: the object's source, before7, after7}; exact relocations supplement this log
-        return [{"writer": "watch_relocate" if e.get("kind") == "watch_relocate" else str(e.get("writer")),
+        return [{"writer": e["kind"] if e.get("kind") in ("watch_lay", "watch_relocate") else str(e.get("writer")),
                  "step": int(e["step"]), "label": e["label"], "before": e["before7"][:3],
                  "after": e["after7"][:3], "q_before": e["before7"][3:7], "q_after": e["after7"][3:7]}
                 for e in writes + reloc]

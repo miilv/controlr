@@ -3,7 +3,9 @@
 Accepted `watch_relocate` events now retain full-precision `before7` and `after7`
 pose lists, copied immediately around the existing belief assignment. Rejected
 reads and errors have no pose pair. Search priors, reads, writes, convergence,
-try bounds, skill settings and action generation are unchanged.
+try bounds, skill settings and action generation are unchanged. The preceding
+lay-face-up write is logged separately as `watch_lay`, so the coarse combined
+lay/relocate version event can be replaced without losing the initial write.
 
 The audit reader previously ignored all per-writer events once any coarse
 `belief_write` existed. It now includes exact relocation events even in those

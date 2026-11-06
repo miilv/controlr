@@ -1596,6 +1596,9 @@ def test_relocation_pose_logging_preserves_writes_and_convergence():
     first = np.r_[obj.pos, obj.quat].copy()
     events = [e for e in pol.report["events"] if e["kind"] == "watch_relocate"]
     assert np.array_equal(events[0]["after7"], first)
+    lay = next(e for e in pol.report["events"] if e["kind"] == "watch_lay")
+    assert np.array_equal(lay["before7"], before)
+    assert lay["after7"] == events[0]["before7"]
     # Face-up orientation is applied before relocation; its previous position is unchanged in xy.
     assert events[0]["before7"][:2] == before[:2].tolist()
     watch(obs)  # rejected read: no pose write, no audit pair

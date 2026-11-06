@@ -615,7 +615,7 @@ scenes with `watch=true`. Only its relocation branch is scoped: other scenes kee
 the existing watch/lay-face-up behavior and skill parameters. No launcher task
 metadata, layout identity or checker state is consumed. The relocation search,
 convergence limits and writes retain their existing behavior.
-Accepted actor relocation events retain full-precision copied `before7` and
+Actor lay-face-up events (`watch_lay`) and accepted relocation events retain full-precision copied `before7` and
 `after7` poses for offline write auditing. Rejected reads carry no pose pair.
 The audit includes these exact writes alongside the coarse version log,
 replacing a matching coarse endpoint record to avoid counting a relocation twice;
