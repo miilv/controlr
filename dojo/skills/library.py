@@ -2023,7 +2023,60 @@ def _lift_clear_of(sk: Skills, container: str) -> None:
             pass
 
 
+FILL_GUARD_PROFILE = {"fill_grasp": "rolled_tilt", "fill_holder": "stay",
+                      "fill_drop": "inset", "fill_insert": "safe"}
+
+
+def _fill_guard_features(sk, objects, container, comfy):
+    """Conservative pose/geometry gate, independent of task/layout identity.
+
+    Leave a holder in the shared comfortable workspace alone. Outside that
+    overlap, reserve the existing finger-clearance band near the reach edge.
+    Require a flat slender shaft: when every slender shaft is rolled, the
+    score depends on fitting both wide bodies, where inset packing regressed.
+    """
+    w = sk.refresh()
+    c = w.obj(container)
+    distances = [float(np.linalg.norm(sk.kin.base(a)[:2, 3] - c.center_w[:2])) for a in ARMS]
+    flat = False
+    for lab in objects:
+        if lab not in w.objects:
+            continue
+        o = w.obj(lab)
+        ext = np.asarray(o.asset.extents, float)
+        k = int(np.argmax(ext))
+        slender = float(ext[k]) >= 6.0 * float(np.max(np.delete(ext, k)))
+        flat |= bool(slender and abs(float(o.R[2, k])) < 0.2
+                     and float(np.max(np.abs(o.R[2]))) >= math.cos(math.radians(10)))
+    near, far = min(distances), max(distances)
+    active = bool(c.obj_type == "Rigid" and flat and near > comfy - FILL_FINGER_CLEAR and far > comfy)
+    return {"active": active, "nearest_m": near, "farthest_m": far, "flat_shaft": flat}
+
+
 def fill_container(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
+                   comfy: float = 0.42, tries: int = 2) -> dict:
+    """Optional geometry gate around the independent fill experiments; default is the baseline."""
+    if getattr(sk, "fill_guard", "off") != "geometry":
+        return _fill_with_joint_limits(sk, objects, container, drop, comfy, tries)
+    saved = {key: getattr(sk, key, "off") for key in FILL_GUARD_PROFILE}
+    if any(value != "off" for value in saved.values()):
+        raise ValueError("fill_guard requires the four independent fill switches off")
+    features = _fill_guard_features(sk, objects, container, comfy)
+    sk.last_fill_guard = features
+    sk.log(f"[fill_guard] active={int(features['active'])} nearest={features['nearest_m']:.3f} "
+           f"farthest={features['farthest_m']:.3f} flat_shaft={int(features['flat_shaft'])}")
+    if not features["active"]:
+        return _fill_with_joint_limits(sk, objects, container, drop, comfy, tries)
+    try:
+        for key, value in FILL_GUARD_PROFILE.items():
+            setattr(sk, key, value)
+        return _fill_with_joint_limits(sk, objects, container, drop, comfy, tries)
+    finally:
+        for key, value in saved.items():
+            setattr(sk, key, value)
+
+
+def _fill_with_joint_limits(sk: Skills, objects: list[str], container: str, drop: float = 0.006,
                    comfy: float = 0.42, tries: int = 2) -> dict:
     """``_fill_container``, under ``Skills.fill_joint_limits`` (stream H): "inherit" (default: the episode's
     ``joint_limits``) | "measured" (joint 5 inside the sim's pi/2 stop for this skill only, restored after). G3 v15 dev,

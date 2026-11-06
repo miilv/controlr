@@ -327,6 +327,7 @@ class Skills:
         # (today: the place's 50 mm retreat) | "clear" (hands still below its top go straight up clear of it)
         self.fill_move_lift = "off"
         self.fill_grasp = "off"
+        self.fill_guard = "off"
         self.fill_holder = "off"
         self.fill_drop = "off"
         self.fill_insert = "off"
