@@ -35,6 +35,17 @@ def annotate_segments(frames, segments):
         cursor = end
 
 
+def hang_assignments(logs):
+    """The executed hang uses the final assignment after loose-pick retries."""
+    assignments = {}
+    for line in logs:
+        match = re.search(r'\[hang\] (\S+) -> hook (\d+): (left|right)', line)
+        if match:
+            lab, hi, arm = match.group(1), int(match.group(2)), match.group(3)
+            assignments[lab] = (lab, hi, arm)
+    return list(assignments.values())
+
+
 def audit(root, layouts):
     assets, kin = AssetDB(paths.OBJECTS), X5Kin()
     counts, rows = Counter(), []
@@ -54,7 +65,7 @@ def audit(root, layouts):
             objects = objects_from_gt([
                 {'label': i['label'], 'type': typ, 'category': cat, 'category_idx': i['category_idx'],
                  'pos': i['default_pos'], 'quat': i['default_ori'], 'clutter': i.get('type') == 'cluttered'}
-                for typ, cat, i in iter_objects(layout)], assets)
+                for typ, cat, i in iter_objects(layout) if i.get("label")], assets)
             counts['mug14_instances'] += sum(o.category == 'mug' and o.idx == 14 for o in objects.values())
             for s in r.get('skills', []):
                 if s['skill'] == 'pick':
@@ -63,6 +74,9 @@ def audit(root, layouts):
                            'failed_lift' if not s['ok'] else 'good_pick'] += 1
                 if s['skill'] == 'hang':
                     counts['hang_ok' if s['ok'] else 'hang_miss'] += 1
+                    lab = s['note'].split()[0]
+                    if s['ok'] and lab in objects and objects[lab].idx == 14:
+                        counts['hang_ok_mug14'] += 1
             counts['no_plan_exits'] += sum('[hang] no plan for ' in x for x in r.get('log', []))
             trace = root / f"{r['task']}_{seed}_trace.json.gz"
             if not trace.exists():
@@ -74,10 +88,7 @@ def audit(root, layouts):
             segments = json.load(gzip.open(trajectory, 'rt'))['segments']
             annotate_segments(frames, segments)
             hooks = dict((i, (H, tip)) for i, H, tip in hook_frames(objects['cup_holder'], 'handle_support_point'))
-            assignments = [re.search(r'\[hang\] (\S+) -> hook (\d+): (left|right)', x)
-                           for x in r.get('log', [])]
-            for match in filter(None, assignments):
-                lab, hi, arm = match.group(1), int(match.group(2)), match.group(3)
+            for lab, hi, arm in hang_assignments(r.get('log', [])):
                 hs = [f for f in frames if f.get('current_segment') == f'hang {lab}']
                 closed = [f for f in hs if f['g'][arm] < .5]
                 if not closed:
@@ -94,10 +105,15 @@ def audit(root, layouts):
                     if not threads_along_x(o, h, depth):
                         continue
                     p = o.T @ np.r_[h[:3, 3] - h[:3, 2] * depth, 1.]
-                    coords.append((inv_T(H) @ p)[:3])
+                    coords.append((h, (inv_T(H) @ p)[:3]))
                 if not coords:
                     continue
-                c = min(coords, key=lambda p: float(np.linalg.norm(p[1:])))
+                chosen_h, c = min(coords, key=lambda item: float(np.linalg.norm(item[1][1:])))
+                final = r['final_objects'][lab]
+                T_final = T_from(final[:3], quat=final[3:])
+                depth = handle_hole(o, chosen_h)
+                p_final = T_final @ np.r_[chosen_h[:3, 3] - chosen_h[:3, 2] * depth, 1.]
+                c_final = (inv_T(H) @ p_final)[:3]
                 pick = [p for p in frames if p.get('current_segment', '').startswith(f'pick {lab}') and p['step'] < f['step']]
                 shift = None
                 if pick:
@@ -105,13 +121,27 @@ def audit(root, layouts):
                     a = inv_T(kin.tcp(arm, p['qm'][arm])) @ T_from(p['obj'][lab][:3], quat=p['obj'][lab][3:])
                     b = inv_T(kin.tcp(arm, f['qm'][arm])) @ o.T
                     shift = float(np.linalg.norm(a[:3, 3] - b[:3, 3]) * 1000)
+                failed = any(s['skill'] == 'hang' and not s['ok'] and s['note'].startswith(lab + ' ')
+                             for s in r.get('skills', []))
+                phase = None
+                if failed:
+                    if shift is not None and shift > 30:
+                        phase = 'carry_loss'
+                    elif -.012 <= c[0] <= tip + .002 and np.linalg.norm(c[1:]) <= .012:
+                        phase = 'release_or_exit_loss'
+                    else:
+                        phase = 'insertion_miss'
+                    counts[phase] += 1
                 rows.append({'task': r['task'], 'seed': seed, 'label': lab, 'hook': hi,
-                             'pre_release_step': f['step'], 'hole_hook_mm': np.round(c * 1000, 2).tolist(),
+                             'mug_idx': o.idx, 'failed_hang_phase': phase, 'pre_release_step': f['step'],
+                             'final_hole_hook_mm': np.round(c_final * 1000, 2).tolist(), 'hole_hook_mm': np.round(c * 1000, 2).tolist(),
                              'hook_tip_mm': round(tip * 1000, 2),
                              'carry_shift_mm': None if shift is None else round(shift, 2),
                              'j5_command_max': max(abs(p['q'][arm][4]) for p in hs)})
     return {'counts': dict(counts), 'pre_release': rows,
-            'note': 'Attempt counts overlap; success traces absent. Coordinates/shift are diagnostics, not checker terms.'}
+            'note': 'Attempt counts overlap; success traces absent. Failed-hang diagnostic bins: carry shift >30 mm; '
+                    'else release/exit if hole x in [-12, tip+2] mm and radial error <=12 mm, otherwise insertion. '
+                    'These post-hoc physical bins are not checker or policy predicates; continuous values are retained.'}
 
 
 def main():

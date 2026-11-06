@@ -19,8 +19,9 @@ calls. No verifier, GT provider or G3 hooks in camera policies.
 
 Gain cells: hang_mugs and hang_mugs_random, 10 distinct fresh layouts per cell,
 one repeat per layout per arm. Generate variants in owned 100000-04 namespaces
-(two unused variants per id), with variant values chosen and recorded before
-G3 or camera inspection. Do not reuse layouts used in this investigation.
+(variants 21 then 22 per id, in increasing id order). If settling exclusions
+leave fewer than ten, use variants 20 then 19 in the same order until ten
+stable draws exist. Record all exclusions before G3 or camera inspection. Do not reuse layouts used in this investigation.
 Select by settling/stability only; freeze the first ten stable draws per cell
 and log every exclusion. No 100005-09, 100020-29, >=100100 or D-C19 inputs.
 

@@ -657,3 +657,9 @@ adds pinches across the handle's outer bar before the body-wall candidates.
 The catalogue's handle frame proposes the location; opposed mesh faces must
 confirm a 4–84 mm width. Missing meshes or unsuitable frames add no candidates.
 The ordinary pick and transfer planners retain their collision checks.
+
+The dev-only `scripts/skills/hang_phase_report.py` audits G3 handle geometry
+from saved true poses. It reconstructs current action intervals from trajectory
+segment lengths because frame `seg` names the previously completed segment.
+Its post-hoc phase bins and continuous coordinates are diagnostics only; no
+policy consumes them.

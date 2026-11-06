@@ -1076,3 +1076,9 @@
   `2026-11-05-conv-waist-camera-prereg`). Keep wrist veto on; no adoption from old pre-veto rows.
 
 - G3 launch disk floor: `scripts/skills/g3.sh` takes its own lock then sets `SIMLAB_GPU=0`, so child `rdpy.sh` skips its disk guard. Add the existing disk guard to the G3 entrypoint; until then invoke `disk_guard` explicitly before each G3 job. See [QUEUE dispatch notes](experiments/2026-11-06-dojo-ab-wave.md#physics-head-388-and-389-before-camera-dispatch).
+
+- [ ] **G3 trace action labels lag one completed action.** `on_step` reads the last
+  completed executor segment, so a frame's `seg` is not its current motion.
+  Diagnose phases from cumulative `actions.json.gz` segment lengths (as
+  `scripts/skills/hang_phase_report.py` does); a current-segment field would
+  remove the ambiguity. See journal `2026-11-06-dojo-hang-ceiling`.
