@@ -1,0 +1,1100 @@
+{
+  "code": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+  "full_manifest_sha256": "b5f3bac375b6023ab9b23e66ae6de3fde6da113a7eaf497c49a97de20555135a",
+  "remote_root": "compute6:~/dojo-data/kong-1107",
+  "shared_freeze": {
+    "path": "/home/robotics/dojo-data/kong-1107/shared-freeze.json",
+    "bytes": 32529,
+    "sha256": "18184839e75c46daaf91d7b46ebd391d40e8ad6e497ea396b5e6b05c3de1657d",
+    "md5": "3be18c414cc305472e0908066c0d977e"
+  },
+  "queue": {
+    "path": "/home/robotics/dojo-data/kong-1107/queue-kong.txt",
+    "bytes": 53920,
+    "sha256": "d5cc9864b2bc2f64d37c9ce9f74ee02bf8ade0d6b25dd17ef882114af15b3e89",
+    "md5": "1a30fa2fc4244856f2e8ee516ab7448b"
+  },
+  "candidate": {
+    "path": "/home/robotics/dojo-integ-c6-kong-ffb2c151/scripts/dojo/queues/2026-11-06-candidate.txt",
+    "bytes": 1942,
+    "sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+    "md5": "5509d7be9bd1dac30dd454cceb377d1d"
+  },
+  "design": {
+    "path": "/home/robotics/dojo-data/kong-1107/design.json",
+    "bytes": 1642,
+    "sha256": "aaca892ca7ff43e7ed0d0597f3328e13fb85165f270193e34f48dfdf5bf104f4",
+    "md5": "aab224bf5c529be8a6708f1627aab202"
+  },
+  "generator": {
+    "path": "/home/robotics/dojo-integ-c6-kong-ffb2c151/dojo/simlab/gen_layouts.py",
+    "bytes": 49343,
+    "sha256": "64496ed372dbbce85e6785b355cccc86d0a3f5a9ce44d38fe5aea5f898e1de62",
+    "md5": "7994b3522c8b9d6f37cb38dd8c147ca0"
+  },
+  "weights": [
+    {
+      "path": "/home/robotics/dojo-data/segtrain/models/v2b/best.pt",
+      "bytes": 20953828,
+      "sha256": "d7b2f167a69584697628ba967c0f82f4ecfacd3152267f12b23644cc46e8ca88",
+      "md5": "2f546196145fc424f76a5e2e47dd3210"
+    },
+    {
+      "path": "/home/robotics/dojo-data/segtrain/models/v2b/classes.json",
+      "bytes": 28760,
+      "sha256": "900b4967d0ff4353b02efd782c065f556c8cb46289eb31d1e7f2cae56b5b027d",
+      "md5": "5560c910621654614e25d9f076adf36a"
+    },
+    {
+      "path": "/home/robotics/dojo-data/segtrain/models/digit_v2/model.pt",
+      "bytes": 44811851,
+      "sha256": "a9c341e949d08afd806d0118d63b67e109430a918b612dbbddf37231ea8d548b",
+      "md5": "df7da507a3d3e65e1736a16ce955932b"
+    },
+    {
+      "path": "/home/robotics/dojo-data/segtrain/models/kong_v1b/model.pt",
+      "bytes": 44867083,
+      "sha256": "dc35be09bfa6588203983668f0e3bf7b10061b42e824519a3a4126cb978d628e",
+      "md5": "300f319c1f77ac1b04551cf2a957f64f"
+    }
+  ],
+  "parity": {
+    "path": "/home/robotics/dojo-data/kong-1107/parity.json",
+    "bytes": 16353,
+    "sha256": "4d56d5506388dc484e768c402a7aa760854f9137cb04afe06c35951d8355c418",
+    "md5": "4eb10b46a1215f504afabb516cd9e8a0"
+  },
+  "packages": {
+    "path": "/home/robotics/dojo-data/kong-1107/packages-new.json",
+    "bytes": 503,
+    "sha256": "0c1de1113eeddff0606d3489bbdbfa5a50bb4dcd1efb6e0f52f27ec52da02ff8",
+    "md5": "9f5d72e9ebc805e7f09a3ddaac4690b9"
+  },
+  "resolved_config_parity": {
+    "path": "/home/robotics/dojo-data/kong-1107/resolved-config-parity.json",
+    "bytes": 11365,
+    "sha256": "004476db8239c7f926307a7f10319b27dbfb3bc5ae0fd604c9992c1ad91538d5",
+    "md5": "2fe6b4f8dabe01c7da8e80f2ced4621c"
+  },
+  "operational_scripts": [
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/prepare.py",
+      "bytes": 4587,
+      "sha256": "d20c6afb13c8bfd423c8eca84424b27de9f3190101b2e407315bf871f91a1067",
+      "md5": "13172ff8847ded0864f7e8b3396c9b88"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/prepare-default-speed.py",
+      "bytes": 4481,
+      "sha256": "33ef00e1a217e26fc6fd558ccc16bd6fc6977e8b2fdc2c6c1ae6df8606cb5a6c",
+      "md5": "0773d9f260c9d608a4d9c606b236f105"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/stage.py",
+      "bytes": 6331,
+      "sha256": "eb0a31919ada81eb32921b7e76d6b4d6112a4a7af336f0ed50ec375fbabc363f",
+      "md5": "4fb78b9ce09fcf804d5420e38efb4316"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/insert.py",
+      "bytes": 2580,
+      "sha256": "344907af72a761c7a0551e564f3e87dfaccbb9949374e5972c897536b1757b62",
+      "md5": "1a4f8cb5c757b1aec76159de8740f634"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/audit.py",
+      "bytes": 6362,
+      "sha256": "429ad824cc4e21690941d3d9ceaffea0ca7e163369b23254f5d6c3cdfdee66c4",
+      "md5": "637f17194a08d26ddfd516b0a3e6d458"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/deploy.sh",
+      "bytes": 2510,
+      "sha256": "d9784b13a14c35bdd25c23e82077c8202c0c2cdfda190501aa92b97fe7dd0faa",
+      "md5": "532dd2f58df269b82aa0321a8efe3f74"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/resolved_parity.py",
+      "bytes": 1345,
+      "sha256": "00fe2909b694eae1e4dd64fd7b0c42d389629e5402e73b7c4df451e2016810ff",
+      "md5": "d0c34cd1bba080e16e304037ce32ff13"
+    }
+  ],
+  "default_demo_attempts": [
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/demos-default-speed-archive/100000.pkl",
+      "bytes": 1898456,
+      "sha256": "56f03d4a23ba37d1880ffb9020f2cc80224e99ec0ceb6cf8cf2e53c631e5f54b",
+      "md5": "aebd2d04fc2d1fe0cc092eddd6af4c25"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/demos-default-speed-archive/100002.pkl",
+      "bytes": 1911766,
+      "sha256": "40a494278367425f0fc46413594170f7b37253b6cd7eed3e7c26a0ef9971c100",
+      "md5": "d99c758ee0291a262a6d5197da8519dc"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/demos-default-speed-archive/100003.pkl",
+      "bytes": 2038792,
+      "sha256": "6749d7edad38c40509d290c959c84ca5bb799c164f5e219550e94b5efee2ade7",
+      "md5": "be662b90afa7c0952fd6a8eac6012ced"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/demos-default-speed-archive/demo_index.json",
+      "bytes": 26795,
+      "sha256": "5f1fbb443abb5e3630a2f17e01e11b152f2b33d8013f17218d25bd696b07004e",
+      "md5": "1397a385b8849be71232073a9fb988a4"
+    }
+  ],
+  "runtime_A": {
+    "mode": "perception",
+    "verify": "bundle",
+    "verify_k": 2,
+    "n_cands": 4,
+    "perturb_mm": 2.0,
+    "perturb_deg": 1.0,
+    "twin_load_noise": null,
+    "twin_load": "raw",
+    "look": true,
+    "look_conf": 0.7,
+    "look_doubt": false,
+    "max_looks": 2,
+    "look_min_budget": 0.6,
+    "look_merge": "all",
+    "save_look_frames": true,
+    "save_track_frames": 0,
+    "resync": true,
+    "div_iou": 0.2,
+    "div_prec": 0.4,
+    "replan_on_divergence": true,
+    "max_attempts": 2,
+    "max_replans": 2,
+    "final_hold": 3,
+    "reserve": 30,
+    "refine": true,
+    "refine_max_shift_m": 0.07,
+    "refine_identity": true,
+    "refine_search_radius": 0.07,
+    "refine_empty_hand": true,
+    "refine_max_turn_deg": 90.0,
+    "refine_turn_check_deg": 45.0,
+    "refine_turn_min_iou": 0.9,
+    "held_flip_confirm": true,
+    "held_flip_agree_deg": 30.0,
+    "rehover_min_shift_mm": 10.0,
+    "rehover_min_iou": 0.05,
+    "rehover_place_dz": 0.03,
+    "max_rehovers": 2,
+    "big_shift_mm": 30.0,
+    "big_shift_min_iou": 0.7,
+    "confirm_shift_mm": 10.0,
+    "neighbour_mm": 25.0,
+    "rehover_when_far": true,
+    "refine_recentre_guard": "vis",
+    "post_place": true,
+    "a1": "off",
+    "a1_cfg": {},
+    "held_identity_guard": false,
+    "post_place_read": "off",
+    "post_place_read_iou": 0.0,
+    "post_place_read_cfg": {},
+    "search": true,
+    "search_max_regions": 4,
+    "search_min_conf": 0.3,
+    "search_identity": "first",
+    "search_lost": false,
+    "lost_iou": 0.2,
+    "lost_fuse_max_m": 0.1,
+    "place_confirm": true,
+    "place_cap_mm": 12.0,
+    "place_min_vis": 0.9,
+    "place_agree_mm": 5.0,
+    "place_confirm_dz": 0.05,
+    "place_noise_mm": 3.0,
+    "verify_select": "all",
+    "watch": true,
+    "watch_every": 4,
+    "watch_relocate": false,
+    "watch_relocate_task": "",
+    "agentic": "budget",
+    "agentic_max": 3,
+    "agentic_count_held": true,
+    "place_verdict": "belief",
+    "vocab_explain": true,
+    "vocab_explain_margin": 0.15,
+    "vocab_found_needs_score": true,
+    "tracker": "auto",
+    "held_look": "b1_then_agent",
+    "held_refine_max_mm": 10.0,
+    "held_refine_min_iou": 0.85,
+    "fallen_check": true,
+    "confirm_wrists": true,
+    "grip_check": "on",
+    "grip_official_key": "official_key",
+    "grip_empty_eps": 0.001,
+    "grip_settle_steps": 5,
+    "grip_close_max": 0.05,
+    "grip_thin_mm": 4.0,
+    "grip_miss_search_m": 0.07,
+    "wrist_check": "off",
+    "wrist_check_cfg": {},
+    "held_thin": "off",
+    "disc_hold_evidence": "off",
+    "held_drop_conf": 0.9,
+    "track_moving": "auto",
+    "track_read": "belt",
+    "held_pose": "request",
+    "consume_log": true,
+    "drop_verdict": "release",
+    "put_into_opts": [
+      "spot",
+      "patient",
+      "sequence"
+    ],
+    "place_surface": "bbox",
+    "push_order": "greedy",
+    "push_goal": "centre",
+    "fill_move_lift": "off",
+    "fill_insert": "off",
+    "fill_holder": "off",
+    "fill_drop": "off",
+    "fill_guard": "off",
+    "fill_grasp": "off",
+    "fill_joint_limits": "inherit",
+    "egg_grasp_height": "off",
+    "egg_grasp_angles": "off",
+    "egg_drop_approach": "off",
+    "egg_wall_model": "off",
+    "egg_drop_spin": "off",
+    "egg_reach": "off",
+    "rehover_siblings": "follow",
+    "slip_shift": "off",
+    "sibling_order": "given",
+    "press_repeat": "off",
+    "slot_approach": "off",
+    "slot_hover": "off",
+    "slot_place": "off",
+    "slot_carry_read": "off",
+    "arrange_order": "near",
+    "push_approach": "off",
+    "arrange_hover": "off",
+    "arrange_route": "off",
+    "push_stroke": "face",
+    "hang_cradle": "strict",
+    "hang_wide": false,
+    "hang_half_turn": false,
+    "hang_handle_grasp": false,
+    "hang_carry_slow": false,
+    "artic_geom": "authored",
+    "stack_reach": "centre",
+    "nest_height": "bins",
+    "new_routes": [
+      "equation",
+      "largest_number",
+      "align",
+      "row_by_size",
+      "pour_order"
+    ],
+    "align_measure": "parallel",
+    "tile_grasp": "any",
+    "tile_recover": false,
+    "tile_look_cap": false,
+    "imitate_pairing": "one_to_one",
+    "imitate_wait": "origin",
+    "imitate_look": "off",
+    "imitate_tie_look": false,
+    "imitate_repair": false,
+    "row_size_read": "off",
+    "row_stage": false,
+    "row_home_clear": false,
+    "sweep_relay_grip": false,
+    "sweep_deep": false,
+    "sweep_hold_pan": false,
+    "imitate_keep_sides": false,
+    "series_labels": "numbered",
+    "belt_wrist_veto": "on",
+    "belt_waist_first": "off",
+    "belt_container": "off",
+    "belt_deposit": "off",
+    "belt_confirm_zone": "off",
+    "disc_handover_read": "off",
+    "track_expire": "off",
+    "slot_read": "off",
+    "nest_verify": "target",
+    "kong_draw_read": "place",
+    "peg_base_refine": "local",
+    "peg_base_min_iou": 0.95,
+    "peg_base_tries": 8,
+    "peg_stuck_confirm": "off",
+    "peg_held_read": "off",
+    "key_handover": "v1",
+    "key_lean": "off",
+    "ported_routes": true,
+    "ported_swap": "reach",
+    "plan_profile": "legacy",
+    "plan_capture": "off",
+    "plan_solver": "routes",
+    "plan_world": "table",
+    "joint_limits": "wide",
+    "ported_drag": "turn",
+    "ported_pour": "full",
+    "ported_pour_untilt": "direct",
+    "ported_pickup": "library",
+    "ported_pour_aim": "b10",
+    "ported_classify": "p2",
+    "ported_pour_pace": "v1",
+    "scan": "trigger",
+    "scan_budget_frac": 0.12,
+    "scan_min_step_lim": 300,
+    "scan_step_rad": 0.16,
+    "scan_settle": 2,
+    "bg_perception": "off",
+    "bg_obs_every": 0,
+    "bg_cfg": {},
+    "extra": {},
+    "preset": "submit_v3"
+  },
+  "runtime_B": {
+    "mode": "perception",
+    "verify": "bundle",
+    "verify_k": 2,
+    "n_cands": 4,
+    "perturb_mm": 2.0,
+    "perturb_deg": 1.0,
+    "twin_load_noise": null,
+    "twin_load": "raw",
+    "look": true,
+    "look_conf": 0.7,
+    "look_doubt": false,
+    "max_looks": 2,
+    "look_min_budget": 0.6,
+    "look_merge": "all",
+    "save_look_frames": true,
+    "save_track_frames": 0,
+    "resync": true,
+    "div_iou": 0.2,
+    "div_prec": 0.4,
+    "replan_on_divergence": true,
+    "max_attempts": 2,
+    "max_replans": 2,
+    "final_hold": 3,
+    "reserve": 30,
+    "refine": true,
+    "refine_max_shift_m": 0.07,
+    "refine_identity": true,
+    "refine_search_radius": 0.07,
+    "refine_empty_hand": true,
+    "refine_max_turn_deg": 90.0,
+    "refine_turn_check_deg": 45.0,
+    "refine_turn_min_iou": 0.9,
+    "held_flip_confirm": true,
+    "held_flip_agree_deg": 30.0,
+    "rehover_min_shift_mm": 10.0,
+    "rehover_min_iou": 0.05,
+    "rehover_place_dz": 0.03,
+    "max_rehovers": 2,
+    "big_shift_mm": 30.0,
+    "big_shift_min_iou": 0.7,
+    "confirm_shift_mm": 10.0,
+    "neighbour_mm": 25.0,
+    "rehover_when_far": true,
+    "refine_recentre_guard": "vis",
+    "post_place": true,
+    "a1": "off",
+    "a1_cfg": {},
+    "held_identity_guard": false,
+    "post_place_read": "off",
+    "post_place_read_iou": 0.0,
+    "post_place_read_cfg": {},
+    "search": true,
+    "search_max_regions": 4,
+    "search_min_conf": 0.3,
+    "search_identity": "first",
+    "search_lost": false,
+    "lost_iou": 0.2,
+    "lost_fuse_max_m": 0.1,
+    "place_confirm": true,
+    "place_cap_mm": 12.0,
+    "place_min_vis": 0.9,
+    "place_agree_mm": 5.0,
+    "place_confirm_dz": 0.05,
+    "place_noise_mm": 3.0,
+    "verify_select": "all",
+    "watch": true,
+    "watch_every": 4,
+    "watch_relocate": false,
+    "watch_relocate_task": "make_kong",
+    "agentic": "budget",
+    "agentic_max": 3,
+    "agentic_count_held": true,
+    "place_verdict": "belief",
+    "vocab_explain": true,
+    "vocab_explain_margin": 0.15,
+    "vocab_found_needs_score": true,
+    "tracker": "auto",
+    "held_look": "b1_then_agent",
+    "held_refine_max_mm": 10.0,
+    "held_refine_min_iou": 0.85,
+    "fallen_check": true,
+    "confirm_wrists": true,
+    "grip_check": "on",
+    "grip_official_key": "official_key",
+    "grip_empty_eps": 0.001,
+    "grip_settle_steps": 5,
+    "grip_close_max": 0.05,
+    "grip_thin_mm": 4.0,
+    "grip_miss_search_m": 0.07,
+    "wrist_check": "off",
+    "wrist_check_cfg": {},
+    "held_thin": "off",
+    "disc_hold_evidence": "off",
+    "held_drop_conf": 0.9,
+    "track_moving": "auto",
+    "track_read": "belt",
+    "held_pose": "request",
+    "consume_log": true,
+    "drop_verdict": "release",
+    "put_into_opts": [
+      "spot",
+      "patient",
+      "sequence"
+    ],
+    "place_surface": "bbox",
+    "push_order": "greedy",
+    "push_goal": "centre",
+    "fill_move_lift": "off",
+    "fill_insert": "off",
+    "fill_holder": "off",
+    "fill_drop": "off",
+    "fill_guard": "off",
+    "fill_grasp": "off",
+    "fill_joint_limits": "inherit",
+    "egg_grasp_height": "off",
+    "egg_grasp_angles": "off",
+    "egg_drop_approach": "off",
+    "egg_wall_model": "off",
+    "egg_drop_spin": "off",
+    "egg_reach": "off",
+    "rehover_siblings": "follow",
+    "slip_shift": "off",
+    "sibling_order": "given",
+    "press_repeat": "off",
+    "slot_approach": "off",
+    "slot_hover": "off",
+    "slot_place": "off",
+    "slot_carry_read": "off",
+    "arrange_order": "near",
+    "push_approach": "off",
+    "arrange_hover": "off",
+    "arrange_route": "off",
+    "push_stroke": "face",
+    "hang_cradle": "strict",
+    "hang_wide": false,
+    "hang_half_turn": false,
+    "hang_handle_grasp": false,
+    "hang_carry_slow": false,
+    "artic_geom": "authored",
+    "stack_reach": "centre",
+    "nest_height": "bins",
+    "new_routes": [
+      "equation",
+      "largest_number",
+      "align",
+      "row_by_size",
+      "pour_order"
+    ],
+    "align_measure": "parallel",
+    "tile_grasp": "any",
+    "tile_recover": false,
+    "tile_look_cap": false,
+    "imitate_pairing": "one_to_one",
+    "imitate_wait": "origin",
+    "imitate_look": "off",
+    "imitate_tie_look": false,
+    "imitate_repair": false,
+    "row_size_read": "off",
+    "row_stage": false,
+    "row_home_clear": false,
+    "sweep_relay_grip": false,
+    "sweep_deep": false,
+    "sweep_hold_pan": false,
+    "imitate_keep_sides": false,
+    "series_labels": "numbered",
+    "belt_wrist_veto": "on",
+    "belt_waist_first": "off",
+    "belt_container": "off",
+    "belt_deposit": "off",
+    "belt_confirm_zone": "off",
+    "disc_handover_read": "off",
+    "track_expire": "off",
+    "slot_read": "off",
+    "nest_verify": "target",
+    "kong_draw_read": "place",
+    "peg_base_refine": "local",
+    "peg_base_min_iou": 0.95,
+    "peg_base_tries": 8,
+    "peg_stuck_confirm": "off",
+    "peg_held_read": "off",
+    "key_handover": "v1",
+    "key_lean": "off",
+    "ported_routes": true,
+    "ported_swap": "reach",
+    "plan_profile": "legacy",
+    "plan_capture": "off",
+    "plan_solver": "routes",
+    "plan_world": "table",
+    "joint_limits": "wide",
+    "ported_drag": "turn",
+    "ported_pour": "full",
+    "ported_pour_untilt": "direct",
+    "ported_pickup": "library",
+    "ported_pour_aim": "b10",
+    "ported_classify": "p2",
+    "ported_pour_pace": "v1",
+    "scan": "trigger",
+    "scan_budget_frac": 0.12,
+    "scan_min_step_lim": 300,
+    "scan_step_rad": 0.16,
+    "scan_settle": 2,
+    "bg_perception": "off",
+    "bg_obs_every": 0,
+    "bg_cfg": {},
+    "extra": {},
+    "preset": "submit_v3"
+  },
+  "demo_speed": 1.25,
+  "demo_exclusions": [],
+  "files": [
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100000.json",
+      "bytes": 22108,
+      "sha256": "beea00d001f6373f2197e18a98f3626568c5f2c9c84ea94b2056156e529fb222",
+      "md5": "e0881e712328eb17bc21fc8148a4a806"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100000.settled.json",
+      "bytes": 23556,
+      "sha256": "217a2983fbf66d296629fb321e40956debb69a78085a371b8f7c2ec956776a7c",
+      "md5": "c3374175a399e303ebc859117e1b98d5"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/settled_index.json",
+      "bytes": 2227,
+      "sha256": "abd44d8b0b4d3f0268cedabdb7960448ad83c47e6d24e4d943ee91bd1c955b11",
+      "md5": "a9134b9c92b58ffcf9aad5f9390e93bd"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100001.json",
+      "bytes": 22108,
+      "sha256": "4c2a43ad6adab73141c7b1c78767f34568796d64e10aaf2bfb43605cf96ee0de",
+      "md5": "1f3980bffc2c7bab29e37a339b380d1c"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100001.settled.json",
+      "bytes": 23556,
+      "sha256": "e96685734689aba735f4e7fc8e537eaa96a0af7dec0587986f717b1685159669",
+      "md5": "f4333a31510caa9d544dea5994e360c7"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100002.json",
+      "bytes": 22099,
+      "sha256": "e4ba7bfc218d83bca8a862531997ac2f74f148ec1fe80b41be30000af613cbb4",
+      "md5": "fbe352be9ca85e2d22f6dc9e19ad756c"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100002.settled.json",
+      "bytes": 23547,
+      "sha256": "0cd5ceba590b4b59a6fc9f7b74debca530809221d8fe147c66829cf78e03cf5b",
+      "md5": "248bb162ae9c6d95598b5ca685fae5b4"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100003.json",
+      "bytes": 22107,
+      "sha256": "95470cedf582eb1b7d320163bf656e7085b57bf11027284cbaffc24c2d8b5afe",
+      "md5": "51993ac9d7325d982b8ed884a6c9dd9f"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100003.settled.json",
+      "bytes": 23555,
+      "sha256": "4610dfd056f1c06bb27a4d58ffde351bd671e14822575ad799687eab31703b6f",
+      "md5": "08fb86297b9f884144f2eb22cb2d54d6"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100004.json",
+      "bytes": 22106,
+      "sha256": "72fd49cdd66be673b85e2b4e2625845cc90e20709d1184e2cfdc21c3b03770aa",
+      "md5": "b30144d4741d2190e924dae9a0e0d797"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100004.settled.json",
+      "bytes": 23554,
+      "sha256": "0cd1e719c6454bfd2258ba7732a3ee03329a0a904cfe1613c40afd641a046afa",
+      "md5": "e4d302ed5737f1b3003dc1456852cb4f"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100000.json",
+      "bytes": 22109,
+      "sha256": "17efabe28bf781adf2bc972dc99f72ede28689438a264fbe42130d38633afcc3",
+      "md5": "8c5d43a449ab641f7fef92af3948b8fa"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100000.settled.json",
+      "bytes": 23557,
+      "sha256": "856ee1f64303a48f07862348d7611988ab11f09acd3f7186ee7a7b51ed840bd8",
+      "md5": "56694cd37a8e0d3c0a4ee738a681b091"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/settled_index.json",
+      "bytes": 2227,
+      "sha256": "3a207763939437e92586069f5937c6f088ea3c904a872ec46f312d8f5960a95f",
+      "md5": "633d6ec9041f6d5329f03bf660025f7b"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100001.json",
+      "bytes": 22110,
+      "sha256": "78c87df68331806046d4746397a3e4e8a94da3c0c2e8b19948d0c82b6f4b90b2",
+      "md5": "d3053c9ceff7b9dbfe651cd12334ac32"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100001.settled.json",
+      "bytes": 23558,
+      "sha256": "32bec72751fcc8cbc24977b66639f6805ceb6d765cbac8a6dfdd80bc40a596ce",
+      "md5": "6a7270b7025613fa87d0ec0e877f95ca"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100002.json",
+      "bytes": 22109,
+      "sha256": "81018cd9527a5796fc3929e049e06cc7f04cf934d5b3c18b7fad0985433862b9",
+      "md5": "7868bce2a5db87adac6d1ef144e32178"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100002.settled.json",
+      "bytes": 23557,
+      "sha256": "f5faed581680357780216f449ed52a35cc083b09d8332d924c47b91456f11d9e",
+      "md5": "d28fc148f3f3323a198a0daa8c6219fd"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100003.json",
+      "bytes": 22113,
+      "sha256": "609ea2d2a96b83b11072c3fc74b1779cb987edf0c4b5f7b1b92258f189e5d46a",
+      "md5": "3901f756ca77fff9c506fa21765c1a15"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100003.settled.json",
+      "bytes": 23561,
+      "sha256": "65ea723e13c6e4de3916832b045f66dbb3aebb5bb08580c48c825cfa3e4312f3",
+      "md5": "d9864a98d2a515883713dbeabf94f4ed"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100004.json",
+      "bytes": 22107,
+      "sha256": "5e6f56af04908969a9e2ea19bc324162a4ce88cadd15c2c7fdef19587fd50056",
+      "md5": "4671dcf871abe9be07d8973609d3bc44"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100004.settled.json",
+      "bytes": 23555,
+      "sha256": "56e61b6059c3a3575ccfc4b3367a28e993162f5505f03f895240e0b30588033f",
+      "md5": "691db43a8daab7a50269bf97ab1249b9"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100000.json",
+      "bytes": 12040,
+      "sha256": "bf35a7d73b61de2030bd118d6d6f41f4ca5246e9965c0e917c30a33df5e9cc15",
+      "md5": "efe9f68253d01f09c26cf04ffd6f6ebb"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100000.settled.json",
+      "bytes": 12310,
+      "sha256": "e66a7f8f8eba096923d6f89d5233910c821cacf55ce9c1929118b87522ec8fec",
+      "md5": "a54e45e2d7bddc1218525f7741edf658"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/settled_index.json",
+      "bytes": 2187,
+      "sha256": "a710b59b44e086fd4f2daf10e3c5cdc66302618e7c941c97b2acde98fdb0e658",
+      "md5": "a7b8b3d6cadfe6f420c616552c517995"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/traj/imitate_sorting_sequence/demo_index.json",
+      "bytes": 28155,
+      "sha256": "cda62ded1ff2be997ba679f6ca3de3f42ab22b73f06f5c9709a9486b96d3dc22",
+      "md5": "49245a9accd3a79eee0fa556d8e311a9"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/traj/imitate_sorting_sequence/100000.pkl",
+      "bytes": 1645923,
+      "sha256": "952c9c39af6ce314f169df13194fb49c5b0355d8ec8e420909e6fec916124dca",
+      "md5": "c1b4caa64f86a5ce3be4fa36176aac03"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100001.json",
+      "bytes": 11931,
+      "sha256": "654189d8c0aa8bfe39cc5bae58c7fa7806f96d010b9e7b55aaa270d9c08a6ff5",
+      "md5": "9a3cfc7324c66d9d7ea145b2a9e5d083"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100001.settled.json",
+      "bytes": 12304,
+      "sha256": "7c548244c8445671b72ac94877da7349eb384a1f33443f7fdbdf65047e2a2be4",
+      "md5": "4434ab8f38e9fec056e30f66b794b98f"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/traj/imitate_sorting_sequence/100001.pkl",
+      "bytes": 1813107,
+      "sha256": "94e990bcdd4494f3cc8978abb6e962c3883270da37abc376a660c47d6bc85543",
+      "md5": "2d9f2a6734345c1f46653fd75d779aca"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100002.json",
+      "bytes": 11943,
+      "sha256": "194b8e62232adb8ea83b77fdbaec0b6f2f5a9ed71d1d2b795b3a2a58a6588199",
+      "md5": "d951f9a1cfe1b49be797d56834d261ea"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100002.settled.json",
+      "bytes": 12224,
+      "sha256": "d51763f57114edd885c9715b41504eefa77b425860352c06f439b1d1c2d43212",
+      "md5": "6403da962fb0ad89663933cbf9a12fd4"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/traj/imitate_sorting_sequence/100002.pkl",
+      "bytes": 1312046,
+      "sha256": "a7900950f244af9ba4f253bf31d498983fe3eb8c37182e6151aa9934c3090884",
+      "md5": "6dee64e89a82f947b39b8a7828015f77"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100003.json",
+      "bytes": 12009,
+      "sha256": "c82494cf1b2c66e70dcf75e78cfe7ea039a74f66bc988b75ef8edc5559236dcd",
+      "md5": "642e9f69eb5f78a4a210e35c71e57b20"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100003.settled.json",
+      "bytes": 12315,
+      "sha256": "44384ddb7d1750a040d9bc0cfba37b14fb5e5c3fbf2abb274f1bc9a064be2fc0",
+      "md5": "9b19559df716a8ecd9114e060072cb18"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/traj/imitate_sorting_sequence/100003.pkl",
+      "bytes": 1896446,
+      "sha256": "69b22aa1f7c37ec44f511a198a4845a5cc72a2884b38ddc31781e50dfd7e1f82",
+      "md5": "3ff994fd0376a8cf8cd0af4befee49f6"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100004.json",
+      "bytes": 11994,
+      "sha256": "bca925bc21bfb13a5f802fb7501342855581acdb45573697a78f7ed8a8f482aa",
+      "md5": "32fe32ee33f4c78da450886953777c3b"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100004.settled.json",
+      "bytes": 12311,
+      "sha256": "bb78152be9e176697096d95bfa3afe030792f1e39b42eb2b8ceee4fce1a041e6",
+      "md5": "948426da6a7d87e459fd98314f59c1ee"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/traj/imitate_sorting_sequence/100004.pkl",
+      "bytes": 1535212,
+      "sha256": "53c4d50d60afffac1428ed1736a06d1ee4ac070d0c31d70a7cfa9e710b22e790",
+      "md5": "ca8d6a806fab42339f95e53f0fc6fa96"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100000.json",
+      "bytes": 4444,
+      "sha256": "2d707a2ded9ddf43f6a1a31824619d239aceb9879ad379f189f072bd83f949e8",
+      "md5": "c26df4b28371cda58fbf59034d7e11b6"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100000.settled.json",
+      "bytes": 4803,
+      "sha256": "8933aa3f481befd26057888689c40c1fbac4d610b6ae69fba3150ed1fac80c4d",
+      "md5": "693862319b587a176f552f313b158ed7"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/settled_index.json",
+      "bytes": 2232,
+      "sha256": "f431bd91a527de540cd11772daaac19037d8cdef7466ec1a2663a5b68dbc95d5",
+      "md5": "23ea8ecc83acfec0357b17afe8254454"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100001.json",
+      "bytes": 4462,
+      "sha256": "4abe572be7edfea061ba8bb1807a083b0cc5b9768c5122b14662fe23b4c32ff3",
+      "md5": "9e62b67b777dbac6b44a7acc44652af3"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100001.settled.json",
+      "bytes": 4801,
+      "sha256": "28d03df157760cd7409d2f599363fd3fa6463e07d51454215545d5d88ff32f72",
+      "md5": "270408e550b24fd15c9e6dc6226647d3"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100002.json",
+      "bytes": 4444,
+      "sha256": "021a5143dc96185a6722585b83fc2cba72c5333709ef65a3bae95165cf486601",
+      "md5": "8dae823c7a28a43d8988e62cb97c0c4e"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100002.settled.json",
+      "bytes": 4801,
+      "sha256": "65e7ee4431e161df7ee7bf392ecc0b73ba220df5b36d1e4880fc186a9596b899",
+      "md5": "75a1babfc74c6f63922b7dcb2ccd80a1"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100003.json",
+      "bytes": 4457,
+      "sha256": "10db7c3a4cce1dc064ee5ee03d37b00b6f0614cfbe8896b713f867373a01bcb3",
+      "md5": "886f150634c009a35fff14dd73acf51d"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100003.settled.json",
+      "bytes": 4802,
+      "sha256": "2a367105763126d846ccf2c1423985bb2b705b770bd199a0076b0bc1aee012b1",
+      "md5": "db0b8d40a8e2dbbee40b040be678f0b5"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100004.json",
+      "bytes": 4474,
+      "sha256": "b3aca914a86c89f07828f4598571c6afa63a4aa2f5628a076a4d9b96949bb70b",
+      "md5": "97fdc3d50e8cdae7be89d7d810170ea1"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100004.settled.json",
+      "bytes": 4805,
+      "sha256": "da8d7471c480695717f526006f98e31a32cfb2ca5967692f5296a82920e8ab0c",
+      "md5": "998f982718f008b949661c41ac76d32c"
+    }
+  ],
+  "pairs": [
+    {
+      "task": "make_kong",
+      "block": "kong-scoped-1",
+      "id": 100000,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100000.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-1",
+      "arms": {
+        "A": "c6b_makekongsg_kongAr1b1_100000",
+        "B": "c6b_makekongsg_kongBr1b1_100000"
+      }
+    },
+    {
+      "task": "make_kong",
+      "block": "kong-scoped-1",
+      "id": 100001,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100001.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-1",
+      "arms": {
+        "B": "c6b_makekongsg_kongBr1b1_100001",
+        "A": "c6b_makekongsg_kongAr1b1_100001"
+      }
+    },
+    {
+      "task": "make_kong",
+      "block": "kong-scoped-1",
+      "id": 100002,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100002.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-1",
+      "arms": {
+        "A": "c6b_makekongsg_kongAr1b1_100002",
+        "B": "c6b_makekongsg_kongBr1b1_100002"
+      }
+    },
+    {
+      "task": "make_kong",
+      "block": "kong-scoped-1",
+      "id": 100003,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100003.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-1",
+      "arms": {
+        "B": "c6b_makekongsg_kongBr1b1_100003",
+        "A": "c6b_makekongsg_kongAr1b1_100003"
+      }
+    },
+    {
+      "task": "make_kong",
+      "block": "kong-scoped-1",
+      "id": 100004,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/make_kong/100004.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-1",
+      "arms": {
+        "A": "c6b_makekongsg_kongAr1b1_100004",
+        "B": "c6b_makekongsg_kongBr1b1_100004"
+      }
+    },
+    {
+      "task": "make_kong",
+      "block": "kong-scoped-2",
+      "id": 100000,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100000.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-2",
+      "arms": {
+        "B": "c6b_makekongsg_kongBr1b2_100000",
+        "A": "c6b_makekongsg_kongAr1b2_100000"
+      }
+    },
+    {
+      "task": "make_kong",
+      "block": "kong-scoped-2",
+      "id": 100001,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100001.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-2",
+      "arms": {
+        "A": "c6b_makekongsg_kongAr1b2_100001",
+        "B": "c6b_makekongsg_kongBr1b2_100001"
+      }
+    },
+    {
+      "task": "make_kong",
+      "block": "kong-scoped-2",
+      "id": 100002,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100002.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-2",
+      "arms": {
+        "B": "c6b_makekongsg_kongBr1b2_100002",
+        "A": "c6b_makekongsg_kongAr1b2_100002"
+      }
+    },
+    {
+      "task": "make_kong",
+      "block": "kong-scoped-2",
+      "id": 100003,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100003.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-2",
+      "arms": {
+        "A": "c6b_makekongsg_kongAr1b2_100003",
+        "B": "c6b_makekongsg_kongBr1b2_100003"
+      }
+    },
+    {
+      "task": "make_kong",
+      "block": "kong-scoped-2",
+      "id": 100004,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/make_kong/100004.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-2",
+      "arms": {
+        "B": "c6b_makekongsg_kongBr1b2_100004",
+        "A": "c6b_makekongsg_kongAr1b2_100004"
+      }
+    },
+    {
+      "task": "imitate_sorting_sequence",
+      "block": "kong-scoped-1",
+      "id": 100000,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100000.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-1",
+      "arms": {
+        "A": "c6b_imitatesg_kongAr1b1_100000",
+        "B": "c6b_imitatesg_kongBr1b1_100000"
+      }
+    },
+    {
+      "task": "imitate_sorting_sequence",
+      "block": "kong-scoped-1",
+      "id": 100001,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100001.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-1",
+      "arms": {
+        "B": "c6b_imitatesg_kongBr1b1_100001",
+        "A": "c6b_imitatesg_kongAr1b1_100001"
+      }
+    },
+    {
+      "task": "imitate_sorting_sequence",
+      "block": "kong-scoped-1",
+      "id": 100002,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100002.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-1",
+      "arms": {
+        "A": "c6b_imitatesg_kongAr1b1_100002",
+        "B": "c6b_imitatesg_kongBr1b1_100002"
+      }
+    },
+    {
+      "task": "imitate_sorting_sequence",
+      "block": "kong-scoped-1",
+      "id": 100003,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100003.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-1",
+      "arms": {
+        "B": "c6b_imitatesg_kongBr1b1_100003",
+        "A": "c6b_imitatesg_kongAr1b1_100003"
+      }
+    },
+    {
+      "task": "imitate_sorting_sequence",
+      "block": "kong-scoped-1",
+      "id": 100004,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-1/simlab/layouts/imitate_sorting_sequence/100004.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-1",
+      "arms": {
+        "A": "c6b_imitatesg_kongAr1b1_100004",
+        "B": "c6b_imitatesg_kongBr1b1_100004"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "kong-scoped-2",
+      "id": 100000,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100000.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-2",
+      "arms": {
+        "B": "c6b_stackblockssg_kongBr1b2_100000",
+        "A": "c6b_stackblockssg_kongAr1b2_100000"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "kong-scoped-2",
+      "id": 100001,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100001.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-2",
+      "arms": {
+        "A": "c6b_stackblockssg_kongAr1b2_100001",
+        "B": "c6b_stackblockssg_kongBr1b2_100001"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "kong-scoped-2",
+      "id": 100002,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100002.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-2",
+      "arms": {
+        "B": "c6b_stackblockssg_kongBr1b2_100002",
+        "A": "c6b_stackblockssg_kongAr1b2_100002"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "kong-scoped-2",
+      "id": 100003,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100003.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-2",
+      "arms": {
+        "A": "c6b_stackblockssg_kongAr1b2_100003",
+        "B": "c6b_stackblockssg_kongBr1b2_100003"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "kong-scoped-2",
+      "id": 100004,
+      "layout": "/home/robotics/dojo-data/kong-1107/kong-scoped-2/simlab/layouts/stack_blocks/100004.settled.json",
+      "data": "/home/robotics/dojo-data/kong-1107/kong-scoped-2",
+      "arms": {
+        "B": "c6b_stackblockssg_kongBr1b2_100004",
+        "A": "c6b_stackblockssg_kongAr1b2_100004"
+      }
+    }
+  ],
+  "dispatch": {
+    "time": "2026-11-06T23:28:21.526785+00:00",
+    "before_sha256": "18ae3a402b1a73adf789c90506e59e4f2ff65c3e0e587cdb8c0bfdc310af6625",
+    "after_sha256": "6b65fa26bf26ddb8e5ba946afbdff63831fcbb88bc9bf40e8126f0af7ee71874",
+    "manifest_sha256": "b5f3bac375b6023ab9b23e66ae6de3fde6da113a7eaf497c49a97de20555135a",
+    "remaining_count": 100
+  },
+  "protected_names": [],
+  "preceding_seg_names": []
+}

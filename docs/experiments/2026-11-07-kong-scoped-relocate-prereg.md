@@ -162,3 +162,27 @@ explicit lead exception supersedes the fixed-five/invalid-demo launch blocker
 only for those failed 1.25 guard demos. The gain remains ten pairs and stack
 remains five; all score/write decision thresholds remain unchanged. Missing
 camera pairs within the revised planned panel still prevent adoption.
+
+### Frozen inputs and dispatch receipt
+
+All 20 fixed salted layouts settled successfully. Default-speed demos failed
+for 100001 (924 steps) and 100004 (967 steps); those attempts and valid default
+pkls were archived. All five replacement demos passed normal validation at
+1.25. **No exclusions:** planned n remains 10 gain / 5 imitate / 5 stack pairs.
+
+The [committed freeze](data/kong-scoped-relocate/freeze.json) records raw,
+settled and demo hashes, resolved A/B configs, code/package/checkpoint pins,
+script provenance and all pair identities. Full remote manifest SHA256:
+`b5f3bac375b6023ab9b23e66ae6de3fde6da113a7eaf497c49a97de20555135a`.
+The remote manifest and operational evidence remain under
+`compute6:~/dojo-data/kong-1107/`.
+
+At **2026-11-06 23:28:21Z**, all 40 `c6b_` KONG rows were inserted under the
+admission and queue locks ahead of 100 remaining tie rows. SEGAB had drained.
+Both arms of the current tie pair were already claimed; there were no queued
+mates/retries to protect. The frozen pair order is preserved. Queue SHA256:
+`18ae3a402b1a73adf789c90506e59e4f2ff65c3e0e587cdb8c0bfdc310af6625`
+→ `6b65fa26bf26ddb8e5ba946afbdff63831fcbb88bc9bf40e8126f0af7ee71874`.
+This is dispatch, not a camera verdict. A no-model-call physics audit worker
+was started to process each recorded arm as its actions become available;
+its measured results remain required before any verdict.
