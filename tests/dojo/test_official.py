@@ -46,7 +46,8 @@ def _official_run(tmp: Path, task: str, ids: list[int], verdicts: dict, actions:
         d = out / "eps" / str(lid) / "off-1"
         d.mkdir(parents=True)
         (d / "bridge.json").write_text(json.dumps({"end": ends[lid], "steps_used": 100 + lid % 10, "step_lim": 700,
-                                                   "wall_s": 12.0, "backend": {"tracking_max_rad": 0.01}}))
+                                                   "wall_s": 12.0, "backend": {"tracking_max_rad": 0.01},
+                                                   "config": {"preset": "submit_v2"}}))
         _gz(d / "report.json.gz", {"skill": "press_sequence", "history": [], "events": [], "result": {"ok": True}})
         _gz(d / "actions.json.gz", {"actions": actions[lid]})
     return out
@@ -76,6 +77,7 @@ def test_rows_map_robodojo_details_to_our_layouts_and_pair_with_integ(tmp_path):
     assert [r["layout_id"] for r in rs] == ids
     assert [r["success"] for r in rs] == [True, False, True] and rs[1]["score"] == 0.4
     assert rs[0]["category"] is None and rs[1]["category"] is not None
+    assert rs[0]["preset"] == "submit_v2" and rs[0]["grip_source"] == "command" and rs[0]["planner_first"] is False
     integ = _integ_run(tmp_path, task, {100000: (True, 1.0, 100, None), 100001: (True, 1.0, 101, None),
                                          100002: (True, 1.0, 102, None)},
                        {100000: a0, 100001: a1_div, 100002: a0[:4]})
