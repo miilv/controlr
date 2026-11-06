@@ -77,7 +77,7 @@ side_start() {   # KIND SOCK ENVVAR WAIT_S CMD...: start in its own integ-c4_ sc
   local kind=$1 sock=$2 var=$3 wait_s=$4 u; shift 4
   k=$((k + 1)); u="integ-c4_${kind}_${LANE}_$$_$k"; rm -f "$sock"
   ( cd "$repo" && exec systemd-run --user --scope -q --unit="$u" -p MemoryMax=16G -p CPUQuota=400% "$@" ) \
-    > "$RUNS/$name.$kind.log" 2>&1 8>&- < /dev/null &
+    > "$RUNS/$name.$kind.log" 2>&1 7>&- 8>&- < /dev/null &
   units+=("$u"); pids+=($!); [[ "$kind" == sam || "$kind" == mv3d ]] && big=$((big + 1)); echo "$big" > "$S/side.$LANE"
   local i; for ((i = 0; i < wait_s / 2; i++)); do [[ -S "$sock" ]] && break; kill -0 "${pids[-1]}" 2>/dev/null || break; sleep 2; done
   [[ -S "$sock" ]] || return 1
@@ -225,7 +225,7 @@ while true; do
   log "start $name (lock after ${waited} s, repo ${repo#$HOME/}${jenv[*]:+, env ${jenv[*]}}, gpu others $(others), ours $(mine), $(nvidia-smi --query-gpu=power.draw,memory.used,memory.free --format=csv,noheader | head -1 | sed 's/, / \/ /g'), MemAvailable $(awk '/MemAvailable/ {print int($2/1048576)}' /proc/meminfo) GB)"
   # shellcheck disable=SC2086
   env -C "$repo" "${jenv[@]}" DOJO_GPU_LOCK="$S/inner.$LANE.lock" bash scripts/dojo/integ_eval.sh --out "$RUNS/$name" $args \
-    > "$RUNS/$name.log" 2>&1 8>&- < /dev/null &
+    > "$RUNS/$name.log" 2>&1 7>&- 8>&- < /dev/null &
   jp=$!; killed=""; bgchk=""; admitted=0
   while kill -0 "$jp" 2>/dev/null; do
     sleep 15
