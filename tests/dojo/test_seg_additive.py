@@ -150,3 +150,36 @@ def test_select_head_preserves_selected_classifier_rows():
     assert torch.equal(head.cv3[0][-1].weight, weights[[2, 1]])
     assert torch.equal(head.cv3[0][-1].bias, bias[[2, 1]])
     assert head.nc == 2 and head.no == 66 and yolo.model.names == {0: 'new2', 1: 'new1'}
+
+
+def test_gate_rejects_phantom_concentration_and_old_asset_cancellation(tmp_path, monkeypatch):
+    scripts = Path(__file__).resolve().parents[2] / 'scripts/perception/seg'
+    monkeypatch.syspath_prepend(str(scripts))
+    spec = importlib.util.spec_from_file_location('additive_summary_test', scripts / 'summarize_additive.py')
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    objects = [dict(set='dev', task='task', episode='100000', frame=0, label=str(i), category='old',
+                    gt_idx=i, gt_pos=[i, 0, 0], found=True, id_ok=i == 0, t_err_mm=0) for i in range(2)]
+    frames = [dict(set='dev', task='task', episode='100000', frame=0, phantoms=0)]
+
+    def save(path, objects, frames):
+        path.mkdir(exist_ok=True)
+        for name, rows in [('objects', objects), ('frames', frames)]:
+            (path / f'{name}.jsonl').write_text(''.join(json.dumps(r) + '\n' for r in rows))
+
+    save(base, objects, frames)
+    save(candidate, objects, frames)
+    recipe = {'gate': dict(objects=2, frames=1, phantom_total_increase_max=2,
+                           phantom_increase_per_set_task_max=1, naming_denominator=49, new_naming_target=18)}
+    names = ['Rigid/old/00000', 'Rigid/old/00001']
+    naming = dict(hit=20, merged=0, missed=29)
+    assert mod.evaluate(base, candidate, recipe, naming, names)['pass_gate']
+    save(candidate, objects, [{**frames[0], 'phantoms': 2}])
+    result = mod.evaluate(base, candidate, recipe, naming, names)
+    assert not result['pass_gate'] and not result['phantoms']['pass_gate']
+    changed = [{**row, 'id_ok': i == 1} for i, row in enumerate(objects)]
+    save(candidate, changed, frames)
+    result = mod.evaluate(base, candidate, recipe, naming, names)
+    assert result['old_category']['losers'] == 0 and result['old_asset']['losers'] == 1
+    assert not result['pass_gate']

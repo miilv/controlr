@@ -1,0 +1,141 @@
+{
+  "train_images": 4816,
+  "negative_images": {
+    "train": 3346,
+    "val": 171
+  },
+  "train_support": {
+    "Articulation/laptop/00001": {
+      "images": 100,
+      "head_images": 39
+    },
+    "Articulation/laptop/00002": {
+      "images": 108,
+      "head_images": 44
+    },
+    "Articulation/laptop/00003": {
+      "images": 134,
+      "head_images": 53
+    },
+    "Articulation/toaster/00002": {
+      "images": 78,
+      "head_images": 27
+    },
+    "Articulation/toaster/00004": {
+      "images": 127,
+      "head_images": 47
+    },
+    "Geometry/cup_holder/00001": {
+      "images": 167,
+      "head_images": 63
+    },
+    "Rigid/brick/00002": {
+      "images": 5,
+      "head_images": 4
+    },
+    "Rigid/headset/00008": {
+      "images": 214,
+      "head_images": 95
+    },
+    "Rigid/headset/00009": {
+      "images": 47,
+      "head_images": 25
+    },
+    "Rigid/headset/00010": {
+      "images": 34,
+      "head_images": 14
+    },
+    "Rigid/matryoshka_dolls/00015": {
+      "images": 84,
+      "head_images": 48
+    },
+    "Rigid/matryoshka_dolls/00016": {
+      "images": 88,
+      "head_images": 43
+    },
+    "Rigid/matryoshka_dolls/00017": {
+      "images": 90,
+      "head_images": 52
+    },
+    "Rigid/matryoshka_dolls/00018": {
+      "images": 77,
+      "head_images": 46
+    },
+    "Rigid/matryoshka_dolls/00019": {
+      "images": 92,
+      "head_images": 49
+    },
+    "Rigid/matryoshka_dolls/00020": {
+      "images": 138,
+      "head_images": 81
+    },
+    "Rigid/matryoshka_dolls/00021": {
+      "images": 140,
+      "head_images": 80
+    },
+    "Rigid/matryoshka_dolls/00022": {
+      "images": 131,
+      "head_images": 76
+    },
+    "Rigid/matryoshka_dolls/00023": {
+      "images": 122,
+      "head_images": 74
+    },
+    "Rigid/matryoshka_dolls/00024": {
+      "images": 122,
+      "head_images": 78
+    },
+    "Rigid/mug/00010": {
+      "images": 78,
+      "head_images": 34
+    },
+    "Rigid/mug/00011": {
+      "images": 64,
+      "head_images": 31
+    },
+    "Rigid/mug/00012": {
+      "images": 54,
+      "head_images": 24
+    },
+    "Rigid/mug/00013": {
+      "images": 43,
+      "head_images": 23
+    },
+    "Rigid/mug/00014": {
+      "images": 135,
+      "head_images": 64
+    },
+    "Rigid/mug/00017": {
+      "images": 84,
+      "head_images": 35
+    },
+    "Rigid/mug/00018": {
+      "images": 21,
+      "head_images": 9
+    },
+    "Rigid/mug/00019": {
+      "images": 103,
+      "head_images": 42
+    },
+    "Rigid/paper_ball/00000": {
+      "images": 7,
+      "head_images": 4
+    },
+    "Rigid/wuliangye/00001": {
+      "images": 63,
+      "head_images": 31
+    },
+    "Rigid/wuliangye/00002": {
+      "images": 59,
+      "head_images": 27
+    },
+    "Rigid/wuliangye/00003": {
+      "images": 65,
+      "head_images": 32
+    }
+  },
+  "labels_sha256": "3a04a2958afb50192d2ede8ef10d83e9925bc810d0bcda9c99a146c60a2482f1",
+  "train_rfs_sha256": "b40c070a523a15dea4c41fc60221ff57fc845f5c804264f1d1b08ada7a90979f",
+  "train_rfs_images": 5842,
+  "base_md5": "2f546196145fc424f76a5e2e47dd3210"
+}
