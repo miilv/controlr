@@ -59,3 +59,22 @@ The gain set is 100005-09 + 100020-24 with 100008 → 100025: 100008 failed raw-
 - **Missing guard pairs:** two imitate guard pairs (b1 100003, b2 100001) were lost to infra-only startup stalls (rc 4, 0 steps, retry exhausted), so the guard has n = 8.
 
 **Follow-up (a new lever, not a third test):** make_kong's gain is large, and the only harm shows up in a different task. The natural next lever is `watch_relocate` scoped to make_kong only, so it can't change imitate by construction. It needs its own pre-registration on new fresh layouts, under the current score-based rule.
+
+## seg v2n additive (#387), compute6 c6b_ — DOES NOT PASS
+
+This is SEGAB's report.py, run once after all 140 rows completed (23:08Z), under the spec's rule: equal-cell pooled gain ≥ +5, wins ≥ 2× losses with ≥ 2 net, and guards.
+
+| cell | pairs | Δ (B − A) | wins / losses |
+|---|---|---|---|
+| make_toast_random (gain) | 10 | 0.0 | 0 / 0 |
+| hang_mugs_random (gain) | 10 | −1.0 | 0 / 0 |
+| sort_nesting_dolls_by_size_random (gain) | 10 | 0.0 | 0 / 0 |
+| store_laptop_and_headphones_random (gain) | 10 | 0.0 | 0 / 0 |
+| pour_liquid_into_cup_random (gain) | 10 | −10.0 | 2 / 3 |
+| stack_blocks (guard) | 10 | 0.0 | 0 / 0 |
+| insert_tubes (guard) | 10 | 0.0 | 0 / 0 |
+
+- The pooled gain's bootstrap 95% CI is [−10.5, +6.7].
+- Cost: 833 agentic calls (claude/claude-sonnet-5-5), 12.2M prompt / 0.75M completion tokens, 9.9M cache-read.
+
+**Reading.** v2n names 24 / 49 new-class objects on dev frame-0 (vs 0 for v2b) without hurting old classes, yet four of five gain cells are byte-for-byte equal in score between arms. So naming the new objects is not what limits these cells. Their G3 ceilings are low or zero (store_laptop 0, hang_mugs_random ~20, dolls_random ~50), and make_toast_random was earlier blocked by the toaster vocabulary in routing. The segmenter stays at v2b, and `seg_additive` stays default-off. The next Generalization work should start from each cell's G3 failure class, not from perception.
