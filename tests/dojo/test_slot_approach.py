@@ -60,3 +60,23 @@ def test_runtime_default_and_invalid_switch():
     assert RuntimeConfig().slot_approach == 'off'
     with pytest.raises(ValueError):
         RuntimePolicy(RuntimeConfig(slot_approach='typo'))
+
+
+def test_linear_place_keeps_easing_and_tail_options_separate():
+    from dojo.skills.executor import ArmPlan
+    from dojo.skills.motion import MoveResult, Segment
+    sk = object.__new__(Skills)
+    h = SimpleNamespace(label='tool', T_tcp_obj=np.eye(4), box=object())
+    sk.held = {'left': h}
+    sk.ex = SimpleNamespace(q={'left': np.zeros(6)}, g={'left': 0.0})
+    sk.world = SimpleNamespace(obj=lambda _: SimpleNamespace(asset=SimpleNamespace(center=np.zeros(3))))
+    segment = Segment(np.array([np.zeros(6), np.full(6, 0.1)]), 0.05)
+    transit = MoveResult('reached', 'left', [segment], np.eye(4))
+    sk.motion = SimpleNamespace(line=Mock(return_value=transit), to_pose=Mock())
+    sk._place_tail = Mock(return_value=ArmPlan('left', segment.q[-1], 0.0))
+    plan = sk.plan_place('left', np.eye(4), approach_line=True, ease=3, held_read=True)
+    assert plan.approach is transit and segment.ease == 3
+    assert plan.tail_kw['held_read'] is True
+    assert 'approach_line' not in plan.tail_kw
+    assert plan.plan.g0 == 0.0
+    sk.motion.to_pose.assert_not_called()
