@@ -48,7 +48,7 @@ def resolve(routes, task):
             raise ValueError('SAM labels outside routed task')
         if route.get('bank', key) != key:
             raise ValueError('SAM bank must match routed task')
-    return routes.get(task, {'mode': 'v2b'})
+    return {'mode': 'v2b', **routes.get(task, {})}
 
 
 @dataclass

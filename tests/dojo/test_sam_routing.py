@@ -4,11 +4,19 @@ from unittest.mock import Mock
 import numpy as np
 import pytest
 
-from dojo.perception import inverse_layout as il, sam_routing as sr
+from dojo.perception import sam_routing as sr
 from dojo.perception.sam_masks import SamMask, SideServerDown
 
 
-def test_defaults_exact_old_detector_call():
+@pytest.fixture
+def il():
+    pytest.importorskip('cv2')
+    pytest.importorskip('scipy')
+    from dojo.perception import inverse_layout
+    return inverse_layout
+
+
+def test_defaults_exact_old_detector_call(il):
     cfg = il.EstimatorConfig()
     assert cfg.sam_task_routes == {}
     c = Mock()
@@ -52,11 +60,11 @@ def test_invalid_route():
 
 
 @pytest.mark.parametrize('task', list(sr.banks()))
-def test_every_task_defaults_to_v2b(task):
+def test_every_task_defaults_to_v2b(task, il):
     assert sr.resolve(il.EstimatorConfig().sam_task_routes, task) == {'mode': 'v2b'}
 
 
-def test_sam_series_counts_without_an_asset_identity():
+def test_sam_series_counts_without_an_asset_identity(il):
     m = np.ones((8, 8), np.uint8)
     p = sr.Proposal(m, 'SAM/category/proposal', .8, ('Rigid/watch/00001',))
     assert il._seg_count({'labels': ['x'], 'candidates': ['Rigid/watch/00001']}, [p], .5) == 1
@@ -95,3 +103,39 @@ def test_two_clients_share_serialized_model(tmp_path):
             c.conn.close()
     with ThreadPoolExecutor(2) as pool:
         assert list(pool.map(run, range(2))) == [[], []]
+
+
+def test_sam_fit_is_candidate_gated_and_never_gets_exact_hint(monkeypatch, il):
+    from dojo.perception import seg_twin
+    mask = np.ones((8, 8), np.uint8)
+    allowed = 'Rigid/watch/00001'
+    wrong = 'Rigid/pepper/00001'
+    proposal = sr.Proposal(mask, 'SAM/category/proposal', .8, (allowed,), ('x',))
+    group = {'labels': ['x'], 'candidates': [allowed, wrong]}
+    cfg = il.EstimatorConfig()
+    monkeypatch.setattr(seg_twin, 'client', Mock(return_value=object()))
+    monkeypatch.setattr(il, '_seg_detect', Mock(return_value=[proposal]))
+    monkeypatch.setattr(il, '_union_masks', Mock(return_value={}))
+    shape = SimpleNamespace(key=allowed)
+    other = SimpleNamespace(key=wrong)
+    fit = SimpleNamespace(per_view={}, x=0., y=0., key=allowed,
+                          sm=lambda: SimpleNamespace(sil=lambda *_: mask), T=lambda: np.eye(4))
+    fitter = Mock(return_value=(.9, fit))
+    monkeypatch.setattr(il, '_seg_fit', fitter)
+    chosen = []
+    il._seg_propose(chosen, {'cam_head': SimpleNamespace(cam=None, known=mask)},
+                    np.zeros((8, 8, 3), np.uint8), cfg, [group], [(0, group, {})],
+                    {0: {'shared_geometry': [shape, other]}})
+    assert chosen == [fit]
+    assert fitter.call_args.args[5] == {'shared_geometry': [shape]}
+    assert 'seg_key' not in fit.per_view
+
+
+def test_scoped_route_does_not_call_sam_on_parity_cell(monkeypatch, il):
+    cfg = il.EstimatorConfig(sam_task_routes={'pour_by_language': {'mode': 'sam'}})
+    cfg._sam_route_task = 'classify_objects'
+    c = Mock()
+    sam = Mock(side_effect=AssertionError('inactive SAM called'))
+    monkeypatch.setattr(sr, 'detect', sam)
+    assert il._seg_detect(c, np.zeros((8, 8, 3)), cfg, []) is c.detect.return_value
+    sam.assert_not_called()
