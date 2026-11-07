@@ -381,3 +381,32 @@ No adoption or candidate/default change. [Evidence](../experiments/data/pour-cam
 The [fresh re-test](../experiments/2026-11-07-pour-camera-retest-prereg.md) is authorized prospectively: motion-only scope makes the write gate N/A by source/config/inventory proof (the waist rationale), with #417 audit supplementary; single-cup is a parity guard, Xylophone remains camera-gated. Language retains20 pairs and both score/full-success screens. The original POUR **FAIL / NOT ADOPTED** verdict and its registered gates are unchanged. No adoption or default/candidate change.
 
 Re-test dispatch: **15:43:21Z**,80 rows at **9–88**, after all eight remaining MATCH2 rows; no unstarted ties remained in the snapshot, old bytes/order and started pairs preserved. Forty fresh-salt pairs from45 input attempts, five validity failures retained. Complete freeze **fb3f70db** preceded insertion. [Receipt](../experiments/data/pour-camera-retest/dispatch.json). ETA first POUR~16:10Z, finish~19:30Z (rough);~470 logical Claude calls planned. Actual routes and parity inventory are checked during/after collection. Original verdict unchanged; no adoption.
+
+## COIN re-test: `disc_hold_evidence=on` (#382) — FAIL / NOT ADOPTED
+
+Once-only fresh salted re-test; full 20 gain + 10 pairs per original guard.
+[Registered verdict, route/spend and both write instruments](../experiments/2026-11-07-coin-disc-retest-prereg.md#coin-re-test-verdict--7-nov-fail--not-adopted).
+
+| cell | pairs | A pooled | B pooled | Δ | score wins / losses (≥10 pts) | success flips (B / A) | successes A / B |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| deposit_coin (gain) | 20 | 17.0 | 12.0 | -5.0 | 2 / 4 | 1 / 2 | 2 / 1 |
+| play_tic_tac_toe (guard) | 10 | 90.0 | 90.0 | +0.0 | 0 / 0 | 0 / 0 | 8 / 8 |
+| stack_blocks (guard) | 10 | 100.0 | 100.0 | +0.0 | 0 / 0 | 0 / 0 | 10 / 10 |
+| insert_key (guard) | 10 | 23.5 | 32.0 | +8.5 | 2 / 1 | 2 / 1 | 1 / 2 |
+
+- **Gain fails:** Δ −5 < +5; score wins/losses 2/4 fail the ratio and net-win bars.
+  All three guards pass. Deposit paired bootstrap 95% CI **[−21, +11]** points
+  (10,000 paired-layout percentile resamples, default_rng(0)).
+- **Registered write audit:** **FAIL**, nearest-in-group instrument,
+  raw harmful no-excess gate per writer; 582/582 writes,
+  0 uncertain. Harmful counts rise for perception 31→34, predicted 44→46,
+  refine_pick 1→3. Supplementary #417 counts are 12→14, 4→7, 1→4
+  respectively; no newer rate gate is substituted.
+- **Completion/route:** 100/100 rc 0, no retries/exclusions; actual positive-call
+  logs all Sonnet. Zero candidate/default changes; the once-only re-test is exhausted.
+- **Absolute B score:** 12.0 vs D-C19 8 (**+4.0**) and PyRUA-RSI 79.6 (**−67.6**);
+  cross-panel comparisons, not controlled paired gains.
+- **Spend:** **428 logical Claude calls**; recorded prompt **6,098,333**,
+  completion **276,236**, reasoning **149,318**, cache-read **4,854,578** tokens.
+  Token usage is absent for 28 held-look calls, so token totals are lower bounds;
+  reasoning/cache are subsets. Analysis/audit made no new LLM calls.

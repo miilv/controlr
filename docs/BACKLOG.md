@@ -6,6 +6,13 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Persist token usage for agentic held-look calls.** `held_look_impl`
+  counts logical calls and records their model, but discards each response's
+  token usage before writing `calls.jsonl`. Preserve summed prompt/completion/
+  reasoning/cache counters and distinguish unavailable usage from zero, so
+  camera reports can state complete spend rather than recorded lower bounds
+  ([COIN re-test verdict](experiments/2026-11-07-coin-disc-retest-prereg.md)).
+
 - [ ] **Complete first-grasp identity anchors for ported skills in write audits.**
   POUR's frozen audit scored all 81 writes, but association sources were 76
   initial-tight/five nearest fallback, with no consumed-pick/grasp-close anchor
