@@ -25,7 +25,10 @@ def snapshot(run, task):
     lm = env.scene_manager.layout_manager
     rm = env.reward_manager
     pairs = [(f"wine_{i}", f"bowl_{i}", f"bottle_{i}") for i in range(3)] if task == "pour_by_language" else [("wine", "cup", "bottle")]
-    out = {"pending_upright_checks": len(rm.trigger_check_list[0]), "fluids": []}
+    pending = rm.trigger_check_list[0]
+    labels = [check[1].get("label") for entry in pending for check in entry[0]
+              if check[0] == "is_axis_up"]
+    out = {"pending_upright_checks": len(pending), "pending_upright_labels": labels, "fluids": []}
     for wine, target, bottle in pairs:
         names = [lm.get_instance_name(label=label, env_idx=0) for label in (wine, target, bottle)]
         fluid = lm.get_scene_object(inst_name=names[0], env_idx=0)

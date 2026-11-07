@@ -62,7 +62,7 @@ def test_lean_cuts_the_steps_and_still_runs_the_whole_profile():
 @pytest.mark.parametrize("aim, back", [(None, None), ("b10", 0.010)])
 def test_a_single_pour_keeps_v1s_pace(aim, back):
     w = _world()
-    for pace in (None, "v1", "lean"):
+    for pace in (None, "v1", "lean", "overlap", "budget"):
         opts = {k: v for k, v in (("pour_aim", aim), ("pour_pace", pace)) if v is not None}
         p = planner.ported_plan(w.instruction, w, opts=opts)
         assert p.args["skill"] == "pour_bottle" and p.args["args"] == ({} if back is None else {"spout_back": back})

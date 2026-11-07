@@ -107,12 +107,13 @@ def test_snapshot_queries_checker_without_changing_episode():
                          get_scene_object=lambda **kw: fluid,
                          get_instance_pose=lambda inst_name, env_idx: ([0 if inst_name == 'cup' else 1, 0, 0], [1, 0, 0, 0]),
                          get_instance_bbox_vertices=lambda **kw: [[-.1, -.1, 0], [.1, .1, .1]])
-    pending = [object()]
+    pending = [([("is_axis_up", {"label": "bottle"})], [], "rising_edge", True)]
     parser = SimpleNamespace(is_A_fluid_in_B=lambda args: calls.append(args) or 1.)
     run = SimpleNamespace(env=SimpleNamespace(scene_manager=SimpleNamespace(layout_manager=lm),
                                               reward_manager=SimpleNamespace(trigger_check_list=[pending], func_parser=parser)))
     r = snapshot(run, 'pour_liquid_into_cup')
     assert r['pending_upright_checks'] == 1 and len(pending) == 1
+    assert r['pending_upright_labels'] == ['bottle']
     assert r['fluids'][0]['predicate_now'] and r['fluids'][0]['in_target'] == 1
     assert calls[0]['percentage_threshold'] == .97 and calls[0]['C_residual_threshold'] == .15
 
