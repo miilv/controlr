@@ -273,3 +273,19 @@ independent10/cell screen before unused layouts. Gate>=9/12 and>=8/10 each;
 conditional fresh variant20/salt registered before generation, still unexecuted.
 Initial full2193/191 passes; final suite with four more scoping/hard-slip tests
 is running,69 focused pass. No camera/model calls or board changes.
+
+
+## Loaded-proof caller scope correction before fresh generation
+
+Code review finds source041 also attempts proof on30 mm-tolerance table relays
+that already allow a loose lift. This adds steps and returns to that old carry
+path on a refused proof; it does not support the registration's broader claim
+that every refusal precludes carry. Keep the complete G screen, but supersede
+its fresh protocol before drawing any layout. Source10f3e0a8 attempts proof
+only where the original loose rule would put down, preserving tolerant relay
+execution exactly and making every refused new proof go through put-down.
+72 focused mocks pass, including legacy/loaded relay equivalence and strict
+refusal. Freeze separately under controlr-laptop/frozen-round2h; each new cell
+waits for its G predecessor to complete. Same22/cell development gate before
+variant21 fresh salt; ids100000–14 are still ungenerated. No source changes
+in running scopes, no camera/model calls or board change.

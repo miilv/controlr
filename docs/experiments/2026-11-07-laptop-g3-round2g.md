@@ -1,5 +1,16 @@
 # Laptop G3 round 2g — loaded-hold diagnosis
 
+## Fresh registration superseded before generation
+
+The source041 development screen continues to completion and all scores will
+be retained. Its conditional fresh panel is **unexecuted and superseded**:
+caller review found the loaded proof also runs on already-tolerated relays,
+adding steps and allowing a refused proof to fall back to legacy loose carry.
+The [strict-transfer correction](2026-11-07-laptop-g3-round2h.md) preserves
+those relays exactly and proves only pickups the original rule would reject.
+This is a source/protocol correction before any unused layout was drawn,
+not replacement of a fresh policy failure or silent source relabelling.
+
 ## Registration before diagnostic actions
 
 The frozen3866 wide/clear candidate passes its original banks (11/12 standard,
