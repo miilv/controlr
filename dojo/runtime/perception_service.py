@@ -42,6 +42,9 @@ Ops (request dicts):
     {"op": "support_home", "frame": frame}                                        -> {"support_home": json}
         is a support robot (imitate's demonstrator) standing at its home in the head view
         (``dojo.perception.inverse_layout.support_home``): {"name", "diff", "at_home"}
+    {"op": "twin_costs", "frame": frame, "objects": [{label, key, pos, quat}], "demo": [label], "ours": [label],
+     "cfg": dict|None}                                                            -> {"twin_costs": json}
+        imitation twins by appearance (``dojo.perception.twin_match.twin_costs``): a joint one-to-one assignment
     {"op": "locate_laid", "frame0": frame, "frame": frame, "key": str, "pose7": [7]} -> {"locate_laid": json}
         where a knocked-over object laid at ``pose7`` (where it stood) actually lies, from the head view
         (``dojo.perception.task_state.laid_pose``): {"ok", "pos", "quat", "iou", "shift_mm", "yaw_deg", "why"}
@@ -382,6 +385,10 @@ class PerceptionClient:
         f = encode_frame({**frame, "images": {"cam_head": frame["images"]["cam_head"]}})
         return json.loads(self._call({"op": "support_home", "frame": f})["support_home"])
 
+    def twin_costs(self, frame: dict, objects: list[dict], demo: list[str], ours: list[str], cfg: dict | None = None) -> dict:
+        return json.loads(self._call({"op": "twin_costs", "frame": encode_frame(frame), "objects": objects,
+                                      "demo": list(demo), "ours": list(ours), "cfg": cfg or {}})["twin_costs"])
+
     def locate_laid(self, frame0: dict, frame: dict, key: str, pose7) -> dict:
         def head_only(f):
             return encode_frame({**f, "images": {"cam_head": f["images"]["cam_head"]}})
@@ -542,6 +549,11 @@ class _Perception:
         """Is a support robot at its home in this frame's head view (``inverse_layout.support_home``)."""
         from dojo.perception.inverse_layout import support_home
         return support_home(decode_frame(frame)["images"]["cam_head"])
+
+    def twin_costs(self, frame: dict, objects: list[dict], demo: list[str], ours: list[str], cfg: dict | None = None) -> dict:
+        """Imitation twins by appearance (``twin_match.twin_costs``) on this frame (the episode start's)."""
+        from dojo.perception.twin_match import twin_costs
+        return twin_costs(decode_frame(frame), objects, demo, ours, cfg)
 
     def locate_laid(self, frame0: dict, frame: dict, key: str, pose7) -> dict:
         """Where a knocked-over object, laid face up where it stood (``pose7``), actually lies: the head view, frame 0
@@ -1177,6 +1189,9 @@ def serve(port: int, authkey: bytes, ready: str | None = None) -> None:
                     elif op == "support_home":
                         r = p.support_home(req["frame"])
                         conn.send({"ok": True, "support_home": json.dumps(r, default=_default)})
+                    elif op == "twin_costs":
+                        r = p.twin_costs(req["frame"], req["objects"], req["demo"], req["ours"], req.get("cfg"))
+                        conn.send({"ok": True, "twin_costs": json.dumps(r, default=_default)})
                     elif op == "locate_laid":
                         r = p.locate_laid(req["frame0"], req["frame"], req["key"], req["pose7"])
                         conn.send({"ok": True, "locate_laid": json.dumps(r, default=_default)})
