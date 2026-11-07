@@ -42,6 +42,7 @@ TIER_A = {
     "classify_into_bins_v3b": (RESERVE, {}),     # K4: both classify cells; map "auto" = the instruction's fixed map
     "classify_into_bins_p1": (RESERVE, {}),      # N: v3b whose grounding leaves unnamed / surplus categories on the table
     "classify_into_bins_p2": (RESERVE, {}),      # N: p1 + a refused carry retried from higher up, then put back
+    "classify_into_bins_p3": (RESERVE, {}),      # CLASSIFY3: p2 with the container test on the object's bottom
 }
 
 

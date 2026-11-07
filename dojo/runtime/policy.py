@@ -645,7 +645,9 @@ class RuntimeConfig:
     # ... sorting into baskets (both classify cells): v3b (Mikhail's classify_into_bins_v3b: a scene whose categories are not
     # the instruction's three, or more groups than baskets, fails grounding and nothing is sorted) | p1
     # (classify_into_bins_p1: sorts the named / largest groups, leaves the rest on the table) | p2 (classify_into_bins_p2:
-    # p1, and a carry v3 refuses is tried once more from higher up, then the object is put back and the arm homed)
+    # p1, and a carry v3 refuses is tried once more from higher up, then the object is put back and the arm homed) | p3
+    # (classify_into_bins_p3: p2 whose "is it in the basket" test takes the object's lowest point, not its root, below
+    # the rim; journal 2026-11-07-dojo-classify3)
     ported_classify: str = "v3b"
     # ... the pacing of pour_order's pours (pour_by_language; stream H): v1 (the vendored pour_bottle) | lean
     # (pour_bottle_lean: the tilt-up to 90 deg and the untilt at normal speed, a 12-step drain, no home between pours):
@@ -810,7 +812,7 @@ class RuntimePolicy:
                 or self.cfg.disc_hold_evidence not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
-                or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
+                or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2", "p3")
                 or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap", "budget")
                 or self.cfg.ported_pour_profile not in ("off", "sparse", "via", "checked")
                 or self.cfg.plan_profile not in ("legacy", "recover")
