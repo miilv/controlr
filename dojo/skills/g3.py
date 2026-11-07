@@ -249,7 +249,8 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 held_pose: str | None = None, held_belief: bool = False, held_looks: bool = True,
                 freeze_touched: bool = False, confirm_pose: bool = False, belief_drop: str | None = None,
                 allow_bbox: bool = False, held_request: bool = False, put_into_opts=(),
-                look_read: str | None = None, skill_attrs: dict | None = None, routes=(), glyph_gt: bool = False) -> dict:
+                look_read: str | None = None, skill_attrs: dict | None = None, routes=(), glyph_gt: bool = False,
+                release_rest: str = "legacy") -> dict:
     """``held_pose`` ("noise" / "gt", mode B): perception's in-hand read answered from GT (``heldsim``), with the
     runtime belief's in-hand transform (implied); ``held_belief``: that belief alone (no read); ``held_looks``: the
     protocol may look / show (``Skills.held_looks``). ``freeze_touched``: an object the robot moved without a grasp keeps
@@ -282,7 +283,7 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     if held_pose or held_belief or freeze_touched or confirm_pose or belief_drop:
         from dojo.skills.heldsim import HeldBeliefProvider
         prov = HeldBeliefProvider(prov, env, mode=held_pose or None, seed=seed, freeze=freeze_touched,
-                                  confirm=confirm_pose, drop=belief_drop)
+                                  confirm=confirm_pose, drop=belief_drop, release_rest=release_rest)
         prov.held_pose_on_request = bool(held_request)     # the runtime's held_pose: request
     if mode_b and hasattr(prov, "garment"):
         prov = FrozenGarmentProvider(prov, noise_mm=float(os.environ.get("G3_GARMENT_NOISE_MM", "0")), seed=seed)
@@ -488,15 +489,18 @@ def cmd_run(a) -> None:
                           held_request=a.held_pose_request, look_read=a.look_read,
                           put_into_opts=tuple(x for x in (a.put_into or "").split(",") if x),
                           skill_attrs=dict(x.split("=", 1) for x in a.skill_attr or []),
-                          routes=tuple(x for x in (a.routes or "").split(",") if x), glyph_gt=a.glyph_gt)
+                          routes=tuple(x for x in (a.routes or "").split(",") if x), glyph_gt=a.glyph_gt,
+                          release_rest=a.release_rest)
         if offs or a.mode_b:
             rec["dev_hooks"] = {"belief_offsets": offs, "mode_b": bool(a.mode_b), "held_pose": a.held_pose,
                                 "held_belief": bool(a.held_belief or a.held_pose or a.freeze_touched or a.confirm_pose),
                                 "held_looks": not a.no_held_looks, "freeze_touched": bool(a.freeze_touched or a.confirm_pose),
                                 "confirm_pose": bool(a.confirm_pose), "belief_drop": a.belief_drop,
+                                "release_rest": a.release_rest,
                                 "held_pose_request": bool(a.held_pose_request), "look_read": a.look_read,
                                 "put_into": a.put_into}
         rec["skill_attrs"] = dict(x.split("=", 1) for x in a.skill_attr or [])
+        rec["belief_drop_rule"] = {"belief_drop": a.belief_drop, "release_rest": a.release_rest}
         rec["routes"] = [x for x in (a.routes or "").split(",") if x]
         rec["log"] = logs[-60:]
         rec["code"] = code
@@ -893,6 +897,9 @@ def main(argv=None) -> None:
                    help="mode B: a released object rests where the runtime belief's drop rule puts it (runtime: table and "
                         "movable tops; fixtures: + static fixtures' meshes) unless the post-place re-measure sees it "
                         "(dojo.skills.heldsim; dev)")
+    r.add_argument("--release-rest", choices=("legacy", "container"), default="legacy",
+                   help="mode B, with --belief-drop: the runtime belief's release rest rule (RuntimeConfig.release_rest; "
+                        "container: over a fixture's open interior, its floor) (dev)")
     p = sub.add_parser("probe")
     p.add_argument("--out", required=True)
     p.add_argument("--curobo", action="store_true")

@@ -339,6 +339,11 @@ class RuntimeConfig:
     # drop rule) | release (a post-release measurement decides; else in when the jaws held it to the release over the
     # container's footprint, and the belief puts it inside)
     drop_verdict: str = "belief"
+    # where the kinematic belief rests an object let go (``belief.drop_rest``): legacy (the table, movable tops, fixture
+    # surfaces and holds) | container (first: over a fixture's open interior wide enough for it, its floor; journal
+    # 2026-11-07-dojo-classify3: the legacy rule left basket drops on the rim or at the release height while physics had
+    # them inside, and the classify skill re-did them)
+    release_rest: str = "legacy"
     # ``library.put_into``'s options (``Skills.put_into_opts``; empty = today): spot | patient | sequence | unblock (a
     # handover spot that would leave another object no arm can pick is skipped) | gentle (the drop carry at MEDIUM
     # speed with a 6-step ease instead of CARRY / 3)
@@ -731,6 +736,7 @@ class RuntimePolicy:
                 or self.cfg.twin_load not in ("raw", "consistent") or self.cfg.bg_perception not in ("off", "refine", "reread")
                 or self.cfg.refine_recentre_guard not in ("centre", "vis")
                 or self.cfg.drop_verdict not in ("belief", "release")
+                or self.cfg.release_rest not in ("legacy", "container")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence", "unblock", "gentle"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
                 or self.cfg.push_goal not in ("centre", "cover", "cover_obb")
@@ -1013,6 +1019,7 @@ class RuntimePolicy:
         if checker is not None and cfg.agentic == "budget":
             checker.agentic_hook = lambda obs, rec: self._agentic_gate(obs, scene, rec, "risk")
         prov.unique_labels = cfg.series_labels == "numbered"
+        prov.release_rest = cfg.release_rest
         prov.place_measured = bool(cfg.mode == "perception" and cfg.place_verdict == "measured")
         prov.track_expire = cfg.track_expire
         prov.belt_speed = cfg.belt_speed

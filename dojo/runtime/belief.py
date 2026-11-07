@@ -128,7 +128,84 @@ def fixture_height_map(o, cell: float = FIXTURE_CELL) -> dict | None:
     return hm
 
 
-def drop_rest(o, movables, fixtures=()) -> tuple[np.ndarray | None, dict | None]:
+CONTAINER_DEPTH = 0.02      # m: ``release_rest="container"``: an interior this far below the fixture's rim is an opening
+_OPENINGS: dict = {}
+
+
+def _openings(o) -> dict | None:
+    """A fixture's open interiors: its height map's cells at least ``CONTAINER_DEPTH`` below its highest surface,
+    labelled by 4-connected component, with each component's area (m^2). None without a height map. Cached per asset."""
+    hm = fixture_height_map(o)
+    if hm is None:
+        return None
+    key = (o.asset.key, hm["cell"], CONTAINER_DEPTH)
+    if key in _OPENINGS:
+        return _OPENINGS[key]
+    Z = hm["Z"]
+    fin = np.isfinite(Z)
+    res = None
+    if fin.any():
+        low = fin & (Z <= float(Z[fin].max()) - CONTAINER_DEPTH)
+        try:
+            from scipy.ndimage import label as _label
+            lab, n = _label(low)
+        except ImportError:                          # a plain flood fill (RoboDojo's python may lack scipy)
+            lab, n = np.zeros(Z.shape, int), 0
+            for y0, x0 in zip(*np.nonzero(low)):
+                if lab[y0, x0]:
+                    continue
+                n += 1
+                stack = [(y0, x0)]
+                lab[y0, x0] = n
+                while stack:
+                    y, x = stack.pop()
+                    for yy, xx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                        if 0 <= yy < Z.shape[0] and 0 <= xx < Z.shape[1] and low[yy, xx] and not lab[yy, xx]:
+                            lab[yy, xx] = n
+                            stack.append((yy, xx))
+        area = np.bincount(lab.ravel(), minlength=n + 1).astype(float) * hm["cell"] ** 2
+        res = {"label": lab, "area": area}
+    _OPENINGS[key] = res
+    return res
+
+
+def container_rest(o, fixtures) -> tuple[float, str] | None:
+    """``release_rest="container"``: an object let go with its bbox centre over a fixture's open interior (a basket's
+    floor, ``_openings``) wide enough for its footprint (the component's area >= the xy box of its mesh points) falls
+    into it: (the bottom z where it rests: the highest interior surface under its points over that interior, the fixture's
+    label). None when no fixture has such an opening under it (the legacy rule decides). The legacy rule rests such an
+    object on the rim, or keeps it where it was let go ("held by a fixture") when its predicted footprint dips into a wall
+    (journal 2026-11-07-dojo-classify3: physics had it inside the basket, the belief over the rim)."""
+    if o.asset.mesh is None:
+        return None
+    P = np.asarray(o.asset.mesh[0], float) @ o.R.T + o.pos
+    c = np.asarray(o.center_w, float)
+    foot = float(np.ptp(P[:, 0]) * np.ptp(P[:, 1]))
+    for g in fixtures:
+        if g.label == o.label or fixture_mesh(g) is None or float(g.R[2, 2]) < 0.996:
+            continue
+        hm, op = fixture_height_map(g), _openings(g)
+        if hm is None or op is None:
+            continue
+        lc = (c - g.pos) @ g.R
+        ix, iy = int(np.floor((lc[0] - hm["x0"]) / hm["cell"])), int(np.floor((lc[1] - hm["y0"]) / hm["cell"]))
+        if not (0 <= iy < hm["Z"].shape[0] and 0 <= ix < hm["Z"].shape[1]):
+            continue
+        comp = int(op["label"][iy, ix])
+        if comp == 0 or float(op["area"][comp]) < foot:
+            continue
+        loc = (P - g.pos) @ g.R
+        jx = np.floor((loc[:, 0] - hm["x0"]) / hm["cell"]).astype(int)
+        jy = np.floor((loc[:, 1] - hm["y0"]) / hm["cell"]).astype(int)
+        inb = (jx >= 0) & (jy >= 0) & (jx < hm["Z"].shape[1]) & (jy < hm["Z"].shape[0])
+        over = np.zeros(len(P), bool)
+        over[inb] = op["label"][jy[inb], jx[inb]] == comp
+        z_in = hm["Z"][jy[over], jx[over]] if over.any() else hm["Z"][iy:iy + 1, ix]
+        return float(np.max(z_in)) + float(g.pos[2]), g.label
+    return None
+
+
+def drop_rest(o, movables, fixtures=(), container: bool = False) -> tuple[np.ndarray | None, dict | None]:
     """Where ``o``, let go at its current pose, comes to rest: onto the highest support under its footprint, the table
     or a ``movables`` object's top (bbox, up to 10 mm into it); with ``fixtures`` (``is_fixture``: static Geometry
     objects and articulated ones' static links, passed for a release: the jaws opened on it while the arm was still)
@@ -136,7 +213,8 @@ def drop_rest(o, movables, fixtures=()) -> tuple[np.ndarray | None, dict | None]
     toaster's slot), and a fixture that holds it (a nut threaded on a bolt, a mug on a hook) keeps it where it was let
     go. Returns (the new root position, None = stays; a fixture event or None). Without
     ``fixtures`` (as before) an object let go on one fell through it to the table (a nut 53 mm under its bolt's top, a
-    piece 17 mm under the board)."""
+    piece 17 mm under the board). ``container`` (``release_rest="container"``, with ``fixtures``): an object let go
+    over a fixture's open interior rests inside it (``container_rest``) before the fixture rule is asked."""
     lo, hi = o.aabb()
     support = TABLE_Z if table_contains_xy(o.center_w) else 0.05
     # an articulation is movable and a fixture: with its static mesh in ``fixtures`` the mesh decides, not its bbox top
@@ -150,6 +228,13 @@ def drop_rest(o, movables, fixtures=()) -> tuple[np.ndarray | None, dict | None]
                 and ohi[2] <= lo[2] + 0.01):
             support = max(support, float(ohi[2]))
     ev = None
+    if fixtures and container:
+        cr = container_rest(o, fixtures)
+        if cr is not None:
+            # objects already inside (the movable tops above) still support it; the table and the rim do not
+            sup = cr[0] if support <= TABLE_Z + 1e-6 else max(cr[0], support)
+            return o.pos + np.array([0.0, 0.0, sup - lo[2]]), {"how": "into a container", "z": round(float(sup), 4),
+                                                               "fixture": cr[1]}
     if fixtures:
         how, d = fixture_rest(o, fixtures)
         if how == "held":
@@ -268,6 +353,7 @@ class KinematicBelief:
         self.lift_max: dict[str, float] = {}    # arm -> the highest TCP z since its object was attached
         self.grasp_tcp: dict[str, np.ndarray] = {}   # arm -> the TCP position at its last close
         self.released_lift: dict[str, float] = {}   # label -> how far the TCP rose while it held it (last release)
+        self.release_rest = "legacy"            # RuntimeConfig.release_rest: "container" = ``drop_rest(container=True)``
 
     def movable(self):
         return [o for o in self.objects.values() if o.obj_type != "Geometry" and not o.clutter]
@@ -311,7 +397,8 @@ class KinematicBelief:
 
     def _drop(self, label: str, release: bool = False) -> None:
         o = self.objects[label]
-        pos, ev = drop_rest(o, self.movable(), self.fixtures() if release else ())
+        pos, ev = drop_rest(o, self.movable(), self.fixtures() if release else (),
+                            container=self.release_rest == "container")
         if pos is not None:
             o.pos = pos
         o.source = "predicted"
@@ -531,6 +618,7 @@ class RuntimeProvider:
     def init_objects(self, objects: dict[str, ObjectState]) -> None:
         st = self.bridge.observe()["state"]
         self.belief = KinematicBelief(objects, self.kin, st)
+        self.belief.release_rest = getattr(self, "release_rest", "legacy")
         self.touched = set()
         self._unmeasured = set()
         self._held_checked = {}
