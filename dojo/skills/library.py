@@ -3546,7 +3546,7 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     if mesh_table:
         sk.coll.held_table = "mesh"
     try:
-        if "handle" not in handle_tag.lower() and getattr(sk, "headset_stage", "off") in ("center", "mesh_center"):
+        if "handle" not in handle_tag.lower() and getattr(sk, "headset_stage", "off") in ("center", "mesh_center", "mesh_clear"):
             from dojo.skills.headset import stage_for_cradle
             staged = stage_for_cradle(sk, objects, rack, hook_tag, handle_tag)
             return _hang_on_hooks(sk, objects, rack, hook_tag, handle_tag, cup_labels=staged)

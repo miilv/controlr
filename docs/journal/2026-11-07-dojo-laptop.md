@@ -206,3 +206,20 @@ onset movement/4.37-degree rotation; first lift TCP step17.2 mm. A slower
 pickup, then a7.5 mm pick and6.1 mm carry shift earn20. Add a separate opt-in
 headset_lift=slow axis, mirrored in RuntimeConfig/Skills/G3; lift height,
 closure, physical drift thresholds and all original defaults are unchanged.
+
+Integrated source504daaef passes2165 tests/191 skips (1016.77 s). Its slow
+cup screen still regresses standard31: cup25 lifts5.6 mm then loses237.7 mm;
+prior source's wide41 carried3.3 mm. Existing hang_wide=on rescues this pilot
+with unchanged8/30 mm verification after three rejected holds. Rare random47
+remains0: the only feasible full plans are already narrow cup fallbacks.
+
+Random66's new mesh-ground stage has156/390 right pickup endpoints but0
+place pairs at each of8 spots. A25 mm native-checked release clearance above
+the true ground rest restores the full two-arm hang in372 steps: right lift
+6.0 mm/carry1.0 mm, stage4.6 mm xy/−0.9 mm z/0.7 degrees, then left39 mm
+lift2.7 mm/carry4.7 mm; bridge12 mm from cradle after release. Add separate
+opt-in stage mode mesh_clear. It screens at release height, rebuilds a native
+place against ground and repairs refined picks against that same true target.
+The default off and existing centre/mesh-centre contracts remain unchanged;
+54 focused mock tests cover native refusal, repair truth and wrapper scope.
+No production source deployment changes while the source504 screen runs.

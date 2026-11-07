@@ -103,7 +103,7 @@ def test_staging_defaults_and_threaded_hooks_remain_unchanged(monkeypatch):
     from dojo.skills.world import WorldState
 
     assert RuntimeConfig().headset_stage == "off"
-    assert SKILL_ATTRS["headset_stage"] == ("off", "center", "mesh_center")
+    assert SKILL_ATTRS["headset_stage"] == ("off", "center", "mesh_center", "mesh_clear")
     assert Skills(KinematicEnv([]), SimpleNamespace(refresh=lambda: WorldState("", "", {}, {}, {}))).headset_stage == "off"
     with pytest.raises(ValueError, match="bad runtime config"):
         RuntimePolicy(RuntimeConfig(headset_stage="invalid"), assets=object())
@@ -114,14 +114,15 @@ def test_staging_defaults_and_threaded_hooks_remain_unchanged(monkeypatch):
         assert library.hang_on_hooks(sk, [], "stand", "cradle", tag) == {}
 
 
-def test_stage_result_scopes_cup_bank_and_mesh_guard(monkeypatch):
+@pytest.mark.parametrize("mode", ["center", "mesh_center", "mesh_clear"])
+def test_stage_result_scopes_cup_bank_and_mesh_guard(monkeypatch, mode):
     monkeypatch.setattr(headset, "stage_for_cradle", lambda *a: {"headset"})
     seen = []
     def hang(sk, *a, **kw):
         seen.append((sk.coll.held_table, kw))
         return {"ok": True}
     monkeypatch.setattr(library, "_hang_on_hooks", hang)
-    sk = SimpleNamespace(headset_stage="center", headset_table="mesh",
+    sk = SimpleNamespace(headset_stage=mode, headset_table="mesh",
                          coll=SimpleNamespace(held_table="bbox", held_skip={}))
     assert library.hang_on_hooks(sk, ["headset"], "stand", "cradle", "headband_bridge") == {"ok": True}
     assert seen == [("mesh", {"cup_labels": {"headset"}})]
@@ -271,3 +272,80 @@ def test_slow_lift_is_opt_in_and_preserves_pick_verifier_defaults():
     RuntimePolicy(RuntimeConfig(headset_lift="slow"), assets=object())
     with pytest.raises(ValueError, match="bad runtime config"):
         RuntimePolicy(RuntimeConfig(headset_lift="invalid"), assets=object())
+
+
+@pytest.mark.parametrize("mode", ["off", "center", "mesh_center"])
+def test_existing_stage_modes_preserve_the_original_transfer_target(mode):
+    target = T_from([.1, -.2, .8])
+    seen = []
+    result = object()
+    sk = SimpleNamespace(headset_stage=mode,
+                         plan_transfer=lambda *a, **kw: seen.append((a, kw)) or result)
+    assert headset.plan_stage(sk, "headset", target, arms=["right"]) is result
+    assert seen[0][0][1][0] is target
+    assert seen[0][1] == {"arms": ["right"]}
+
+
+def clear_stage_fixture(monkeypatch, failed_leg=None):
+    from dojo.skills import motion
+    from dojo.skills.skills import PickPlan, PlacePlan
+
+    monkeypatch.setattr(motion, "held_box", lambda *a: "box")
+    ground = T_from([.1, -.2, .8], rot_z(.4))
+    failure = SkillResult(False, "transfer", "ik_fail", note="native refusal")
+    calls, picks = [], []
+
+    def screen(label, targets, **kw):
+        calls.append(("screen", targets[0].copy(), kw))
+        if failed_leg == "screen":
+            return failure
+        pick = PickPlan("right", SimpleNamespace(q_end=np.ones(6)), object(),
+                        T_from([0, 0, -.04]), 40, label)
+        picks.append(pick)
+        return pick, PlacePlan("right", object(), targets[0], 30, label)
+
+    def place(arm, target, **kw):
+        calls.append(("place", target.copy(), kw))
+        return failure if failed_leg == "place" else PlacePlan(arm, object(), target, 30, "headset")
+
+    sk = SimpleNamespace(headset_stage="mesh_clear", plan_transfer=screen, plan_place=place,
+                         world=SimpleNamespace(obj=lambda l: object()), held={"right": None})
+    return sk, ground, calls, picks, failure
+
+
+def test_clear_stage_checks_release_height_but_repairs_and_verifies_ground(monkeypatch):
+    sk, ground, calls, picks, _ = clear_stage_fixture(monkeypatch)
+    original = ground.copy()
+    pp, pl = headset.plan_stage(sk, "headset", ground, arms=["right"], ignore=("stand",),
+                                pick_kw={"squeeze": 8}, place_kw={"approach_line": True})
+    assert np.array_equal(ground, original)
+    assert calls[0][1][2, 3] == pytest.approx(ground[2, 3] + .025)
+    assert calls[0][2]["place_kw"] == {"approach_line": True, "release_gap": 0.0}
+    assert np.array_equal(calls[1][1], ground) and pl.T_obj_target is ground
+    assert calls[1][2]["held"].T_tcp_obj is pp.T_tcp_obj
+    assert pl.transfer_kw == {"ignore": ("stand",), "approach_line": True, "release_gap": .025}
+    assert sk.held == {"right": None}  # planning never manufactures a physical hold
+    q = {"right": np.arange(6)}
+    new_pick, new_place = pp.repair(q)
+    assert new_pick is not pp and new_pick is picks[-1]
+    assert np.array_equal(new_place.T_obj_target, ground)
+    assert new_place.transfer_kw["release_gap"] == .025
+    assert calls[-2][2]["q_start"] is q
+    assert calls[-2][2]["arms"] == ["right"]
+    assert calls[-2][1][2, 3] == pytest.approx(ground[2, 3] + .025)
+
+
+@pytest.mark.parametrize("failed_leg", ["screen", "place"])
+def test_clear_stage_propagates_native_refusal_without_a_raised_goal_fallback(monkeypatch, failed_leg):
+    sk, ground, calls, picks, failure = clear_stage_fixture(monkeypatch, failed_leg)
+    assert headset.plan_stage(sk, "headset", ground) is failure
+    assert len(calls) == (1 if failed_leg == "screen" else 2)
+    assert all(p.repair is None for p in picks)
+    assert sk.held == {"right": None}
+
+
+def test_clear_stage_is_an_explicit_runtime_choice():
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+
+    assert RuntimeConfig().headset_stage == "off"
+    RuntimePolicy(RuntimeConfig(headset_stage="mesh_clear"), assets=object())

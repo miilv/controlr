@@ -718,7 +718,7 @@ class RuntimePolicy:
                 or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
                 or self.cfg.headset_retry not in ("legacy", "sites")
                 or self.cfg.headset_lift not in ("legacy", "slow")
-                or self.cfg.headset_stage not in ("off", "center", "mesh_center")
+                or self.cfg.headset_stage not in ("off", "center", "mesh_center", "mesh_clear")
                 or self.cfg.headset_table not in ("bbox", "mesh")
                 or self.cfg.headset_grasp not in ("legacy", "dense", "cups")
                 or self.cfg.headset_carry not in ("legacy", "staged")

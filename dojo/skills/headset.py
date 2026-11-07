@@ -104,14 +104,14 @@ def stage_for_cradle(sk, objects, rack, hook_tag, bridge_tag):
             result = None
             for xy in free_spots(sk, label, near_xy=(0.0, -0.15), clearance=0.03, avoid=(rack,))[:8]:
                 target = rest_with_R(sk, label, xy, o.R)
-                if getattr(sk, "headset_stage", "off") == "mesh_center":
+                if getattr(sk, "headset_stage", "off") in ("mesh_center", "mesh_clear"):
                     target = mesh_support_target(o, target)
                 def grasps(a):
                     candidates = cup_grasps(sk, o, a, bridge_tag)
                     return sites.filter(o, a, candidates) if sites is not None else candidates
-                plans = sk.plan_transfer(label, [target], arms=[arm], max_full=24, grasps=grasps,
-                                         pick_kw=cradle_pick_kwargs(sk, seat=True),
-                                         place_kw={"pre_h": 0.03, "approach_rad": 0.03, "approach_line": True})
+                plans = plan_stage(sk, label, target, arms=[arm], max_full=24, grasps=grasps,
+                                   pick_kw=cradle_pick_kwargs(sk, seat=True),
+                                   place_kw={"pre_h": 0.03, "approach_rad": 0.03, "approach_line": True})
                 if isinstance(plans, SkillResult):
                     sk.log(f"[headset_stage] {label} {xy}: {plans.note}")
                     continue
@@ -128,6 +128,36 @@ def stage_for_cradle(sk, objects, rack, hook_tag, bridge_tag):
             if not executed or label in staged or result.status not in ("loose", "grasp_slip", "grasp_unusable"):
                 break
     return staged
+
+
+def plan_stage(sk, label, target, **kw):
+    """Screen at the release height; verify the actual ground rest after opening.
+
+    The optional clearance leaves room for the attached hand above the table.
+    Repairing a refined pickup must retain this distinction, too.
+    """
+    if getattr(sk, "headset_stage", "off") != "mesh_clear":
+        return sk.plan_transfer(label, [target], **kw)
+    from dojo.skills.motion import held_box
+    from dojo.skills.skills import Held, PlacePlan, SkillResult
+
+    gap = 0.025
+    raised = target.copy()
+    raised[2, 3] += gap
+    actual = {**(kw.get("place_kw") or {}), "release_gap": gap}
+    screened = sk.plan_transfer(label, [raised], **{**kw, "place_kw": {**actual, "release_gap": 0.0}})
+    if isinstance(screened, SkillResult):
+        return screened
+    pick, _ = screened
+    obj = sk.world.obj(label)
+    held = Held(label, pick.T_tcp_obj, held_box(obj, pick.T_tcp_obj), pick.grasp)
+    place_kw = {"ignore": tuple(kw.get("ignore", ())), **actual}
+    place = sk.plan_place(pick.arm, target, q_start=pick.plan.q_end, held=held, **place_kw)
+    if not isinstance(place, PlacePlan):
+        return place
+    place.transfer_kw = place_kw
+    pick.repair = lambda q: plan_stage(sk, label, target, **{**kw, "arms": [pick.arm], "q_start": q})
+    return pick, place
 
 
 class GraspSites:

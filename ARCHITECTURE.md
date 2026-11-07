@@ -657,6 +657,10 @@ attachment. Legacy retry retains the original fallback.
 `headset_lift=slow` (default `legacy`, mirrored in Skills/G3) uses a checked
 0.03 rad/step lift in cradle pickups and staging; threaded hooks keep their
 original lift. Closure, lift height and physical hold thresholds are unchanged.
+`headset_stage=mesh_clear` keeps the mesh-ground target and plans a 25 mm
+release gap. Endpoint screening uses the release pose; the rebuilt full
+place and pickup repair retain the ground target for physical verification.
+Every leg uses native hand, held-object and scene checks.
 
 The ported liquid pour's optional `ported_pour_profile` selects the original
 multi-bottle v2 (`sparse` or `via`) or the original strict wrapper's v5
