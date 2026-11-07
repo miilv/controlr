@@ -450,6 +450,13 @@
   phantom at step 4, but match_and_pick chose the first object from the frame-0 pool and kept "camera" for the episode:
   0 / 15 ice-cream episodes in the compute4 camera rows. `belt_ref=tracked` (default off) takes the leading rider the
   tracker still holds (offline: reference right 103 / 110 vs 88). Camera A/B pending.
+- [ ] **dojo skills: the belt pick look is taken too close to see the rider** (MATCH2 screen, compute6 frames): the
+  rider fills the wrist view under the open fingers, the robot mask hides the prior (visible 0.00). Then either the
+  veto fires on a real rider (A) or `belt_veto=evidence` descends on the head estimate and misses (B: 6 / 6 air
+  closes). Wanted: a look pose high / upstream enough that the rider is wholly in view, then re-aim from its fit.
+- [ ] **dojo skills: yaw-dependent grasps miss lying bottles on camera poses** (MATCH2 screen): axis grasps across a
+  lying bottle close on air; the waist grasp that followed held (B 100004, 100006). Test in G3 with
+  `--belief-offset` (15-50 mm, yaw +-20 deg) which grasp family tolerates the camera's pose error.
 - [ ] **dojo skills: the belt wrist veto vetoes real riders it cannot see** (MATCH2 landmine). `wrist_look_absent`
   ignores `visible_frac`: a pick look whose prior is under our own fingers or out of view (visible 0.00) counts as
   "nothing there". compute4 camera rows: 31 of 34 such vetoes were of a rider within 60 mm of the track, and with one
