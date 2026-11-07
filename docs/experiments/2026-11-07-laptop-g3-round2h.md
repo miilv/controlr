@@ -180,3 +180,20 @@ panel, rather than pre-empting light2's owner. A lock acquired by another
 stream queues our job normally. At most two LAPTOP jobs, unchanged who/GPU,
 <=24GiB VRAM/>=10GB disk and8G/600% limits; no other process is touched.
 This is resource admission only, before any A/B policy outcome.
+
+
+## Frozen primary execution
+
+Both settlers exit0 with15/15 stable records in each cell. Before either
+condition, freeze the [complete manifest](2026-11-07-laptop-g3-round2h-manifest.json):
+selected100000–09 and infrastructure reserves100010–14 in each cell, variant21,
+registered salt/source10f and complete source/layout hashes. No reserve is a
+policy-failure replacement.
+
+Launch the two cell drivers on light7/light8. Each condition loads the exact
+settled record (explicit SIMLAB_DEV_LAYOUT_SUFFIX=.settled), verifies hashes,
+and validates source/config/task/id/stability/mesh/official finite score and
+settled filename. Refuse malformed or incomplete outcomes for explicit
+adjudication; completed policy zeros are never rerun. The40-row primary
+validation is running. No controller/test changes after source10f, no camera
+or model calls, no board change.
