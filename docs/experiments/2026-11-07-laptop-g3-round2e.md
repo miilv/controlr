@@ -432,3 +432,17 @@ already fall back to narrow cups. Cross-check wide-first on standard66, whose
 off-priority screen tried only narrow cups (14.0/10.9/10.5/15.1 mm loose).
 Keep original verifiers and the same four-attempt budget. This is still a
 pilot probe, not a changed final candidate or rerun of a fresh-panel failure.
+
+Explicit25 mm release clearance rescues random66 to20 in372 steps: right
+cup25 lift6.0 mm drift, staging carry1.0 mm, true-ground rest4.6 mm xy/
+−0.9 mm z/0.7 degrees, left39 mm lift2.7 mm and final carry4.7 mm. The
+released bridge ends12 mm from the cradle. Native checks and original
+verification pass; this is a completed physical hang, not merely new pairs.
+Cross-check the unchanged clearance recipe on random47 and standard45,
+keeping wide priority off for isolation. Then implement opt-in stage mode
+`mesh_clear` with a truthful repair callback as well as the nominal plan: a
+refined/repaired pickup must re-screen/rebuild against the same true ground
+target and25 mm release gap, never silently retain the raised screening goal.
+All other mode/default behavior remains. Any bundled wide-first/clearance
+candidate still needs its own complete production screen and fresh-panel
+registration; ongoing source504 screens stay frozen and complete.
