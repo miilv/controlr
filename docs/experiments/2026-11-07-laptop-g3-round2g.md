@@ -109,3 +109,28 @@ separate loaded-proof prototypes, on the freed light2 slot. Preserve30's
 outcome regardless. Any integration will be justified as a measured loaded
 proof, not a guaranteed rescue of30, and must pass the full registered
 original12/coverage10 screen before touching any unused layout.
+
+## Production candidate registration before screen outcomes
+
+Freeze action source **0dc59c72**, isolated deployment
+`~/controlr-laptop/frozen-round2g`. The same common F profile gains the single
+new field `headset_hold=loaded`; all defaults remain legacy/off.65 focused
+mock tests pass, including stale observations, sliding, rotation, support,
+invalid mesh, hard-slip rejection, both native-leg refusals and observer
+restoration. The full local suite is running. Implementation additionally
+re-runs the original hard verifier after the stationary phase, updating the
+measured held geometry before native challenge planning; this enforces the
+registered hard gates rather than using a stale held box. Preserve this
+source/recipe difference from3866 prototypes.
+
+Complete both original12/cell and coverage18 first ten/cell (same frozen
+settled hashes as E/F), source0dc in both cells, new r2g-production output
+paths and manifests. Gate>=9/12 original and>=8/10 independent credits in
+**each** cell; complete all44 regardless of early failures. Every policy
+zero is retained, no shape-specific routing, no pooling old candidate rows.
+The remaining3866 prototypes finish on their frozen deployment; a production
+driver may start only once the corresponding LAPTOP slot is free. Two actual
+8G/600% scopes on light2/light8, unchanged who/GPU/disk admissions. No salt,
+layout generation, new panel inspection, camera job, model call or board change
+is authorized by this development registration. A fresh panel still requires
+a separate source/salt registration and both gates first.
