@@ -18,6 +18,7 @@ class TaskIdentity:
     def _read(self, *args, **kwargs):
         raise ForbiddenRead('task identity was inspected')
     __str__ = __repr__ = __bool__ = __hash__ = __eq__ = __getitem__ = _read
+    __getattr__ = __iter__ = __len__ = __contains__ = __format__ = _read
 
 
 @contextmanager

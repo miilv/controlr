@@ -285,6 +285,14 @@ def main(argv=None):
             # Bootstrap PR only: the first frozen baseline has no predecessor.
             if raw.returncode == 0:
                 previous = json.loads(raw.stdout)
+            else:
+                subprocess.run(['git', 'cat-file', '-e', a.base_ref + '^{commit}'],
+                               cwd=a.root, check=True, capture_output=True)
+                existed = subprocess.run(['git', 'cat-file', '-e',
+                                          a.base_ref + ':scripts/legality/scan.py'],
+                                         cwd=a.root, capture_output=True)
+                if existed.returncode == 0:
+                    raise SystemExit('base scanner exists but its allowlist is missing')
         problems = gate(findings, allowed, previous)
         for problem in problems:
             print(problem)
