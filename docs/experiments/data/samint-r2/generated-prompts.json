@@ -1,0 +1,872 @@
+[
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100000",
+    "frame": "frame0",
+    "prompts": [
+      "appears",
+      "container",
+      "conveyor",
+      "matching",
+      "matching object",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100001",
+    "frame": "frame0",
+    "prompts": [
+      "appears",
+      "container",
+      "conveyor",
+      "matching",
+      "matching object",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100002",
+    "frame": "frame0",
+    "prompts": [
+      "appears",
+      "container",
+      "conveyor",
+      "matching",
+      "matching object",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100003",
+    "frame": "frame0",
+    "prompts": [
+      "appears",
+      "container",
+      "conveyor",
+      "matching",
+      "matching object",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100004",
+    "frame": "frame0",
+    "prompts": [
+      "appears",
+      "container",
+      "conveyor",
+      "matching",
+      "matching object",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100000",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "board",
+      "cm",
+      "container",
+      "conveyor",
+      "image",
+      "object",
+      "target",
+      "target object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100001",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "board",
+      "cm",
+      "container",
+      "conveyor",
+      "image",
+      "object",
+      "target",
+      "target object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100002",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "board",
+      "cm",
+      "container",
+      "conveyor",
+      "image",
+      "object",
+      "target",
+      "target object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100003",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "board",
+      "cm",
+      "container",
+      "conveyor",
+      "image",
+      "object",
+      "target",
+      "target object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100004",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "board",
+      "cm",
+      "container",
+      "conveyor",
+      "image",
+      "object",
+      "target",
+      "target object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100005",
+    "frame": "frame0",
+    "prompts": [
+      "baskets",
+      "category",
+      "container",
+      "object",
+      "objects",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100006",
+    "frame": "frame0",
+    "prompts": [
+      "baskets",
+      "category",
+      "container",
+      "object",
+      "objects",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100007",
+    "frame": "frame0",
+    "prompts": [
+      "baskets",
+      "category",
+      "container",
+      "object",
+      "objects",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100008",
+    "frame": "frame0",
+    "prompts": [
+      "baskets",
+      "category",
+      "container",
+      "object",
+      "objects",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100009",
+    "frame": "frame0",
+    "prompts": [
+      "baskets",
+      "category",
+      "container",
+      "object",
+      "objects",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100005",
+    "frame": "frame0",
+    "prompts": [
+      "chocolate bar",
+      "chocolate bar objects",
+      "container",
+      "left basket",
+      "middle basket",
+      "object",
+      "pepper",
+      "pepper objects",
+      "right basket",
+      "robot arm",
+      "tool",
+      "wooden toy",
+      "wooden toy objects"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100006",
+    "frame": "frame0",
+    "prompts": [
+      "car",
+      "car objects",
+      "chocolate bar",
+      "chocolate bar objects",
+      "container",
+      "left basket",
+      "middle basket",
+      "object",
+      "pepper",
+      "pepper objects",
+      "right basket",
+      "robot arm",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100007",
+    "frame": "frame0",
+    "prompts": [
+      "chocolate bar",
+      "chocolate bar objects",
+      "container",
+      "left basket",
+      "middle basket",
+      "object",
+      "pepper",
+      "pepper objects",
+      "right basket",
+      "robot arm",
+      "tool",
+      "watch",
+      "watch objects"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100008",
+    "frame": "frame0",
+    "prompts": [
+      "chocolate bar",
+      "chocolate bar objects",
+      "container",
+      "left basket",
+      "middle basket",
+      "object",
+      "pepper",
+      "pepper objects",
+      "right basket",
+      "robot arm",
+      "tool",
+      "watch",
+      "watch objects"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100009",
+    "frame": "frame0",
+    "prompts": [
+      "car",
+      "car objects",
+      "chocolate bar",
+      "chocolate bar objects",
+      "container",
+      "left basket",
+      "middle basket",
+      "object",
+      "pepper",
+      "pepper objects",
+      "right basket",
+      "robot arm",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100000",
+    "frame": "frame0",
+    "prompts": [
+      "coin",
+      "coin bank",
+      "container",
+      "holder",
+      "object",
+      "precisely",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100000",
+    "frame": "look",
+    "prompts": [
+      "coin",
+      "coin bank",
+      "container",
+      "holder",
+      "object",
+      "precisely",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100001",
+    "frame": "frame0",
+    "prompts": [
+      "coin",
+      "coin bank",
+      "container",
+      "holder",
+      "object",
+      "precisely",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100001",
+    "frame": "look",
+    "prompts": [
+      "coin",
+      "coin bank",
+      "container",
+      "holder",
+      "object",
+      "precisely",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100002",
+    "frame": "frame0",
+    "prompts": [
+      "coin",
+      "coin bank",
+      "container",
+      "holder",
+      "object",
+      "precisely",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100003",
+    "frame": "frame0",
+    "prompts": [
+      "coin",
+      "coin bank",
+      "container",
+      "holder",
+      "object",
+      "precisely",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100004",
+    "frame": "frame0",
+    "prompts": [
+      "coin",
+      "coin bank",
+      "container",
+      "holder",
+      "object",
+      "precisely",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100006",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "container",
+      "egg holder",
+      "eggs",
+      "lid",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100008",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "container",
+      "egg holder",
+      "eggs",
+      "lid",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100009",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "container",
+      "egg holder",
+      "eggs",
+      "lid",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100023",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "container",
+      "egg holder",
+      "eggs",
+      "lid",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fillpensg_fpliftA_v15_100005",
+    "frame": "frame0",
+    "prompts": [
+      "back",
+      "container",
+      "hand",
+      "object",
+      "other hand",
+      "pen holder",
+      "pens",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100021",
+    "frame": "frame0",
+    "prompts": [
+      "back",
+      "container",
+      "hand",
+      "object",
+      "other hand",
+      "pen holder",
+      "pens",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100021",
+    "frame": "look",
+    "prompts": [
+      "back",
+      "container",
+      "hand",
+      "object",
+      "other hand",
+      "pen holder",
+      "pens",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100022",
+    "frame": "frame0",
+    "prompts": [
+      "back",
+      "container",
+      "hand",
+      "object",
+      "other hand",
+      "pen holder",
+      "pens",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100022",
+    "frame": "look",
+    "prompts": [
+      "back",
+      "container",
+      "hand",
+      "object",
+      "other hand",
+      "pen holder",
+      "pens",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100023",
+    "frame": "frame0",
+    "prompts": [
+      "back",
+      "container",
+      "hand",
+      "object",
+      "other hand",
+      "pen holder",
+      "pens",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100024",
+    "frame": "frame0",
+    "prompts": [
+      "back",
+      "container",
+      "hand",
+      "object",
+      "other hand",
+      "pen holder",
+      "pens",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_r2_100000",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "container",
+      "object",
+      "object placement order",
+      "objects",
+      "order",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_home_100001",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "container",
+      "object",
+      "object placement order",
+      "objects",
+      "order",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_home_100002",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "container",
+      "object",
+      "object placement order",
+      "objects",
+      "order",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_bundleoff_100006",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "container",
+      "object",
+      "object placement order",
+      "objects",
+      "order",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_bundleoff_100007",
+    "frame": "frame0",
+    "prompts": [
+      "basket",
+      "container",
+      "object",
+      "object placement order",
+      "objects",
+      "order",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fm_100000",
+    "frame": "frame0",
+    "prompts": [
+      "alarm clock",
+      "container",
+      "drawer",
+      "figurine",
+      "frame",
+      "keyboard",
+      "mouse",
+      "mouse pad",
+      "object",
+      "stand",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fm_100000",
+    "frame": "look",
+    "prompts": [
+      "alarm clock",
+      "container",
+      "drawer",
+      "figurine",
+      "frame",
+      "keyboard",
+      "mouse",
+      "mouse pad",
+      "object",
+      "stand",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fmoff_100001",
+    "frame": "frame0",
+    "prompts": [
+      "alarm clock",
+      "container",
+      "drawer",
+      "figurine",
+      "frame",
+      "keyboard",
+      "mouse",
+      "mouse pad",
+      "object",
+      "stand",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fmoff_100001",
+    "frame": "look",
+    "prompts": [
+      "alarm clock",
+      "container",
+      "drawer",
+      "figurine",
+      "frame",
+      "keyboard",
+      "mouse",
+      "mouse pad",
+      "object",
+      "stand",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100002",
+    "frame": "frame0",
+    "prompts": [
+      "alarm clock",
+      "container",
+      "drawer",
+      "figurine",
+      "frame",
+      "keyboard",
+      "mouse",
+      "mouse pad",
+      "object",
+      "stand",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100003",
+    "frame": "frame0",
+    "prompts": [
+      "alarm clock",
+      "container",
+      "drawer",
+      "figurine",
+      "frame",
+      "keyboard",
+      "mouse",
+      "mouse pad",
+      "object",
+      "stand",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100004",
+    "frame": "frame0",
+    "prompts": [
+      "alarm clock",
+      "container",
+      "drawer",
+      "figurine",
+      "frame",
+      "keyboard",
+      "mouse",
+      "mouse pad",
+      "object",
+      "stand",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100005",
+    "frame": "frame0",
+    "prompts": [
+      "black bowl",
+      "brown bowl",
+      "container",
+      "liquid",
+      "object",
+      "red bottle",
+      "robot arm",
+      "tool",
+      "turquoise bottle",
+      "violet bottle",
+      "white bowl"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100006",
+    "frame": "frame0",
+    "prompts": [
+      "black bowl",
+      "brown bowl",
+      "container",
+      "liquid",
+      "object",
+      "red bottle",
+      "robot arm",
+      "tool",
+      "turquoise bottle",
+      "violet bottle",
+      "white bowl"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100007",
+    "frame": "frame0",
+    "prompts": [
+      "black bowl",
+      "brown bowl",
+      "container",
+      "liquid",
+      "object",
+      "red bottle",
+      "robot arm",
+      "tool",
+      "turquoise bottle",
+      "violet bottle",
+      "white bowl"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100008",
+    "frame": "frame0",
+    "prompts": [
+      "black bowl",
+      "brown bowl",
+      "container",
+      "liquid",
+      "object",
+      "red bottle",
+      "robot arm",
+      "tool",
+      "turquoise bottle",
+      "violet bottle",
+      "white bowl"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100009",
+    "frame": "frame0",
+    "prompts": [
+      "black bowl",
+      "brown bowl",
+      "container",
+      "liquid",
+      "object",
+      "red bottle",
+      "robot arm",
+      "tool",
+      "turquoise bottle",
+      "violet bottle",
+      "white bowl"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100000",
+    "frame": "frame0",
+    "prompts": [
+      "bottles",
+      "container",
+      "dustbin",
+      "handover",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100001",
+    "frame": "frame0",
+    "prompts": [
+      "bottles",
+      "container",
+      "dustbin",
+      "handover",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100002",
+    "frame": "frame0",
+    "prompts": [
+      "bottles",
+      "container",
+      "dustbin",
+      "handover",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100003",
+    "frame": "frame0",
+    "prompts": [
+      "bottles",
+      "container",
+      "dustbin",
+      "handover",
+      "object",
+      "tool"
+    ]
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100004",
+    "frame": "frame0",
+    "prompts": [
+      "bottles",
+      "container",
+      "dustbin",
+      "handover",
+      "object",
+      "tool"
+    ]
+  }
+]
