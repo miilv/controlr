@@ -1474,6 +1474,15 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
         w = sk.refresh()
     first = st["first"]
     key = st["first_key"] = w.obj(first).asset.key if first in w.objects else st.get("first_key")
+    if ref_mode in ("tracked", "similar") and first in start and st.get("ref_dups") is None:
+        # other start riders where the first one was at the start are the same physical rider under a second frame-0
+        # label (compute6 screen, B 100000: a camera read as target0 + target1, both confirmed by the tracker; the second
+        # label was taken as "the match" and chased downstream). They can never be the match
+        p0 = np.asarray(start[first][0], float)
+        st["ref_dups"] = sorted(l for l in start_pool if l != first
+                                and float(np.linalg.norm(np.asarray(start[l][0], float) - p0)) <= BELT_REF_DUP_M)
+        if st["ref_dups"]:
+            sk.log(f"[belt] reference: {st['ref_dups']} sat on the first object at the start: not candidates")
 
     def first_seen(w):
         # where the first one was last believed (xy, step): it rides out of view and the tracker drops it
@@ -1519,13 +1528,13 @@ def _fmt_dist(d: dict) -> str:
 ZONE_MARGIN = 0.10   # belt_confirm_zone: a match counts this far past the downstream arm's home hand along the belt
 ZONE_SURE = 0.9      # ... ("uncertain") unless the tracker's identity share for it is at least this
 
-# MATCH2 switches (``Skills.belt_ref`` / ``belt_veto`` / ``belt_high_lift`` / ``belt_retry``; all "off" by default)
+# MATCH2 switches (``Skills.belt_ref`` / ``belt_veto`` / ``belt_retry`` / ``belt_grasp`` / ``belt_wrist_id``; all "off" by default)
 BELT_REF_SIM = 0.6          # belt_ref "similar": a match's read history at least this similar to the first object's
 BELT_REF_COMP = 0.35        # ... and vetoed when its leading category leads by this much more than in the first's reads
 BELT_REF_MIN_READS = 2      # ... from at least this many matched belt reads
+BELT_REF_DUP_M = 0.15       # belt_ref: a start rider this close to the first object at the start is the same rider
 BELT_VETO_VIS = 0.5         # belt_veto "evidence": an empty wrist look counts when this share of the prior was in view
 BELT_SUPPORT_STEPS = 30     # ... or when no head read matched the track for longer than this (a stale / phantom track)
-BELT_HIGH_LIFT_M = 0.10     # belt_high_lift "on": a picked match goes on up this much (a held end pivots down)
 BELT_RETRY_ROUNDS = 6       # belt_retry "window": match rounds while the step budget still holds an intercept
 BELT_RETRY_MIN_STEPS = 60   # ... (an approach, the tracked descent / close / lift and the reserve)
 
@@ -1624,8 +1633,9 @@ def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyo
 
     if tracked and st.get("ref"):
         key = st["first_key"] = _ref_key(w, st, first, key)
+    dups = set(st.get("ref_dups") or ())
     same = [l for l in labs if l != first and l in w.objects and is_same(l, gate=False) and l not in absent
-            and in_zone(l)]
+            and l not in dups and in_zone(l)]
     t0 = w.step
     seen = confirm if same and not zone else 0
     while not same or seen < confirm:
@@ -1653,7 +1663,8 @@ def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyo
         fa = st.get("first_at")
         fp = None if fa is None else np.asarray(fa[0], float) + v * (w.step - fa[1])
         behind = (lambda l: float((w.obj(l).pos[:2] - fp) @ u) < -0.08) if fp is not None else (lambda l: True)
-        same = [l for l in labs if l != first and is_same(l) and behind(l) and l not in absent and in_zone(l)]
+        same = [l for l in labs if l != first and is_same(l) and behind(l) and l not in absent and l not in dups
+                and in_zone(l)]
         seen = seen + 1 if same else 0
     sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")
     if similar and st.get("ref"):
@@ -1682,14 +1693,6 @@ def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyo
         kw = {"ref_key": key} if getattr(sk, "belt_wrist_id", "off") == "on" else {}
         r = pick_from_belt(sk, target, v, lift=lift, ignore=ign, skip_methods=tuple(skip), arms=[down] if late else None,
                            **kw)
-        if r.ok and getattr(sk, "belt_high_lift", "off") == "on":
-            # the lift is measured on the belief (the jaws' pose): an object held off its centre (a lying bottle near
-            # one end) pivots down in the pads and its own origin rises less (compute4 camera rows: 7 episodes held the
-            # match "125 mm up" and did not score). Go on up while the hand still holds it
-            try:
-                _lift_more(sk, r.arm, target, BELT_HIGH_LIFT_M)
-            except (BudgetExceeded, EpisodeEnded):
-                pass
         if r.ok or r.status == "ended":
             return {"ok": True, "stage": "picked", "note": r.note}
         if r.status in ("absent", "other"):
