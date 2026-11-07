@@ -150,3 +150,12 @@ Then allow30 stationary steps for a genuine upright rest before the bridge
 pickup. Restrict the initial feasibility test to two centre spots rather than
 repeating the same refused grasp list over a large grid. If this does not
 physically rest upright, stop this mechanism and retain the null.
+
+To separate endpoint-screen coverage from physical feasibility, also run one
+cheap standard48 snippet using its previously demonstrated clean right26 mm
+object-frame grasp (not an id-specific production rule). Plan/check that pick,
+then plan the upright ground rest directly from the measured hold with50 mm
+release gap, retaining the ground target for verification. Stop if either
+checked plan or physical hold fails. If upright after30 steps, test the same
+mesh-verified bridge bank/raised release above. This isolates actual physics
+from a large coupled-plan search; retain the exact known grasp in the recipe.
