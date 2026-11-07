@@ -95,6 +95,30 @@ class OffsetBeliefProvider:
                 o.pos = o.pos + np.r_[d[:2], 0.0]
         return w
 
+    def set_pose(self, label: str, pos, quat, writer: str = "") -> bool:
+        """A skill's measurement rewrites ``label``'s belief (``coin_contact.wall_probe``): the offset becomes the one
+        that puts the believed pose there (yaw about the vertical through the bbox centre, then xy), so later refreshes
+        keep it. A label without an offset gets one. Dev log in ``self.writes``."""
+        from dojo.skills.geometry import quat_to_R
+        w = self.base.refresh({})
+        if label not in w.objects:
+            return False
+        o = w.objects[label]
+        R_gt, R_new = o.R, quat_to_R(np.asarray(quat, float))
+        yaw = lambda R: math.atan2(float(R[1, 0]), float(R[0, 0]))
+        dyaw = math.degrees(math.atan2(math.sin(yaw(R_new) - yaw(R_gt)), math.cos(yaw(R_new) - yaw(R_gt))))
+        c, s_ = math.cos(math.radians(dyaw)), math.sin(math.radians(dyaw))
+        Rz = np.array([[c, -s_, 0.0], [s_, c, 0.0], [0.0, 0.0, 1.0]])
+        cw = R_gt @ o.asset.center + o.pos
+        p_rot = cw - (Rz @ R_gt) @ o.asset.center
+        dxy = np.asarray(pos, float)[:2] - p_rot[:2]
+        before = self.offsets.get(label)
+        self.offsets[label] = np.array([float(dxy[0]), float(dxy[1]), dyaw])
+        self.writes = getattr(self, "writes", []) + [{"label": label, "writer": writer,
+                                                      "offset_before": None if before is None else before.tolist(),
+                                                      "offset_after": self.offsets[label].tolist()}]
+        return True
+
 
 LOOK_READ_NOISE = (0.0004, 0.8)       # m, deg: 5.1's keyhole read from the wrist 15 cm over a lock (median xy / yaw,
                                       # 25 dev layouts; Perception-2, experiments/2026-10-27-keyhole-yaw)
@@ -201,7 +225,8 @@ class FrozenGarmentProvider:
 # ``--skill-attr NAME=VALUE``: Skills switches a G3 run may set (each mirrors a ``RuntimeConfig`` field; first = default)
 SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "low"), "push_approach": ("off", "tilted"),
                "plan_profile": ("legacy", "recover"), "plan_capture": ("off", "requests"), "plan_solver": ("routes", "curobo"), "plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
-               "arrange_order": ("near", "big_first", "push_big_first"), "push_stroke": ("face", "press"),
+               "arrange_order": ("near", "big_first", "push_big_first", "push_first"), "arrange_retry": ("off", "once"),
+               "push_contact": ("off", "pair"), "push_plan": ("off", "sequence"), "grasp_torso": ("off", "on"), "stand_offset": ("off", "base"), "retreat_axis": ("off", "on"), "place_via": ("off", "clear"), "slip_avoid": ("off", "on"), "push_stroke": ("face", "press"),
                "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"), "headset_seat": ("off", "on"), "headset_carry": ("legacy", "staged"), "headset_grasp": ("legacy", "dense", "cups"), "headset_table": ("bbox", "mesh"), "headset_stage": ("off", "center", "mesh_center", "mesh_clear"), "headset_retry": ("legacy", "sites"), "headset_lift": ("legacy", "slow"), "headset_hold": ("legacy", "loaded"),
                "hang_half_turn": ("off", "on"),
                "hang_handle_grasp": ("off", "on"),
@@ -216,20 +241,22 @@ SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "lo
                "sweep_deep": ("off", "on"), "sweep_hold_pan": ("off", "on"),
                "ported_routes": ("off", "on"), "ported_swap": ("fixed", "reach"), "ported_drag": ("v1", "turn"),
                "ported_pour": ("v1", "full"), "ported_pour_aim": ("v1", "b10", "b20"), "ported_pickup": ("v1", "library"),
-               "ported_classify": ("v3b", "p1", "p2"),
+               "ported_classify": ("v3b", "p1", "p2"), "sort_contain": ("root", "bottom"), "sort_park": ("off", "home", "blocked"),
                "belt_container": ("off", "on"), "belt_container_tilts": ("25,40", "0,15,25", "40,50"),
                "belt_deposit": ("off", "on"), "belt_lift": ("off", "braced_hook"), "belt_first": ("off", "on"), "belt_first_recover": ("off", "on"), "belt_first_phase": ("off", "on"), "belt_target": ("off", "match"), "belt_confirm_zone": ("off", "on", "uncertain"), "disc_handover_read": ("off", "on"),
+               "disc_align": ("off", "walls"), "disc_snap": ("off", "on"), "disc_lift": ("off", "shallow"),
+               "disc_seat": ("off", "table"), "disc_release": ("off", "staged"), "disc_reserve": ("off", "on"),
                "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on"),
                "belt_waist_first": ("off", "on"),
                "belt_ref": ("off", "tracked", "similar"), "belt_veto": ("off", "evidence"),
-               "belt_high_lift": ("off", "on"), "belt_retry": ("off", "window"), "belt_grasp": ("off", "solid"),
+               "belt_retry": ("off", "window"), "belt_grasp": ("off", "solid"),
                "belt_wrist_id": ("off", "on"), "belt_speed": ("off", "lock"),
                "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured"),
                "kong_draw_read": ("off", "place", "place3"), "kong_draw_first": ("near", "far"),
                "ported_pour_pace": ("v1", "lean", "overlap", "budget"),
                "ported_pour_profile": ("off", "sparse", "via", "checked"),
                "nest_verify": ("target", "support"),
-               "push_goal": ("centre", "cover", "cover_obb"), "fill_move_lift": ("off", "clear"),
+               "push_goal": ("centre", "cover", "cover_obb", "clear"), "fill_move_lift": ("off", "clear"),
                "fill_guard": ("off", "geometry"), "fill_grasp": ("off", "vertical", "rolled", "rolled_tilt"),
                "fill_insert": ("off", "safe"), "fill_holder": ("off", "stay"), "fill_drop": ("off", "center", "inset"),
                "egg_grasp_height": ("off", "raised"), "egg_grasp_angles": ("off", "wide"),
@@ -385,6 +412,8 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     rec["category"] = classify(res_j, reward, hist)
     if getattr(sk, "ported_runs", None):                 # stream P: the adapter's calls of each ported skill (tail)
         rec["ported"] = sk.ported_runs
+    if getattr(sk, "wall_probes", None):                 # COIN2: disc_align's wall squeezes (readings, fit, writes)
+        rec["wall_probes"] = sk.wall_probes
     infra = watch.since()
     if infra:
         # the episode measured the infrastructure, not the skill: out of every summary (``write_summary``)
@@ -481,6 +510,10 @@ def cmd_run(a) -> None:
         for spec in a.belief_offset or []:
             lab, vals = spec.split(":")
             offs[lab] = [float(x) for x in vals.split(",")]
+        if a.belief_offset_file:
+            # dev: per-layout offsets {seed: {label: [dx, dy, dyaw_deg]}} (a panel's pre-registered belief errors)
+            per = json.loads(Path(a.belief_offset_file).read_text()).get(str(seed)) or {}
+            offs.update({lab: [float(x) for x in v] for lab, v in per.items()})
         rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
                           verify_k=a.verify, belief_offsets=offs, mode_b=a.mode_b, held_pose=a.held_pose,
                           held_belief=a.held_belief, held_looks=not a.no_held_looks,
@@ -862,6 +895,8 @@ def main(argv=None) -> None:
     r.add_argument("--belief-offset", action="append", default=[],
                    help="LABEL:dx,dy[,dyaw_deg] (m, deg): the object's pose is believed this far off (the yaw about "
                         "the vertical through its bbox centre) until it is held (dev)")
+    r.add_argument("--belief-offset-file", default=None,
+                   help="JSON {seed: {label: [dx, dy, dyaw_deg]}}: per-layout belief offsets, added to --belief-offset (dev)")
     r.add_argument("--mode-b", action="store_true", help="no in-hand re-measure, a refine hook that sees nothing (dev)")
     r.add_argument("--look-read", choices=("top_feature", "axis"), default=None,
                    help="mode B: a wrist look reads the object as perception's keyhole read (residual 0.4 mm / 0.8 deg; "

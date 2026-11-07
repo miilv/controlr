@@ -258,6 +258,20 @@ def _objects_from_rows_nodb(rows):
     return out
 
 
+SLIP_NEAR = (0.02, 35.0)      # m, deg: a grasp this close (object frame) to one that slipped is penalised (``slip_avoid``)
+SLIP_PENALTY = 3.0            # added to its screen rank (rank units: a grasp score ~0-1, + 0.05 per target index)
+
+
+def slip_penalty(T_obj_grasp, slipped) -> float:
+    """``Skills.slip_avoid`` "on": ``SLIP_PENALTY`` when the object-frame grasp is within ``SLIP_NEAR`` of one that slipped."""
+    for S in slipped:
+        if float(np.linalg.norm(T_obj_grasp[:3, 3] - S[:3, 3])) < SLIP_NEAR[0]:
+            c = (float(np.trace(T_obj_grasp[:3, :3].T @ S[:3, :3])) - 1.0) / 2.0
+            if math.degrees(math.acos(max(-1.0, min(1.0, c)))) < SLIP_NEAR[1]:
+                return SLIP_PENALTY
+    return 0.0
+
+
 class Skills:
     def __init__(self, env, provider, kin: X5Kin | None = None, reserve: int = 30, log=None, verifier=None,
                  verify_k: int = 2, n_cands: int = 6, remeasure: bool = True, on_verified=None, refine=None,
@@ -328,6 +342,26 @@ class Skills:
         # 12 mm) | "cover" (the range of centres where the object covers / lies inside the support: ``cover_region``) |
         # "cover_obb" (the same on the object's rotated footprint: ``cover_goal_obb``)
         self.push_goal = "centre"
+        # ``library.push_to`` (stream ORG2, ``dojo.skills.push_plan``; ``RuntimeConfig`` mirrors): push_contact "off"
+        # (today: closed fingertips) | "pair" (open, two fingertips on the face, strokes along the support's axes);
+        # push_plan "off" | "sequence" (the whole stroke sequence planned for both axis orders before each stroke);
+        # ``push_goal`` also takes "clear" (the cover region's point with most clearance)
+        self.push_contact = "off"
+        # stream ORG2 (``dojo.skills.torso``; ``RuntimeConfig`` mirrors): grasp_torso "off" | "on" (side grasps across an
+        # irregular upright body); stand_offset "off" | "base" (a small support's place positions on rings of its
+        # object's base radius); retreat_axis "off" | "on" (a side-approach place backs out along the fingers, then rises)
+        self.grasp_torso = "off"
+        self.stand_offset = "off"
+        self.retreat_axis = "off"
+        # ``library.arrange`` (stream ORG2): place_via "off" | "clear" (a place whose transit collides tries via points
+        # out from the fixtures next to its support, then a straight line in: ``torso.clear_vias``)
+        self.place_via = "off"
+        # ``Skills.verify_pick`` / ``plan_transfer`` (stream ORG2): slip_avoid "off" | "on" (a grasp that slipped is kept
+        # in the object's frame; transfer screens of that object rank grasps within SLIP_NEAR of it SLIP_PENALTY later)
+        self.slip_avoid = "off"
+        self.push_plan = "off"
+        # ``library.arrange`` (stream ORG2): "off" | "once" (each failed step tried once more after the others)
+        self.arrange_retry = "off"
         # ``library.fill_container`` (stream H; ``RuntimeConfig.fill_move_lift``): after the container's move, "off"
         # (today: the place's 50 mm retreat) | "clear" (hands still below its top go straight up clear of it)
         self.fill_move_lift = "off"
@@ -348,6 +382,13 @@ class Skills:
         # ``library.press_joint`` (stream H; ``RuntimeConfig.press_repeat``): "off" (today: one stroke) | "cross" (four
         # more, the press point 4 mm each way: the lever's 85 % has ~0.1 mm of margin at the planned point)
         self.press_repeat = "off"
+        # the thin-object-in-holder contact sequence (COIN2, ``coin_contact``; ``RuntimeConfig.disc_*``): all "off" = today
+        self.disc_align = "off"
+        self.disc_snap = "off"
+        self.disc_lift = "off"
+        self.disc_seat = "off"
+        self.disc_release = "off"
+        self.disc_reserve = "off"
         self.slot_approach = "off"
         self.slot_hover = "off"
         self.slot_place = "off"
@@ -639,10 +680,16 @@ class Skills:
                   q_start: dict | None = None, max_eval: int = 40, keep: int = 4, grasp_kw: dict | None = None,
                   lift_to_z: float | None = None, approach_rad: float = FAST, descend_rad: float = SLOW,
                   open_g: float | None = None, settle: int = 2, return_all: bool = False, lift_rad: float = MEDIUM,
-                  grasps: list | None = None, squeeze: int = 0):
+                  grasps: list | None = None, squeeze: int = 0, snap_in: float = 0.0, snap_rad: float = 0.01,
+                  lift_step: float = 0.0, post_lift=None):
         """``grasps``: explicit candidates (world TCP poses) instead of the method's generator. ``squeeze``: still
         steps with the gripper closing before the lift (a 2 mm coin between the pads: lifted right after the close
-        it stayed in its holder, 3/3; four more steps and it came out, 3/3)."""
+        it stayed in its holder, 3/3; four more steps and it came out, 3/3).
+        ``snap_in`` (m, default 0 = today): descend that much further along the approach, close there (on a holder's
+        walls), then rise back to the grasp at ``snap_rad`` with the jaws closing (``coin_contact``'s ``disc_snap``).
+        ``lift_step`` (m, default 0 = today): the lift moves that far per env step. ``post_lift``: a callable
+        (arm, q, T_tcp_obj, obj) -> (ops, T_tcp_obj) | None appending moves after the lift and replacing the planned
+        in-hand pose (``coin_contact.seat_post_lift``); None keeps the pick as it is."""
         w = self.world
         obj = w.obj(label)
         refused = self.geometry_refusal(label, "pick", arm)
@@ -652,6 +699,8 @@ class Skills:
         # start (``execute_pick``)
         plan_kw = dict(lift=lift, max_eval=max_eval, grasp_kw=grasp_kw, lift_to_z=lift_to_z, approach_rad=approach_rad,
                        descend_rad=descend_rad, open_g=open_g, settle=settle, lift_rad=lift_rad, squeeze=squeeze)
+        if snap_in or lift_step or post_lift is not None:
+            plan_kw.update(snap_in=snap_in, snap_rad=snap_rad, lift_step=lift_step, post_lift=post_lift)
         arms = [arm] if arm else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
         best, notes, allf = None, [], []
         for a in arms:
@@ -691,11 +740,24 @@ class Skills:
                     n_coll += to_pre.status == "collision"
                     n_ik += to_pre.status == "ik_fail"
                     continue
-                down = self.motion.line(a, to_pre.q_end, g.T, descend_rad, "pick_descend", gripper=go, ignore=(label,))
+                T_down = g.T
+                if snap_in:
+                    T_down = g.T.copy()
+                    T_down[:3, 3] = g.T[:3, 3] + g.approach * snap_in
+                down = self.motion.line(a, to_pre.q_end, T_down, descend_rad, "pick_descend", gripper=go, ignore=(label,))
                 if not down.ok:
                     n_coll += down.status == "collision"
                     n_ik += down.status != "collision"
                     continue
+                rise = None
+                if snap_in:
+                    # the pads close on the holder's walls, then rise with the jaws closing: they shut on the object
+                    # where the fingertips clear the walls (a contact leg: the closed pads are inside the walls)
+                    rise = self.motion.line(a, down.q_end, g.T, snap_rad, "pick_snap_rise", gripper=CLOSED, check=False)
+                    if not rise.ok:
+                        n_ik += 1
+                        continue
+                q_grasp = rise.q_end if rise is not None else down.q_end
                 T_tcp_obj = inv_T(g.T) @ obj.T
                 box = held_box(obj, T_tcp_obj)
                 T_lift = g.T.copy()
@@ -705,16 +767,36 @@ class Skills:
                     # rack; a vertical lift closes the 13 mm gap to the next one by 9 mm over 10 cm)
                     u = up_in_plane(obj)
                     T_lift[:3, 3] = g.T[:3, 3] + u * (float(T_lift[2, 3] - g.T[2, 3]) / max(float(u[2]), 0.5))
-                up = self.motion.line(a, down.q_end, T_lift, lift_rad, "pick_lift", gripper=CLOSED, ignore=(label,),
-                                      held=box)
+                if lift_step:
+                    # one waypoint per env step (FAST is never the binding joint rate for a few mm)
+                    up = self.motion.line(a, q_grasp, T_lift, FAST, "pick_lift", gripper=CLOSED, ignore=(label,),
+                                          held=box, max_step_m=lift_step)
+                else:
+                    up = self.motion.line(a, q_grasp, T_lift, lift_rad, "pick_lift", gripper=CLOSED, ignore=(label,),
+                                          held=box)
                 if not up.ok:
                     n_coll += up.status == "collision"
                     n_ik += up.status != "collision"
                     continue
+                extra = None
+                if post_lift is not None:
+                    extra = post_lift(a, up.q_end, T_tcp_obj, obj)
                 p = ArmPlan(a, np.asarray(q0, float), self.ex.g[a])
                 p.grip(go, 0, "open_for_grasp").move(to_pre, "approach").move(down, "descend").hold(settle, "settle")
                 from dojo.skills.kinematics import grip_to_gap
-                p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close").hold(squeeze, "squeeze").move(up, "lift")
+                p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close")
+                if rise is not None:
+                    p.move(rise, "snap_rise")
+                p.hold(squeeze, "squeeze").move(up, "lift")
+                if extra is not None:
+                    ops, T_tcp_obj = extra
+                    for op in ops:
+                        if op[0] == "move":
+                            p.move(op[1], "post_lift")
+                        elif op[0] == "hold":
+                            p.hold(int(op[1]), "post_lift")
+                        elif op[0] == "grip":
+                            p.grip(float(op[1]), int(op[2]), "post_lift")
                 cost = p.steps + 30 * g.score
                 feas.append((cost, PickPlan(a, p, g, T_tcp_obj, p.steps, label, method, dict(plan_kw))))
                 if len(feas) >= keep:
@@ -966,6 +1048,9 @@ class Skills:
         lift_planned = float((pp.plan.q_end is not None) and (self.kin.tcp(pp.arm, pp.plan.q_end)[2, 3] - pp.grasp.T[2, 3]))
         if dz < 0.5 * max(lift_planned, 0.02) or drift > 0.03:
             self.held[pp.arm] = None
+            if getattr(self, "slip_avoid", "off") == "on":
+                # stream ORG2: the slipped grasp in the object frame; later transfer screens rank grasps near it last
+                self.__dict__.setdefault("_slipped", {}).setdefault(pp.label, []).append(inv_T(pp.T_tcp_obj))
             return SkillResult(False, "pick", "grasp_slip", pp.steps, pp.arm, exp, meas,
                                f"object rose {dz*1000:.0f} mm (planned {lift_planned*1000:.0f}), in-hand drift {drift*1000:.0f} mm"
                                f" [{pp.grasp.method} {pp.grasp.note}]")
@@ -1017,7 +1102,8 @@ class Skills:
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
                    blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None,
                    held_read: bool | None = None, purpose: str | None = None, approach_line: bool = False, carry_read: bool = False,
-                   approach_lateral: bool = False, approach_staged: bool = False):
+                   approach_lateral: bool = False, approach_staged: bool = False, release_stages=None,
+                   approach_vias=()):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``approach_line``: collision-checked Cartesian transit to the hover, preserving the interpolated TCP
         orientation along the carry instead of a joint-space transit. No joint-path fallback.
@@ -1093,6 +1179,9 @@ class Skills:
             tail_kw["guarded"] = True
         if held_read:
             tail_kw["held_read"] = True
+        if release_stages:
+            # let go in stages: (gripper value, steps) before the full open (``coin_contact``'s ``disc_release``)
+            tail_kw["release_stages"] = tuple((float(g), int(n)) for g, n in release_stages)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -1109,7 +1198,9 @@ class Skills:
             from dojo.skills.headset import staged_carry
             transit = ((lambda *a, **kw: staged_carry(self.motion, *a, **kw)) if approach_staged else
                        self.motion.line if approach_line else
-                       self.motion.lateral if approach_lateral else self.motion.to_pose)
+                       self.motion.lateral if approach_lateral else
+                       (lambda a_, q_, T_, *r, **kw: self.motion.via_xy(a_, q_, T_, approach_vias, *r, **kw))
+                       if approach_vias else self.motion.to_pose)
             to_pre = transit(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
                              ignore=(h.label,), **({} if approach_line else {"ease": ease}))
             if approach_line:
@@ -1150,7 +1241,8 @@ class Skills:
                     guard_lag: float | None = None, servo_xy_tol: float | None = None,
                     held_tol: float | None = None, held_gate: float | None = None,
                     blind_up: float | None = None, spiral: float | None = None,
-                    guarded: bool | None = None, held_read: bool | None = None) -> ArmPlan | str:
+                    guarded: bool | None = None, held_read: bool | None = None,
+                    release_stages=None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
@@ -1187,9 +1279,21 @@ class Skills:
             return t
         T_up = T_last.copy()
         T_up[:3, 3] -= T_last[:3, 0] * retreat          # back out along the approach axis
-        if T_last[2, 0] > -0.5:
+        axis_first = getattr(self, "retreat_axis", "off") == "on" and T_last[2, 0] > -0.5
+        if T_last[2, 0] > -0.5 and not axis_first:
             T_up[2, 3] += 0.02
         up = self.motion.line(arm, q_last, T_up, MEDIUM, "place_retreat", gripper=open_g, ignore=ignore)
+        if axis_first and up.ok:
+            # stream ORG2 ``retreat_axis``: out along the fingers first (an appendage over them is not dragged), then up
+            T_hi = T_up.copy()
+            T_hi[2, 3] += 0.04
+            up_b = self.motion.line(arm, up.q_end, T_hi, MEDIUM, "place_rise", gripper=open_g, ignore=ignore)
+            if up_b.ok:
+                for g_s, n_s in release_stages or ():
+                    t.grip(g_s, n_s, "release_stage")
+                t.grip(open_g, open_steps, "release").hold(pre_open_hold, "let_go").move(up, "retreat")
+                t.move(up_b, "rise")
+                return t
         if not up.ok:
             # straight up instead (a hand pointing sideways over a slot: backing out along its approach left the reach)
             T_up = T_last.copy()
@@ -1198,6 +1302,8 @@ class Skills:
             if not up2.ok:
                 return f"retreat: {up.note}"
             up = up2
+        for g_s, n_s in release_stages or ():
+            t.grip(g_s, n_s, "release_stage")
         t.grip(open_g, open_steps, "release").hold(pre_open_hold, "let_go").move(up, "retreat")
         return t
 
@@ -2068,8 +2174,11 @@ class Skills:
         if Tq[2, 0] > -0.5:
             T_up[2, 3] += 0.02
         up = self.motion.line(arm, self.ex.q[arm], T_up, MEDIUM, "place_retreat", gripper=OPEN, check=False)
-        p = ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).grip(float(kw.get("open_g", OPEN)), int(kw.get("open_steps", OPEN_STEPS)),
-                                                             "release").hold(int(kw.get("pre_open_hold", 1)) + 1, "let_go")
+        p = ArmPlan(arm, self.ex.q[arm].copy(), CLOSED)
+        for g_s, n_s in kw.get("release_stages") or ():
+            p.grip(g_s, n_s, "release_stage")
+        p.grip(float(kw.get("open_g", OPEN)), int(kw.get("open_steps", OPEN_STEPS)),
+               "release").hold(int(kw.get("pre_open_hold", 1)) + 1, "let_go")
         if up.segments:
             p.move(up, "retreat")
         self.ex.run({arm: p}, name=f"place {label} release")
@@ -2176,6 +2285,13 @@ class Skills:
         # (twin: pliers squeezed across their diverging handles, a hammer across its head, slid out; the
         # handle at the centre of mass holds)
         irregular = held_box(obj, np.eye(4)).points is not None or G.com_off(obj) > 0.008
+        slipped = self.__dict__.get("_slipped", {}).get(label, []) if getattr(self, "slip_avoid", "off") == "on" else []
+        if (getattr(self, "grasp_torso", "off") == "on" and irregular and obj.asset.mesh is not None
+                and label not in self.coll.parts):
+            # stream ORG2: the object as small boxes from its mesh (``Collision.parts``), so a torso grasp's transit to
+            # its pre-grasp is checked against the body and arms, not against the empty corners of its bbox
+            from dojo.skills.motion import mesh_parts
+            self.coll.parts[label] = mesh_parts(*obj.asset.mesh, cell=0.015, step=0.004)
         if irregular and "approach_rad" not in place_kw:
             # uneven objects swing in the pads on fast carries (twin: a wrench held 6 mm off its centre of mass,
             # 4 mm drift after the lift, fell out on the way to its slot)
@@ -2190,6 +2306,9 @@ class Skills:
                 cands = G.box_grasps(obj, self.kin, a, tilts=tuple(box_tilts)) + G.candidates(obj, self.kin, a)
                 if held_box(obj, np.eye(4)).points is not None:          # irregular: real slices too
                     cands += G.slice_grasps(obj, self.kin, a)
+                    if getattr(self, "grasp_torso", "off") == "on":      # stream ORG2: side grasps across the body
+                        from dojo.skills.torso import torso_grasps
+                        cands += torso_grasps(obj, self.kin, a)
             n_g = n_p = 0
             min_down = math.cos(math.radians(max_pick_tilt))
             n_ik = 0
@@ -2198,7 +2317,7 @@ class Skills:
                 if n_ik > SCREEN_IK_BUDGET:
                     notes.append(f"{a}: screen stopped after {n_ik} place IKs")
                     break
-                if -float(g.T[2, 0]) < min_down:
+                if -float(g.T[2, 0]) < min_down and g.method != "torso":    # torso grasps approach from the side
                     continue
                 r = self.kin.ik(a, g.T, q0, n_random=0)
                 if not r.ok:
@@ -2247,11 +2366,20 @@ class Skills:
                         if not self.kin.ik(a, T_l, r.q, n_random=0).ok:
                             continue
                     pr = 0.0 if pair_rank is None else float(pair_rank(g, T_tcp_obj, T_obj, T_tcp))
+                    if slipped:
+                        pr += slip_penalty(inv_T(T_tcp_obj), slipped)
                     screened.append((g.score + hq + 0.05 * (ti // max(1, yaw_sym)) + pr, a, g, T_obj))
             notes.append(f"{a}: {n_g}/{len(cands)} grasps reachable, {n_p} grasp-place pairs")
         screened.sort(key=lambda x: x[0])
         for _, a, g, T_obj in screened[:max_full]:
             kw_p = dict(pick_kw)
+            if g.method == "torso" or (g.method == "slice" and getattr(self, "grasp_torso", "off") == "on"):
+                # stream ORG2: a grasp across an irregular body (side or top-down slice) squeezes before a slow lift
+                # (G3 dev: lifted right after the close, a 0.45 kg figure stayed on the table, 3 of 5 torso picks and
+                # every slice pick)
+                from dojo.skills.torso import TORSO_SQUEEZE
+                kw_p.setdefault("squeeze", TORSO_SQUEEZE)
+                kw_p.setdefault("lift_rad", SLOW)
             if lift_to_pre and "lift_to_z" not in kw_p:
                 kw_p["lift_to_z"] = self._pre_place_z(obj, g, T_obj, ignore, place_kw)
             pp = self.plan_pick(label, a, grasps=[g], lift=lift, keep=1, q_start=q_start, **kw_p)

@@ -102,5 +102,5 @@ def test_default_and_validation():
         RuntimePolicy(RuntimeConfig(mode="perception", push_goal="edge"), assets=None)
     from dojo.skills.g3 import SKILL_ATTRS
     assert SKILL_ATTRS["push_goal"][0] == RuntimeConfig().push_goal
-    assert set(SKILL_ATTRS["push_goal"]) == {"centre", "cover", "cover_obb"}
+    assert set(SKILL_ATTRS["push_goal"]) == {"centre", "cover", "cover_obb", "clear"}
     RuntimePolicy(RuntimeConfig(mode="perception", push_goal="cover_obb"), assets=None)

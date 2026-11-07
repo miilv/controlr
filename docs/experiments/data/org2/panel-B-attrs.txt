@@ -1,0 +1,1 @@
+--skill-attr push_contact=pair --skill-attr push_plan=sequence --skill-attr push_goal=clear --skill-attr arrange_retry=once --skill-attr place_surface=mesh --skill-attr grasp_torso=on --skill-attr stand_offset=base --skill-attr retreat_axis=on --skill-attr plan_world=objects --skill-attr place_via=clear --skill-attr slip_avoid=on

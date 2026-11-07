@@ -1,0 +1,72 @@
+{
+  "stream": "CLASSIFY3-CAM",
+  "code": "2f198642900d5b6b280b6ee17918ed72c94b9365",
+  "block": "classify3-cam-1",
+  "salt": "classify3-cam-20261107-040c042653adcae94f9632b7c1f915f0",
+  "salt_sha256": "a8f936e7edb6d88fd5bef3737ea82c1a0a462d1e32b71c1a0313fb3d6abd9f70",
+  "salt_derivation": "'classify3-cam-20261107-' + sha256('classify3-cam-20261107:' + code)[:32]",
+  "cells": [
+    {
+      "task": "classify_objects",
+      "role": "gain",
+      "pairs": 10,
+      "batches": [
+        [
+          100020,
+          10
+        ],
+        [
+          100000,
+          10
+        ]
+      ]
+    },
+    {
+      "task": "classify_objects_by_language",
+      "role": "gain",
+      "pairs": 10,
+      "batches": [
+        [
+          100020,
+          10
+        ],
+        [
+          100000,
+          10
+        ]
+      ]
+    },
+    {
+      "task": "stack_blocks",
+      "role": "strong + parity guard",
+      "pairs": 5,
+      "batches": [
+        [
+          100020,
+          5
+        ],
+        [
+          100025,
+          5
+        ],
+        [
+          100000,
+          10
+        ]
+      ]
+    }
+  ],
+  "selection_rule": "per cell, the first `pairs` ids whose two-pass physics-only presettle is ok, batches in order; selection by stability only, no outcome",
+  "prep_host": "compute3 light locks (physics only, no model calls)",
+  "camera_host": "compute4",
+  "model": "claude/claude-sonnet-5-5",
+  "overrides": {
+    "A": {
+      "instance_evidence": "log"
+    },
+    "B": {
+      "instance_evidence": "log",
+      "sort_contain": "bottom"
+    }
+  }
+}

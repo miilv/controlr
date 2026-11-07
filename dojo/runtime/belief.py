@@ -641,6 +641,26 @@ class RuntimeProvider:
         self.events.append(ev)
         return {"adopted": ok, "confirm": ev.get("confirm")}
 
+    def set_pose(self, label: str, pos, quat, writer: str = "skill") -> bool:
+        """A skill's own measurement of an object it did not move (``coin_contact.wall_probe``: the coin holder's walls
+        squeezed by the pads, read through the official jaw value) replaces its believed pose. Logged as a
+        ``belief_write`` (writer, before7 / after7) for the write audit; the version baseline moves with it, so the next
+        version bump does not log the same write again. GT mode and unknown labels: no write."""
+        if self.mode == "gt" or self.belief is None or label not in self.belief.objects:
+            return False
+        o = self.belief.objects[label]
+        before = np.r_[o.pos, o.quat].astype(float)
+        o.pos, o.quat, o.source = np.asarray(pos, float).copy(), np.asarray(quat, float).copy(), writer
+        after = np.r_[o.pos, o.quat].astype(float)
+        o.version = int(getattr(o, "version", 0)) + 1
+        if o.asset is not None:
+            self._ver_pose[label] = (after.copy(), o.asset.key)
+        self.events.append({"kind": "belief_write", "label": label, "step": self.bridge.steps_used, "writer": writer,
+                            "version": o.version, "before7": [round(float(v), 5) for v in before],
+                            "after7": [round(float(v), 5) for v in after]})
+        self.stats[f"{writer}_writes"] = self.stats.get(f"{writer}_writes", 0) + 1
+        return True
+
     # ------------------------------------------------------------------ resync
     def measured_since_release(self, label: str) -> bool:
         """Whether a measurement (post-place refine ok, a confirmed pose, a resync re-estimate, an a1 write) saw

@@ -1,0 +1,189 @@
+{
+ "n_pairs": 18,
+ "missing": [],
+ "excluded": [],
+ "A_mean": 36.11,
+ "A_sd": 15.39,
+ "B_mean": 58.33,
+ "B_sd": 25.72,
+ "delta": 22.22,
+ "wins": 12,
+ "losses": 2,
+ "ties": 4,
+ "A_success": 0,
+ "B_success": 2,
+ "flip_wins": 2,
+ "flip_losses": 0,
+ "B_ci95": [
+  47.2,
+  69.4
+ ],
+ "bar": 85.0,
+ "B_steps_median": 344.0,
+ "A_steps_median": 273.5,
+ "pairs": [
+  {
+   "id": 100000,
+   "A": 25.0,
+   "B": 75.0,
+   "A_steps": 180,
+   "B_steps": 476,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100001,
+   "A": 50.0,
+   "B": 75.0,
+   "A_steps": 302,
+   "B_steps": 542,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100002,
+   "A": 25.0,
+   "B": 50.0,
+   "A_steps": 200,
+   "B_steps": 271,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100003,
+   "A": 50.0,
+   "B": 50.0,
+   "A_steps": 330,
+   "B_steps": 226,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100004,
+   "A": 25.0,
+   "B": 50.0,
+   "A_steps": 291,
+   "B_steps": 567,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100005,
+   "A": 0.0,
+   "B": 0.0,
+   "A_steps": 160,
+   "B_steps": 137,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100007,
+   "A": 25.0,
+   "B": 100.0,
+   "A_steps": 287,
+   "B_steps": 443,
+   "A_success": false,
+   "B_success": true
+  },
+  {
+   "id": 100008,
+   "A": 50.0,
+   "B": 75.0,
+   "A_steps": 289,
+   "B_steps": 465,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100009,
+   "A": 50.0,
+   "B": 50.0,
+   "A_steps": 189,
+   "B_steps": 182,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100021,
+   "A": 50.0,
+   "B": 50.0,
+   "A_steps": 219,
+   "B_steps": 169,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100022,
+   "A": 25.0,
+   "B": 50.0,
+   "A_steps": 216,
+   "B_steps": 279,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100023,
+   "A": 25.0,
+   "B": 50.0,
+   "A_steps": 385,
+   "B_steps": 281,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100024,
+   "A": 50.0,
+   "B": 100.0,
+   "A_steps": 316,
+   "B_steps": 371,
+   "A_success": false,
+   "B_success": true
+  },
+  {
+   "id": 100025,
+   "A": 25.0,
+   "B": 75.0,
+   "A_steps": 229,
+   "B_steps": 392,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100026,
+   "A": 50.0,
+   "B": 25.0,
+   "A_steps": 356,
+   "B_steps": 223,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100027,
+   "A": 50.0,
+   "B": 75.0,
+   "A_steps": 260,
+   "B_steps": 387,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100028,
+   "A": 25.0,
+   "B": 75.0,
+   "A_steps": 215,
+   "B_steps": 506,
+   "A_success": false,
+   "B_success": false
+  },
+  {
+   "id": 100029,
+   "A": 50.0,
+   "B": 25.0,
+   "A_steps": 374,
+   "B_steps": 317,
+   "A_success": false,
+   "B_success": false
+  }
+ ],
+ "passes": true
+}

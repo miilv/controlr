@@ -1453,13 +1453,15 @@ def lift_and_return(sk: Skills, label: str, lift: float = 0.08) -> SkillResult:
 
 
 def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 0.0, press: float = 0.001,
-                blind_depth: float = 0.016) -> dict:
+                blind_depth: float = 0.016, disc_contact: str | None = None) -> dict:
     """Insert ``obj`` into whichever of ``receptacles`` its mesh fits best (``insertion.fit_insertion``:
     leading end, yaw and offset with the largest clearance, depth to the floor), then, when asked, turn
     it about the insertion axis by ``turn_deg`` (a key in its lock) before letting go. Re-oriented in the
     hand or relayed between the arms (``place_oriented``): a slow straight descent from 15 mm above the
     opening after a still pre-place pose and an in-hand re-measure; ``press`` = how far past the floor
-    contact the descent is commanded."""
+    contact the descent is commanded. ``disc_contact`` (a chooser's skill argument): None = the Skills switches
+    as configured; "on" = ``coin_contact.PROFILE`` for this call (a thin disc standing in a fixed holder: measure the
+    holder's walls, close as the fingertips clear them, seat on the table, release in stages); "off" = none of them."""
     from dojo.skills.insertion import fit_insertion
     w = sk.refresh()
     o = w.obj(obj)
@@ -1512,7 +1514,9 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
             from dojo.skills.precision import disc_axis, disc_into_slot
             if disc_axis(o) is not None and not turn_deg:
                 # a thin disc (a coin): by its rim, edge first, let go over the slot (skills-5)
-                return disc_into_slot(sk, obj, rec, tg)
+                from dojo.skills.coin_contact import scoped
+                with scoped(sk, disc_contact):
+                    return disc_into_slot(sk, obj, rec, tg)
             sk.coll.include.add(rec)
             for T in tg:
                 T[2, 3] -= press
@@ -2318,6 +2322,12 @@ def _on_targets(sk: Skills, label: str, support: str, surface: str | None = None
         if len(pts) == 1:      # a support smaller than the object (a stand): small offsets around its centre
             for k in range(8):
                 pts.append(c + 0.012 * np.array([math.cos(k * math.pi / 4), math.sin(k * math.pi / 4)]))
+            if getattr(sk, "stand_offset", "off") == "base":
+                # stream ORG2: rings of the object's base radius, most clearance first (``torso.stand_points``), the
+                # clearest STAND_KEEP only; headings that keep a grasp's bearing from each arm first (``stand_yaws``)
+                from dojo.skills.torso import STAND_KEEP, stand_points, stand_yaws
+                pts[:] = stand_points(sk, label, support, pts)[:STAND_KEEP]
+                return pts, stand_yaws(sk, label, support) + [yb + k * math.pi / 2 for k in range(4)]
         ys = list(yaws)
         if len(pts) <= 3:      # few positions: the diagonals too (on a small stand 9 x 9 poses cost minutes of IK)
             ys += [yb + math.pi / 4 + k * math.pi / 2 for k in range(4)]
@@ -2523,8 +2533,116 @@ def cover_goal_obb(o, sup) -> tuple[bool, np.ndarray]:
     return inside, A @ np.clip(cq, lo, hi)
 
 
+def _push_planned(sk: Skills, label: str, target_xy, tol: float, seg: float, max_iter: int, support: str | None,
+                  keep_clear=()) -> SkillResult:
+    """``push_to`` with any of ``Skills.push_contact`` "pair" / ``push_plan`` "sequence" / ``push_goal`` "clear" on
+    (stream ORG2, ``dojo.skills.push_plan``). Strokes along the support's axes for a pair contact (the object's own
+    otherwise); the goal from ``clear_goal`` once, at the start; done when the object covers the support (any cover /
+    clear goal) and is within ``CLEAR_TOL`` of the clear goal, or when no further stroke plans while it covers."""
+    from dojo.skills import push_plan as PP
+    n0 = sk.ex.steps_used
+    pc = getattr(sk, "push_contact", "off")
+    seq_on = getattr(sk, "push_plan", "off") == "sequence"
+    goal = getattr(sk, "push_goal", "centre")
+    w = sk.refresh()
+    target_xy = np.asarray(target_xy, float)
+    if support is not None and goal == "clear":
+        target_xy, diag = PP.clear_goal(sk, label, support, keep_clear)
+        sk.log(f"[push_plan] {label}: clear goal {json.dumps(diag)}")
+    cover = support is not None and goal in ("cover", "cover_obb", "clear")
+
+    def stroke_fn(sk_, o_, lab_, u_, s_):
+        return PP.pair_stroke(sk_, o_, lab_, u_, s_) if pc == "pair" else _push_stroke(sk_, o_, lab_, u_, s_)
+    last, stuck, gain = None, 0, None
+    for it in range(max_iter):
+        w = sk.refresh()
+        o = w.obj(label)
+        sup = w.obj(support) if support is not None else None
+        inside = PP.covers(o, sup) if cover else False
+        gap = float(np.linalg.norm(target_xy - o.center_w[:2]))
+        if cover and goal in ("cover", "cover_obb"):
+            inside, target_xy = cover_goal_obb(o, sup) if goal == "cover_obb" else _cover_aabb(o, sup)
+            if inside:
+                return sk._record(SkillResult(True, "push", "ok", sk.ex.steps_used - n0, last,
+                                              note=f"covers {support} after {it} strokes"))
+        elif cover and inside and gap <= CLEAR_TOL:
+            return sk._record(SkillResult(True, "push", "ok", sk.ex.steps_used - n0, last,
+                                          note=f"covers {support}, {gap * 1000:.0f} mm from the clear goal after {it} strokes"))
+        elif not cover and gap <= tol:
+            return sk._record(SkillResult(True, "push", "ok", sk.ex.steps_used - n0, last,
+                                          note=f"within {gap * 1000:.0f} mm after {it} strokes"))
+        axes = PP.support_axes(sup) if (pc == "pair" and sup is not None) else PP.body_axes(o)
+        plan = None
+        if seq_on:
+            yaw_a = PP.aligned_yaw(o, sup) if (pc == "pair" and sup is not None) else None
+            seq = PP.plan_sequence(sk, label, target_xy, axes, stroke_fn, seg=seg, tol=tol, gain=gain,
+                                   path_ok=PP.path_clear(sk, label, support, yaw_a))
+            if seq is not None:
+                plan = seq["first"]
+                push_u, push_step = seq["strokes"][0][0], seq["strokes"][0][1]
+                sk.log(f"[push_plan] {label}: stroke {it}: order {seq['order']}, {len(seq['strokes'])} strokes left")
+            elif not (cover and inside):
+                # no complete sequence: no stroke now (a partial one can strand the object where the rest never plans;
+                # ``arrange_retry`` comes back after the other steps have moved what blocks it)
+                return sk._record(SkillResult(False, "push", "ik_fail", sk.ex.steps_used - n0, last,
+                                              note=f"{label}: no complete push sequence ({gap * 1000:.0f} mm left)"))
+        if plan is None and not seq_on:
+            d = target_xy - o.center_w[:2]
+            todo = sorted(((abs(float(a @ d)), a * math.copysign(1.0, float(a @ d))) for a in axes),
+                          key=lambda x: -x[0])
+            for comp, u in todo:
+                if comp < tol / 2:
+                    continue
+                step = PP.stroke_len(comp, seg, gain)
+                plan = stroke_fn(sk, o, label, u, step)
+                if plan is not None:
+                    push_u, push_step = u, step
+                    break
+        if plan is None:
+            if cover and inside:
+                return sk._record(SkillResult(True, "push", "ok", sk.ex.steps_used - n0, last,
+                                              note=f"covers {support}; no stroke towards the clear goal "
+                                                   f"({gap * 1000:.0f} mm left)"))
+            return sk._record(SkillResult(False, "push", "ik_fail", sk.ex.steps_used - n0, None,
+                                          note=f"{label}: no push stroke ({gap * 1000:.0f} mm left)"))
+        last = plan.arm
+        before = o.center_w[:2].copy()
+        try:
+            sk.parallel([plan], name=f"push {label} {it}")
+        except (BudgetExceeded, EpisodeEnded) as e:
+            return sk._record(SkillResult(False, "push", "step_budget", sk.ex.steps_used - n0, last, note=str(e)))
+        T_x = o.T.copy()
+        T_x[:2, 3] += np.asarray(push_u, float) * push_step
+        sk.confirm_moved(label, T_x, "push")
+        after = sk.refresh().obj(label).center_w[:2]
+        moved = float(np.linalg.norm(after - before))
+        gain = PP.update_gain(gain, float((after - before) @ np.asarray(push_u, float)), float(push_step))
+        stuck = stuck + 1 if moved < 0.003 else 0
+        if stuck >= 2:
+            break
+    w = sk.refresh()
+    o = w.obj(label)
+    gap = float(np.linalg.norm(target_xy - o.center_w[:2]))
+    if cover:
+        inside = PP.covers(o, w.obj(support))
+        return sk._record(SkillResult(inside, "push", "ok" if inside else "place_miss", sk.ex.steps_used - n0, last,
+                                      note=f"{'covers' if inside else 'does not cover'} {support}, "
+                                           f"{gap * 1000:.0f} mm from the goal"))
+    return sk._record(SkillResult(gap <= tol, "push", "ok" if gap <= tol else "place_miss", sk.ex.steps_used - n0,
+                                  last, note=f"{gap * 1000:.0f} mm left"))
+
+
+CLEAR_TOL = 0.02          # m: ``push_goal`` "clear" is done within this of its goal (while covering the support)
+
+
+def _cover_aabb(o, sup) -> tuple[bool, np.ndarray]:
+    lo, hi = cover_region(o, sup)
+    c = o.center_w[:2]
+    return bool(np.all(c >= lo) and np.all(c <= hi)), np.clip(c, lo, hi)
+
+
 def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 0.08, max_iter: int = 10,
-            support: str | None = None) -> SkillResult:
+            support: str | None = None, keep_clear=()) -> SkillResult:
     """Push a flat object (too wide to grasp) to ``target_xy``, one body axis at a time (the one with the most
     left to go first, the other when that one has no stroke): closed fingertips against the middle of the
     face opposite the motion (no torque about the centre) at half the height of that face (from the mesh),
@@ -2533,7 +2651,13 @@ def push_to(sk: Skills, label: str, target_xy, tol: float = 0.012, seg: float = 
     ``sk.push_order`` "lookahead" (stream H; default "greedy" = the above): with both axes left to go, the other
     axis goes first when its stroke plans now but would not once the first axis is done (organize_table: the
     keyboard pushed 170 mm towards the frame first, after which the fingers' start for the 50-150 mm sideways
-    stroke was in the drawer's front, "no push stroke along axis 0" in 5/5, mode gt)."""
+    stroke was in the drawer's front, "no push stroke along axis 0" in 5/5, mode gt).
+
+    ``sk.push_contact`` "pair" / ``sk.push_plan`` "sequence" / ``sk.push_goal`` "clear" (stream ORG2; all default off):
+    ``_push_planned``. ``keep_clear``: (xy, radius) discs the "clear" goal keeps the object's footprint away from."""
+    if (getattr(sk, "push_contact", "off") != "off" or getattr(sk, "push_plan", "off") != "off"
+            or getattr(sk, "push_goal", "centre") == "clear"):
+        return _push_planned(sk, label, target_xy, tol, seg, max_iter, support, keep_clear)
     n0 = sk.ex.steps_used
     target_xy = np.asarray(target_xy, float)
     last = None
@@ -2640,15 +2764,27 @@ def arrange(sk: Skills, steps: list) -> dict:
         places.sort(key=lambda s: -float(np.max(w.obj(s[1]).asset.extents)))
     failed = []
     # "push_big_first": the pushes before the places (organize_table: a place that slipped dropped its object by the
-    # keyboard, and no stroke planned after it: "no push stroke along axis 0, axis 1" with the press strokes too)
-    seq = pushes + places if order == "push_big_first" else places + pushes
+    # keyboard, and no stroke planned after it: "no push stroke along axis 0, axis 1" with the press strokes too);
+    # "push_first" (stream ORG2): the pushes first, the places in today's nearest-first order (a pushed object swept into
+    # its support beside another support would disturb what was already placed there)
+    seq = pushes + places if order in ("push_big_first", "push_first") else places + pushes
+    # ``Skills.arrange_retry`` "once" (stream ORG2; default "off"): every failed step is tried once more after all the
+    # others (one step's object or start pose can block another's plan until that one has moved)
+    if getattr(sk, "arrange_retry", "off") == "once":
+        seq = seq + seq
     for verb, obj, sup in seq:
         if obj in st["done"]:
             continue
         sk.refresh()
         if verb == "push":
-            r = push_to(sk, obj, sk.world.obj(sup).center_w[:2],
-                        **({"support": sup} if getattr(sk, "push_goal", "centre") in ("cover", "cover_obb") else {}))
+            kw_p = {"support": sup} if getattr(sk, "push_goal", "centre") in ("cover", "cover_obb", "clear") else {}
+            if getattr(sk, "push_goal", "centre") == "clear":
+                # the sites of the places still to do: the pushed object's goal keeps clear of their objects there
+                kw_p["keep_clear"] = [(sk.world.obj(s_).center_w[:2],
+                                       0.5 * float(np.max(sk.world.obj(o_).asset.extents[:2])))
+                                      for v_, o_, s_ in steps if v_ != "push" and o_ not in st["done"]
+                                      and o_ in sk.world.objects and s_ in sk.world.objects]
+            r = push_to(sk, obj, sk.world.obj(sup).center_w[:2], **kw_p)
         else:
             container_obstacle(sk, sup)
             tall = sk.world.obj(sup).top_z > TABLE_Z + 0.05
@@ -2658,6 +2794,11 @@ def arrange(sk: Skills, steps: list) -> dict:
                 kw["place_kw"] = {"pre_h": 0.005, "pre_clear": 0.003}
             if getattr(sk, "arrange_route", "off") == "lateral":
                 kw["place_kw"]["approach_lateral"] = True
+            elif getattr(sk, "place_via", "off") == "clear":
+                from dojo.skills.torso import clear_vias
+                vias = clear_vias(sk, obj, sup)
+                if vias:
+                    kw["place_kw"]["approach_vias"] = vias
             tg, on_mesh = _on_targets(sk, obj, sup)
             r = place_oriented(sk, obj, tg, **kw)
             if on_mesh and not r.ok and r.status in ("ik_fail", "collision") and not r.steps:
@@ -2673,6 +2814,7 @@ def arrange(sk: Skills, steps: list) -> dict:
         sk.bank()
         if r.status in ("step_budget", "ended"):
             break
+    failed = [o_ for o_ in dict.fromkeys(failed) if o_ not in st["done"]]
     if failed:
         return {"ok": False, "stage": "arrange", "note": f"done {st['done']}, failed {failed}"}
     return {"ok": True, "stage": "arranged"}

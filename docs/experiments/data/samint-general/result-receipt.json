@@ -1,0 +1,67 @@
+{
+  "utc": "2026-11-07T19:31:59.986850+00:00",
+  "status": "COMPLETE_NOT_QUALIFIED_NO_CAMERA_DISPATCH",
+  "component_commit": "e695260c0367f65a2aa83e6f5881d13e6988a9f3",
+  "deployed_evaluator_commit": "5324a6622c3d8c29a5f183023e744b04eca48a88",
+  "implementation_merge": "4d86ecb149a3a4883e0d49851581077b25ff0637",
+  "pr": "https://github.com/miilv/controlr/pull/428",
+  "CI": "https://github.com/miilv/controlr/actions/runs/42401558678",
+  "records": 540,
+  "images": 180,
+  "tasks": 11,
+  "input_layout_clusters": 54,
+  "baseline_reference_differences": 0,
+  "material_phantom_harm_groups": 42,
+  "LLM_calls": 0,
+  "owned_inference_exit_code": 0,
+  "files": {
+    "all-task-table.csv": {
+      "bytes": 2619,
+      "sha256": "668a1fc78bb599cc6841dde9f0eb8914bd2384c03728786078c002a6ff760ddb"
+    },
+    "catalogue-labels.json": {
+      "bytes": 28994,
+      "sha256": "eabc27b662e281f48ca129285649ca1b9d61ecfaf52c911ba00db3e6dbeee9b0"
+    },
+    "category-table.csv": {
+      "bytes": 39595,
+      "sha256": "e392c4a985b52e1a3509b03e11f700776a1e0631d7761fe8492ef1fbca2ab4ce"
+    },
+    "comparison.html": {
+      "bytes": 4217,
+      "sha256": "b27e38920bf97c49986346adfcae1cf891d5aeade50216ab4327cee1fe8cb28b"
+    },
+    "general-no-dispatch-receipt.json": {
+      "bytes": 672,
+      "sha256": "0b36c5457e69e53e85085478009682059111a4865265fe39814a97495b80826c"
+    },
+    "general-sam3.jsonl": {
+      "bytes": 2818473,
+      "sha256": "25d756a28aceab332df6c1ef47af1dc7d64cd668ee649d772d8099a8b7051ba6"
+    },
+    "general-sam3.jsonl.meta.json": {
+      "bytes": 1040,
+      "sha256": "e49a5dbf8955778d29afaba1ad43e585470c2285136430f8e6dda08b0f73cda0"
+    },
+    "head-table.csv": {
+      "bytes": 2640,
+      "sha256": "4892b2bba2e3ecc67b2f18b39e04d4c2e8bc051c4b1198c2ebb84b8216b10ab8"
+    },
+    "overall-uncertainty.json": {
+      "bytes": 188,
+      "sha256": "911bcd873de81f38de834b9d7e9ac06efcad996c0ddefdd76f09b5e491a497b8"
+    },
+    "risk.csv": {
+      "bytes": 6750,
+      "sha256": "fe2c56cf02937009a98faddd0e7be6c157339df51d8c39f36fe7db1138710b89"
+    },
+    "summary.csv": {
+      "bytes": 12406,
+      "sha256": "028e9c2129f26feb35a694e3185f5b2e0a3fbfdc8ebcb28bcdf1b7aecd232ed1"
+    },
+    "verdict.json": {
+      "bytes": 29146,
+      "sha256": "21ca8799cd579d51a2fc7d598a37438b1d66a0da6543793e11f9f6559f7d7f53"
+    }
+  }
+}

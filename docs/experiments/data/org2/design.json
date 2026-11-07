@@ -1,0 +1,33 @@
+{
+ "schema": "org2-g3-design/1",
+ "task": "organize_table",
+ "purpose": "pre-registered fresh paired G3 panel (physics, true identities); fixed before generation",
+ "salt": "org2-g3-20261107-f3c691ec4d1ac985d5e18bd0d74020b8",
+ "salt_sha256": "2ed849c1ee882e922bf110682658177c8102e68a5b95bd07587d853f8e51d1cd",
+ "ids": [
+  100000,
+  100001,
+  100002,
+  100003,
+  100004,
+  100005,
+  100006,
+  100007,
+  100008,
+  100009,
+  100020,
+  100021,
+  100022,
+  100023,
+  100024,
+  100025,
+  100026,
+  100027,
+  100028,
+  100029
+ ],
+ "generator": "dojo.simlab.gen_layouts --seed-salt (unchanged, pinned deployment), default two-pass presettle",
+ "selection": "every id whose settled record is status ok; no outcome-based exclusion; dropped ids listed",
+ "data_root": "compute3:~/dojo-data/org2/panel (private DOJO_DATA)",
+ "host": "compute3 only, light locks light7/light8, <= 2 jobs, admission GPU used <= 24 GiB, disk >= 10 GB"
+}

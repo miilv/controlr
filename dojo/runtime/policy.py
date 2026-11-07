@@ -78,24 +78,14 @@ def label_candidates(vocabulary: str, label: str) -> list[str]:
     return list(lab.get("candidates") or [])
 
 
-def rider_candidates(vocabulary: str, key: str) -> list[str]:
-    """``belt_wrist_id``: the union of the candidate keys of every config group in ``vocabulary`` that admits ``key``
-    (a belt tracker's ``rider3`` / ``bottle_t1`` has no config group of its own), ``key`` first; [] when unknown."""
-    from .vocab import catalog_path
-    import json as _json
-    p = catalog_path()
-    if p is None:
-        return []
-    try:
-        labels = (_json.loads(open(p).read()).get(vocabulary) or {}).get("labels", {})
-    except (OSError, ValueError):
-        return []
-    out = [key]
-    for lab in labels.values():
-        c = list(lab.get("candidates") or [])
-        if key in c:
-            out += [k for k in c if k not in out]
-    return out if len(out) > 1 else []
+def observed_candidates(prov, key: str) -> list[str]:
+    """``belt_wrist_id``: the asset keys the belt tracker has read on any rider this episode (``identity_dist`` of every
+    tracked label), ``key`` first; [] when it read fewer than two. Perceived evidence only: no task config's candidates."""
+    keys = [key]
+    for lab in list(getattr(prov, "_id_all", {}) or {}):
+        d, _ = prov.identity_dist(lab)
+        keys += [k for k in d if k not in keys]
+    return keys if len(keys) > 1 else []
 
 
 def twin_vocabulary(vocabulary: str | None) -> str:
@@ -403,6 +393,19 @@ class RuntimeConfig:
     # ``library.arrange``'s place order (``Skills.arrange_order``): near (today: nearest the arms first) | big_first (the
     # largest object first, while the table is emptiest) | push_big_first (the pushes first, then big_first)
     arrange_order: str = "near"
+    # stream ORG2 (``dojo.skills.push_plan``; ``Skills`` mirrors, all default off): push_contact off | pair (open two-
+    # fingertip strokes along the support's axes); push_plan off | sequence (the whole stroke sequence planned for both
+    # axis orders); arrange_retry off | once (every failed arrange step once more after the others); ``push_goal`` also
+    # takes clear and ``arrange_order`` push_first (pushes first, then the places nearest first)
+    push_contact: str = "off"
+    push_plan: str = "off"
+    arrange_retry: str = "off"
+    # stream ORG2 (``dojo.skills.torso``): grasp_torso off | on; stand_offset off | base; retreat_axis off | on
+    grasp_torso: str = "off"
+    stand_offset: str = "off"
+    retreat_axis: str = "off"
+    place_via: str = "off"          # stream ORG2: off | clear (``torso.clear_vias``)
+    slip_avoid: str = "off"         # stream ORG2: off | on (``skills.slip_penalty``)
     # Additional face-contact approach tilts, with fingertip position preserved.
     push_approach: str = "off"
     arrange_hover: str = "off"
@@ -538,13 +541,12 @@ class RuntimeConfig:
     # Bhattacharyya similarity plus a competing-category veto; measured worse offline, kept for the record).
     # belt_veto off (today) | evidence (with belt_wrist_veto on: an empty wrist look vetoes only when the prior was in
     # the wrist view, or the head tracker has not read the track lately). belt_speed off | lock (``RuntimeProvider``:
-    # the belt speed from the first long clean track, kept). belt_high_lift off | on (a picked match goes on up by
-    # ``BELT_HIGH_LIFT_M``). belt_retry off | window (more match rounds while the step budget holds an intercept).
+    # the belt speed from the first long clean track, kept). belt_retry off | window (more match rounds while the
+    # step budget holds an intercept).
     # belt_grasp off | solid (a rider with no top grasp that is not a flat dish: mesh antipodal, then waist, rims last).
     belt_ref: str = "off"
     belt_veto: str = "off"
     belt_speed: str = "off"
-    belt_high_lift: str = "off"
     belt_retry: str = "off"
     belt_grasp: str = "off"
     # belt_wrist_id off | on (the pick look re-identifies a tracked rider over every rider candidate; with belt_ref
@@ -570,6 +572,18 @@ class RuntimeConfig:
     # taker inserts the coin with its planned in-hand pose) | on (the taker's insertion asks for the in-hand read at the
     # pre-insert hover; with held_pose "request" that is the only place that reads). 5.1 rb 100006: 11 mm off, jammed
     disc_handover_read: str = "off"
+    # the thin-object-in-holder contact sequence (COIN2, ``dojo.skills.coin_contact``; G3 ``--skill-attr``), all "off" = today:
+    # disc_align "walls" (squeeze the holder's walls, read the strict-v2 official jaw value at three yaws, rewrite the
+    # object + holder plane; needs the official key), disc_snap "on" (close on the walls, rise, the pads close onto the object
+    # as the fingertips clear them), disc_lift "shallow" (4 mm per step lift, slow carry), disc_seat "table" (press the
+    # held object onto the table, deeper into the pads), disc_release "staged" (in-hand read at the hover, release in
+    # stages), disc_reserve "on" (a pick starts only with 80 / 150 steps left, same-arm / cross-arm)
+    disc_align: str = "off"
+    disc_snap: str = "off"
+    disc_lift: str = "off"
+    disc_seat: str = "off"
+    disc_release: str = "off"
+    disc_reserve: str = "off"
     # belt tracking (``RuntimeProvider._track``): off (today: an unmatched track is dropped only after 6 reads with the
     # arms still, else extrapolated on) | on (a track no read matched for ``track_window`` steps expires whatever the
     # arms do, is never extrapolated past that, and a same-asset ghost predicted near a newcomer retires). Misha's G5
@@ -653,6 +667,17 @@ class RuntimeConfig:
     # (classify_into_bins_p1: sorts the named / largest groups, leaves the rest on the table) | p2 (classify_into_bins_p2:
     # p1, and a carry v3 refuses is tried once more from higher up, then the object is put back and the arm homed)
     ported_classify: str = "v3b"
+    # the general sort-into-containers skill's options (``sort_into_containers``: p2's mechanics); either one set, the
+    # sort route runs that skill with it. sort_contain: root (p2's "in the container" test on the object's root) |
+    # bottom (on its lowest point: a believed object let go into a container keeps its in-hand orientation);
+    # sort_park: off | home (the idle arm goes home before every one-arm carry) | blocked (only after a carry the other
+    # arm blocked, then one more try). Journal 2026-11-07-dojo-classify3
+    sort_contain: str = "root"
+    sort_park: str = "off"
+    # the episode's persistent per-instance evidence (``dojo.perception.evidence``): off | log (every estimate record
+    # feeds it: unexplained object-sized regions kept as candidates until a look resolves them, identity votes kept
+    # apart from pose writes; events + report ``evidence``, no world write). Journal 2026-11-07-dojo-classify3
+    instance_evidence: str = "off"
     # ... the pacing of pour_order's pours (pour_by_language; stream H): v1 (the vendored pour_bottle) | lean
     # (pour_bottle_lean: the tilt-up to 90 deg and the untilt at normal speed, a 12-step drain, no home between pours):
     # ``planner.POUR_PACE``. A single pour (pour_liquid) keeps v1's pace either way | overlap (v1's stages at 0.8 of the
@@ -744,7 +769,12 @@ class RuntimePolicy:
                 or self.cfg.drop_verdict not in ("belief", "release")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence", "unblock", "gentle"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
-                or self.cfg.push_goal not in ("centre", "cover", "cover_obb")
+                or self.cfg.push_goal not in ("centre", "cover", "cover_obb", "clear")
+                or self.cfg.push_contact not in ("off", "pair") or self.cfg.push_plan not in ("off", "sequence")
+                or self.cfg.arrange_retry not in ("off", "once")
+                or self.cfg.grasp_torso not in ("off", "on") or self.cfg.stand_offset not in ("off", "base")
+                or self.cfg.retreat_axis not in ("off", "on") or self.cfg.place_via not in ("off", "clear")
+                or self.cfg.slip_avoid not in ("off", "on")
                 or self.cfg.fill_guard not in ("off", "geometry")
                 or (self.cfg.fill_guard == "geometry" and any(getattr(self.cfg, k) != "off" for k in
                     ("fill_grasp", "fill_holder", "fill_drop", "fill_insert")))
@@ -771,7 +801,7 @@ class RuntimePolicy:
                 or self.cfg.arrange_route not in ("off", "lateral")
                 or self.cfg.arrange_hover not in ("off", "low")
                 or self.cfg.push_approach not in ("off", "tilted")
-                or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
+                or self.cfg.arrange_order not in ("near", "big_first", "push_big_first", "push_first") or self.cfg.push_stroke not in ("face", "press")
                 or self.cfg.headset_retry not in ("legacy", "sites")
                 or self.cfg.headset_lift not in ("legacy", "slow")
                 or self.cfg.headset_hold not in ("legacy", "loaded")
@@ -794,7 +824,7 @@ class RuntimePolicy:
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.belt_waist_first not in ("off", "on")
                 or self.cfg.belt_ref not in ("off", "tracked", "similar") or self.cfg.belt_veto not in ("off", "evidence")
-                or self.cfg.belt_speed not in ("off", "lock") or self.cfg.belt_high_lift not in ("off", "on")
+                or self.cfg.belt_speed not in ("off", "lock")
                 or self.cfg.belt_retry not in ("off", "window") or self.cfg.belt_grasp not in ("off", "solid")
                 or self.cfg.belt_wrist_id not in ("off", "on")
                 or self.cfg.nest_verify not in ("target", "support") or self.cfg.search_identity not in ("first", "unknown")
@@ -810,12 +840,17 @@ class RuntimePolicy:
                 or self.cfg.belt_first_phase not in ("off", "on")
                 or self.cfg.belt_target not in ("off", "match")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
-                or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
+                or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.disc_align not in ("off", "walls")
+                or self.cfg.disc_snap not in ("off", "on") or self.cfg.disc_lift not in ("off", "shallow")
+                or self.cfg.disc_seat not in ("off", "table") or self.cfg.disc_release not in ("off", "staged")
+                or self.cfg.disc_reserve not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.disc_hold_evidence not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
+                or self.cfg.sort_contain not in ("root", "bottom") or self.cfg.sort_park not in ("off", "home", "blocked")
+                or self.cfg.instance_evidence not in ("off", "log")
                 or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap", "budget")
                 or self.cfg.ported_pour_profile not in ("off", "sparse", "via", "checked")
                 or self.cfg.plan_profile not in ("legacy", "recover")
@@ -841,6 +876,8 @@ class RuntimePolicy:
                                                                                       "pickup": self.cfg.ported_pickup,
                                                                                       "pour_aim": self.cfg.ported_pour_aim,
                                                                                       "classify": self.cfg.ported_classify,
+                                                                                      "sort_contain": self.cfg.sort_contain,
+                                                                                      "sort_park": self.cfg.sort_park,
                                                                                       "pour_untilt": self.cfg.ported_pour_untilt}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
@@ -915,6 +952,10 @@ class RuntimePolicy:
         self.report = {"config": asdict(self.cfg), "info_dropped": dropped, "skill": None, "looks": [], "agentic": [],
                        "events": [], "records": {}, "decisions": [], "history": [], "verify": None,
                        "result": None, "error": None, "timings": {}}
+        self._ledger = None
+        if self.cfg.instance_evidence == "log" and self.cfg.mode == "perception":
+            from dojo.perception.evidence import Ledger
+            self._ledger = Ledger()
 
     def next(self, obs: dict) -> dict:
         clean, gt = check_obs(obs, self.cfg.mode)
@@ -1132,6 +1173,14 @@ class RuntimePolicy:
             sk_.slot_place = cfg.slot_place
             sk_.slot_carry_read = cfg.slot_carry_read
             sk_.arrange_order = cfg.arrange_order
+            sk_.push_contact = cfg.push_contact
+            sk_.push_plan = cfg.push_plan
+            sk_.arrange_retry = cfg.arrange_retry
+            sk_.grasp_torso = cfg.grasp_torso
+            sk_.stand_offset = cfg.stand_offset
+            sk_.retreat_axis = cfg.retreat_axis
+            sk_.place_via = cfg.place_via
+            sk_.slip_avoid = cfg.slip_avoid
             sk_.push_approach = cfg.push_approach
             sk_.arrange_hover = cfg.arrange_hover
             sk_.arrange_route = cfg.arrange_route
@@ -1170,7 +1219,7 @@ class RuntimePolicy:
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.belt_waist_first = cfg.belt_waist_first
             sk_.belt_ref, sk_.belt_veto = cfg.belt_ref, cfg.belt_veto
-            sk_.belt_high_lift, sk_.belt_retry = cfg.belt_high_lift, cfg.belt_retry
+            sk_.belt_retry = cfg.belt_retry
             sk_.belt_grasp, sk_.belt_wrist_id = cfg.belt_grasp, cfg.belt_wrist_id
             sk_.belt_speed = cfg.belt_speed
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
@@ -1180,6 +1229,8 @@ class RuntimePolicy:
             sk_.belt_first_phase = cfg.belt_first_phase
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
             sk_.disc_handover_read = cfg.disc_handover_read
+            sk_.disc_align, sk_.disc_snap, sk_.disc_lift = cfg.disc_align, cfg.disc_snap, cfg.disc_lift
+            sk_.disc_seat, sk_.disc_release, sk_.disc_reserve = cfg.disc_seat, cfg.disc_release, cfg.disc_reserve
             sk_.kong_draw_read = cfg.kong_draw_read
             sk_.peg_base_refine = cfg.peg_base_refine
             sk_.peg_stuck_confirm = cfg.peg_stuck_confirm
@@ -1197,6 +1248,7 @@ class RuntimePolicy:
             sk_.ported_drag = cfg.ported_drag
             sk_.ported_pour_aim = cfg.ported_pour_aim
             sk_.ported_classify = cfg.ported_classify
+            sk_.sort_contain, sk_.sort_park = cfg.sort_contain, cfg.sort_park
             sk_.ported_pour_pace = cfg.ported_pour_pace
             sk_.ported_pour_profile = cfg.ported_pour_profile
             sk_.nest_verify = cfg.nest_verify
@@ -1474,7 +1526,32 @@ class RuntimePolicy:
         rec, self._glyph_reads, evs = persist_reads(rec, getattr(self, "_glyph_reads", {}))
         for e in evs:
             self.report["events"].append({"kind": "glyph_persist", "stage": stage, "step": self.bridge.steps_used, **e})
+        self._evidence(rec, stage)
         return rec
+
+    def _evidence(self, rec: dict, stage: str) -> None:
+        """``instance_evidence: log``: every estimate record feeds the episode's evidence ledger
+        (``dojo.perception.evidence``: unexplained object-sized regions kept as candidates, identity votes per label);
+        logging only (events ``candidate`` / ``identity_vote``, report ``evidence``), the world is never written."""
+        led = getattr(self, "_ledger", None)
+        if led is None:
+            return
+        try:
+            n0 = len(led.events)
+            led.update(rec, int(self.bridge.steps_used), self._half_extent)
+            for e in led.events[n0:]:
+                self.report["events"].append({**e, "stage": stage})
+            self.report["evidence"] = led.summary()
+        except Exception as ex:  # noqa: BLE001 (a log must never take the episode down)
+            self.report["events"].append({"kind": "evidence_error", "stage": stage, "error": f"{type(ex).__name__}: {ex}"[:200]})
+
+    def _half_extent(self, key: str):
+        """(hx, hy) of an asset's box (the catalogue / RoboDojo metadata), None when unknown."""
+        try:
+            typ, cat, idx = key.split("/")
+            return self.assets().get(typ, cat, int(idx)).extents[:2] / 2
+        except Exception:  # noqa: BLE001
+            return None
 
     def _merge_glyph(self, prov, label: str, g: dict) -> None:
         """A wrist view's glyph read (perception ``refine``'s ``glyph``) merged into the belief. A numeral's digit:
@@ -1611,7 +1688,7 @@ class RuntimePolicy:
                     and label in (getattr(prov.belief, "riders", None) or ())):
                 # belt_wrist_id: a tracked belt rider (``rider3``, ``bottle_t1``: no config group) is re-identified at the
                 # hover over every rider candidate, so the skill can veto a competing category at the same place
-                idv = rider_candidates(prov.task, o.asset.key)
+                idv = observed_candidates(prov, o.asset.key)
             if kind == "size" and self.cfg.row_size_read == "look_union" and not rank:
                 # the std / _random twin shares the instruction: its config's candidates for the label too
                 idv = list(dict.fromkeys(idv + label_candidates(twin_vocabulary(prov.task), label)))

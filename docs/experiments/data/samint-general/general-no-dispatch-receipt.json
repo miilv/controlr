@@ -1,0 +1,18 @@
+{
+  "utc": "2026-11-07T19:29:10.704249+00:00",
+  "host": "compute4",
+  "decision": "NO_DISPATCH_GENERAL_UNION_FAILED_OFFLINE",
+  "queue_sha256": "cd17114cdbe8d4bb33111d5ca08f947ef32be48a55ddb8250c8e00d97a0989ac",
+  "queue_nonempty_rows": 50,
+  "SAMINT_rows_added": 0,
+  "STOP_present": true,
+  "STOP_inode": 49320090,
+  "STOP_mtime_ns": 1794067916204827049,
+  "STOP_modified_by_SAMINT": false,
+  "compute4_GPU_processes_started_by_SAMINT": 0,
+  "LLM_calls": 0,
+  "main_implementation_merge": "4d86ecb149a3a4883e0d49851581077b25ff0637",
+  "task_panels": "CANCELLED_DIAGNOSTIC_ONLY",
+  "general_camera_manifest": "NOT_CREATED_OFFLINE_GATE_FAILED",
+  "egg_refill_draws": 0
+}

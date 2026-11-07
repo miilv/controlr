@@ -1,4 +1,8 @@
-"""Task-scoped mask routing. Task is the instruction-derived vocabulary, never launcher metadata."""
+"""DIAGNOSTIC ONLY: historical task-scoped mask routing. Never enable for a board candidate.
+
+Task is the instruction-derived vocabulary, never launcher metadata. The board path
+must use one general configuration and no per-task prompt banks.
+"""
 from dataclasses import dataclass, field
 from functools import lru_cache
 import json

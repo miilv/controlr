@@ -904,8 +904,9 @@ reconstructions are supplementary diagnostics, never retroactive qualification o
 
 ### match_and_pick MATCH2 switches
 
-Seven `RuntimeConfig` fields, all `off` by default (G3 `--skill-attr` mirrors all but `belt_speed`, which lives in the
-runtime's belt tracker; G3's GT provider has no tracker, so `belt_ref`, `belt_veto` and `belt_wrist_id` are inert there):
+Six `RuntimeConfig` fields, all `off` by default, each a skill parameter (Skills attributes, mirrored by G3
+`--skill-attr`; none keyed by task name, none reading a task config). G3's GT provider has no belt tracker, so
+`belt_ref`, `belt_veto`, `belt_speed` and `belt_wrist_id` are inert there:
 
 - `belt_ref=tracked`: the remembered first object is the leading start rider the tracker still holds after its first
   reads (a frame-0 phantom ahead of it is dropped, never confirmed), and its key is the leading asset of its own
@@ -919,15 +920,43 @@ runtime's belt tracker; G3's GT provider has no tracker, so `belt_ref`, `belt_ve
   line residual <= 4 mm), projected on the belt axis and kept (event `belt_lock`).
 - `belt_grasp=solid`: a rider with no top grasp that is not a flat dish (`interactive.flat_rider`) is intercepted with
   mesh-antipodal grasps ranked by `grasps.lift_hold`, then a waist, rim pinches last. A plate keeps today's order.
-- `belt_high_lift=on`: a picked match goes up another 10 cm (the belief's lift is the jaws'; an off-centre hold pivots).
 - `belt_retry=window`: up to six match rounds while 60 steps remain.
 - `belt_wrist_id=on`: a moving rider's pick look re-identifies it over every rider candidate
-  (`policy.rider_candidates`); a confident other category than the first object's is not picked (status `other`).
+  (`policy.observed_candidates`: the identities the belt tracker read this episode, never a task config's candidates); a confident other category than the first object's is not picked (status `other`).
 
 `save_belt_look_frames: N` (dev) keeps the first N belt pick-look frames. `scripts/skills/match2_decision_replay.py`
 replays match_and_pick's decision (first object, speed, the match it would take) on recorded camera reports (frame-0
 record + logged reads, robot at home, stub pick); its GT is the layout moved along the belt, for scoring only.
 `scripts/skills/match2_g3_job.sh` runs one scoped compute3 physics job on light3 / light4.
+
+### Thin-disc contact switches (COIN2)
+
+Six default-off `RuntimeConfig` fields, copied onto Skills and mirrored in G3 `--skill-attr`
+(`dojo/skills/coin_contact.py`): `disc_align=walls`, `disc_snap=on`, `disc_lift=shallow`, `disc_seat=table`,
+`disc_release=staged`, `disc_reserve=on`. They act only inside `precision.disc_into_slot` /
+`plan_disc_handover`, which `insert_into` reaches by geometry (a thin disc, `disc_axis`, standing in a fixed holder,
+`holder_of`), never by task name. A planner selects them per call with `insert_into(..., disc_contact="on")`
+(`coin_contact.PROFILE`, scoped to the call and restored on exit); `None` keeps the configured switches. The agent
+manual and the J2 registry do not document the argument yet: adding it there changes the chooser prompt for every
+task and needs its own manual version and A/B.
+
+- `disc_align=walls` reads `<arm>_ee_joint_state_official` (strict v2, `DOJO_GRIP_SOURCE=v2` in G3). Without the key
+  the probe ends with "no official jaw reading" and writes nothing. Its writes go through `provider.set_pose`
+  (runtime: a `belief_write` with writer `wall_probe`, before7 / after7; G3 `OffsetBeliefProvider`: the offset is
+  re-derived; the GT provider has none). Include `wall_probe` in the write audit.
+- The V's slope varies by layout and arm (0.0016-0.0021 per degree in the twin): the fit takes it free within
+  `WALL_B_RANGE`. The intercept (pads square and centred) comes from the holder's catalogue mesh at the squeeze
+  height (`wall_intercept`); `WALL_A` only when the mesh is unknown.
+- `coin_contact.insert_thin(obj, receptacle, slot_pose7=None, contact="on")` is the general entry: a perceived slot
+  pose gives the targets (`slot_targets_from_pose`), else the receptacle's perceived pose and catalogue frame. Only
+  discs run the contact sequence; another thin shape is refused with a named stage.
+- `plan_pick` gained `snap_in`, `snap_rad`, `lift_step` and `post_lift`; all default to today's plan (the op list is
+  unchanged, `tests/dojo/test_coin_contact.py`). `plan_place` / `_place_tail` gained `release_stages`.
+- G3 `--belief-offset-file F` (dev) gives per-layout belief offsets `{seed: {label: [dx, dy, dyaw]}}`, on top of
+  `--belief-offset`. Camera-like coin errors: `docs/experiments/data/coin2/camera_pick_errors.json`.
+- `scripts/skills/coin2_stages.py` scores the contact stages from `m95_replay.py --every 1 --full` replays (GT, dev
+  only): fingertip clearance at each close, hold loss stage, slip, end state, release pose in the bank's frame.
+  `scripts/skills/coin2_g3_job.sh` runs one scoped compute3 job on light5 / light6.
 
 ### Offline SAM task-prompt comparison
 
@@ -956,6 +985,47 @@ CSVs. Prompt categories are distinct from asset identities: ambiguous category
 sets are not correct class reads. Union de-duplication retains v2b identities
 first and adds disjoint SAM masks at IoU <=0.5. This is an offline component
 comparison, not a runtime proposer or an end-to-end task-score evaluation.
+### Arrange ORG2 switches (pushes, torso grasps, stands)
+
+All default off; `RuntimeConfig` fields of the same names, G3 `--skill-attr` mirrors. CPU tests:
+`tests/dojo/test_org2.py`.
+
+- `push_contact=pair` (`dojo/skills/push_plan.py`): pushes with the gripper open, jaw line across the stroke (two
+  fingertips 88 mm apart), strokes along the support's axes. It squares the object to the support; single closed-finger
+  strokes turned a long keyboard 10-14 deg per 80 mm stroke. An arm that cannot move across from where it is goes home
+  first by a collision-checked route (`escape_home`), never `plan_home` (unchecked: it swept the open fingers through a
+  just-placed clock).
+- `push_plan=sequence`: before each stroke the whole stroke sequence is planned kinematically (both axis orders, and
+  each order with its first axis split at 40 / 70 %). No complete sequence = no stroke now (status `ik_fail`); a
+  partial stroke can strand the object where the rest never plans. Every virtual position must keep the object's
+  footprint 5 mm from other objects (`path_clear`; markers under 3 mm excepted), and stroke lengths use a per-push
+  gain (object travel / hand travel, measured after each stroke; prior 1 / 0.85): physics strokes overshoot 20-35 %.
+- `push_goal=clear`: the goal is the point of the support's cover region (object aligned with the support) with the
+  most clearance from other objects and from the caller's `keep_clear` discs (`arrange` passes the pending places'
+  sites). Flat markers (< 3 mm) are no obstacles.
+- `arrange_order=push_first`, `arrange_retry=once` (every failed step once more after all the others).
+- `grasp_torso=on` (`dojo/skills/torso.py`): side grasps across an upright irregular body, closing 90 / +-45 deg off its
+  long horizontal axis, finger corridors and the palm box (`X5Kin.palm_points`) clear of its mesh, from the arm's side
+  only, ranked before slice pinches, sections wider than 60 mm ranked later. They are exempt from `plan_transfer`'s
+  `max_pick_tilt` but never ignore their own object on the transit to the pre-grasp (that swung the wrist through a
+  figure before the close); with the switch on, an irregular object is modelled for collisions by its mesh parts
+  (`Collision.parts`), and torso / slice picks squeeze 8 steps before a SLOW lift.
+- `stand_offset=base`: a support smaller than its object gets positions on rings of 0.25 / 0.5 x the object's base
+  radius (the support stays under the base), ordered by signed clearance (capped 2 cm) then nearness; the 10 clearest are
+  kept, with headings that keep a grasp's bearing from each arm (+-30 deg) before the support's quarter turns.
+- `retreat_axis=on`: a side-approach place backs out along the fingers, then rises.
+- `place_via=clear`: a place transit that collides tries via points out from the fixtures next to the support
+  (`torso.clear_vias`), then a checked straight line in (`Motion.via_xy`).
+- `slip_avoid=on`: a slipped grasp is kept in the object frame; transfer screens of that object rank grasps within
+  20 mm / 35 deg of it 3.0 later.
+
+Useful with `place_surface=mesh` and `plan_world=objects` (both existing). `dojo/perception/base_refit.py` (a
+base-footprint xy refit with an image-quality gate) is offline only and not wired into the runtime: on recorded frames
+it made 14 harmful writes to 1 helpful (`scripts/perception/base_refit_eval.py`, ORG2 report). Dev tools: `scripts/skills/org2_g3.sh`
+(compute3 light locks, our id slices only; `org2_panel.sh` runs one lane of a registered A/B), `org2_probe.py` (CPU planning screen on settled layouts),
+`org2_stages.py` (per-item stage scorer from G3 traces) and `org2_perc.py` (read-only census of recorded camera
+reports); the last two replicate the public task's item conditions for analysis only.
+
 ### Internal RSI yardstick launcher
 `baselines/rsi/` measures the external fixed-program baseline on our hashed
 inputs through the official eval client; its programs never enter policy code.
@@ -965,6 +1035,45 @@ load; the camera profile uses the existing lane2 caps and startup/boot gates.
 See [the install recipe](../baselines/rsi/INSTALL.md). CPU tests mock telemetry
 and verify admission, credential isolation, portable commands and input hashes.
 Running a recipe still requires current permission for the destination box.
+
+### General instruction/catalogue mask proposals
+
+`dojo.perception.general_masks.propose(image, instruction, index, v2b, sam, cfg)`
+is the task-free component API. Its inputs are RGB, the actual episode instruction,
+the one shared catalogue index and the two detector clients. `GeneralMaskConfig`
+contains one uniform set of model/confidence/deduplication parameters for every
+episode. There is no task key, registry selector, checker or task-config input.
+Catalogue category labels and caption names are global; catalogue geometry, roles
+and placement priors are ignored. Generic grammatical chunks add instruction
+object phrases. All catalogue labels are included on every call. Existing v2b
+identities precede score-ordered SAM proposals during mask-IoU de-duplication;
+SAM proposals carry candidate categories and text, never exact asset identities.
+
+This API is an offline component, with no runtime activation or default change.
+It does not make the downstream task-prior inverse-layout fitter board-compliant.
+`scripts/perception/sam/general_eval.py` validates the frozen image/layout hashes
+and passes GT/task metadata only to scoring after prediction. `general_summary.py`
+requires the complete panel, checks the rerun v2b reference and evaluates the
+prospectively frozen all-cell harm gates. Historical task-bank scores are references
+only. An offline gate failure prohibits camera dispatch for that configuration.
+
+The smaller offline probe uses `general_prompts.instruction_prompts`: instruction
+phrases plus the same three generic prompts for every episode, without a catalogue
+prompt sweep. `general_filters.FilterConfig` defines uniform multiview, support,
+size, v2b-agreement and score checks. Mask pairing uses geometry across all pairs;
+there is no task/identity/label-conditioned pair pruning. Size lookup alone uses
+category/name/extents from every asset in the shared catalogue. Unknown labels use
+the whole-catalogue size envelope. No task config, checker or placement prior enters.
+
+The recorded RGB panel has no measured depth. Triangulated centroid-depth silhouette
+bounds are support/size proxies; unknown geometry fails closed when those checks
+are enabled. These checks must not be presented as measured physical contact.
+`general_r2_eval.py` retains raw masks and all 32 filter combinations, reusing one
+owned SAM socket server and measuring two clients and prompt-count scaling. Timing
+charges the required peer views for geometry; CPU postprocessing and dependency
+costs cannot be omitted to meet a frame deadline. `general_r2_summary.py` applies
+the frozen all-cell harm gates and hard latency maxima, retaining each filter's
+recall cost. These modules add no runtime activation or changed episode defaults.
 
 ### Task-scoped SAM camera proposals and shared service
 
@@ -1049,3 +1158,17 @@ SAM parity guard, inspect every `vocab_explain.candidates` entry as well as the 
 vocabulary and record routing counters. A final inactive vocabulary alone does not
 prove that an earlier candidate estimate made zero SAM requests. An active bank
 in a guard's candidate exploration blocks the zero-request parity proof.
+
+### Sort-into-containers evidence tools
+
+`scripts/perception/classify3/` (dev only, GT read after the fact for scoring):
+- `replay_job.sh`: physics-only `m95_replay.py --full` of recorded camera rows on a compute3 light lock;
+- `stage_audit.py`: per GT instance the first failing stage, and the skill's own `truth_in` records against physics;
+- `release_rest_offline.py`: container tests on every recorded release;
+- `candidates_offline.py`: evidence-ledger candidates against the missed instances;
+- `frame0_e2e.py` / `e2e_job.sh`: the perception service's frame-0 estimate re-run on recorded frames under a general
+  `DOJO_PERCEPTION_CFG`, with v2b and optionally a SAM server; B1 on CPU (`DOJO_GL=0`, ~6 min per frame);
+- `g3_job.sh`: a scoped G3 panel.
+
+Two pitfalls: the eval's per-episode `perception` block misreads numbered series (score series cells from a replay),
+and G3 `--belief-drop` does not fit the ported skills (their picks fail).
