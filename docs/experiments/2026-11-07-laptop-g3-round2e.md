@@ -268,3 +268,13 @@ opening, mesh rest, original8/30 mm drift thresholds and measured-plan refusal.
 No loaded-hold exemption or changed checker. Preserve the current12/cell
 production screen unchanged; these prototype jobs queue behind each lock's
 current episode, with no more than two actual scopes.
+
+The slower random45 probe earns20 after rejecting an8.3 mm first pickup;
+the next is clean7.5 mm and carries with6.1 mm shift. Before additional
+production-screen dispatch, stop the old12/cell parent drivers (only their
+verified own pidfiles), allow in-flight episodes to finish and retain all
+completed rows. The candidate already has two regressions; finishing every
+old pilot cannot erase them. This truncated development screen is not a
+paired panel and will be reported at actual n, not the originally planned12.
+Cross-check the same slow recipe on standard45 and random49 in addition to
+standard48. No final layout is opened/generated under this amendment.
