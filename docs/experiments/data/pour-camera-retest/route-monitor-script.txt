@@ -1,0 +1,59 @@
+"""Metadata-only per-row route proof; no model calls, actions or queue changes."""
+import datetime,hashlib,json,os,time
+from pathlib import Path
+H=Path.home();R=H/'dojo-data/pour-cam/retest';S=H/'dojo-integ-c6-state';RUNS=H/'dojo-data/integ-c6/runs2'
+M=json.loads((R/'manifest.json').read_text());expected=M['model'];names={r['name']:r for r in M['schedule']}
+assert len(names)==80 and all(100000<=r['id']<100080 for r in names.values())
+result={n:{'expected':expected,'queued_pin_verified':True,'process_checks':[],'transcript_models':[],'call_models':[],'status':'queued'} for n in names}
+def logical(n):
+ return next((k for k in names if n==k or n.startswith(k+'__retry')),None)
+start=time.time()
+while time.time()-start<48*3600:
+ raw_active={p.read_text().strip() for p in S.glob('job.heavy*')}
+ aliases={logical(n):n for n in raw_active if logical(n) is not None};active=set(aliases)
+ for name in active.intersection(names):
+  ready=str(RUNS/aliases[name]/'perception.ready')
+  for p in Path('/proc').iterdir():
+   if not p.name.isdigit():continue
+   try:
+    cmd=(p/'cmdline').read_bytes()
+    if b'dojo.runtime.perception_service' not in cmd.split(b'\0'):continue
+    env=dict(x.split(b'=',1) for x in (p/'environ').read_bytes().split(b'\0') if b'=' in x)
+    if env.get(b'DOJO_PERCEPTION_READY',b'').decode()!=ready:continue
+    model=env.get(b'AGENTIC_MODEL',b'').decode();data=env.get(b'DOJO_DATA',b'').decode();bg=env.get(b'DOJO_BG_FOLDS',b'').decode()
+    ok=model==expected and data==names[name]['data'] and bg==str(H/'dojo-data/bg_folds_51_ilia')
+    rec={'pid':int(p.name),'model_matches':model==expected,'data_matches':data==names[name]['data'],'background_matches':bg==str(H/'dojo-data/bg_folds_51_ilia'),'interpreter_matches':cmd.split(b'\0')[0].decode().startswith(M['deployment']+'/.venv/'),'ok':ok}
+    if rec not in result[name]['process_checks']:result[name]['process_checks'].append(rec)
+   except (OSError,ValueError):continue
+ for name in names:
+  rec=result[name];cm=[];tm=[];finished=False
+  dirs=[p for p in RUNS.glob(name+'*') if p.is_dir() and (p.name==name or p.name.startswith(name+'.') or p.name.startswith(name+'__retry'))]
+  for d in dirs:
+   if d.name==name and bool(list(d.glob('*_report.json.gz'))):finished=True
+   a=d/'agentic'
+   if not a.exists():continue
+   for p in a.rglob('calls.jsonl'):
+    for line in p.open(errors='replace'):
+     try:x=json.loads(line)
+     except ValueError:continue
+     if x.get('model'):cm.append(x['model'])
+   for p in a.rglob('transcript.jsonl'):
+    for line in p.open(errors='replace'):
+     if '"start"' not in line:continue
+     try:x=json.loads(line)
+     except ValueError:continue
+     if x.get('event')=='start' and x.get('model'):tm.append(x['model'])
+  rec['call_models']=sorted(set('expected' if x==expected else 'UNEXPECTED' for x in cm));rec['transcript_models']=sorted(set('expected' if x==expected else 'UNEXPECTED' for x in tm))
+  rec['call_records']=len(cm);rec['transcript_starts']=len(tm);rec['report_present']=finished
+  bad='UNEXPECTED' in rec['call_models']+rec['transcript_models'] or any(not p['ok'] or not p['interpreter_matches'] for p in rec['process_checks'])
+  if bad:rec['status']='VIOLATION'
+  elif cm or tm:rec['status']='confirmed'
+  elif rec['process_checks']:rec['status']='process_confirmed_no_calls_yet'
+  elif finished:rec['status']='completed_without_route_evidence'
+  elif name in active:rec['status']='starting'
+ now=datetime.datetime.now(datetime.timezone.utc).isoformat();out={'updated_utc':now,'model':expected,'rows':result,'violations':[n for n,r in result.items() if r['status']=='VIOLATION'],'confirmed_rows':sum(r['status']=='confirmed' for r in result.values()),'reports_present':sum(r.get('report_present',False) for r in result.values()),'active_our_rows':sorted(active.intersection(names)),'queued_our_rows':sum(logical(l.split()[0]) is not None for l in (S/'queue2.txt').read_text().splitlines() if l.strip()),'model_calls_by_monitor':0}
+ tmp=R/'route-checks.tmp';tmp.write_text(json.dumps(out,indent=2)+'\n');os.replace(tmp,R/'route-checks.json')
+ if out['reports_present']==80 and not out['active_our_rows'] and not out['queued_our_rows']:
+  (R/'route-monitor.done').write_text(now+'\n');break
+ time.sleep(15)
+else:(R/'route-monitor.deadline').write_text(datetime.datetime.now(datetime.timezone.utc).isoformat()+'\n')

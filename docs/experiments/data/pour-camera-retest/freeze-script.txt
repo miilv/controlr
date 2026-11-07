@@ -1,0 +1,32 @@
+import dataclasses,datetime,hashlib,json,pathlib,sys
+H=pathlib.Path.home();O=H/'dojo-data/pour-cam';R=O/'retest';P=H/'dojo-integ-c6-066e9c8f';sys.path.insert(0,str(P))
+from dojo.runtime.eval import build_config
+from dojo.skills.planner import pour_bottle_call
+from dojo.simlab.paths import is_our_measurement_id
+def dg(p):
+ p=pathlib.Path(p);return {'path':str(p),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
+D=json.loads((R/'design.json').read_text());F=json.loads((O/'pre-generation-freeze.json').read_text());assert (P/'.deployed_commit').read_text().strip()==D['code'];assert dg(P/D['baseline_candidate'])['sha256']==D['baseline_candidate_sha256']
+checks=F['source_files']+F['shared_assets']['weights']+F['shared_assets']['backgrounds']+[F['shared_assets']['catalogue_index']]+[F[k] for k in ['candidate_original','candidate_mapped','packages','requirements','package_parity','catalog_gate']]
+assert all(dg(x['path'])['sha256']==x['sha256'] for x in checks)
+assert not json.loads((O/'parity.json').read_text())['diff'];assert all(is_our_measurement_id(i) for i in D['candidate_ids'])
+salts=[c['salt'] for c in D['cells']]
+for f in [O/'design.json',O/'replacement-design.json',H/'dojo-data/match2-cam/screen1/manifest.json']:
+ if f.exists():assert not any(s in f.read_text() for s in salts)
+for c in D['cells']:
+ assert hashlib.sha256(c['salt'].encode()).hexdigest()==c['salt_sha256']
+ assert not list((R/c['block']).glob('simlab/layouts/*/*.json'))
+(R/'candidate.txt').write_bytes((O/'candidate.txt').read_bytes())
+t=' '.join(l for l in (R/'candidate.txt').read_text().splitlines() if not l.startswith('#')).split();base=json.loads(t[t.index('--config')+1]);preset=t[t.index('--preset')+1];resolved={}
+for c in D['cells']:
+ a=dataclasses.asdict(build_config(preset,{**base,**D['A_overrides']}));b=dataclasses.asdict(build_config(preset,{**base,**D['B_overrides']}))
+ if c['task']=='pour_liquid_into_cup':b['ported_pour_pace']='v1'
+ if c['task']=='pour_liquid_into_cup':assert a==b
+ else:assert {k for k in a if a[k]!=b[k]}=={'ported_pour_pace'}
+ resolved[c['task']]={'A':a,'B':b}
+writerfiles=[P/'dojo/runtime/belief.py']+sorted((P/'dojo/perception').rglob('*.py'))
+assert not any('ported_pour_pace' in p.read_text() for p in writerfiles)
+readsites=[dg(p) for p in sorted((P/'dojo').rglob('*.py')) if 'ported_pour_pace' in p.read_text() or 'POUR_PACE' in p.read_text()]
+scope={'code':D['code'],'resolved':resolved,'source_read_sites':readsites,'common_writer_implementation': [dg(p) for p in writerfiles],'writer_settings_acceptance_schema_identical':True,'observed_counts_or_outputs_are_not_a_gate':True,'write_adoption_gate':'N/A motion-only, prospective lead decision','supplementary_instrument':D['code'],'single_cup':{'resolved_config_identical':True,'A_effective_call':pour_bottle_call('b10',None,'off'),'B_effective_call':pour_bottle_call('b10',None,'off'),'effective_pace':'v1','adapter_pair_moves':False,'post_collection_each_row_zero_budget_actions_and_lever_writes_required':True},'strong_guard':'play_Xylophone ordinary camera gate, no parity exemption'}
+(R/'scope-proof.json').write_text(json.dumps(scope,indent=2)+'\n')
+f={'created_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'code':D['code'],'prereg_commit':(R/'prereg-commit.txt').read_text().strip(),'design':dg(R/'design.json'),'original_deployment_freeze':dg(O/'pre-generation-freeze.json'),'unchanged_dependencies':checks,'scope_proof':dg(R/'scope-proof.json'),'candidate':dg(R/'candidate.txt'),'operational_scripts':[dg(R/'prepare.py')],'salt_collisions':[],'fresh_input_directories_empty':True,'model_calls':0}
+(R/'pre-generation-freeze.json').write_text(json.dumps(f,indent=2)+'\n');print('FREEZE',dg(R/'pre-generation-freeze.json')['sha256'],'dependencies',len(checks),'scope parity proof PASS; calls=0')

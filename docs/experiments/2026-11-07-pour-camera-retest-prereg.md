@@ -70,9 +70,11 @@ and zero lever-specific writes in **every** episode. Report camera scores,
 successes, spread and paired wins/losses, without a score gate. Missing parity
 proof blocks qualification; noise is not a reason to drop a row.
 
-Xylophone **STRONG guard**, ordinary camera gate: B−A mean>=−5 and success-flip
-losses<=wins. Also retain the original stricter score-losses<=wins screen on
-official/full scores. No parity exemption on this strong guard.
+Xylophone **STRONG guard**, ordinary EXPERIMENTS.md camera gate: B−A mean>=−5
+and success-flip losses<=wins. Report score wins/losses and full-success-only
+scores without adding another guard gate. No parity exemption on this guard.
+This wording follows the lead's “camera-gated as usual” instruction; the gain
+cell retains its explicitly unchanged additional full-success-only screen.
 
 ## Motion-only scope: write gate N/A, supplementary audit retained
 
@@ -128,4 +130,49 @@ reasoning/5.4M cache-read tokens. Actual calls/tokens/errors are reported;
 reasoning/cache are subsets. Supplementary physics audit makes zero model calls.
 No new camera outcomes are used before freezing this panel.
 
+Queue family: c6b_<taskslug>_pourrt[AB]r1_<id>, distinct from the original pourcam rows.
+
 **Receipt:** pending preparation. This prereg/index/design commit queues no rows.
+
+## Preparation freeze before queue insertion
+
+The prospective registration/design/index/rationale reached main in **d956bc00**.
+Before any camera row is queued, the strong-guard wording is aligned literally
+with the lead's ordinary EXPERIMENTS.md score/flip rule; it has no extra score-win
+gate. Language's additional full-success-only gate is unchanged. This prospective
+clarification changes no inputs, motion, source or observed outcomes.
+
+| cell | attempted layouts | selected | validity failures retained |
+|---|---:|---:|---:|
+| pour_by_language | 20 | 20 | 0 |
+| pour_liquid_into_cup | 13 | 10 | 3 |
+| play_Xylophone | 12 | 10 | 2 |
+
+All selected records passed raw-check and unchanged default two-pass settling.
+Selection is ascending and validity-only. Every failed record/reason/hash remains
+in the [selection ledger](data/pour-camera-retest/selection.json) and manifest;
+none is silently refilled by another salt or an off-slice id. All selected numeric
+ids are in our two slices, with the new registered task salts and hashes distinct
+from every original POUR input.
+
+The [manifest](data/pour-camera-retest/manifest.json) SHA256 is
+3334e3eba4862f99c7b0f53e40b7e4c52602122445ec13802028406975745218. It freezes all80 expanded rows, paired loaded inputs, attempts, complete
+resolved configs and operational script hashes. Also committed:
+[pre-generation freeze](data/pour-camera-retest/pre-generation-freeze.json),
+[scope proof](data/pour-camera-retest/scope-proof.json) and
+[exact rows](data/pour-camera-retest/queue-retest.txt).
+The immutable old deployment's130 source/native/candidate/package/catalogue/
+calibration/background/checkpoint descriptors rehash unchanged. Writer source/
+settings/acceptance/schema remain common and have no pace read. Constructor/
+dispatcher source is frozen with the resolved configs.
+
+Single-cup's complete RuntimeConfig is identical across arms (pacev1); both
+resolve pour_bottle with spout_back0.010 and no pair-motion mode. Post-collection
+zero budget actions and lever writes on every cup episode remain its gate.
+Observed downstream writer counts/outputs are reported without a write gate.
+The frozen#417 audit is supplementary only, with its known limitations retained.
+No supplementary audit has run on this panel before camera collection.
+
+Every row explicitly pins Sonnet5.5, aim b10, profileoff and the common route,
+with fresh private DOJO_DATA and the same episode caps. All preparation made
+zero model calls. This complete freeze reaches main before insertion.

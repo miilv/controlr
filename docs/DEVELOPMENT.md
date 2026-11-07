@@ -956,3 +956,12 @@ CSVs. Prompt categories are distinct from asset identities: ambiguous category
 sets are not correct class reads. Union de-duplication retains v2b identities
 first and adds disjoint SAM masks at IoU <=0.5. This is an offline component
 comparison, not a runtime proposer or an end-to-end task-score evaluation.
+### Internal RSI yardstick launcher
+`baselines/rsi/` measures the external fixed-program baseline on our hashed
+inputs through the official eval client; its programs never enter policy code.
+All host/state/lane/lock paths are explicit arguments. The desktop profile
+shares one prep/policy slot in a bounded user scope and yields to desktop
+load; the camera profile uses the existing lane2 caps and startup/boot gates.
+See [the install recipe](../baselines/rsi/INSTALL.md). CPU tests mock telemetry
+and verify admission, credential isolation, portable commands and input hashes.
+Running a recipe still requires current permission for the destination box.
