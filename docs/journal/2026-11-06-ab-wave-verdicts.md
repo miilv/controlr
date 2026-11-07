@@ -375,3 +375,7 @@ unchanged, including the separately reported #417 supplementary re-score.
   Replacement used eligibility/validity only, unchanged salts/recipe.
 
 No adoption or candidate/default change. [Evidence](../experiments/data/pour-camera/camera-verdict.json).
+
+## POUR camera — lead-authorized once-only re-test
+
+The [fresh re-test](../experiments/2026-11-07-pour-camera-retest-prereg.md) is authorized prospectively: motion-only scope makes the write gate N/A by source/config/inventory proof (the waist rationale), with #417 audit supplementary; single-cup is a parity guard, Xylophone remains camera-gated. Language retains20 pairs and both score/full-success screens. The original POUR **FAIL / NOT ADOPTED** verdict and its registered gates are unchanged. No adoption or default/candidate change.

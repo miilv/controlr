@@ -621,6 +621,61 @@ The audit includes these exact writes alongside the coarse version log,
 replacing a matching coarse endpoint record to avoid counting a relocation twice;
 subthreshold relocation writes remain visible. These fields do not feed policy decisions.
 
+### Cradle held-geometry table guard
+
+The default `headset_table=bbox` retains the skill collision model's held OBB
+check. The opt-in `mesh` mode applies only inside a cradle hang and restores
+on exit, including exceptions. It uses every catalogue mesh vertex against the
+existing table-plane tolerance. An overlapping mesh XY bbox triggers a global
+z-extrema check, conservatively covering triangles crossing the finite table
+when no vertex lies inside it. It does not shrink the mesh; missing/invalid
+geometry falls back to the legacy box. Hand/arm and other obstacle checks
+remain independent. This addresses empty OBB regions below a tilted sparse
+object, not a physical penetration allowance or a perception calibration fix.
+
+The optional `headset_stage=center` path precedes the cradle hang only for
+long transfers between the arms. It uses existing checked pick/place plans to
+rest the object near the table centre, then re-plans from the measured pose.
+A verified rest enables geometry-filtered narrow cup grasps alongside the wide
+bank. No held state is inferred from a plan alone; original physical lift,
+loose-hold and release verification still apply. The default `off` bypasses
+staging and retains the prior candidate bank.
+
+`headset_grasp=cups` independently enables narrow cup proposals from the current
+world pose. `headset_retry=sites` stores failed object-frame pinch neighborhoods
+per arm instead of rejecting a whole method. It uses the executed pick's
+attachment, preserving site identity across object motion and refined picks.
+Both switches retain legacy defaults; physical verification remains mandatory.
+
+`headset_grasp=cups` opens to the full 88 mm jaw gap before descent; all
+finger/table/scene checks still apply. `headset_stage=mesh_center` preserves
+the centre-stage geometry and sets its rest height from all mesh vertices
+plus 3 mm clearance; invalid geometry uses the previous bbox target.
+With `headset_retry=sites`, a failed measured-attachment place re-plan puts
+the object down and rejects that pickup site instead of carrying a nominal
+attachment. Legacy retry retains the original fallback.
+`headset_lift=slow` (default `legacy`, mirrored in Skills/G3) uses a checked
+0.03 rad/step lift in cradle pickups and staging; threaded hooks keep their
+original lift. Closure, lift height and physical hold thresholds are unchanged.
+`headset_stage=mesh_clear` keeps the mesh-ground target and plans a 25 mm
+release gap. Endpoint screening uses the release pose; the rebuilt full
+place and pickup repair retain the ground target for physical verification.
+Every leg uses native hand, held-object and scene checks.
+
+`headset_hold=loaded` (default `legacy`, mirrored in Skills/G3) can prove a
+nominally loose headset pickup through actual following motion. It applies
+only where the original loose rule would put the object down; tolerant relays
+retain their original execution. Only an originally successful loose lift qualifies: hold30 stationary steps, then
+plan/check a20 mm vertical raise/return with8 steps at each endpoint. Refreshed
+attachment samples must stay within3 mm/3 degrees, the object must rise17 mm
+and its full mesh clear the table20 mm. Original hard rise/30 mm slip gates
+run before and after the challenge. Accepted results retain nominal drift
+in the log and require a measured-attachment place plan. Missing meshes,
+static cached beliefs, unstable holds or failed native paths cannot prove a
+hold. The existing step observer is preserved/restored; default and other
+object transfers execute their old path. This is a G3 mechanical proof;
+camera use needs fresh physical held-pose observations.
+
 The ported liquid pour's optional `ported_pour_profile` selects the original
 multi-bottle v2 (`sparse` or `via`) or the original strict wrapper's v5
 (`checked`). `off` preserves the legacy skill and pacing dispatch. Target pairs

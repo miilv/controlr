@@ -446,6 +446,7 @@ class RuntimeProvider:
         self.motion_reader = None               # (obs_a, obs_b) -> {"moving": bool|None}: scene change outside our arms
         self.support_reader = None              # (obs) -> {"at_home": bool|None}: a support robot at its home (head view)
         self.support_home0 = None               # its frame-0 read: True when the scene has one standing at home
+        self.twin_reader = None                 # (objects, demo, ours) -> twin_match.twin_costs on the frame-0 views
         self.garment_reader = None              # (obs) -> a garment read (``dojo.perception.garment``) or None
         self.garment_updater = None             # (obs0, obs, read) -> {"keypoints": the hem corners again} or None
         self._garment = None
@@ -828,6 +829,22 @@ class RuntimeProvider:
             return None
         self.stats["support_reads"] = self.stats.get("support_reads", 0) + 1
         return r.get("at_home")
+
+    def twin_costs(self, objects: list[dict], demo: list[str], ours: list[str]) -> dict | None:
+        """Imitation twins by appearance (``RuntimeConfig.imitate_pairing`` "cues"): perception's joint one-to-one
+        assignment from the episode start's views (``dojo.perception.twin_match``). None when this provider has no
+        reader or the read fails (the skill falls back to the believed-identity assignment)."""
+        if self.twin_reader is None:
+            return None
+        try:
+            r = self.twin_reader(objects, list(demo), list(ours)) or None
+        except Exception as e:  # noqa: BLE001 (an optional read)
+            self.events.append({"kind": "twin_costs_error", "note": f"{type(e).__name__}: {str(e)[:160]}"})
+            return None
+        if r:
+            self.events.append({"kind": "twin_costs", "assign": r.get("assign"), "margin": r.get("margin"),
+                                "ties": r.get("ties"), "views": r.get("views")})
+        return r
 
     def belt_velocity(self) -> np.ndarray:
         """Median fitted velocity (m / step, world xy) of the objects tracked as moving, from tracks long enough to trust

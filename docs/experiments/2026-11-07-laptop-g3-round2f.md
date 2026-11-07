@@ -1,0 +1,174 @@
+# Laptop G3 round 2f — wide priority and checked release clearance
+
+## Completed decision
+
+All44 registered development episodes complete on frozen source3866ad73. The
+original bank passes11/12 standard and10/12 random, but independent placement
+coverage is **6/10 standard,9/10 random**. The standard8/10 admission gate
+fails. The conditional fresh paired registration below is **unexecuted**:
+no layouts100000–14 were generated, selected or inspected. Continue pilot
+mechanism diagnosis; this is not a qualified headset policy.
+
+| Development bank | Cell | n | Headset credits | Score mean ± sample SD /100 | Full successes |
+|---|---|---:|---:|---:|---:|
+| Original pilots | Standard | 12 | 11 | 18.33 ±5.77 | 0 |
+| Original pilots | Random | 12 | 10 | 16.67 ±7.78 | 0 |
+| Independent coverage18 | Standard | 10 | 6 | 12.00 ±10.33 | 0 |
+| Independent coverage18 | Random | 10 | 9 | 18.00 ±6.32 | 0 |
+
+These are candidate-only development screens, not paired A/B results. No
+infrastructure exclusions or replacement of policy failures. Independent
+random coverage contains only asset8; the original bank includes9/10. Keep
+all earlier candidate panels separate. Raw rows, manifests, code hashes,
+recipes and admissions are in the [retained archive](2026-11-07-laptop-g3-round2f-results.json).
+
+The separate opposite-arm probe on coverage18 standard100030 also scores0:
+right26 mm pickup is loose15.5 mm, a later pickup rises74 mm but drifts80 mm,
+and the final attempt falls683 mm with1391 mm drift. This is an auxiliary
+feasibility failure, not a production-screen row. The next
+[loaded-hold diagnostic](2026-11-07-laptop-g3-round2g.md) distinguishes
+settling from continued sliding without changing any admission criterion.
+
+## Production-screen registration before outcomes
+
+Action source **3866ad73**; current main integration73a783bf changes docs only.
+The full integrated local suite is running;54 focused mock tests passed.
+All new behavior retains off/legacy defaults. No model calls, camera dispatch
+or board-candidate change. This file registers development screening only;
+a separate frozen fresh-panel registration is required before generation.
+
+The preceding [development report](2026-11-07-laptop-g3-round2e.md) identifies
+two separate regressions. A narrow cup can displace an effective wide hold:
+standard31 loses237.7 mm from a25 mm cup but wide priority completes a41 mm
+hang after original physical rejection/re-grasp. Standard66 similarly improves
+from four loose narrow pickups to a44 mm pickup1.1 mm drift/carry1.2 mm and20
+points. Separately, mesh-ground staging can eliminate reachable release pairs:
+random66 has zero pairs at all8 spots until an explicit25 mm release clearance
+is planned. Its checked two-arm transfer then earns20, with1.0/4.7 mm carry
+shifts. Cross-shape standard45 retains20 with that clearance; random47 stays0.
+These are separate pilot probes, not a validation of the combined bundle.
+
+Freeze this single common bundle in both cells:
+
+```yaml
+hang_cradle: straddle
+hang_wide: 'on'
+headset_seat: 'on'
+headset_carry: staged
+headset_grasp: cups
+headset_table: mesh
+headset_stage: mesh_clear
+headset_retry: sites
+headset_lift: slow
+```
+
+`mesh_clear` screens at release height and rebuilds a full checked place
+against the true mesh-ground rest. Its pickup repair repeats that process;
+it cannot silently keep the raised screening goal. Every physical lift,
+put-down, carry and release retains the native validators and original
+8/30 mm drift limits. No learned/id-specific routing, forced poses or step
+budget change. Existing wide priority retains narrow feasible fallbacks.
+
+Screen all **12 original pilots/cell** (30,31,45–49,65–69) and the **first ten
+stable coverage18 records/cell** (30–39 in the separate coverage18 namespace),
+using exactly the previously settled/hash-retained files. The latter's random
+bank is all asset8: independent placement coverage, not rare-shape coverage.
+The original new45–49 bank includes9/10. Neither bank is a fresh primary panel.
+Keep both banks and all earlier candidates separate; never pool selected runs.
+Write new source/config/hash manifests before the first outcome in each bank.
+
+Complete all22 episodes/cell. Gate for spending the remaining unused panel ids:
+**>=9/12 original and>=8/10 coverage credits in each cell**. If either gate
+fails, continue development on pilot records; do not reroll or inspect any
+unused final-panel layout. The ongoing source504daaef screen remains frozen
+and completes in full, with its nulls/regressions retained.
+
+Compute3 physics-only, deployment `~/controlr-laptop`, all data under
+`~/dojo-data/laptop`. At most two actual jobs on light2/light8; each admission
+records who/GPU, used VRAM<=24576 MiB and disk>=10GB, then an8G/600% user
+scope with bounded timeout. No renderer, system changes, other-process kills,
+sealed data or compute4 access. Calls/tokens/spend:0/0/$0.
+
+While the older source504 screen finishes, use its free slot for two cheap
+combined-bundle prototypes on standard45 and random66. Source504 plus the
+retained release-clearance recipe implements the same perfect-state motion
+as3866ad73; it cannot validate the new refinement repair callback (mock tests
+do that). Add hang_wide=on to the recipe, leave all other fields unchanged,
+and retain this source/recipe distinction. These are pilot probes, not the
+production screen or fresh panel. No source deployment changes during them.
+
+Both combined prototypes earn20: standard45 in331 steps and random66 in416.
+Full local source3866ad73 suite passes **2174 tests/191 skips**,1017.04 s.
+The old source504 independent standard screen is2/5 completed, hence at most
+7/10 and below its8/10 gate; finish it without rerolling or excluding failures.
+
+To use the freed second slot while that screen finishes, deploy the new
+source separately at `~/controlr-laptop/frozen-round2f`. Preserve the old root
+source/stamp504 unchanged until its final episode exits. New screening uses
+that isolated3866 source and an otherwise identical admission/scope wrapper;
+start random on light8, then standard on light2 when the old driver completes.
+There remain at most two actual scopes. Both cells of the new candidate (and
+any later paired arms) use the same isolated source. All writes remain under
+the permitted deployment/data roots. Retain both deployment metadata and
+source-equivalence/code hashes; this is isolation, not a source change within
+a panel. No fresh id is generated by this amendment.
+
+## Conditional fresh paired-panel registration — before generation
+
+Only dispatch if the entire registered production screen completes and both
+per-cell gates above pass. Otherwise this registration remains unexecuted.
+No action-source or bundle change may be carried into it silently.
+
+Freeze source3866ad73 in the isolated deployment. Both experimental conditions
+are **G3 mode A** (perfect state, physics only). Common hang_cradle=straddle;
+A explicitly uses hang_wide=off, seat=off, carry=legacy, grasp=legacy,
+table=bbox, stage=off, retry=legacy and lift=legacy. B uses exactly the common
+wide/clear bundle above. No laptop route in either condition, same rule plan
+and800-step task budget, no model calls or belief offsets.
+
+Generate v15 **variant19**, salt
+`laptop-round2f-wideclear-2026-11-07-88c48b74`, previously ungenerated/unrun
+ids **100000–14** in each cell under the original LAPTOP layout namespace.
+Preflight must refuse any existing raw/settled file. Settle once; select the
+first ten stable ids in ascending order before policy outcomes. Later stable
+records are infrastructure reserves only. Freeze both cell manifests and
+layout hashes before launching either condition. Each pair uses the exact
+same settled file in A/B; assert hashes before each job. No ids>=100100.
+
+Run ten pairs/cell, alternating A/B order by selected index. Separate one-
+episode jobs use the same isolated source and two light2/light8 slots. Keep
+all existing admission and8G/600% scope limits; use a7200 s driver ceiling
+for this single-episode panel so a long native plan cannot inherit a two-
+episode batch cutoff. This does not change the800-step controller budget.
+Record every attempt. Confirmed external driver/process/OOM or pre-action
+reset failures may retry the same frozen pair once, then use the next stable
+reserve with both conditions. Never replace a completed policy failure,
+no-plan, slip, place miss, step budget or action-induced simulation failure.
+If an official score is unavailable after a policy-induced failure, report
+the panel incomplete rather than inventing a score or a passing decision.
+
+Report n, exclusions and actual official score means/sample SD on0–100,
+headset-tier credits, full successes, score wins/losses/ties and success
+flips per cell. Keep all earlier panels separate; no selected pooling or
+individual fresh-panel failures used for tuning. Complete all40 valid rows
+rather than stopping at an early favourable count.
+
+Mechanical stopping rule: B earns **>=7/10 headset credits in each cell**.
+The paired gain criterion is separate: pooled B−A>=5 points, score wins
+(>=10-point increase)>=2*losses and>=2 net wins. Only a real gain can qualify
+a prospective camera specification; no camera job or board selection is
+authorized. If the observed mechanical target fails, continue pilot work
+and retain this null without rerolling its salt or replacing policy zeros.
+
+## Separate arm-choice feasibility probe
+
+While the final standard development bank plans, use the idle light8 slot
+for one pilot-only probe on **coverage18 standard100030**, already failed by
+source504. Keep source3866 plus a retained in-process recipe: stage with the
+arm opposite the cradle even when the object's centroid favors the cradle
+arm, preserving its lying orientation, actual mesh-ground/25 mm release,
+original four staging/direct-hang attempts and native checks. This tests
+whether centroid-based arm choice hides a physically better cup pickup.
+Do not change the frozen production screen, its gate or the conditional fresh
+candidate. This auxiliary probe cannot be counted among its validation rows;
+any later integration requires a separate source/bundle registration.

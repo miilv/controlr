@@ -3541,25 +3541,57 @@ def hook_order(hooks: list, n: int) -> list:
 
 def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle") -> dict:
     """``_hang_on_hooks``; the rack's ``held_skip`` (``Skills.hang_cradle`` "straddle") lasts only while it runs."""
+    mesh_table = "handle" not in handle_tag.lower() and getattr(sk, "headset_table", "bbox") == "mesh"
+    saved_table = getattr(sk.coll, "held_table", "bbox")
+    if mesh_table:
+        sk.coll.held_table = "mesh"
     try:
+        if "handle" not in handle_tag.lower() and getattr(sk, "headset_stage", "off") in ("center", "mesh_center", "mesh_clear"):
+            from dojo.skills.headset import stage_for_cradle
+            staged = stage_for_cradle(sk, objects, rack, hook_tag, handle_tag)
+            return _hang_on_hooks(sk, objects, rack, hook_tag, handle_tag, cup_labels=staged)
         return _hang_on_hooks(sk, objects, rack, hook_tag, handle_tag)
     finally:
+        if mesh_table:
+            sk.coll.held_table = saved_table
         sk.coll.held_skip.pop(rack, None)
 
 
-def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle") -> dict:
+def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle", *,
+                   cup_labels=()) -> dict:
     """Hang each object by its handle on one of the rack's hooks. The handle frame (on the outside of the handle's
     bar) goes onto the hook frame, raised by the handle's hole depth so the hook's arm runs through the hole; hooks
     oriented like the rack's first one. Each object is carried, re-oriented, to just beyond the hook's tip (hole on
     the arm's line), slid along the arm onto it, lowered 6 mm and let go; grippers open after each (per-object
     credit). Objects and hooks are paired by the first one-arm plan found."""
+    cradle = "handle" not in handle_tag.lower()
+    cup_mode = cradle and getattr(sk, "headset_grasp", "legacy") == "cups"
+    dense = cradle and getattr(sk, "headset_grasp", "legacy") in ("dense", "cups")
+    site_mode = cradle and getattr(sk, "headset_retry", "legacy") == "sites"
+    from dojo.skills.headset import GraspSites
+    rejected_sites = GraspSites() if site_mode else None
+
+    def proposals(o, arm):
+        if cup_mode or o.label in cup_labels:
+            from dojo.skills.headset import cup_grasps
+            return cup_grasps(sk, o, arm, handle_tag)
+        if dense:
+            from dojo.skills.headset import dense_grasps
+            return dense_grasps(sk, o, arm)
+        return G_hang(sk, o, arm)
+
+    def hang_grasps(o, arm):
+        candidates = proposals(o, arm)
+        return rejected_sites.filter(o, arm, candidates) if site_mode else candidates
+
     w = sk.refresh()
     rk = w.obj(rack)
     hooks = hook_frames(rk, hook_tag)
     # a handle (a loop) is threaded over a hook's arm; any other point (a headband's bridge) is lowered onto its support
     # from above and let go 2 cm over it (it settles; the point need only end within a few cm)
     thread = "handle" in handle_tag.lower()
-    carry_rad = HANG_CARRY * (0.5 if thread and getattr(sk, "hang_carry_slow", False) in (True, "on") else 1.0)
+    seat = not thread and getattr(sk, "headset_seat", "off") == "on"
+    carry_rad = HANG_CARRY * (0.5 if seat or (thread and getattr(sk, "hang_carry_slow", False) in (True, "on")) else 1.0)
     if not thread:
         hooks = [(i, H, None) for i, H, _ in hooks]
     hooks_by = {h[0]: h for h in hooks}
@@ -3611,6 +3643,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
 
     def plan_hook(lab: str, hi: int, H, tip, q_start=None):
         """(lab, hook, H, T_obj, T_pre, (pick, place)) for hanging ``lab`` on hook ``hi`` with one arm, or a note."""
+        from dojo.skills.headset import cradle_pick_kwargs
         if parts is not None:
             sk.coll.parts[rack] = without_arm(hi, tip)
         o = sk.world.obj(lab)
@@ -3639,10 +3672,15 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                 T_pre[:3, 3] += H[:3, 0] * (tip + HANG_PRE)
             # then lifted to the pre-hang height first: the carry low across the table met the clutter (twin, rand: a
             # lamp), and its via path over the top hook was out of reach
-            r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=8, pair_rank=wide_rank,
-                                 grasps=(lambda a, o=o: [g for g in G_hang(sk, o, a)
-                                                         if g.method not in slipped.get(o.label, ())]),
-                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": carry_rad, "purpose": "hang"}, q_start=q_start,
+            r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=24 if dense or lab in cup_labels else 8, pair_rank=wide_rank,
+                                 grasps=(lambda a, o=o: [g for g in hang_grasps(o, a)
+                                                         if g.method not in slipped.get(o.label, ())
+                                                         and (not seat or g.width >= HANG_WIDE_W or cup_mode or o.label in cup_labels)]),
+                                 **({"pick_kw": cradle_pick_kwargs(sk, seat=seat)} if not thread and
+                                    (seat or getattr(sk, "headset_lift", "legacy") == "slow") else {}),
+                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": carry_rad, "purpose": "hang",
+                                           **({"approach_staged": True} if not thread and
+                                              getattr(sk, "headset_carry", "legacy") == "staged" else {})}, q_start=q_start,
                                  lift_to_pre=high)
             if isinstance(r, SkillResult) and not re.search(r"[1-9]\d* grasp-place pairs", r.note):
                 no_pairs.add((fi, turn))
@@ -3674,7 +3712,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                 if _time.perf_counter() - t0 > budget_s:
                     return None
                 T_sp = rest_with_R(sk, lab, sp, level_R(o.R))
-                leg = _plan_leg(sk, lab, [T_sp], 4, transfer_kw={"grasps": (lambda a, o=o: G_hang(sk, o, a))})
+                leg = _plan_leg(sk, lab, [T_sp], 4, transfer_kw={"grasps": (lambda a, o=o: hang_grasps(o, a))})
                 if isinstance(leg, SkillResult):
                     continue
                 saved = (o.pos.copy(), o.quat.copy())
@@ -3694,7 +3732,8 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
     # object is tried once more with the others
     slipped: dict = {}
     retry_slip = getattr(sk, "hang_cradle", "strict") == "straddle"
-    for _round in range(2 * len(pool)):
+    site_attempts = {}
+    for _round in range((6 if site_mode else 2) * len(pool)):
         if not pool:
             break
         w = sk.refresh()
@@ -3724,7 +3763,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                 lab, T_sp, leg = mv
                 sk.log(f"[hang] {lab}: no hook plans from where it is; relay to {np.round(T_sp[:2, 3], 3).tolist()} "
                        f"({leg[0].arm})")
-                rr = _run_leg(sk, lab, [T_sp], 4, first=leg, transfer_kw={"grasps": (lambda a, lab=lab: G_hang(sk, sk.world.obj(lab), a))})
+                rr = _run_leg(sk, lab, [T_sp], 4, first=leg, transfer_kw={"grasps": (lambda a, lab=lab: hang_grasps(sk.world.obj(lab), a))})
                 for a in ARMS:
                     if sk.held[a] is not None:
                         sk._record(sk.regrasp(a))
@@ -3743,7 +3782,21 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
         used.add(hi)
         # tol_xy < LOOSE_OK_TOL: a grasp that shifted in the hand is put down (and the object tried once more)
         r = sk.run_transfer(pp, pl, tol_xy=0.015, tol_tilt=25.0, tol_z=0.05)
+        if (getattr(sk, "headset_hold", "legacy") == "loaded" and sk.world.obj(lab).category == "headset"
+                and r.status in ("step_budget", "ended")):
+            return {"ok": False, "stage": f"hang {lab}", "result": r}
         arm = pp.arm
+        if site_mode and r.status in ("loose", "grasp_slip", "grasp_unusable") and sk.held[arm] is None:
+            rejected_sites.remember_pick(sk, pp)
+            site_attempts[lab] = site_attempts.get(lab, 0) + 1
+            used.discard(hi)
+            if site_attempts[lab] < 4:
+                pool.append(lab)
+                sk.log(f"[hang] {lab}: reject this {arm} site, retry {site_attempts[lab] + 1}/4")
+            else:
+                failed.append(lab)
+            sk.bank()
+            continue
         if r.status == "loose" and lab not in retried:
             retried.add(lab)
             pool.append(lab)
@@ -3768,9 +3821,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
             # slide along the hook's arm (measured grasp), lower onto it, let go, back out along the approach
             w = sk.refresh()
             T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ w.obj(lab).T
-            T_on = T_obj @ inv_T(T_rel)
-            if hooks_by[hi][2] is None:
-                T_on[2, 3] += 0.02           # lowered onto a support from above: let go over it
+            T_on = hang_release_target(T_obj, T_rel, cradle=hooks_by[hi][2] is None, seat=seat)
             mv = sk.motion.line(arm, sk.ex.q[arm], T_on, 0.04, "hang_slide", gripper=CLOSED, check=False)
             T_dn = T_on.copy()
             T_dn[2, 3] -= 0.006
@@ -3786,7 +3837,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                 plan.move(mv, "slide")
             if dn.segments:
                 plan.move(dn, "lower")
-            plan.hold(2, "settle").grip(OPEN, 3, "release").hold(2, "let_go")
+            plan.hold(12 if seat else 2, "settle").grip(OPEN, 3, "release").hold(8 if seat else 2, "let_go")
             if bk.segments:
                 plan.move(bk, "retreat")
             sk.ex.run({arm: plan}, name=f"hang {lab}")
@@ -3815,6 +3866,17 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
     if failed:
         return {"ok": False, "stage": "hang", "note": f"done {done}, failed {failed}"}
     return {"ok": True, "stage": "hang"}
+
+
+def hang_release_target(T_obj, T_rel, *, cradle: bool, seat: bool):
+    """TCP target from the measured hold; seating removes the legacy 14 mm release drop.
+
+    The following lower segment subtracts 6 mm. Threaded hooks retain their target.
+    """
+    T_on = T_obj @ inv_T(T_rel)
+    if cradle:
+        T_on[2, 3] += 0.006 if seat else 0.02
+    return T_on
 
 
 def handle_point(o, handle_tag: str = "handle") -> np.ndarray:
