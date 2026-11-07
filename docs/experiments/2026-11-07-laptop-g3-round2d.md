@@ -94,3 +94,8 @@ no forced pose or coupled carry. Restrict the new narrow cup proposals to
 patch >=0.8: both suspended 25 mm contacts have patch 1.0; the fallen 27 mm
 contact has patch 0.4. Preserve the wide bank and unchanged physical verifier.
 This adds a staging leg only; all collision checks, limits and budgets remain.
+
+The first staging wrapper did not execute: the skill registry retained the
+original function. Its 0-credit row is a stricter-contact direct-hang probe,
+not evidence for or against staging. Correct the registry binding and require
+a `CENTRE_RESULT`/explicit no-spot record before interpreting the staged run.
