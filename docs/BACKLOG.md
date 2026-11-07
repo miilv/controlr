@@ -6,11 +6,31 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **fill_egg_holder has a high native settle-failure rate.** SAMINT's first
+  fresh registered salt rejected **13/20 (65%)** under unchanged two-pass presettle:
+  eggs fell to the floor or remained in motion. All attempts are retained. The lead
+  prospectively permits at most three deterministic fresh-salt refills per failed
+  ID, requiring both default settling and raw-check, with n>=15 or the panel parks.
+  Diagnose the public generator/native physics separately; do not loosen validity
+  or replace records based on camera outcomes ([registration](experiments/2026-11-07-samint-egg-camera-spec.md)).
+
+
+- [ ] **Per-vocabulary SAM exclusion must cover explain-away candidates.**
+  `RuntimePolicy._explain_vocabulary` calls the estimator on each candidate before
+  choosing the final vocabulary. A final inactive route is not a zero-SAM-request
+  proof. Audit all `vocab_explain.candidates` against the frozen route map for the
+  SAMINT parity guards; any active candidate blocks parity qualification. A future
+  planner/registry caller must supply the canonical perception key explicitly.
+
+
 - [ ] **Task-prompt masks need an asset identity/pose gate.** SAM semantic labels
   cannot replace catalogue IDs. Prototype only behind a default-off task-bank
   flag, preserve base v2b identity during union de-duplication, honor SAM API
   minima below the current server's 0.3 processor floor, and measure phantoms
   before any camera A/B ([SAMBAKE](experiments/2026-11-07-sam3-task-prompts.md)).
+Default-off routing/shared service implemented by [SAMINT](journal/2026-11-07-samint.md);
+  keep this item open until the parked camera identity/pose audits qualify the lever.
+
 - [ ] **Persist token usage for agentic held-look calls.** `held_look_impl`
   counts logical calls and records their model, but discards each response's
   token usage before writing `calls.jsonl`. Preserve summed prompt/completion/
@@ -1351,3 +1371,16 @@
 - [x] ~~**Actor-relocation audit identity association:** the nearest-pre-write/group rule can select a standing neighbour after the tracked tile has fallen. In the [scoped KONG audit](experiments/2026-11-07-kong-scoped-relocate-prereg.md), two `mahjong7_0` writes are judged against GT `mahjong8_0` (44.3→66.2 mm), while a same-label diagnostic improves 46.31→1.64 mm. Preserve registered flags; review a general identity-aware audit before interpreting these as actual relocation harm. No controller change or retrospective threshold tuning.~~ Fixed by `AuditIdentity`: chronological tight anchors, first-pick/grasp-close finalization and persistent physical identity; nearest fallbacks are counted. Registered verdicts are not revised.
 
 - [x] ~~**Held-pose audit before pose includes arm transport:** cached world pose was compared with the new attachment at the show TCP.~~ The logger now projects the prior attachment at the same current measured arm pose, preserving the raw `before_sync7`; live actions/beliefs are unchanged and covered by a FakeLLM/mock episode.
+
+- [ ] **dojo runtime: cover_blocks starts with an actor hold.** Partner team's report, 7 Nov. On cover_blocks,
+  `waits_on_actor`'s text fallback matches the copy-demonstration pattern, so the episode starts with an actor hold
+  and skips the scan. D-C19 scored 100 on cover_blocks, so this is low priority. Fix the fallback so that only a
+  scene with an actual demonstrator triggers the hold; it may matter on other instruction phrasings.
+- [ ] **dojo architecture: task-keyed routing vs the RoboDojo single-system rule.** The board rule, read verbatim from
+  the site's rules list on 7 Nov: one fixed system with the same inference procedure on every task. An agent or
+  planner is allowed; a router that switches by task is not. Ours has task-named vocabularies
+  (`dojo/runtime/supervisor.py` `Vocabulary("<task>", ...)`), text-rule routing (`routes.py` / `planner.py`) and
+  task-keyed switches (`watch_relocate_task`, `key_scope_task`).
+  - The partner team's model planner (`planner="model"`, skill registry in scene words) is the path to a compliant
+    entry.
+  - New per-cell work is built as skills or skill parameters.

@@ -1,0 +1,422 @@
+[
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100000",
+    "frame": "frame0",
+    "instruction": "Remember the first object on the conveyor, then pick the matching object when it appears again.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100000/agentic/call_001/20261107-090312-56009-0001/transcript.jsonl",
+    "source_sha256": "48c0e98b3239d0849fb34e0d23c9e6709e8733963928cc282daf8bfa0e4ccc93"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100001",
+    "frame": "frame0",
+    "instruction": "Remember the first object on the conveyor, then pick the matching object when it appears again.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100001/agentic/call_001/20261107-092200-67683-0001/transcript.jsonl",
+    "source_sha256": "76f4b649a2dded3ac787f8dba4614af878a2e40cc590aa3d2aef347c88cb9121"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100002",
+    "frame": "frame0",
+    "instruction": "Remember the first object on the conveyor, then pick the matching object when it appears again.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100002/agentic/call_001/20261107-093827-80447-0001/transcript.jsonl",
+    "source_sha256": "91fb01f57c216327c738716606cc51b9c781295178995de7c633c995f9bfac69"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100003",
+    "frame": "frame0",
+    "instruction": "Remember the first object on the conveyor, then pick the matching object when it appears again.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100003/agentic/call_001/20261107-095943-98086-0001/transcript.jsonl",
+    "source_sha256": "240d1095f2e443bcddff84f8c9aaec338a58f879fd303158ae57b10b719e755b"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100004",
+    "frame": "frame0",
+    "instruction": "Remember the first object on the conveyor, then pick the matching object when it appears again.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100004/agentic/call_001/20261107-100541-100836-0001/transcript.jsonl",
+    "source_sha256": "612918b08b3c3cd7cae841f20476ce9f6eea9b5d459015915b9706f8bceaf2f6"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100000",
+    "frame": "frame0",
+    "instruction": "Lift the basket more than 8 cm, identify the target object on the conveyor according to the image on the board, pick it up, and place it into the basket.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100000/agentic/call_001/20261107-113149-159436-0001/transcript.jsonl",
+    "source_sha256": "9872edd9bcb717816c14e3cff83f2ee90658e0a5094873ae29a86dc5daf198bf"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100001",
+    "frame": "frame0",
+    "instruction": "Lift the basket more than 8 cm, identify the target object on the conveyor according to the image on the board, pick it up, and place it into the basket.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100001/agentic/call_001/20261107-113808-164366-0001/transcript.jsonl",
+    "source_sha256": "6340f0e0a82d6c1b05993094ec16acce80e73abb74f83d43089299f138f40ec5"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100002",
+    "frame": "frame0",
+    "instruction": "Lift the basket more than 8 cm, identify the target object on the conveyor according to the image on the board, pick it up, and place it into the basket.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100002/agentic/call_001/20261107-114025-165963-0001/transcript.jsonl",
+    "source_sha256": "416741e3cbcd29f8ebd87e345f6d71586784dd5843f3dee8126706e73ae8a1b4"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100003",
+    "frame": "frame0",
+    "instruction": "Lift the basket more than 8 cm, identify the target object on the conveyor according to the image on the board, pick it up, and place it into the basket.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100003/agentic/call_001/20261107-114626-170915-0001/transcript.jsonl",
+    "source_sha256": "aa4288ac834562f1e53be72d0a3600fb1cf2bb657b9d9fb242b03d092c963fd0"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100004",
+    "frame": "frame0",
+    "instruction": "Lift the basket more than 8 cm, identify the target object on the conveyor according to the image on the board, pick it up, and place it into the basket.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100004/agentic/call_001/20261107-114937-172609-0001/transcript.jsonl",
+    "source_sha256": "d3fb847378b504fddea766386f1856809d54f63b2afa314a384ebb6bf9b413dd"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100005",
+    "frame": "frame0",
+    "instruction": "Sort the objects by category into the three baskets.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100005/agentic/call_001/20261029-095723-2532541-0001/transcript.jsonl",
+    "source_sha256": "b4ebd144d6b74ddaff5f2a6cf45841d49ce2085492f95564bcc2d5ec1b61b4f2"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100006",
+    "frame": "frame0",
+    "instruction": "Sort the objects by category into the three baskets.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100006/agentic/call_001/20261029-100332-2539907-0001/transcript.jsonl",
+    "source_sha256": "3ade4ea87479a65ecbbadc77b3eb59792e77305f9470a05782e40abebe8f16fb"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100007",
+    "frame": "frame0",
+    "instruction": "Sort the objects by category into the three baskets.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100007/agentic/call_001/20261029-101015-2547798-0001/transcript.jsonl",
+    "source_sha256": "93b713af9be8b83d3c308c47c2ef28d94297d003f04287860059b5eabf5b185e"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100008",
+    "frame": "frame0",
+    "instruction": "Sort the objects by category into the three baskets.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100008/agentic/call_001/20261029-101455-2553803-0001/transcript.jsonl",
+    "source_sha256": "a01c20923f6bd1490e8f4a5103175584f46a125cb34904e91c69a40859dae10d"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100009",
+    "frame": "frame0",
+    "instruction": "Sort the objects by category into the three baskets.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100009/agentic/call_001/20261029-101946-2559737-0001/transcript.jsonl",
+    "source_sha256": "7ed892b42a216dda636d02bd74c128ce052dfaff80332a2952a2cfa66ced34c0"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100005",
+    "frame": "frame0",
+    "instruction": "Put wooden_toy objects into the left basket, chocolate_bar objects into the middle basket, and pepper objects into the right basket, then reset the robot arm.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100005/agentic/call_001/20261029-095849-2534548-0001/transcript.jsonl",
+    "source_sha256": "5437e61d1b23275284c277549c1963b5052462cc4dea4f661fb23c88e50d9a9d"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100006",
+    "frame": "frame0",
+    "instruction": "Put chocolate_bar objects into the left basket, car objects into the middle basket, and pepper objects into the right basket, then reset the robot arm.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100006/agentic/call_001/20261029-100501-2542164-0001/transcript.jsonl",
+    "source_sha256": "67751a44cc8fa9a0a5b0056a4e5139a7eadd01610c31cc921d459e504ef3fe4b"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100007",
+    "frame": "frame0",
+    "instruction": "Put watch objects into the left basket, chocolate_bar objects into the middle basket, and pepper objects into the right basket, then reset the robot arm.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100007/agentic/call_001/20261029-100951-2549108-0001/transcript.jsonl",
+    "source_sha256": "b44ed25eb25cd3735d1767bad934bb908180013479c9b3168a5eda58036705b8"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100008",
+    "frame": "frame0",
+    "instruction": "Put watch objects into the left basket, pepper objects into the middle basket, and chocolate_bar objects into the right basket, then reset the robot arm.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100008/agentic/call_001/20261029-101515-2555381-0001/transcript.jsonl",
+    "source_sha256": "940eec39bab21e0ec2f1c125fcb2d8c3e6add9c61fa2b0ad1c2ac0adf3e43a35"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100009",
+    "frame": "frame0",
+    "instruction": "Put car objects into the left basket, chocolate_bar objects into the middle basket, and pepper objects into the right basket, then reset the robot arm.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100009/agentic/call_001/20261029-102039-2563411-0001/transcript.jsonl",
+    "source_sha256": "5d7b3473692afc37d03c1bb03d50a88b0b0bf690d61c126193dd60dd09dde69d"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100000",
+    "frame": "frame0",
+    "instruction": "Pick up the coin from the holder and insert it precisely into the coin bank.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100000/agentic/call_001/20261028-041120-849076-0001/transcript.jsonl",
+    "source_sha256": "b5edb6b03b1ea54794f3f4e643e49f2450e56b9e85f56e9bb3386ec086bdae3d"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100000",
+    "frame": "look",
+    "instruction": "Pick up the coin from the holder and insert it precisely into the coin bank.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100000/agentic/call_001/20261028-041120-849076-0001/transcript.jsonl",
+    "source_sha256": "b5edb6b03b1ea54794f3f4e643e49f2450e56b9e85f56e9bb3386ec086bdae3d"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100001",
+    "frame": "frame0",
+    "instruction": "Pick up the coin from the holder and insert it precisely into the coin bank.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100001/agentic/call_001/20261028-042616-859154-0001/transcript.jsonl",
+    "source_sha256": "234cb37c6134acc84ea4a1af978cb05e0c8be1dabd869972aad00bb3a6de6995"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100001",
+    "frame": "look",
+    "instruction": "Pick up the coin from the holder and insert it precisely into the coin bank.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100001/agentic/call_001/20261028-042616-859154-0001/transcript.jsonl",
+    "source_sha256": "234cb37c6134acc84ea4a1af978cb05e0c8be1dabd869972aad00bb3a6de6995"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100002",
+    "frame": "frame0",
+    "instruction": "Pick up the coin from the holder and insert it precisely into the coin bank.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100002/agentic/call_001/20261028-082142-1012232-0001/transcript.jsonl",
+    "source_sha256": "cc9589bb6cf4b54896a2c9f6d408c602c0741e7b8b987f3bc13097db70a76808"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100003",
+    "frame": "frame0",
+    "instruction": "Pick up the coin from the holder and insert it precisely into the coin bank.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100003/agentic/call_001/20261028-082509-1014202-0001/transcript.jsonl",
+    "source_sha256": "f455036e8ce1a5162efbc12d4a62b17377546010df850e19c7eae553cde849c4"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100004",
+    "frame": "frame0",
+    "instruction": "Pick up the coin from the holder and insert it precisely into the coin bank.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100004/agentic/call_001/20261028-083036-1018418-0001/transcript.jsonl",
+    "source_sha256": "b014434ece2a6804c6d1772e8348f75df58779835f772a2ba000aefdcf17c87c"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100006",
+    "frame": "frame0",
+    "instruction": "Place the four eggs from the basket into the egg holder, then close the lid.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100006/agentic/call_001/20261029-211236-3194917-0001/transcript.jsonl",
+    "source_sha256": "c7e0c88da9c5a6d216125e51bf980573f3e23d6b7966ec0cd026d0a31958921c"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100008",
+    "frame": "frame0",
+    "instruction": "Place the four eggs from the basket into the egg holder, then close the lid.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100008/agentic/call_001/20261029-232610-3337064-0001/transcript.jsonl",
+    "source_sha256": "849f7d64661e9f7e0eecce0bf13117de38131c6ba639ee5fb121014fadf22808"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100009",
+    "frame": "frame0",
+    "instruction": "Place the four eggs from the basket into the egg holder, then close the lid.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100009/agentic/call_001/20261030-004216-3447486-0001/transcript.jsonl",
+    "source_sha256": "a9e9e59b56bb829e9edc00b2fad6a797299e80b0bb9ecd9db03db51a5c008947"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100023",
+    "frame": "frame0",
+    "instruction": "Place the four eggs from the basket into the egg holder, then close the lid.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100023/agentic/call_001/20261030-004419-3450360-0001/transcript.jsonl",
+    "source_sha256": "d83712e1afd4d7018f48ff51a9dde05a326ab93bca6070eafb5fd311ba7a0c06"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fillpensg_fpliftA_v15_100005",
+    "frame": "frame0",
+    "instruction": "Hold the pen holder with one hand, place all pens into it with the other hand, then put it back down.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fillpensg_fpliftA_v15_100005/agentic/call_001/20261030-181035-1021874-0001/transcript.jsonl",
+    "source_sha256": "15e9d4be336bdafb70d50fd15b949259834110485dcca08bd705f9b47284e541"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100021",
+    "frame": "frame0",
+    "instruction": "Hold the pen holder with one hand, place all pens into it with the other hand, then put it back down.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100021/agentic/call_001/20261107-025023-4054137-0001/transcript.jsonl",
+    "source_sha256": "44f8fc5e089dcdccb08a70d0b674fd05fed1a485521c15cdf9bbd9ca82f803a7"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100021",
+    "frame": "look",
+    "instruction": "Hold the pen holder with one hand, place all pens into it with the other hand, then put it back down.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100021/agentic/call_001/20261107-025023-4054137-0001/transcript.jsonl",
+    "source_sha256": "44f8fc5e089dcdccb08a70d0b674fd05fed1a485521c15cdf9bbd9ca82f803a7"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100022",
+    "frame": "frame0",
+    "instruction": "Hold the pen holder with one hand, place all pens into it with the other hand, then put it back down.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100022/agentic/call_001/20261107-025649-4056333-0001/transcript.jsonl",
+    "source_sha256": "e79cb2b509a7060405ffe8b3b540b733f7d102b80f75be2df0a161cc5ddb5312"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100022",
+    "frame": "look",
+    "instruction": "Hold the pen holder with one hand, place all pens into it with the other hand, then put it back down.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100022/agentic/call_001/20261107-025649-4056333-0001/transcript.jsonl",
+    "source_sha256": "e79cb2b509a7060405ffe8b3b540b733f7d102b80f75be2df0a161cc5ddb5312"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100023",
+    "frame": "frame0",
+    "instruction": "Hold the pen holder with one hand, place all pens into it with the other hand, then put it back down.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100023/agentic/call_001/20261107-031343-4062653-0001/transcript.jsonl",
+    "source_sha256": "fb351930e541de1f593c08125a510c5f285fea4a1d8cff10b73234765c6bb7a2"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100024",
+    "frame": "frame0",
+    "instruction": "Hold the pen holder with one hand, place all pens into it with the other hand, then put it back down.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100024/agentic/call_001/20261107-032039-4064885-0001/transcript.jsonl",
+    "source_sha256": "203243e5894894db2c5ce2518f421bb550554866830cd2e118b4b31dac8a0edb"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_r2_100000",
+    "frame": "frame0",
+    "instruction": "Observe the object placement order, remember it, then place the corresponding objects into the basket in the same order.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_r2_100000/agentic/call_001/20261030-011314-3498739-0001/transcript.jsonl",
+    "source_sha256": "c1958f630cee587765a95306fc5a76980b57e7ba72a2c359a05c6e4e4499047a"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_home_100001",
+    "frame": "frame0",
+    "instruction": "Observe the object placement order, remember it, then place the corresponding objects into the basket in the same order.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_home_100001/agentic/call_001/20261030-031325-3726455-0001/transcript.jsonl",
+    "source_sha256": "d913db53e7b18e84d4305db3c596ca427929f529f4758ee4e97de880cb788061"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_home_100002",
+    "frame": "frame0",
+    "instruction": "Observe the object placement order, remember it, then place the corresponding objects into the basket in the same order.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_home_100002/agentic/call_001/20261030-033419-3801236-0001/transcript.jsonl",
+    "source_sha256": "962838c8a9d4f59e9977a3fbd455a7bda83fe3a97024395b730ee0e440efdac8"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_bundleoff_100006",
+    "frame": "frame0",
+    "instruction": "Observe the object placement order, remember it, then place the corresponding objects into the basket in the same order.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_bundleoff_100006/agentic/call_001/20261030-112519-584657-0001/transcript.jsonl",
+    "source_sha256": "1a2fced3e9c82859b1748ca0b024623bd780511ced59f79858944d37ac4947e0"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_bundleoff_100007",
+    "frame": "frame0",
+    "instruction": "Observe the object placement order, remember it, then place the corresponding objects into the basket in the same order.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_bundleoff_100007/agentic/call_001/20261030-114236-604020-0001/transcript.jsonl",
+    "source_sha256": "b1867189cd6897212aa40dcbd96004b1c4a6516f2b44cbd421a30a6d81aa4c76"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fm_100000",
+    "frame": "frame0",
+    "instruction": "Place the alarm clock on the drawer, put the figurine on the stand, place the mouse on the mouse pad, and push the keyboard into the frame.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fm_100000/agentic/call_001/20261028-144207-1277145-0001/transcript.jsonl",
+    "source_sha256": "d3177cde6f52199713c3d1c0c4bdb9673cc0e82a6c6f491e1cbb62d5593a0623"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fm_100000",
+    "frame": "look",
+    "instruction": "Place the alarm clock on the drawer, put the figurine on the stand, place the mouse on the mouse pad, and push the keyboard into the frame.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fm_100000/agentic/call_001/20261028-144207-1277145-0001/transcript.jsonl",
+    "source_sha256": "d3177cde6f52199713c3d1c0c4bdb9673cc0e82a6c6f491e1cbb62d5593a0623"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fmoff_100001",
+    "frame": "frame0",
+    "instruction": "Place the alarm clock on the drawer, put the figurine on the stand, place the mouse on the mouse pad, and push the keyboard into the frame.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fmoff_100001/agentic/call_001/20261028-144323-1279714-0001/transcript.jsonl",
+    "source_sha256": "16fa00a447b26b6000054dbcbc9e29623a713cc874a54146a4d8554fffddafaa"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fmoff_100001",
+    "frame": "look",
+    "instruction": "Place the alarm clock on the drawer, put the figurine on the stand, place the mouse on the mouse pad, and push the keyboard into the frame.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fmoff_100001/agentic/call_001/20261028-144323-1279714-0001/transcript.jsonl",
+    "source_sha256": "16fa00a447b26b6000054dbcbc9e29623a713cc874a54146a4d8554fffddafaa"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100002",
+    "frame": "frame0",
+    "instruction": "Place the alarm clock on the drawer, put the figurine on the stand, place the mouse on the mouse pad, and push the keyboard into the frame.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100002/agentic/call_001/20261028-110310-1116029-0001/transcript.jsonl",
+    "source_sha256": "5d1628e3085b35741aac7aa9d2ca6603b7a75abf358754a05db05d00ff98a66f"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100003",
+    "frame": "frame0",
+    "instruction": "Place the alarm clock on the drawer, put the figurine on the stand, place the mouse on the mouse pad, and push the keyboard into the frame.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100003/agentic/call_001/20261028-110513-1117822-0001/transcript.jsonl",
+    "source_sha256": "e1bf631d3d1e88a9675c5a4fcab4aebe32a4a0e650aecebf09eb107f184b4499"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100004",
+    "frame": "frame0",
+    "instruction": "Place the alarm clock on the drawer, put the figurine on the stand, place the mouse on the mouse pad, and push the keyboard into the frame.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100004/agentic/call_001/20261028-111051-1122001-0001/transcript.jsonl",
+    "source_sha256": "045afe3bdb60c5949cc17e90ea0e8f4039ab036e0b80f38b35fb02c02656e816"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100005",
+    "frame": "frame0",
+    "instruction": "Pour the liquid from the first red bottle into the first black bowl, from the second violet bottle into the second white bowl, and from the third turquoise bottle into the third brown bowl. Then reset the robot arm.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100005/agentic/call_001/20261029-165011-2952825-0001/transcript.jsonl",
+    "source_sha256": "c50d9c460854b1d6f303a9156bde241d635a7bcf243a5ba67e642180835c535c"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100006",
+    "frame": "frame0",
+    "instruction": "Pour the liquid from the first red bottle into the first white bowl, from the second violet bottle into the second brown bowl, and from the third turquoise bottle into the third black bowl. Then reset the robot arm.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100006/agentic/call_001/20261029-165803-2960365-0001/transcript.jsonl",
+    "source_sha256": "6e1e5a8ba8eedfa8b96cb232311797c50d9908651b28b3d8043ba29fefa2fdbf"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100007",
+    "frame": "frame0",
+    "instruction": "Pour the liquid from the first red bottle into the first brown bowl, from the second violet bottle into the second white bowl, and from the third turquoise bottle into the third black bowl. Then reset the robot arm.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100007/agentic/call_001/20261029-170356-2963629-0001/transcript.jsonl",
+    "source_sha256": "809013b8e067569fd152fc51ff6de7051a5f57223e36dc5af146fb2264ef3e6c"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100008",
+    "frame": "frame0",
+    "instruction": "Pour the liquid from the first turquoise bottle into the first black bowl, from the second violet bottle into the second white bowl, and from the third red bottle into the third brown bowl. Then reset the robot arm.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100008/agentic/call_001/20261029-171145-2969236-0001/transcript.jsonl",
+    "source_sha256": "adde956a968d7241738a770ea70c93b9f644b4faaad9ad7e2b7a822fea43745e"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100009",
+    "frame": "frame0",
+    "instruction": "Pour the liquid from the first violet bottle into the first white bowl, from the second turquoise bottle into the second black bowl, and from the third red bottle into the third brown bowl. Then reset the robot arm.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100009/agentic/call_001/20261029-171723-2971875-0001/transcript.jsonl",
+    "source_sha256": "16eed1db75bdac41504cd605150f7d064c665ddd9750ef567fa4ad8c48d8ce0d"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100000",
+    "frame": "frame0",
+    "instruction": "Pick up the bottles and throw them into the dustbin, using handover when needed.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100000/agentic/call_001/20261028-101448-1090043-0001/transcript.jsonl",
+    "source_sha256": "8e805ac5cd70d18a874738e0cd12029a5612c1e2371a17c020c9ed4b345d2e04"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100001",
+    "frame": "frame0",
+    "instruction": "Pick up the bottles and throw them into the dustbin, using handover when needed.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100001/agentic/call_001/20261028-101552-1091425-0001/transcript.jsonl",
+    "source_sha256": "d3e15ee76a03715b1dbb598386d05b0fe0cdaebd2c4d3e5335c2e95ffe423e0f"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100002",
+    "frame": "frame0",
+    "instruction": "Pick up the bottles and throw them into the dustbin, using handover when needed.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100002/agentic/call_001/20261028-103106-1098031-0001/transcript.jsonl",
+    "source_sha256": "4925e767e7d2a171115126e585a3b537f846cb40cf84d67cf0c86018d475903a"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100003",
+    "frame": "frame0",
+    "instruction": "Pick up the bottles and throw them into the dustbin, using handover when needed.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100003/agentic/call_001/20261028-103338-1099706-0001/transcript.jsonl",
+    "source_sha256": "9c2250f286baca3397dc3db32f239e19f08dd0aebc6935297a9a493a0586945a"
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100004",
+    "frame": "frame0",
+    "instruction": "Pick up the bottles and throw them into the dustbin, using handover when needed.",
+    "source": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100004/agentic/call_001/20261028-104410-1105356-0001/transcript.jsonl",
+    "source_sha256": "87f45d5cf2cb46d955c512152e797ecc5feb687ce971b8e8129ac43120431872"
+  }
+]

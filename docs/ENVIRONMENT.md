@@ -88,3 +88,12 @@ New variable → `.env.example` (no value) + a row here, in the same PR.
 | RoboDojo | `compute2:/root/controlr-robodojo` (`RoboDojo/` clone + assets, `miniconda3/envs/robodojo`); controlr at `compute2:/root/controlr` |
 | PHANTOM | `compute3:~/phantom-icra-2027/phantom`, locally `~/skoltech/research` (never modified) |
 | real UR3 | **UR3 CB3** (no built-in wrist F/T; TCP force only estimated from joint currents) + Robotiq 2F-85 + RealSense D435; IP and the rest — `configs/hardware.yaml` in PHANTOM (which still says `e-series` — wrong) |
+
+Shared SAM deployment exports (non-secret shell settings, no dotenv entries):
+`LANE_SHARED_SAM` selects the shared service's explicit model list (`sam3` or
+`sam3.1_text` per wave); `SAM_PY` selects its dedicated GPU venv interpreter.
+`LANE_SAM_LANE_MIB=12288` explicitly opts the lane into a 12 GiB admission reservation
+only while shared SAM is healthy. `DOJO_SAM_MODELS` also contains `sam3/sam3.pt` for
+the detector-only SAM3 path; SAM3.1 text uses the existing safetensors path.
+`sam_task_routes` is default-off and requires `DOJO_SAM_ADDR` when active; unlike
+legacy optional SAM flags, a missing configured route service is an infrastructure error.

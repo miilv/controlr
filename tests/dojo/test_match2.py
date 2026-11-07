@@ -1,6 +1,6 @@
 """MATCH2 switches for match_and_pick_from_conveyor (all default off): ``belt_ref`` (the first object from the riders the
 belt tracker holds, matched against its own read history), ``belt_veto`` (an empty wrist look vetoes only with
-evidence), ``belt_speed`` (the belt speed locked from the first long clean track), ``belt_high_lift`` and
+evidence), ``belt_speed`` (the belt speed locked from the first long clean track) and
 ``belt_retry``. CPU only: the tracker on synthetic reads, the skill's decision on a replay stub."""
 
 from types import SimpleNamespace
@@ -18,7 +18,7 @@ TASK = "match_and_pick_from_conveyor"
 CONVEYOR = {"category": "conveyor", "category_idx": 0, "label": "conveyor", "default_pos": [-2.08, 0.175, 0.0],
             "default_ori": [0.0, 0.0, 0.0, 1.0]}                       # 180 deg about z: the belt runs along world x
 SWITCHES = {"belt_ref": ("off", "tracked", "similar"), "belt_veto": ("off", "evidence"), "belt_speed": ("off", "lock"),
-            "belt_high_lift": ("off", "on"), "belt_retry": ("off", "window"), "belt_grasp": ("off", "solid"),
+            "belt_retry": ("off", "window"), "belt_grasp": ("off", "solid"),
             "belt_wrist_id": ("off", "on")}
 
 
@@ -276,23 +276,6 @@ def test_the_first_object_is_the_rider_the_tracker_holds(mode, want, monkeypatch
         assert any("start riders the tracker dropped" in str(x) for x in sk.logs)
 
 
-def test_high_lift_goes_on_up_only_with_the_switch(monkeypatch):
-    import dojo.skills.interactive as I
-    start, reads = _phantom_scene()
-    lifts = []
-    monkeypatch.setattr(I, "_lift_more", lambda sk_, arm, label, dz: lifts.append((arm, label, dz)))
-    monkeypatch.setattr(I, "pick_from_belt", lambda sk_, label, v, **k: SimpleNamespace(ok=True, status="ok", note="",
-                                                                                         arm="right"))
-    for mode, n in (("off", 0), ("on", 1)):
-        prov, b, obs = _provider(start)
-        sk = _ReplaySkills(prov, b, obs, reads, belt_ref="tracked", belt_high_lift=mode)
-        lifts.clear()
-        assert I.match_and_pick(sk, ["target0", "target1"], conveyor="conveyor")["ok"]
-        assert len(lifts) == n
-        if n:
-            assert lifts[0][0] == "right" and lifts[0][2] == I.BELT_HIGH_LIFT_M
-
-
 def test_retry_window_takes_more_rounds_while_steps_remain(monkeypatch):
     import dojo.skills.interactive as I
     start, reads = _phantom_scene()
@@ -328,22 +311,34 @@ def test_competing_look_needs_a_confident_fit_of_another_category():
     assert not competing_look({}, ref)
 
 
-def test_rider_candidates_unite_the_groups_that_admit_the_key(tmp_path, monkeypatch):
-    import json
+def test_wrist_id_candidates_come_from_what_the_tracker_read_not_a_task_config():
+    from dojo.runtime.policy import observed_candidates
+    prov, b, obs = _provider([_rider("camera", 0.45, 0.04, label="target0", idx=2)])
+    assert observed_candidates(prov, "Rigid/camera/00002") == []
+    reads = {s: _rec(_rider("camera" if s % 8 else "phone", 0.45 + 0.004 * s, 0.04, 0.9, idx=2 if s % 8 else 0))
+             for s in range(4, 40, 4)}
+    _feed(prov, b, obs, reads)
+    assert observed_candidates(prov, "Rigid/camera/00002") == ["Rigid/camera/00002", "Rigid/phone/00000"]
 
-    import dojo.runtime.vocab as V
-    from dojo.runtime.policy import rider_candidates
-    cat = {TASK: {"labels": {"target0": {"type": "Rigid", "candidates": ["Rigid/camera/00002", "Rigid/phone/00000"]},
-                             "other0": {"type": "Rigid", "candidates": ["Rigid/phone/00000", "Rigid/puppet/00000"]},
-                             "conveyor": {"type": "Dynamic", "candidates": ["Dynamic/conveyor/00000"]}}}}
-    p = tmp_path / "tasks.json"
-    p.write_text(json.dumps(cat))
-    monkeypatch.setattr(V, "catalog_path", lambda: str(p))
-    assert rider_candidates(TASK, "Rigid/phone/00000") == ["Rigid/phone/00000", "Rigid/camera/00002",
-                                                          "Rigid/puppet/00000"]
-    assert rider_candidates(TASK, "Rigid/camera/00002") == ["Rigid/camera/00002", "Rigid/phone/00000"]
-    assert rider_candidates(TASK, "Rigid/unknown/00000") == []
-    assert rider_candidates("no_such_task", "Rigid/phone/00000") == []
+
+def test_no_switch_reads_a_task_name_or_config():
+    """The MATCH2 code paths take no task name and read no task config: their only inputs are the belief, the belt
+    reads and the robot (the general-system rule)."""
+    import ast
+    import inspect
+    import textwrap
+
+    import dojo.skills.interactive as I
+    from dojo.runtime import belief, policy
+    for f in (I.ref_match, I.ref_similarity, I.belt_identity, I._absence_seen, I.competing_look, I.flat_rider,
+              I._ref_key, belief.RuntimeProvider._try_belt_lock, belief.RuntimeProvider.identity_dist,
+              belief.RuntimeProvider.track_age, policy.observed_candidates):
+        fn = ast.parse(textwrap.dedent(inspect.getsource(f))).body[0]
+        if ast.get_docstring(fn) is not None:
+            fn.body = fn.body[1:]
+        code = ast.unparse(fn).lower()                 # code only: no docstring, no comments
+        for word in ("task", "vocab", "catalog", "label_candidates", "config"):
+            assert word not in code, (f, word)
 
 
 def test_flat_rider_tells_a_dish_from_a_body():
@@ -354,3 +349,40 @@ def test_flat_rider_tells_a_dish_from_a_body():
         return ObjectState("x", "Rigid", "x", 0, np.zeros(3), np.array([1.0, 0, 0, 0]), a)
     assert flat_rider(obj([0.20, 0.20, 0.025]))        # a plate
     assert not flat_rider(obj([0.12, 0.07, 0.08]))     # a camera
+
+
+def _duplicate_scene():
+    """compute6 screen B 100000: frame 0 puts two labels on the one camera in view (target0, target1), and the belt reads
+    split it into two blobs, so the tracker confirms both. The second camera comes from upstream later."""
+    start = [_rider("camera", 0.446, 0.04, 0.8, "target0", idx=2), _rider("camera", 0.53, 0.04, 0.6, "target1", idx=2)]
+    reads = {}
+    for s in range(0, 400, 4):
+        rs = []
+        if 0.446 + 0.004 * s < 0.85:
+            rs += [_rider("camera", 0.446 + 0.004 * s, 0.04, 0.9, "rider0", idx=2),
+                   _rider("camera", 0.53 + 0.004 * s, 0.04, 0.7, "rider1", idx=2)]
+        xc = -0.90 + 0.004 * (s - 140)
+        if s >= 140 and -0.8 < xc < 0.8:
+            rs.append(_rider("camera", xc, -0.08, 0.9, label="rider2", idx=2))
+        reads[s] = _rec(*rs)
+    return start, reads
+
+
+def test_a_second_frame0_label_on_the_first_object_is_never_the_match(monkeypatch):
+    import dojo.skills.interactive as I
+    start, reads = _duplicate_scene()
+    prov, b, obs = _provider(start)
+    sk = _ReplaySkills(prov, b, obs, reads, belt_ref="tracked")
+    picked = []
+
+    def pick(sk_, label, v, **k):
+        w = sk_.refresh()
+        picked.append((label, w.obj(label).pos[:2].copy()))
+        return SimpleNamespace(ok=True, status="ok", note="", arm="left")
+    monkeypatch.setattr(I, "pick_from_belt", pick)
+    r = I.match_and_pick(sk, ["target0", "target1"], conveyor="conveyor")
+    st = sk.refresh().notes["belt"]
+    assert r["ok"] and len(picked) == 1
+    assert st["ref_dups"] and st["first"] not in st["ref_dups"]
+    assert picked[0][0] not in ("target0", "target1")             # not the first object under its other label
+    assert abs(float(picked[0][1][1]) + 0.08) < 0.03               # the upstream camera

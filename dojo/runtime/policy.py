@@ -78,24 +78,14 @@ def label_candidates(vocabulary: str, label: str) -> list[str]:
     return list(lab.get("candidates") or [])
 
 
-def rider_candidates(vocabulary: str, key: str) -> list[str]:
-    """``belt_wrist_id``: the union of the candidate keys of every config group in ``vocabulary`` that admits ``key``
-    (a belt tracker's ``rider3`` / ``bottle_t1`` has no config group of its own), ``key`` first; [] when unknown."""
-    from .vocab import catalog_path
-    import json as _json
-    p = catalog_path()
-    if p is None:
-        return []
-    try:
-        labels = (_json.loads(open(p).read()).get(vocabulary) or {}).get("labels", {})
-    except (OSError, ValueError):
-        return []
-    out = [key]
-    for lab in labels.values():
-        c = list(lab.get("candidates") or [])
-        if key in c:
-            out += [k for k in c if k not in out]
-    return out if len(out) > 1 else []
+def observed_candidates(prov, key: str) -> list[str]:
+    """``belt_wrist_id``: the asset keys the belt tracker has read on any rider this episode (``identity_dist`` of every
+    tracked label), ``key`` first; [] when it read fewer than two. Perceived evidence only: no task config's candidates."""
+    keys = [key]
+    for lab in list(getattr(prov, "_id_all", {}) or {}):
+        d, _ = prov.identity_dist(lab)
+        keys += [k for k in d if k not in keys]
+    return keys if len(keys) > 1 else []
 
 
 def twin_vocabulary(vocabulary: str | None) -> str:
@@ -551,13 +541,12 @@ class RuntimeConfig:
     # Bhattacharyya similarity plus a competing-category veto; measured worse offline, kept for the record).
     # belt_veto off (today) | evidence (with belt_wrist_veto on: an empty wrist look vetoes only when the prior was in
     # the wrist view, or the head tracker has not read the track lately). belt_speed off | lock (``RuntimeProvider``:
-    # the belt speed from the first long clean track, kept). belt_high_lift off | on (a picked match goes on up by
-    # ``BELT_HIGH_LIFT_M``). belt_retry off | window (more match rounds while the step budget holds an intercept).
+    # the belt speed from the first long clean track, kept). belt_retry off | window (more match rounds while the
+    # step budget holds an intercept).
     # belt_grasp off | solid (a rider with no top grasp that is not a flat dish: mesh antipodal, then waist, rims last).
     belt_ref: str = "off"
     belt_veto: str = "off"
     belt_speed: str = "off"
-    belt_high_lift: str = "off"
     belt_retry: str = "off"
     belt_grasp: str = "off"
     # belt_wrist_id off | on (the pick look re-identifies a tracked rider over every rider candidate; with belt_ref
@@ -812,7 +801,7 @@ class RuntimePolicy:
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.belt_waist_first not in ("off", "on")
                 or self.cfg.belt_ref not in ("off", "tracked", "similar") or self.cfg.belt_veto not in ("off", "evidence")
-                or self.cfg.belt_speed not in ("off", "lock") or self.cfg.belt_high_lift not in ("off", "on")
+                or self.cfg.belt_speed not in ("off", "lock")
                 or self.cfg.belt_retry not in ("off", "window") or self.cfg.belt_grasp not in ("off", "solid")
                 or self.cfg.belt_wrist_id not in ("off", "on")
                 or self.cfg.nest_verify not in ("target", "support") or self.cfg.search_identity not in ("first", "unknown")
@@ -1196,7 +1185,7 @@ class RuntimePolicy:
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.belt_waist_first = cfg.belt_waist_first
             sk_.belt_ref, sk_.belt_veto = cfg.belt_ref, cfg.belt_veto
-            sk_.belt_high_lift, sk_.belt_retry = cfg.belt_high_lift, cfg.belt_retry
+            sk_.belt_retry = cfg.belt_retry
             sk_.belt_grasp, sk_.belt_wrist_id = cfg.belt_grasp, cfg.belt_wrist_id
             sk_.belt_speed = cfg.belt_speed
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
@@ -1637,7 +1626,7 @@ class RuntimePolicy:
                     and label in (getattr(prov.belief, "riders", None) or ())):
                 # belt_wrist_id: a tracked belt rider (``rider3``, ``bottle_t1``: no config group) is re-identified at the
                 # hover over every rider candidate, so the skill can veto a competing category at the same place
-                idv = rider_candidates(prov.task, o.asset.key)
+                idv = observed_candidates(prov, o.asset.key)
             if kind == "size" and self.cfg.row_size_read == "look_union" and not rank:
                 # the std / _random twin shares the instruction: its config's candidates for the label too
                 idv = list(dict.fromkeys(idv + label_candidates(twin_vocabulary(prov.task), label)))

@@ -5,15 +5,18 @@
 S=${LANE_STATE:-$HOME/dojo-integ-c4-state}; R=${LANE_REPO:?set LANE_REPO}; M=${LANE_MODELS:-$HOME/dojo-data/segtrain/models}; D=$S/shared
 STREAM=${LANE_STREAM:-integ-c4}
 mkdir -p "$D"
+exec 9>>"$D/lifecycle.lock"
+flock 9
 start_one() {   # KIND MODEL CMD...
   local k=$1 m=$2; shift 2
   if kill -0 "$(cat "$D/$k.pid" 2>/dev/null)" 2>/dev/null; then
+    [[ "$m" == "$(cat "$D/$k.model" 2>/dev/null)" ]] || { echo "$k model mismatch" >&2; return 1; }
     timeout 15 "$R/.venv/bin/python" "$S/ping_side.py" "$D/$k.sock" >/dev/null 2>&1 || return 1
     echo "$k already up (pid $(cat "$D/$k.pid"))"; return 0
   fi
   rm -f "$D/$k.sock"
   ( cd "$R" && exec systemd-run --user --scope -q --unit="${STREAM}_shared_${k}_$$" -p MemoryMax=16G -p CPUQuota=400% "$@" ) \
-    >> "$D/$k.log" 2>&1 < /dev/null &
+    >> "$D/$k.log" 2>&1 9>&- < /dev/null &
   local pid=$! i
   echo "${STREAM}_shared_${k}_$$" > "$D/$k.unit"; echo "$pid" > "$D/$k.pid"
   for i in $(seq 1 60); do [[ -S "$D/$k.sock" ]] && break; sleep 2; done
@@ -23,6 +26,12 @@ start_one() {   # KIND MODEL CMD...
 }
 case "${1:-status}" in
   start)
+    if [[ -n "${LANE_SHARED_SAM:-}" ]]; then
+      start_one sam "$LANE_SHARED_SAM" env DOJO_SAM_MODELS="${DOJO_SAM_MODELS:-$HOME/dojo-data/models}" \
+        "${SAM_PY:-$R/.venv/bin/python}" -u -m dojo.perception.sam_masks serve \
+        --sock "$D/sam.sock" --models "$LANE_SHARED_SAM" --max-hours 48 || exit 1
+      echo 1 > "$S/side.shared-sam"
+    fi
     start_one seg v2b env YOLO_CONFIG_DIR="$S/ultra_cfg" "$R/.venv/bin/python" -u -m dojo.perception.seg_twin serve \
       --sock "$D/seg.sock" --weights "$M/v2b/best.pt" --classes "$M/v2b/classes.json" --conf 0.25 --max-hours 48 || exit 1
     start_one glyph digit_v2 env PYTHONPATH="$R" "$R/.venv/bin/python" -u -m dojo.perception.glyph_read serve \
@@ -31,7 +40,8 @@ case "${1:-status}" in
       --sock "$D/glyphk.sock" --model "$M/kong_v1b/model.pt" --max-hours 48 || exit 1 ;;
   stop)
     rm -f "$S/shared.on"
-    for k in seg glyph glyphk; do
+    for k in seg glyph glyphk sam; do
+      [[ -f "$D/$k.pid" ]] || continue
       u=$(cat "$D/$k.unit" 2>/dev/null); p=$(cat "$D/$k.pid" 2>/dev/null)
       [[ "$u" == "${STREAM}_shared_${k}_"* && "$p" =~ ^[0-9]+$ ]] || { echo "invalid $k ownership" >&2; exit 2; }
       # The recorded wrapper must still belong to this exact scope before stopping it.
@@ -40,9 +50,10 @@ case "${1:-status}" in
         systemctl --user stop "$u.scope"
       fi
     done
+    rm -f "$S/side.shared-sam"
     rm -f "$D"/*.pid "$D"/*.sock; echo stopped ;;
   status)
-    for k in seg glyph glyphk; do p=$(cat "$D/$k.pid" 2>/dev/null); a=$(kill -0 "$p" 2>/dev/null && echo alive || echo dead)
+    for k in seg glyph glyphk sam; do p=$(cat "$D/$k.pid" 2>/dev/null); a=$(kill -0 "$p" 2>/dev/null && echo alive || echo dead)
       timeout 15 "$R/.venv/bin/python" "$S/ping_side.py" "$D/$k.sock" >/dev/null 2>&1 && pg=ok || pg=FAIL
       echo "$k pid $p $a ping $pg model $(cat "$D/$k.model" 2>/dev/null)"; done ;;
 esac

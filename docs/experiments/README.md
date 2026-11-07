@@ -6,6 +6,11 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [SAMINT pour camera spec](2026-11-07-samint-pour-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
+| 2026-11-07 | [SAMINT egg camera spec](2026-11-07-samint-egg-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
+| 2026-11-07 | [SAMINT classify-language camera spec](2026-11-07-samint-classify-language-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
+| 2026-11-07 | [SAMINT imitate camera spec](2026-11-07-samint-imitate-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
+| 2026-11-07 | [SAMINT conveyors camera spec](2026-11-07-samint-conveyors-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 40 gain pairs + 10 strong + 5 parity; no dispatch |
 | 2026-11-07 | [SAM3 task prompts](2026-11-07-sam3-task-prompts.md) | Do per-task text banks beat v2b masks? | 54 recorded layouts / 11 cells + 6 surveys, both checkpoints: strong egg/pour coverage and imitate/classify union gains; coin unresolved, organize phantoms; default-off spec only, 0 LLM calls |
 | 2026-11-07 | [IMIT2 mechanisms](2026-11-07-imit2-mechanisms.md) | What limits imitate camera, stage by stage; do RSI-style order / association / carry / retry mechanisms move it? | Camera rows 3.1: order right 18/42, twin pairs 62 %, plan right 10/42. Offline cue pairing 64→90 % pairs (held-out 71→88 %), +elim: plans right 7→21/42. G3 17 dev: 89.1 → 95.0 (home+keep sides) → 100.0 (bundle). No camera run; all off |
 | 2026-11-07 | [IMIT2 camera prereg](2026-11-07-imit2-camera-prereg.md) | Do home wait + kept sides (C vs A), then the IMIT2 switches (B vs C), raise imitate camera score on fresh layouts? | Queued on compute6 16:07Z, positions 81–167: 19 fresh-salt gain ids + 5 stack + 5 classify parity × 3 arms (87 Sonnet rows, ≤261 calls); no verdict |

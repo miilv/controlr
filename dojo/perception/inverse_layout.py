@@ -3360,7 +3360,11 @@ def _seg_count(g: dict, dets: list, min_score: float) -> int:
     """Distinct twin-segmenter head masks of a group's own assets (class = catalogue key) at ``min_score``."""
     cands = set(g["candidates"])
     mine: list[np.ndarray] = []
-    for d in sorted((d for d in dets if d.key in cands and float(d.score) >= min_score), key=lambda d: -d.score):
+    eligible = (d for d in dets if
+                (d.key in cands or cands.intersection(getattr(d, "candidates", ())))
+                and (not getattr(d, "labels", ()) or set(d.labels).intersection(g["labels"]))
+                and (getattr(d, "source", "base") == "sam" or float(d.score) >= min_score))
+    for d in sorted(eligible, key=lambda d: -d.score):
         if not any(_mask_iou(d.mask, x, np.ones_like(x)) > 0.5 for x in mine):
             mine.append(d.mask)
     return len(mine)
@@ -3465,11 +3469,25 @@ def _seg_groups(key: str, pending) -> list[int]:
 
 def _seg_detect(client, image, cfg, groups):
     """Only public task candidates can receive additive proposals; old-only tasks use base alone."""
-    if not cfg.seg_additive:
-        return client.detect(image, conf=cfg.seg_min_score)
-    return client.detect(image, conf=cfg.seg_min_score, additive=True,
-                         extra_iou=cfg.seg_additive_iou, extra_conf=cfg.seg_additive_min_score,
-                         extra_allowed=sorted({k for g in groups for k in g["candidates"]}))
+    from .sam_routing import resolve, detect
+    task = getattr(cfg, "_sam_route_task", "")
+    route = resolve(cfg.sam_task_routes, task)
+    base = []
+    if route["mode"] != "sam":
+        if client is None:
+            if route["mode"] == "union":
+                raise SideServerDown("union routing requires v2b service")
+            return []
+        if not cfg.seg_additive:
+            base = client.detect(image, conf=cfg.seg_min_score)
+        else:
+            base = client.detect(image, conf=cfg.seg_min_score, additive=True,
+                                 extra_iou=cfg.seg_additive_iou, extra_conf=cfg.seg_additive_min_score,
+                                 extra_allowed=sorted({k for g in groups for k in g["candidates"]}))
+    if route["mode"] == "v2b":
+        return base
+    cfg._sam_route_calls = getattr(cfg, "_sam_route_calls", 0) + 1
+    return detect(base, image, groups, task, route)
 
 
 SUPPORT_DIR = os.path.join(os.path.dirname(__file__), "data", "support")
@@ -3704,7 +3722,7 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
 
     c = seg_twin.client()
     info = {"n_dets": 0, "added": [], "moved": [], "refit": [], "hints": 0}
-    if c is None:
+    if c is None and not cfg.sam_task_routes:
         info["error"] = "no segmenter server"
         return info
     head = views["cam_head"]
@@ -3723,13 +3741,16 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                            or h.per_view.get("slot"))
     sils = [h.sm().sil(head.cam, h.T()) for h in chosen]
     pend = {gi: (g, p) for gi, g, p in pending}
-    det_groups = [([gi for gi, g, _ in pending if d.key in g["candidates"]]
-                   if getattr(d, "source", "base") == "extra" else _seg_groups(d.key, pending)) for d in dets]
+    det_groups = [([gi for gi, g, _ in pending if set(d.candidates) & set(g["candidates"])
+                    and (not d.labels or set(d.labels) & set(g["labels"]))]
+                   if getattr(d, "source", "base") == "sam" else
+                  ([gi for gi, g, _ in pending if d.key in g["candidates"]]
+                   if getattr(d, "source", "base") == "extra" else _seg_groups(d.key, pending))) for d in dets]
     # explained: one-to-one within each group by IoU
     pairs = []
     for i, h in enumerate(chosen):
         for j, d in enumerate(dets):
-            if h.label_group in det_groups[j]:
+            if h.label_group in det_groups[j] and (not hasattr(d, "candidates") or h.key in d.candidates):
                 v = _mask_iou(sils[i], d.mask, head.known)
                 if v >= cfg.seg_match_iou:
                     pairs.append((v, i, j))
@@ -3838,7 +3859,7 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
     for j in sorted((j for j in range(len(dets)) if j not in h_of),
                     key=lambda j: (getattr(dets[j], "source", "base") == "extra", -dets[j].score)):
         d = dets[j]
-        tr = {"key": d.key, "score": round(float(d.score), 3), "px": int(d.mask.sum()), "groups": det_groups[j]}
+        tr = {"source": getattr(d, "source", "base"), "key": d.key, "score": round(float(d.score), 3), "px": int(d.mask.sum()), "groups": det_groups[j]}
         trace.append(tr)
         if int(d.mask.sum()) < MIN_BLOB_PX.get("cam_head", 25):
             tr["why"] = "mask too small"
@@ -3848,7 +3869,7 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                 tr["why"] = "group not pending"
                 continue
             g, prior = pend[gi]
-            if add_only and d.key not in g["candidates"] and not (
+            if add_only and getattr(d, "source", "base") != "sam" and d.key not in g["candidates"] and not (
                     cfg.seg_add_category and _seg_category(d.key) in {_seg_category(k) for k in g["candidates"]}):
                 tr["why"] = "add: not the group's exact class"
                 continue
@@ -3868,7 +3889,12 @@ def _seg_propose(chosen: list, views: dict, img: np.ndarray, cfg, groups: list[d
                 tr["why"] = f"group {gi} full, every member explained"
                 continue
             others = _union_masks(chosen, views, skip=movable[0] if (movable and not short) else None)
-            best = _seg_fit(d.mask, d.key, gi, g, prior, shapes_by_group[gi], views, others, cfg, groups)
+            fit_shapes = shapes_by_group[gi]
+            if getattr(d, "source", "base") == "sam":
+                fit_shapes = {k: [sm for sm in sms if sm.key in d.candidates]
+                              for k, sms in fit_shapes.items()}
+                fit_shapes = {k: sms for k, sms in fit_shapes.items() if sms}
+            best = _seg_fit(d.mask, d.key, gi, g, prior, fit_shapes, views, others, cfg, groups)
             if best is None or best[0] < cfg.seg_accept_iou:
                 tr["why"] = f"fit iou {round(best[0], 3) if best else None} < accept"
                 continue
@@ -4211,6 +4237,7 @@ class EstimatorConfig:
     fm_refine_w_sil: float = 0.0
     # SAM mask proposals (dojo.perception.sam_masks; a no-op without a SAM server at DOJO_SAM_ADDR). Default off.
     # sam_fg: the head foreground combined with SAM 3.1's text masks for the scene vocabulary: "union" | "gate" | "replace"
+    sam_task_routes: dict = field(default_factory=dict)  # per instruction vocabulary; empty preserves every default
     sam_fg: str = "off"
     sam_text_thr: float = 0.4
     sam_trim_cover: float = 0.5  # "trim" cuts only blobs the masks cover by this share (not several objects' merged blob)
@@ -4430,6 +4457,13 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     from the first frame's head view."""
     global _COLOR_M, _SELECT_TIES
     cfg = cfg or EstimatorConfig()
+    if cfg.sam_task_routes:
+        from copy import copy
+        from .sam_routing import resolve
+        resolve(cfg.sam_task_routes, task)
+        cfg = copy(cfg)
+        cfg._sam_route_task = task
+        cfg._sam_route_calls = 0
     if cfg.twin_union_pool == "weak":
         return _estimate_twin_weak(images, state, task, instruction, bgs, cfg, extra_frames, extra_views, cams)
     _COLOR_M = colour_map_for(task, cfg)
@@ -4453,6 +4487,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     if instruction:
         groups = restrict_by_instruction(groups, instruction)
     sam_info: dict = {}
+    if cfg.sam_task_routes:
+        sam_info["routing"] = {"task": task, **resolve(cfg.sam_task_routes, task)}
     sam_text = None
     if (cfg.sam_fg != "off" or cfg.series_count == "sam") and "cam_head" in images:
         t_s = time.time()
@@ -4464,7 +4500,7 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
             and any(instance_range(task, g) is not None or _linked_prefix(task, g) for g in groups)):
         from . import seg_twin
         c = seg_twin.client()
-        if c is not None:
+        if c is not None or cfg.sam_task_routes:
             try:
                 seg_dets = [d for d in _seg_detect(c, images["cam_head"], cfg, groups)
                             if int(d.mask.sum()) >= MIN_BLOB_PX.get("cam_head", 25)]
@@ -5163,6 +5199,8 @@ def estimate(images: dict[str, np.ndarray], state: dict, task: str, instruction:
     timings["total_s"] = round(time.time() - t0, 3)
     record["_perception"] = {"version": "v0", "timings": timings, "n_head_blobs": len(head_blobs),
                              "views": list(views), "unexplained": unexplained}
+    if "routing" in sam_info:
+        sam_info["routing"]["requests"] = cfg._sam_route_calls
     if sam_info:
         record["_perception"]["sam"] = sam_info
     if support_info is not None:

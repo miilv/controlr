@@ -904,8 +904,9 @@ reconstructions are supplementary diagnostics, never retroactive qualification o
 
 ### match_and_pick MATCH2 switches
 
-Seven `RuntimeConfig` fields, all `off` by default (G3 `--skill-attr` mirrors all but `belt_speed`, which lives in the
-runtime's belt tracker; G3's GT provider has no tracker, so `belt_ref`, `belt_veto` and `belt_wrist_id` are inert there):
+Six `RuntimeConfig` fields, all `off` by default, each a skill parameter (Skills attributes, mirrored by G3
+`--skill-attr`; none keyed by task name, none reading a task config). G3's GT provider has no belt tracker, so
+`belt_ref`, `belt_veto`, `belt_speed` and `belt_wrist_id` are inert there:
 
 - `belt_ref=tracked`: the remembered first object is the leading start rider the tracker still holds after its first
   reads (a frame-0 phantom ahead of it is dropped, never confirmed), and its key is the leading asset of its own
@@ -919,10 +920,9 @@ runtime's belt tracker; G3's GT provider has no tracker, so `belt_ref`, `belt_ve
   line residual <= 4 mm), projected on the belt axis and kept (event `belt_lock`).
 - `belt_grasp=solid`: a rider with no top grasp that is not a flat dish (`interactive.flat_rider`) is intercepted with
   mesh-antipodal grasps ranked by `grasps.lift_hold`, then a waist, rim pinches last. A plate keeps today's order.
-- `belt_high_lift=on`: a picked match goes up another 10 cm (the belief's lift is the jaws'; an off-centre hold pivots).
 - `belt_retry=window`: up to six match rounds while 60 steps remain.
 - `belt_wrist_id=on`: a moving rider's pick look re-identifies it over every rider candidate
-  (`policy.rider_candidates`); a confident other category than the first object's is not picked (status `other`).
+  (`policy.observed_candidates`: the identities the belt tracker read this episode, never a task config's candidates); a confident other category than the first object's is not picked (status `other`).
 
 `save_belt_look_frames: N` (dev) keeps the first N belt pick-look frames. `scripts/skills/match2_decision_replay.py`
 replays match_and_pick's decision (first object, speed, the match it would take) on recorded camera reports (frame-0
@@ -1006,3 +1006,87 @@ load; the camera profile uses the existing lane2 caps and startup/boot gates.
 See [the install recipe](../baselines/rsi/INSTALL.md). CPU tests mock telemetry
 and verify admission, credential isolation, portable commands and input hashes.
 Running a recipe still requires current permission for the destination box.
+
+### Task-scoped SAM camera proposals and shared service
+
+**Diagnostic-only; prohibited for a board candidate.** `sam_task_routes` and
+`sam_task_banks.json` are historical component experiments, default-off. Never enable
+these fields or their task-keyed prompt lists for board episodes. The board requires
+one general perception path, with no task names, task-keyed code, task-config values
+or checker values. A general mask proposer must consume only episode instruction text
+and the one shared catalogue; thresholds and post-filters must be uniform. The legacy
+inverse-layout fitter also reads task-config candidate pools/priors, so replacing only
+its mask prompts does not by itself establish board compliance.
+
+
+`EstimatorConfig.sam_task_routes` defaults to `{}`. Keys are the instruction-routed
+vocabulary passed to perception (as for other task switches), never launcher task IDs.
+Each entry accepts `mode: v2b|sam|union`, `bank` (same task), `model: sam3|sam3.1_text`,
+`threshold`, `dedup_iou` and conveyor `roi` / optional `labels`. Example perception
+JSON overlay: `{"sam_task_routes":{"pour_by_language":{"mode":"sam","model":"sam3","threshold":0.2}}}`.
+Merge it into the candidate's `DOJO_PERCEPTION_CFG`; do not discard the candidate fields.
+No entry means the existing v2b path. `sam` replaces detector proposals; `union` retains
+v2b first and adds SAM masks at IoU <=0.5. Background proposals remain unchanged.
+SAM categories restrict the public candidate fits and cannot supply an exact-asset hint.
+Existing silhouette acceptance and appearance identity stages still apply. The committed
+`dojo/perception/data/sam_task_banks.json` is SAMBAKE's phrase inventory; runtime reads
+no evaluation manifests or GT. Conveyor ROI filters are separately registered hypotheses.
+The existing `sam_fg` and `sam_propose` flags remain independent and unchanged.
+Requested SAM routes require a live service and fail as infrastructure errors if it dies.
+
+On a **lead-allocated, drained compute4 or compute6**, deploy the merged code to a pinned
+`~/controlr*` directory. Never update a running lane's deployment. Install the server's
+separate venv with Python 3.12, torch **2.9.1+cu128**, torchvision, safetensors, timm,
+ftfy, regex, iopath, einops, psutil, hydra-core, omegaconf, Pillow, numpy and Meta SAM3
+at commit `f1647e8d0c1d280991f4d1b7d974c2704537fe66` (no SAM2 needed for these routes).
+Use a dedicated `~/controlr-sam/venv`; do not alter simulator Python. Copy the already
+verified checkpoints from compute3's `~/dojo-data/sambake/models/sam3.pt` and
+`sam31.safetensors` to `~/dojo-data/models/sam3/sam3.pt` and
+`~/dojo-data/models/sam3.1/sam3.1_multiplex_fp16.safetensors`, respectively. The lifecycle
+script verifies both SHA256s before starting; no model download is performed.
+
+```bash
+export LANE_REPO=$HOME/controlr-<merged-pin> SAM_PY=$HOME/controlr-sam/venv/bin/python
+export LANE_STATE=$HOME/dojo-integ-c6-state LANE_STREAM=integ-c6  # c4: c4-state / integ-c4
+export LANE_SHARED_SAM=sam3  # egg/conveyor wave: sam3.1_text; drain before switching
+bash "$LANE_REPO/scripts/dojo/queues/sam_shared.sh" start
+bash "$LANE_REPO/scripts/dojo/queues/sam_shared.sh" status
+# Both lane queue rows use --sam sam3 (or both sam3.1_text), never a per-lane SAM process.
+# After STOP/drain and completion of both jobs:
+bash "$LANE_REPO/scripts/dojo/queues/sam_shared.sh" stop
+```
+
+Start also maintains the existing shared v2b/digit/kong services, using the pinned lane
+venv, and enables `shared.on` only after SAM health. Stop stops the shared bundle after
+the lanes drain. `shared_side.sh` serializes lifecycle operations; lane `shared_ok()`
+checks PID, socket info and exact loaded models before/after each job. The service
+serializes inference across clients. A dead/replaced service requeues the row and stops
+the lanes. `side.shared-sam` counts one big service in `sides()`; nvidia-smi admission
+includes its actual residency. Default admission remains unchanged. A measured
+single-checkpoint wave may explicitly export `LANE_SAM_LANE_MIB=12288` to reserve 12 GiB
+free per new rendered lane (20 GiB used ceiling), only with healthy shared SAM. Keep
+this opt-in unset until the box's actual lane footprint is checked. Do not load both
+checkpoints for a two-lane wave: their measured 9.46 GiB service residency leaves too
+little room for two lanes and the other services. Load one checkpoint per box/wave.
+Use `scripts/perception/sam/shared_bench.py` under a light lock to reproduce startup,
+request and two-client timings on an existing permitted RGB. It terminates only its
+own server child. Detailed measurements and parked specs: `docs/experiments/data/samint/`.
+
+
+The SAM route key enters at the perception RPC's explicit `vocabulary` field.
+`_Perception.estimate` forwards it as `inverse_layout.estimate(..., task=vocabulary)`;
+`sam_routing.resolve(config.sam_task_routes, vocabulary)` selects the configuration.
+It is derived from permitted instruction routing in the current runtime, not launcher
+metadata or an environment task ID. A model planner using a skill registry can supply
+the same canonical perception vocabulary explicitly: the estimator does not require
+an instruction-pattern branch to choose SAM. Registry entries must map to an existing
+public candidate vocabulary/bank key; an arbitrary skill display name is not a bank.
+The task key also selects the existing public candidate pool. SAM's route map chooses
+mode/checkpoint/thresholds/filters, while the existing fit stage chooses asset identity.
+
+The key is per **estimate request**, including candidate vocabularies evaluated by
+`RuntimePolicy._explain_vocabulary`, before the final route is chosen. For a scoped
+SAM parity guard, inspect every `vocab_explain.candidates` entry as well as the final
+vocabulary and record routing counters. A final inactive vocabulary alone does not
+prove that an earlier candidate estimate made zero SAM requests. An active bank
+in a guard's candidate exploration blocks the zero-request parity proof.

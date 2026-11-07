@@ -1,0 +1,3 @@
+{"note": "COIN2 fresh G3 panel inputs, fixed before generation; identity = task + salt + id; ids in OUR_MEASUREMENT_SLICES only",
+ "blocks": [{"block": "coin2-panel-a", "task": "deposit_coin", "salt": "coin2-panel-20261107-a-7f3c", "start": 100000, "n": 10},
+            {"block": "coin2-panel-b", "task": "deposit_coin", "salt": "coin2-panel-20261107-b-91d2", "start": 100020, "n": 10}]}
