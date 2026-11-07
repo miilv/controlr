@@ -136,13 +136,69 @@
     },
     "deposit_coin": {
       "dimension": "Precision",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "9cac25d986b3ea0132ccb7bf47d998ab19766692d4275190540c1ab1b7ea2fdb",
+          "official_score": 100.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T160424dcab07Z_deposit_coin",
+          "steps": 229,
+          "success": true,
+          "task": "deposit_coin",
+          "wall_s": 49.11575013003312
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "c1c7a2e01c075b0d0d2d7a77749f08ca756632c109bcdb56f88aefcebdef1304",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T160424dcab07Z_deposit_coin",
+          "steps": 216,
+          "success": true,
+          "task": "deposit_coin",
+          "wall_s": 42.04112402605824
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "482351d84e7fe45434e166ce143336fecd1040c932f8c030c9f6432881f57d79",
+          "official_score": 100.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T160424dcab07Z_deposit_coin",
+          "steps": 195,
+          "success": true,
+          "task": "deposit_coin",
+          "wall_s": 37.29801527003292
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "a4c55f268608cb32bd734278d91ce3667e3ce7c7274030228cd6fdf8deb1e246",
+          "official_score": 20.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T160424dcab07Z_deposit_coin",
+          "steps": 236,
+          "success": false,
+          "task": "deposit_coin",
+          "wall_s": 43.766073183040135
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "c6c0adbfb1b45b34848d797509ea0e440c3924ba8b2f345679bc67d652dc3df4",
+          "official_score": 100.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T160424dcab07Z_deposit_coin",
+          "steps": 124,
+          "success": true,
+          "task": "deposit_coin",
+          "wall_s": 27.072863090084866
+        }
+      ],
+      "n": 5,
+      "official_score": 84.0,
+      "score_sd": 35.77708763999664,
+      "steps": 1000,
+      "successes": 4,
+      "wall_s": 199.29382569924928,
       "weight": 0.025
     },
     "fasten_screws": {
