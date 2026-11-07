@@ -116,7 +116,7 @@ findings, including their dependencies.
 | ORG2 push / grasp integration | 286 | **Review required.** Push contact/sequence/clearance, torso mesh slices, stand rings and retreat-axis options use geometry, IK and observed slip. Stream names and “no checker” comments are not checker reads. Their gains, clearance bands and shape-biased grasp sampling remain empirical parameters requiring cross-shape evidence. The inherited arrange planner/perception is still blocked. |
 | Uniform perception proposals / geometry | 248 | **Review required.** General masks/prompts/filters and base refit are explicit roots even before adoption. Catalogue-wide category/caption extraction and raw instruction phrases can be legitimate; verify the index's intrinsic source and fixed, uniform thresholds. Historical `tasks.json` denial in a docstring is a false positive. `instance_evidence=log` is an output-only mode, not a historical-log input. |
 
-The 734 transition pins comprise 720 unresolved calls, four reflection sites,
+The 734 transition pins comprise 720 unresolved-call pins (733 finding occurrences), four reflection sites,
 four provenance comments, one tolerance-comment signal, three task-data lexical
 signals and two explicit loaders. Every non-opaque signal above has its reason
 recorded in the ledger; none establishes a new checker import or actual schema

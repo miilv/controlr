@@ -8,7 +8,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from scripts.legality.scan import gate, inventory
+from scripts.legality.scan import gate, inventory, is_general_symbol
 
 
 def profile(tmp_path, files, root='pkg.entry:run'):
@@ -196,3 +196,19 @@ def test_transition_review_is_exact_and_cannot_certify_a_clean_path():
     assert not gate([r], {}, reviewed=reviewed, previous_reviewed=reviewed)
     assert gate([r], {}, reviewed={'old': {**pin, 'reason': ''}})
     assert gate([r], {}, reviewed={'old': {**pin, 'disposition': 'approved'}})
+
+
+def test_general_package_initializer_cannot_inherit_legacy_debt(tmp_path):
+    assert is_general_symbol('dojo.general:<module>')
+    assert is_general_symbol('dojo.skills.general:run')
+    assert not is_general_symbol('dojo.generalized:run')
+    assert gate([row(path=['dojo.general:<module>', 'dojo.old:run'])], {'old': 1})
+    assert gate([{**row(), 'root': 'dojo.general:<module>'}], {'old': 1})
+
+    (tmp_path / 'dojo/general').mkdir(parents=True)
+    (tmp_path / 'dojo/general/__init__.py').write_text('from dojo.legacy import run\nrun()\n')
+    (tmp_path / 'dojo/legacy.py').write_text('def run():\n    return "make_kong"\n')
+    findings = inventory(tmp_path)['findings']
+    leaked = [r for r in findings if r['func'] == 'dojo.legacy:run' and r['category'] == 'task_name']
+    assert leaked and all(r['clean_reachable'] for r in leaked)
+    assert gate(leaked, {r['key']: 1 for r in leaked})

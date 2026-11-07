@@ -59,3 +59,7 @@ cover review pin edits, duplicate growth, overlap, missing reasons and clean-roo
 bypasses. The inventory begins with ten legacy retirement items for the joint
 library hand-off. The immutable D-C19 source/flags and reader provenance decisions
 are unchanged.
+
+The clean-root guard also covers package initializers (`dojo.general:<module>`),
+not only child modules. A planted initializer importing a legacy task-naming helper
+is still marked clean-reachable and fails despite a matching historical debt pin.

@@ -32,11 +32,16 @@ def category(why):
     return 'reflection'
 
 
+def is_general_symbol(symbol):
+    module = symbol.split(':', 1)[0].replace('.', '/')
+    return any(module == base.rstrip('/') or module.startswith(base) for base in GENERAL)
+
+
 def inventory(root=ROOT):
     profile = controlr_inference(root)
     idx = Index(profile)
     violations = _walk(idx, profile.roots, task_re())
-    clean_roots = [r for r in profile.roots if r.replace('.', '/').startswith(GENERAL)]
+    clean_roots = [r for r in profile.roots if is_general_symbol(r)]
     clean = {(v.func, v.why) for v in _walk(idx, clean_roots, task_re())} if clean_roots else set()
     files = {}
     for p in profile.index:
@@ -80,7 +85,7 @@ def gate(rows, allowlist, previous=None, reviewed=None, previous_reviewed=None):
     if previous is not None and any(n > previous.get(k, 0) for k, n in allowlist.items()):
         issues.append('allowlist grew relative to base')
     for r in rows:
-        clean_path = r.get('clean_reachable', False) or r.get('root', '').replace('.', '/').startswith(GENERAL) or r['file'].startswith(GENERAL) or any(p.replace('.', '/').startswith(GENERAL) for p in r['path'])
+        clean_path = r.get('clean_reachable', False) or is_general_symbol(r.get('root', '')) or r['file'].startswith(GENERAL) or any(is_general_symbol(p) for p in r['path'])
         pin = reviewed.get(r['key'], {})
         reviewed_match = (pin.get('count', 0) >= counts[r['key']]
                           and all(pin.get(k) == r.get(k) for k in ('file', 'func', 'category', 'evidence'))
