@@ -404,3 +404,23 @@ change grasp/hold tolerances or infer a hold. The existing wide-priority
 mock regression test remains unchanged and passes in the2165-test suite.
 No change to the ongoing off-priority screen or its gates. Any new final
 bundle requires separate full screen/registration before fresh ids are used.
+
+## Explicit staging release-clearance probe
+
+Random66 regresses before any staging action: all eight mesh-ground spots
+have156/390 reachable right grasps but zero grasp/place pairs. The earlier
+bbox rest released roughly20–23 mm higher and physically worked. Its current
+direct left alternatives slip34/109/99 mm. Exact mesh-ground placement can
+put the attached hand too low; this is not evidence of a weak right hold.
+
+Probe random66 with an explicit25 mm release gap over the true mesh-support
+rest. Screen endpoint pairs at ground+25 mm, then rebuild the native full
+place against the actual ground target with `release_gap=.025` (the same
+truthful endpoint/target separation used by the upright feasibility snippet).
+Use the measured attachment re-plan, original hand/scene/table checks and
+15 mm/25 degree/50 mm stage verifier; let the released body physically settle
+before re-grasp. Do not force its pose, raise the verifier target or ignore
+hand/table collisions. Source504daaef plus retained recipe; all other slow
+enclosure/rest flags unchanged, including wide priority off for isolation.
+Only this pilot first; cross-check other shapes if physically supported.
+The ongoing registered screen remains unchanged and completes in full.
