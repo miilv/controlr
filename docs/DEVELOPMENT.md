@@ -755,6 +755,19 @@ limit. The last pour alone receives `profile_reserve=0`: the 60-step put-back
 reserve no longer cuts its flow profile short. The put-back reserve and all
 move-budget/lease checks remain in force. Single-cup routing retains v1 pacing.
 
+`scripts/skills/pour_g3_panel.sh` executes an existing private
+`~/dojo-data/pour/panel-registration.json`. It verifies source, stable-layout
+hashes and a fixed A/B order, alternates AB/BA by layout, and refuses duplicate
+or mixed-source/settings rows. Completed episodes are skipped on resume;
+admission or process failures stop the driver for diagnosis. It never generates
+layouts or selects a candidate from outcomes.
+
+`python3 scripts/skills/pour_g3_report.py --root ~/dojo-data/pour` reads the
+registration and retained rows without simulator imports. It reports paired
+coverage, official/full-only means and sample SD, >=10-point wins/losses,
+clean final-predicate successes and first-blocking-stage diagnostics. Missing
+or infrastructure pairs cannot yield a passing completed decision.
+
 The basket-image experiment uses `--routes basket_image` and
 `--skill-attr belt_container=on --skill-attr belt_deposit=on` in G3;
 `--skill-attr belt_lift=braced_hook` selects its candidate lift. Runtime mirrors
@@ -770,15 +783,16 @@ restoration/intersection of the temporary measured joint envelope.
 positions, avoiding the extra horizontal phase introduced by the round-1
 snapshot method; its pure correction has a CPU test.
 
-`scripts/skills/pour_g3_panel.sh` executes an existing private
-`~/dojo-data/pour/panel-registration.json`. It verifies source, stable-layout
-hashes and a fixed A/B order, alternates AB/BA by layout, and refuses duplicate
-or mixed-source/settings rows. Completed episodes are skipped on resume;
-admission or process failures stop the driver for diagnosis. It never generates
-layouts or selects a candidate from outcomes.
+### Write-audit identity and held transport
 
-`python3 scripts/skills/pour_g3_report.py --root ~/dojo-data/pour` reads the
-registration and retained rows without simulator imports. It reports paired
-coverage, official/full-only means and sample SD, >=10-point wins/losses,
-clean final-predicate successes and first-blocking-stage diagnostics. Missing
-or infrastructure pairs cannot yield a passing completed decision.
+Held-pose `belief_write.before7` is the prior attachment synchronized to the current measured TCP; `before_sync7`
+retains the cached raw world pose. Computing the synchronized prior is logging-only and does not add a live belief
+synchronization or observation. `m95_score.py audit` associates labels chronologically: unambiguous <=10 mm proximity
+anchors are provisional until the first consumed pick or saved grasp-close evidence finalizes the identity. Subsequent
+retries cannot rebind it. Every row records its association source/step and fallback flag; `association.json` counts
+fallbacks and missing body geometry. A missing already-anchored GT object fails rather than selecting a neighbour.
+
+`scripts/perception/audit_supplementary.py` re-scores copied frozen ledgers against saved exact write frames without
+starting a simulator. It accepts frozen body-bounds/group caches, and keeps the 2 mm body-centre definitions unchanged.
+Its optional legacy-show repair records exact-flange versus commanded-anchor-FK provenance; approximate legacy
+reconstructions are supplementary diagnostics, never retroactive qualification of a registered verdict.

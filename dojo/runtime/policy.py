@@ -2075,17 +2075,24 @@ class RuntimePolicy:
                                       "view": cfg.get("view"), "s": round(time.perf_counter() - t, 2),
                                       **{k: r.get(k) for k in ("ok", "why", "shift_mm", "turn_deg", "lead_shift_mm", "sigma")}})
         if r.get("ok") and r.get("T_tcp_obj") is not None and arm in prov.belief.attached:
-            lab, _ = prov.belief.attached[arm]
+            lab, prior_attachment = prov.belief.attached[arm]
             audit_held = self.cfg.peg_held_read == "on" and self.report.get("skill") == "stack_on_pegs"
-            before = prov.belief.objects[lab].T.copy() if audit_held else None
+            before_sync = prov.belief.objects[lab].T.copy() if audit_held else None
             prov.belief.attached[arm] = (lab, np.asarray(r["T_tcp_obj"], float))
-            prov.belief.sync_robot(self.bridge.observe()["state"])
+            state = self.bridge.observe()["state"]
+            # Synchronize the prior for logging only. Keep the live attachment update, observation count,
+            # and single sync_robot call exactly as before; no intermediate mutation of the real belief.
+            before = (prov.belief.kin.tcp(arm, np.asarray(state[f"{arm}_arm_joint_state"], float).reshape(-1)[:6])
+                      @ prior_attachment) if audit_held else None
+            prov.belief.sync_robot(state)
             prov.stats["held_pose"] = prov.stats.get("held_pose", 0) + 1
             if before is not None:
                 from dojo.skills.geometry import T_to_pose7
                 self.report["events"].append({"kind": "belief_write", "writer": "held_pose", "label": lab,
                                               "step": self.bridge.steps_used,
                                               "before7": T_to_pose7(before).tolist(),
+                                              "before_sync7": T_to_pose7(before_sync).tolist(),
+                                              "arm": arm,
                                               "after7": T_to_pose7(prov.belief.objects[lab].T).tolist()})
         return r
 

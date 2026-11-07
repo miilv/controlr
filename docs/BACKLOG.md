@@ -1103,8 +1103,15 @@
   so the ring was let go tilted on the top (G3 `--mode-b`, 2 mm belief offsets: 0.6 / 0.6 / 0.1). Pegs now pass
   `guard_lag` 1.2 mm / `guard_seated` 1.5 mm and retry a piece left tilted. The real fix is a held-object or peg
   measurement at the hover, like plug_in_charger's.
-  Candidate `peg_held_read` requests the existing held-pose protocol with a 0.5 mm gate; camera adoption remains open
+  Candidate `peg_held_read` requests the existing held-pose protocol with a 0.5 mm gate
   ([TOY diagnosis](journal/2026-11-05-dojo-toy-held-hover.md), [pre-registration](experiments/2026-11-05-toy-held-read-ab.md)).
+  It ran two camera tests: +6 in the wave, then +8 with flips 5/2 on its fresh re-test. It is NOT ADOPTED: the
+  registered raw-count write gate fails, and the one re-test is used up (journal 2026-11-06-ab-wave-verdicts, lead
+  note of 7 Nov 08:00Z).
+  - Next lever: a **hover-only transactional read** ([mechanism](journal/2026-11-07-dojo-peg-mechanism.md)). It
+    drops the show-time reads, whose "harmful" writes were instrument artefacts (#417).
+  - It needs a fresh camera A/B under the refined gates: about 20 play_stacking_toy pairs plus guards, roughly
+    330 Claude calls.
   GPU validation is blocked by the compute3 driver outage. KitLogWatch omitted the CUDA-unavailable failure while
   the environment ran software PhysX; require hardware/startup-log checks before accepting those rows as G3 evidence.
   - Seated blind (v4.6), a ring pushed 30-50 mm down the peg on a predicted pose binds and tilts: 0/5, 0.30. v4.7 threads
@@ -1215,4 +1222,6 @@
 
 - ~~**Relocation write audit coverage:** `RuntimePolicy._relocate_laid` emits resulting pos only; `m95_score.py audit` does not ingest it. Add explicit pre/post write coverage before collecting the [scoped KONG camera A/B](experiments/2026-11-07-kong-scoped-relocate-prereg.md); an audit omitting these writes cannot qualify the lever.~~ Instrumentation completed in #411; paired replay outcomes remain required by the preregistration.
 
-- **Actor-relocation audit identity association:** the nearest-pre-write/group rule can select a standing neighbour after the tracked tile has fallen. In the [scoped KONG audit](experiments/2026-11-07-kong-scoped-relocate-prereg.md), two `mahjong7_0` writes are judged against GT `mahjong8_0` (44.3→66.2 mm), while a same-label diagnostic improves 46.31→1.64 mm. Preserve registered flags; review a general identity-aware audit before interpreting these as actual relocation harm. No controller change or retrospective threshold tuning.
+- [x] ~~**Actor-relocation audit identity association:** the nearest-pre-write/group rule can select a standing neighbour after the tracked tile has fallen. In the [scoped KONG audit](experiments/2026-11-07-kong-scoped-relocate-prereg.md), two `mahjong7_0` writes are judged against GT `mahjong8_0` (44.3→66.2 mm), while a same-label diagnostic improves 46.31→1.64 mm. Preserve registered flags; review a general identity-aware audit before interpreting these as actual relocation harm. No controller change or retrospective threshold tuning.~~ Fixed by `AuditIdentity`: chronological tight anchors, first-pick/grasp-close finalization and persistent physical identity; nearest fallbacks are counted. Registered verdicts are not revised.
+
+- [x] ~~**Held-pose audit before pose includes arm transport:** cached world pose was compared with the new attachment at the show TCP.~~ The logger now projects the prior attachment at the same current measured arm pose, preserving the raw `before_sync7`; live actions/beliefs are unchanged and covered by a FakeLLM/mock episode.

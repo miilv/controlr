@@ -1,0 +1,1213 @@
+{
+  "supplementary_only": true,
+  "registered_verdict_changed": false,
+  "harm_mm": 2.0,
+  "metric": "unchanged 3-D body-centre error; z reported separately",
+  "baseline_source": "8e2ae2dc6c1def3902e4fd85ffcf1c4b537db1d5",
+  "panels": {
+    "peg": {
+      "episodes": 80,
+      "writes": 1696,
+      "counts": {
+        "A/perception": {
+          "helpful": 149,
+          "neutral": 54,
+          "harmful": 49
+        },
+        "A/refine_pick": {
+          "helpful": 21,
+          "neutral": 213,
+          "harmful": 4
+        },
+        "A/predicted": {
+          "helpful": 143,
+          "neutral": 1,
+          "harmful": 1
+        },
+        "A/post_place": {
+          "neutral": 67,
+          "harmful": 15,
+          "helpful": 22
+        },
+        "B/perception": {
+          "neutral": 54,
+          "helpful": 162,
+          "harmful": 50
+        },
+        "B/refine_pick": {
+          "helpful": 16,
+          "neutral": 230,
+          "harmful": 4
+        },
+        "B/post_place": {
+          "helpful": 25,
+          "neutral": 83,
+          "harmful": 8
+        },
+        "B/held_pose": {
+          "neutral": 134,
+          "helpful": 13
+        },
+        "B/predicted": {
+          "helpful": 136,
+          "neutral": 2
+        },
+        "B/refine_place": {
+          "neutral": 9
+        },
+        "A/refine_place": {
+          "neutral": 8
+        },
+        "B/refine_pick+confirm": {
+          "helpful": 4
+        },
+        "A/refine_pick+confirm": {
+          "helpful": 1
+        },
+        "B/refine_held": {
+          "neutral": 9
+        },
+        "A/refine_held": {
+          "neutral": 7,
+          "harmful": 2
+        }
+      },
+      "association": {
+        "policy": "first-pick-v1",
+        "missing_body_geometry": [
+          "Rigid/block/00014",
+          "Rigid/block/00018"
+        ],
+        "writes": 1696,
+        "nearest_fallback": 77,
+        "sources": {
+          "initial_tight": 197,
+          "nearest_fallback": 77,
+          "consumed_pick": 1319,
+          "grasp_close": 87,
+          "grasp_probe": 14,
+          "write_tight": 2
+        }
+      },
+      "fallback_by_writer": {
+        "A/perception": 37,
+        "B/perception": 35,
+        "B/refine_pick+confirm": 2,
+        "A/refine_pick+confirm": 1,
+        "A/refine_pick": 1,
+        "B/refine_pick": 1
+      },
+      "focal_writer": "held_pose",
+      "focal_counts": {
+        "neutral": 134,
+        "helpful": 13
+      },
+      "focal_fallbacks": 0,
+      "legacy_repairs_by_source": {
+        "exact_flange": 15,
+        "commanded_anchor_fk": 11
+      },
+      "focal_reconstruction_breakdown": {
+        "('no_transport_repair', 'neutral')": 114,
+        "('exact_flange', 'neutral')": 15,
+        "('commanded_anchor_fk', 'helpful')": 6,
+        "('no_transport_repair', 'helpful')": 7,
+        "('commanded_anchor_fk', 'neutral')": 5
+      },
+      "input_hashes": {
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain1_100000/play_stacking_toy_perception_verify-bundle_100000_report.json.gz": "f8369523d8a33a0dff5ee4917f6a7d46a9e4c98db414fe5753f13d9dcbdb6434",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain1_100000/play_stacking_toy_perception_verify-bundle_100000_actions.json.gz": "2a4f0be1d277f0714da81cbebfd8dd1b9e28fbac6c5861c751af1f6d47083ead",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain1_100000_100000.json.gz": "51213d2d9b0616af3ae23ed49bf3123c3f6c6f4d4065461e845c3c046eaf3896",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain1_100000/play_stacking_toy_perception_verify-bundle_100000_report.json.gz": "c82dab61906b4f3d4a646df749f544da573870726b227928f849299284735ef8",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain1_100000/play_stacking_toy_perception_verify-bundle_100000_actions.json.gz": "36b65bf2a42c8f3f72c31de460a38c8a8b6f4d258f3044ce6bd33b548db4631b",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain1_100000_100000.json.gz": "a826845183644813854c68b3ad4a4a89d17230453ce5fcce7c6143fcafac9484",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain1_100001/play_stacking_toy_perception_verify-bundle_100001_report.json.gz": "0295dd1bad32fa9f97d21dddfc50ad38700fa4f91045405a33aaf42c3c6a9d49",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain1_100001/play_stacking_toy_perception_verify-bundle_100001_actions.json.gz": "516dee0be4a7c7f2c0f2b7c7b08e995ca6ae66fe1b6bc2ee4562a3ec3be83752",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain1_100001_100001.json.gz": "274bf7a5a40209a61a450628913898898719642a082be87b0d9144add69bb92b",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain1_100001/play_stacking_toy_perception_verify-bundle_100001_report.json.gz": "3b32da08771ec296367263b753d963ded84770c972b73835d1506dce7d4b34da",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain1_100001/play_stacking_toy_perception_verify-bundle_100001_actions.json.gz": "2966cdf058724175e737b512156a91b079caef39eded949a9c4a37ed96a65112",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain1_100001_100001.json.gz": "f1417da1b20bcb87bd5294e09fa0e53dac93c2374e8b70907df809681e94a462",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain1_100002/play_stacking_toy_perception_verify-bundle_100002_report.json.gz": "f5d5b154b40ef9eaaeb6f7c5e41898cc3e87202457836e582934089b11c23cfa",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain1_100002/play_stacking_toy_perception_verify-bundle_100002_actions.json.gz": "06d9b5d6d878a604b054e6d09fc8bf7c7ed4beba9d176081891d79b926665a81",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain1_100002_100002.json.gz": "8be431ae501fbdb6ec55ba3682b43c33963a3be1ac311ad15d22dfcbbe04b0fd",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain1_100002/play_stacking_toy_perception_verify-bundle_100002_report.json.gz": "7f8d3e866938a3b710b3f88a1644c86332911018f17a5dc38a31c5756a89b873",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain1_100002/play_stacking_toy_perception_verify-bundle_100002_actions.json.gz": "8dbf27a83783dc9fe3567486e70dd3be6e9d8d7c29e41a8b496f509780747f8d",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain1_100002_100002.json.gz": "4ee5249f17570eeb21259e7a662081b4bf6d7418aea08769ea0476dcba7e78c3",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain1_100003/play_stacking_toy_perception_verify-bundle_100003_report.json.gz": "3df37df6be6eb6f947646c1b36d353e43ec7d02454cef236ef3003a129747b83",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain1_100003/play_stacking_toy_perception_verify-bundle_100003_actions.json.gz": "c71622f11d373a1b17934ea4f9fe18f99c48d2f5bcb4942e57060007a91d4aad",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain1_100003_100003.json.gz": "5baddce04bab7513eb74d32d61c35991bd44423bae608e24c9ee174e345a0790",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain1_100003/play_stacking_toy_perception_verify-bundle_100003_report.json.gz": "c50778ac10ca6a1ac18857396fa3cb46513a8213d4447bca09f891a0e08cd87e",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain1_100003/play_stacking_toy_perception_verify-bundle_100003_actions.json.gz": "086914feb31daf451c96fc1f0841416fa8414b2052beb3a519e974b4bb4b352f",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain1_100003_100003.json.gz": "e8cafe797184c097f5a2c8e7e08e74899bf222689b56fc20723264615ac8389a",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain1_100004/play_stacking_toy_perception_verify-bundle_100004_report.json.gz": "c426b25c7292f6a2e2c9423c25719c74fd8337325802a45de49d174bb42f5517",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain1_100004/play_stacking_toy_perception_verify-bundle_100004_actions.json.gz": "e574cb7c56f5467e276152211624046854da55ce2aebe6c244a73e7701aeae6f",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain1_100004_100004.json.gz": "340533431baed3736536c44619dbfd5f26379bee01168ce55c71bf6dfe4a844e",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain1_100004/play_stacking_toy_perception_verify-bundle_100004_report.json.gz": "e37a50773b793359c844d72b1993f19902de4076301800662b3106762a706b13",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain1_100004/play_stacking_toy_perception_verify-bundle_100004_actions.json.gz": "3d0ae76b3c2f0d862d028efda6a0687e536a1df885b86d68b8e55c6f681be770",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain1_100004_100004.json.gz": "0a898572b7b721607c46538191d90a8e49a0843ff3c454bbe860ae2a0abfd407",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain2_100000/play_stacking_toy_perception_verify-bundle_100000_report.json.gz": "d962f63f5dd4cf61aefd18745e6f2c35c5fbece50bbc22658cec0326d37a83d3",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain2_100000/play_stacking_toy_perception_verify-bundle_100000_actions.json.gz": "f2c84b0408bafd375c8299c7a3eec9fba13580a2ce9c59400907e754e4166b54",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain2_100000_100000.json.gz": "801c985389cbb2e55cf22ab3b156e649754bd4d8796a21be6abeef4271701727",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain2_100000/play_stacking_toy_perception_verify-bundle_100000_report.json.gz": "f542e3696d79cfeda43f8f065bce7732f451fb90432f1592333f61acd647ef0f",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain2_100000/play_stacking_toy_perception_verify-bundle_100000_actions.json.gz": "39fb72d46928992e3e8e51beceff9356a88e3f7579bf057f6e8a44623de64e99",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain2_100000_100000.json.gz": "20dac63e33137120292473701838fc9d177d232cc5bf4552dc0e90f6d828a769",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain2_100001/play_stacking_toy_perception_verify-bundle_100001_report.json.gz": "c0b1e7982610326bbf3d227ac8c85093285fd7492992c1942d89fcdd12839b55",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain2_100001/play_stacking_toy_perception_verify-bundle_100001_actions.json.gz": "8fbb8cc0c8aa13d5a32f821593f50cbec99de58866b60e4aa2fb3be31ea96d58",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain2_100001_100001.json.gz": "08ad402676c2ca2fd4f76d0fc415e53e440480d0d3afa81f081651089828c69b",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain2_100001/play_stacking_toy_perception_verify-bundle_100001_report.json.gz": "108012915fc655cc54f24a46e46ced41fda39ad0cc019e07c514890a90e6fd49",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain2_100001/play_stacking_toy_perception_verify-bundle_100001_actions.json.gz": "4fa833de01c60f4764455b888e12ae63689e2556a413c9c186a6ebf7792de2ba",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain2_100001_100001.json.gz": "2d6cb946626305ff56d77b6bd77bbaa37db38e9b10a4f91aab24299874474f06",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain2_100002/play_stacking_toy_perception_verify-bundle_100002_report.json.gz": "2f47af60cc3f41074b6396dd41e41597cf3724f8629808d29dcb1efe4ca67fc8",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain2_100002/play_stacking_toy_perception_verify-bundle_100002_actions.json.gz": "21a95eb1a270bd43b05304eceb79f3ddcafc3137d6201c2f5623bab144d6dd72",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain2_100002_100002.json.gz": "5f5e7688a74085f4a71f3afa2219f429878238a8cb128e1ab17163993fb276f3",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain2_100002/play_stacking_toy_perception_verify-bundle_100002_report.json.gz": "11aa6f878579289ad793a66dc8308116d1d09a091b70a7a8074af2db606da87e",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain2_100002/play_stacking_toy_perception_verify-bundle_100002_actions.json.gz": "03c9de08a98d5b7ca40021dcbab2e357cfb1dbee1ff34a509af0e037770516d0",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain2_100002_100002.json.gz": "802e93c29f5cdaf3e47a412c7c6cab6ac9775f76add146a0cc856335889e4195",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain2_100003/play_stacking_toy_perception_verify-bundle_100003_report.json.gz": "856c18e8112a1e1d7d6d3fdccb31ba9f66452aa024181569ebf0c58ff2f2d651",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain2_100003/play_stacking_toy_perception_verify-bundle_100003_actions.json.gz": "987ba47eef182b8049d109de3a7dd4d41ae5d465c4accf9f1ac72d519c445a13",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain2_100003_100003.json.gz": "77da817195835c791897df9b59e09bfbeab3493dc7fb9fa1058d681be5650ad7",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain2_100003/play_stacking_toy_perception_verify-bundle_100003_report.json.gz": "4493be8fa5d477402d24e38e651e5f17f8f7fd4d58c9fd4cc4290c8f85d3d3ac",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain2_100003/play_stacking_toy_perception_verify-bundle_100003_actions.json.gz": "6f5355b2b17023ecda9c46fb5eff470a5ddbeca6c35c9f3e00b6884ad32d5a21",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain2_100003_100003.json.gz": "bb930470d0cb1e200c5d80ded9a8aa29b77419997a351afddefcb55594fe3ab0",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain2_100004/play_stacking_toy_perception_verify-bundle_100004_report.json.gz": "81b22418dcd220f264355e7ebc5a3405bd3772f060c86f3f1b479b41994d5b59",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain2_100004/play_stacking_toy_perception_verify-bundle_100004_actions.json.gz": "83d69722f77636f427de76aa515681e7f026f24c84533914f6902d6fd46728f7",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain2_100004_100004.json.gz": "d6a5025ed36111f9080106c41f42e84e1188c8eb70740ea418cc05adc449e755",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain2_100004/play_stacking_toy_perception_verify-bundle_100004_report.json.gz": "f5d512bb9246ee21af6aa56dfbb48ab368e0addacc4c6f5cb5b8668f77946c06",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain2_100004/play_stacking_toy_perception_verify-bundle_100004_actions.json.gz": "edf60b8a7eeb5523dd5e60b4325ab127afc143ff4d8e83e37a830f62757fdc73",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain2_100004_100004.json.gz": "d05289ab1fcdc291b2b335c88b5b1cdb20a44849ee1bc06c4f3a0088c2d182aa",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain3_100000/play_stacking_toy_perception_verify-bundle_100000_report.json.gz": "4ed0cc4bd27bf224d0947d41615f6009cdaaa07d8be971cfbcffd46ff1b2862a",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain3_100000/play_stacking_toy_perception_verify-bundle_100000_actions.json.gz": "40ef3ecef7488fe78da1e49967f75ff08597f4b9fd50238e59f387713bcd6dab",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain3_100000_100000.json.gz": "d11b4960f16f0598f9bd181c10319f806b9a4fbc63ea9061ea621b89ef607f68",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain3_100000/play_stacking_toy_perception_verify-bundle_100000_report.json.gz": "c4066af5ee412f483b11ab2e6ef3c9ae3cbeed5de7967465c9b87d0f290529b7",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain3_100000/play_stacking_toy_perception_verify-bundle_100000_actions.json.gz": "3a66944cc5baa845e4d00582e2eb4bf540e4148b1255b8d526a457c7e99c4f65",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain3_100000_100000.json.gz": "5ea16f6ecdb904e3fa25de2537b1e69fc1ffe028ff9f3e35f31853fff064a199",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain3_100001/play_stacking_toy_perception_verify-bundle_100001_report.json.gz": "e75e6a8c353a210a48edbc6043790526693dbb9996579304eaf49e3520ebb185",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain3_100001/play_stacking_toy_perception_verify-bundle_100001_actions.json.gz": "38281c4ea2bb78cefd75e8a87b2140df50a591e50f0d015bfe4506501d48bb2e",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain3_100001_100001.json.gz": "d648b469cdfe4e36d6e31582d2340a839c661a6af4306ca16ed4377ea03c0028",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain3_100001/play_stacking_toy_perception_verify-bundle_100001_report.json.gz": "d4b327c3ad7eae1de46c5c1f2b0533dbd1e9ff40dcc796368af7be11bd86233d",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain3_100001/play_stacking_toy_perception_verify-bundle_100001_actions.json.gz": "c58c7f015929a7bef475792870c43188e976a2754fe2d60b5417c7bde3c98da4",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain3_100001_100001.json.gz": "636d1ab2921b4fccd89fa24d9fd079dc62afa02473a4c41e71b93a6782e90bbf",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain3_100002/play_stacking_toy_perception_verify-bundle_100002_report.json.gz": "cddd76f0de9d61dcf4a96faef3d787d3c26886126bde209a8e6341ca338f0c0a",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain3_100002/play_stacking_toy_perception_verify-bundle_100002_actions.json.gz": "1c8e5db073d4f83dd8b7cb6c49c20c7e06db0b4671c93f6ec2f13ec9044e2859",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain3_100002_100002.json.gz": "540cec195e4d79e65c3b95c156ef119e6150650a80fe32515d02586f6b5d0b4f",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain3_100002/play_stacking_toy_perception_verify-bundle_100002_report.json.gz": "336def69af4cda3f3210edda9a55e6a672937c8b991c545522ead34b25a29a5c",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain3_100002/play_stacking_toy_perception_verify-bundle_100002_actions.json.gz": "13389fe0e48f42a189097d516419d935e6f9ac59d318e3dfeff2ef2555399777",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain3_100002_100002.json.gz": "8bf8fe94b95ac149bb08e55e1d476e36c8447f12e7078bef5ba3e1cb96e1ecbb",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain3_100003/play_stacking_toy_perception_verify-bundle_100003_report.json.gz": "cb0e15dd298d197338dbec19b82f09880a3e339e34ab2ec6b006d8b428284839",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain3_100003/play_stacking_toy_perception_verify-bundle_100003_actions.json.gz": "0944f6064a00555a5c0557bcca387bc0b1cc6a31c724ecc5a982c97781d886e1",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain3_100003_100003.json.gz": "3830ffa3b25576c37ced81de7a1808e172f19d98f68851da733e27ab78906d08",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain3_100003/play_stacking_toy_perception_verify-bundle_100003_report.json.gz": "a33b25fee0ebbce08307684313f7131b43b307af09c359d012d49838e6a44bca",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain3_100003/play_stacking_toy_perception_verify-bundle_100003_actions.json.gz": "bd4f75a892509340b22f885cee0642e577f979cde488c8523dd9941b14894a6b",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain3_100003_100003.json.gz": "d5fe89459c517a686c36df6eac50df4da75d976724387e675d887f6bd0bf5e41",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain3_100004/play_stacking_toy_perception_verify-bundle_100004_report.json.gz": "d53c67a689f8fd8f2c7997e07db50ff3ddec8a60179997722e76f7e319023325",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain3_100004/play_stacking_toy_perception_verify-bundle_100004_actions.json.gz": "7199d5d8fe71fc8818a9779ba07c750669c65106e28e4fecdbd81886f647b936",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain3_100004_100004.json.gz": "7a7c4d33a95e50623cf27acfe65a7c36de22061072aabd1c84a08b064f648382",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain3_100004/play_stacking_toy_perception_verify-bundle_100004_report.json.gz": "3e3c654658a94b6ff26c575fb2394d9e09f7a6ddeec07745e7a97b9caf3e8710",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain3_100004/play_stacking_toy_perception_verify-bundle_100004_actions.json.gz": "2804b1cbed63024c4b7136f8b17a533cc68f0795e83418eabfdf6b6ce3e346dd",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain3_100004_100004.json.gz": "b21652a3c3cffe335f908b0a40d05a1809b0f61807ad8e3f11955a0690ed4600",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain4_100000/play_stacking_toy_perception_verify-bundle_100000_report.json.gz": "6cdc1d6def3d3a9b25ba45648bf7bd7dc309feb08081f6a96ba86bf78a5c2316",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain4_100000/play_stacking_toy_perception_verify-bundle_100000_actions.json.gz": "f5204d44fe7dd26a634911bc2b59835ac7ab7bb099cac80bf6144a54f466905a",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain4_100000_100000.json.gz": "01eda8ec793d2ec3d263b1e3529c4ce37e783910ef24d2d6ebc836f3404ad8a8",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain4_100000/play_stacking_toy_perception_verify-bundle_100000_report.json.gz": "9757dff1b42155307f7cf17168a215da6e6f181f60a1ca7f2fac022ca4372bf0",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain4_100000/play_stacking_toy_perception_verify-bundle_100000_actions.json.gz": "b2537e5a13ee90703f7a2eb4f6b01405084638e0dd474a94aa6d8bc86d646571",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain4_100000_100000.json.gz": "25f7845bd79f269cd2acd640065715d3075be72fcf7955c4e55fedc4b83c6482",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain4_100001/play_stacking_toy_perception_verify-bundle_100001_report.json.gz": "c2a7f3933ff48db86024c6f758f263eb8b06287a4545be23301ff88db20a4c65",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain4_100001/play_stacking_toy_perception_verify-bundle_100001_actions.json.gz": "68fe875171352cf62b7a32a7e331e2fd8ff3205d0543f88541f80699a5c5e3e5",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain4_100001_100001.json.gz": "19efa3a83841b5137aaeb398f4a273e475b2920853876b2543fb609c3eac840c",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain4_100001/play_stacking_toy_perception_verify-bundle_100001_report.json.gz": "96a60c66ef7ec631812a85c78557bd2805e1ad848aadeeb02639fabbf6ac7581",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain4_100001/play_stacking_toy_perception_verify-bundle_100001_actions.json.gz": "bbad563b9d73aaaf5b25c1fe6813cb75cd4e1f485eab45bdf8fda751a17b06da",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain4_100001_100001.json.gz": "27448e2db377d6d91c4f10e0520ce21aca5568c9acfd6220e9c68818faf92be7",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain4_100002/play_stacking_toy_perception_verify-bundle_100002_report.json.gz": "a28c0bf8560401bb51448e668dacf282458e4bce7ab8f36989db4573a4adfe5e",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain4_100002/play_stacking_toy_perception_verify-bundle_100002_actions.json.gz": "56573c7d4daf9a1922047c6e945ec338e53e0cb102f7722247330f83d6a80604",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain4_100002_100002.json.gz": "6dd584317ffc41869ebc2fabaea2af2213cd8949677888476fc122c98ef0d915",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain4_100002/play_stacking_toy_perception_verify-bundle_100002_report.json.gz": "e937d3f3bed536dc4ef44f85cdccf16af3d46ceb86c728348116e83bc8867dc7",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain4_100002/play_stacking_toy_perception_verify-bundle_100002_actions.json.gz": "f9db02a41fd4379bea044a280d8abf49ba3b16f80dba1aa187efa186cadbb076",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain4_100002_100002.json.gz": "1921e76aeda9ed57085eba9ca7208cb75cf2e21b5d5de08a6606f161b67edac1",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain4_100003/play_stacking_toy_perception_verify-bundle_100003_report.json.gz": "8178b6de54c8dd52d2b2c76eda3794c27a865c2dad938a976079ad4781853961",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain4_100003/play_stacking_toy_perception_verify-bundle_100003_actions.json.gz": "5bbc9da2741653b99adf2e2bd48ba96b404729b021ee60e346c9405ed174d2f3",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain4_100003_100003.json.gz": "dde0fb42a7b576e2bfcaacf13a73aaddae02e44442afac254d3ddbbc7d0c4168",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain4_100003/play_stacking_toy_perception_verify-bundle_100003_report.json.gz": "223f9a40908ab0c82a491fd72552845f802ce5301b2c439e65fdb8c60e0e4b0b",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain4_100003/play_stacking_toy_perception_verify-bundle_100003_actions.json.gz": "bf813556bbe7c966f48d9a15e1b988066409d8417fb5fa3d363f0e7a4a7937e6",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain4_100003_100003.json.gz": "9e26d0fc23f788c75fc87f6692d62e4cf6e9d91ea2dfffa6bc5c5695703b8bf2",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain4_100004/play_stacking_toy_perception_verify-bundle_100004_report.json.gz": "f074413c59c30112bc2d32ed184b2958dc0e52a1678426271a107ca66985a820",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegBr1_peggain4_100004/play_stacking_toy_perception_verify-bundle_100004_actions.json.gz": "9be3334f4e3543f98c349fc319750e5c14bf8f83a58d7fe81cd154e038820267",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegBr1_peggain4_100004_100004.json.gz": "49b76c73b8593861ca43f34e22cce4958ac355da402902ce614cf6795b643d85",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain4_100004/play_stacking_toy_perception_verify-bundle_100004_report.json.gz": "0488fe0b95b5881aed2cd660c24984fb01ec407234ce4521a36f3681724c20cf",
+        "runs/peg-mechanism/episodes/c4b_play_stacking_toy_pegAr1_peggain4_100004/play_stacking_toy_perception_verify-bundle_100004_actions.json.gz": "a3dc87271a82843d934646804276942922747c1329348fe01ad24e1e4fa48f42",
+        "runs/peg-mechanism/replays/c4b_play_stacking_toy_pegAr1_peggain4_100004_100004.json.gz": "449f8a917fa34538ca40929350ec24ca29ba70bdbda0749973788faa850ed783",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack1_100000/stack_blocks_perception_verify-bundle_100000_report.json.gz": "21a2ceb5b0725c687fbce2f667aa2a4866a9635f8cd8d8b780b1656c60fa2691",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack1_100000/stack_blocks_perception_verify-bundle_100000_actions.json.gz": "56916efddcaf812f0dc3e19e1d8d700793e996083de5fc4fd76d563ef9230b8d",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegAr1_pegstack1_100000_100000.json.gz": "b88b13e9930f04dcdec845cac6f04d34d7c4191b3cd483053e0b615cc3a9a127",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack1_100000/stack_blocks_perception_verify-bundle_100000_report.json.gz": "8cc8873851d86f6d7cb8a4fa2d4cf0f27f603363e1c8fc923bfd2cf3c608b1b7",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack1_100000/stack_blocks_perception_verify-bundle_100000_actions.json.gz": "1998ebb31b004fa0912e0e5741b64cb4db48ad2ca6065c5a1eb418df26478c9a",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegBr1_pegstack1_100000_100000.json.gz": "c7e47ccbfee8cbffe54aea46b851bccdfc54e26318acd73977eacdc075399976",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack1_100001/stack_blocks_perception_verify-bundle_100001_report.json.gz": "75b1baaab1e0537d90fa3b0b07140d1edf669031a45e6672f2dcf662f04c3ea7",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack1_100001/stack_blocks_perception_verify-bundle_100001_actions.json.gz": "99213a07894c127e8020ef062dd36d80b002b12a859a11c3a31b523978d09ce0",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegBr1_pegstack1_100001_100001.json.gz": "3e0b8a709726737e52111b05211511fb3d8e6ed88f580f34d2343d3117dd6490",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack1_100001/stack_blocks_perception_verify-bundle_100001_report.json.gz": "b360a066a09a2bed28992949dbfbb8908b64f704b300635652d37f1bb5fd79a0",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack1_100001/stack_blocks_perception_verify-bundle_100001_actions.json.gz": "1c0b7384b7831f9ab246deea49940741c7661026a726a07b70a630722bc700d5",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegAr1_pegstack1_100001_100001.json.gz": "752733245bc64b73c50f991ea792d3741f6b6a2c1a380aa2e6872d0b8f9b11d5",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack1_100002/stack_blocks_perception_verify-bundle_100002_report.json.gz": "cd8c341dedaabf68dbb68fcab1a1f530fda49692293655a68dc1296b8b35f48f",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack1_100002/stack_blocks_perception_verify-bundle_100002_actions.json.gz": "6dee2116a57af5933a5e607c9909ee6e987985dee8d9f381df4a7c9f19db7948",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegAr1_pegstack1_100002_100002.json.gz": "8abbbdcb4aa80973d0ac889d7b249fc6ef04e9a401ec0a06d993b5961162e5d1",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack1_100002/stack_blocks_perception_verify-bundle_100002_report.json.gz": "c190aec5306ab0c120a2c5885a55151904c10300fce8504278975659cc68a8f5",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack1_100002/stack_blocks_perception_verify-bundle_100002_actions.json.gz": "ee50aecbc8dfaffc62562764af3497dcb5dd2d19703904b12dd5ac4a704a83ef",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegBr1_pegstack1_100002_100002.json.gz": "21fd2581fa516a6d6015d1b54cd989a3b936a10492676ac116020db9dd7c6022",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack1_100003/stack_blocks_perception_verify-bundle_100003_report.json.gz": "33ce45b82315211c3f0e3db38a29c79d834c4daae6e41f292343c42addffd939",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack1_100003/stack_blocks_perception_verify-bundle_100003_actions.json.gz": "abdaaf2adf9460c4b5e5f06990ee09bf5ba5c2007bcc10e54655ce8129dffd50",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegBr1_pegstack1_100003_100003.json.gz": "ce6a249d7e9e62706dc3c2d8559cf93c978e3a4a7376ce50f7381d5d26a9881d",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack1_100003/stack_blocks_perception_verify-bundle_100003_report.json.gz": "317449af7a7f715b415a83bd61ea3f7a02a4fa836ca7197894c91f4203340963",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack1_100003/stack_blocks_perception_verify-bundle_100003_actions.json.gz": "ecddbefc4ec8d02e5f82fcf8cbcd44775df996bec0dbf75b1f03d24274e5b93f",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegAr1_pegstack1_100003_100003.json.gz": "06b565a8e0657556a65a060d14cebcbb0203037cf11e8086a469f3cdfca4506d",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack1_100004/stack_blocks_perception_verify-bundle_100004_report.json.gz": "5f8f36019036ca6972633a4de595ce679b9043dd8854a536debefd722fcb39b3",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack1_100004/stack_blocks_perception_verify-bundle_100004_actions.json.gz": "720c2b3486e70caf6a0fe6f539cfbccd7cab081e7b22143eb6175bb4693f97c6",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegAr1_pegstack1_100004_100004.json.gz": "cf4c97d23480b3e0ad8d0c61eb7e31fe184e85292dbb3a7d9087cd98716fc2c4",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack1_100004/stack_blocks_perception_verify-bundle_100004_report.json.gz": "de6512aa5fcaced4e850d386472189a67d93959584fb423bc103ed0812614a0a",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack1_100004/stack_blocks_perception_verify-bundle_100004_actions.json.gz": "9a4e2d49610bf535b643c875bd5df48ba9e0209b6fef79ef7a5a524abcae8fd4",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegBr1_pegstack1_100004_100004.json.gz": "17f23a8c053868c6176a14db4e17cddc5bce760b405023b96d5026c2a0906b63",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack2_100000/stack_blocks_perception_verify-bundle_100000_report.json.gz": "3d601e295b447fbe505819f2cc8166a7efcc2e7515ceee6ce228f74556d3664a",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack2_100000/stack_blocks_perception_verify-bundle_100000_actions.json.gz": "85665126e77aca6ac09389ff80803c739fbe6cebf8b5cf1e180de4318dab4275",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegBr1_pegstack2_100000_100000.json.gz": "207aa0f81029f45d83514d2ede5ebb82d762d1e9d448a60c755519a1e795bcb9",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack2_100000/stack_blocks_perception_verify-bundle_100000_report.json.gz": "01dec0c87796dd76d7828e95249c1d28c07ec485877ef59c92948b73efd00c61",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack2_100000/stack_blocks_perception_verify-bundle_100000_actions.json.gz": "3af90700a3efc5b64776717cedd136b80cbc1faf43ad3c7f81d33ab2a703950a",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegAr1_pegstack2_100000_100000.json.gz": "9798db6c98eca5a3b5fd39ff8a3433bcccc9ed695d13aa98adbd904beb68208a",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack2_100001/stack_blocks_perception_verify-bundle_100001_report.json.gz": "6fa913bdfe3c639e71420b3271dcce6563c127412e0fe75dbcd582c47d1875cb",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack2_100001/stack_blocks_perception_verify-bundle_100001_actions.json.gz": "1adfa1f73535cfb1306d7ed2445dbba11c54a00a4ff37102b6815c0657ce53cd",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegAr1_pegstack2_100001_100001.json.gz": "0b0b71127fe655b963108cae2c8cf6458c01b10e82ace5c6a8b1a2a9f2028774",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack2_100001/stack_blocks_perception_verify-bundle_100001_report.json.gz": "1ede4f780cdfcc1f34302e18a4a26f8dbc06bf66e53d76b61ff5a70e510525e8",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack2_100001/stack_blocks_perception_verify-bundle_100001_actions.json.gz": "5c86910c3864aa1ad5fd6e78be2f675f6310e2ccfa5b780b8c6698986f48bc89",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegBr1_pegstack2_100001_100001.json.gz": "ca748b522608c188222c88bd546a1c36b287209cb0a29f6aefa1ccd71a55bb59",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack2_100002/stack_blocks_perception_verify-bundle_100002_report.json.gz": "232978eacef07c9b9eb19429aa7f4760e84048d2011621646eb7895c5cf13c81",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack2_100002/stack_blocks_perception_verify-bundle_100002_actions.json.gz": "755f5bd8336c3a248f9c6947ed84854549e028def89a7ec59604341ea72a59ee",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegBr1_pegstack2_100002_100002.json.gz": "3980840d02e63adf4f328795587e1429e751de358cae1875fb273472dd86d771",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack2_100002/stack_blocks_perception_verify-bundle_100002_report.json.gz": "5f48a01604505208bc79e721e9a1f72715fac8e90ffa22f7f8d3dae87f7490d0",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack2_100002/stack_blocks_perception_verify-bundle_100002_actions.json.gz": "a9eb0f5295102d28636b95d78900b8f82c712cff68863c6db173a3f43f959bd8",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegAr1_pegstack2_100002_100002.json.gz": "b6c52749e65d578e9867c3dafe6caae285c965e8932d7bb260099369a8209cc9",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack2_100003/stack_blocks_perception_verify-bundle_100003_report.json.gz": "c9d0805ecda4f713db14844953fc7d09261231da68c101d0b5f6d4a208607c1a",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack2_100003/stack_blocks_perception_verify-bundle_100003_actions.json.gz": "a5760710dc9faf3fcd0c38af3e96c9d5f31856c1d6e4c73f49a9627dae2437cd",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegAr1_pegstack2_100003_100003.json.gz": "ad82b346140d05de8fbf26171b477b4cd51d3d68bc9cb537b40830fbb20c4e5a",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack2_100003/stack_blocks_perception_verify-bundle_100003_report.json.gz": "3344388087ad2e9f2d6c28824dd15484e913291287ceddfe40015970a1e9131d",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack2_100003/stack_blocks_perception_verify-bundle_100003_actions.json.gz": "a7fca2550a33683201681f3e78871767a2a131ee61a34fc95ac1be6599a8e463",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegBr1_pegstack2_100003_100003.json.gz": "c51dc774f4572f2bd74a6511331f6d220c599d4541c668791e5c89e598c1a288",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack2_100004/stack_blocks_perception_verify-bundle_100004_report.json.gz": "6a4acf09813a4fd7f2e563f986991679a730b9d0cf613c6aea914fc8b75a6b9a",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegBr1_pegstack2_100004/stack_blocks_perception_verify-bundle_100004_actions.json.gz": "6719f3db95affe66649e00e9b75134d39da8dc295ada787e2e64f2738c322073",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegBr1_pegstack2_100004_100004.json.gz": "94a006aa2625b2dba809cca3577adc0950d7e6864652b41206d28e2cf660b753",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack2_100004/stack_blocks_perception_verify-bundle_100004_report.json.gz": "8418b505a94fe1aeded23132a51df765ea0057d2ecb2a9a4da4acb90913cf234",
+        "runs/peg-mechanism/episodes/c4b_stack_blocks_pegAr1_pegstack2_100004/stack_blocks_perception_verify-bundle_100004_actions.json.gz": "49ecf47633fb3016e04dd1a5025cdebfb4b9c526a9b5d6c56cc695182d335c8b",
+        "runs/peg-mechanism/replays/c4b_stack_blocks_pegAr1_pegstack2_100004_100004.json.gz": "d1682db7c1b77477ab31934547606699ecf01344ee16245297fc5aded0955c38",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes1_100000/insert_tubes_perception_verify-bundle_100000_report.json.gz": "20aab2e91a1ebd28a9114be8af44054fd9b2f2fa54b2b3e8ac6d3c4f030d539d",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes1_100000/insert_tubes_perception_verify-bundle_100000_actions.json.gz": "6b70589fd88a24288297b2e0a28201c464e634d90377b265066a28c7a1f7389b",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegAr1_pegtubes1_100000_100000.json.gz": "d2b83e9410bb9386103d8747609aaace79625b786c984e75e969c5bddee45e14",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes1_100000/insert_tubes_perception_verify-bundle_100000_report.json.gz": "d41853788b8e88d7e09476c355f1c183069405b4494bf9926940ccb78cd61c9c",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes1_100000/insert_tubes_perception_verify-bundle_100000_actions.json.gz": "287988c41dad4126456dd90b24e08c4890b8436624c2f9bdaa71bdf85b03ec7b",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegBr1_pegtubes1_100000_100000.json.gz": "d6818a591d8e605758488ce169133925f6f2d128ded5ba9c41c37558eeb672ee",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes1_100001/insert_tubes_perception_verify-bundle_100001_report.json.gz": "8cc54b08c73ae26774f3e5c442196d28db3904f816233e004b175e376100a46b",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes1_100001/insert_tubes_perception_verify-bundle_100001_actions.json.gz": "db68a9e17ed7e7aa5e14ed00709dca987a188b69856ac112e9c4473decd44eec",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegBr1_pegtubes1_100001_100001.json.gz": "6fa9907d041b26f25a01cf876ed87146714f632d7c18be394e40b07076eb561c",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes1_100001/insert_tubes_perception_verify-bundle_100001_report.json.gz": "e70c91b7d777a4af3c34bdb1ec6f2cf6185498e5edf081820a79d53584fcf634",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes1_100001/insert_tubes_perception_verify-bundle_100001_actions.json.gz": "a7cdb033d25575d953dbe4ca67af4f354dafbaaec3b60f1c0fbde971e3347294",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegAr1_pegtubes1_100001_100001.json.gz": "6d1543211d28ba009e40e32ed3fd9d1c867122ccdccf81205e7f1ace108a8a3b",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes1_100002/insert_tubes_perception_verify-bundle_100002_report.json.gz": "3fc203d2fe1c5919e22615e0e20e8520f6df0fbf955787710a0d574756fbfc16",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes1_100002/insert_tubes_perception_verify-bundle_100002_actions.json.gz": "4b2910ce4d6383d13ac51b85e4c85400f4f646c5da29b27df42085a838b64800",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegAr1_pegtubes1_100002_100002.json.gz": "1f55c7c47217634a01db6afb400ca02f870705c813ff12f0122a62d9afaa4e15",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes1_100002/insert_tubes_perception_verify-bundle_100002_report.json.gz": "6282f98b4effe0285cc7cec3f9f4e253250ae064851b6fead034e2b550d9d7e0",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes1_100002/insert_tubes_perception_verify-bundle_100002_actions.json.gz": "4c34f4f24f64fa4200681b86cfc9dc85b6c0b662d78493df5091b701e3f7bccd",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegBr1_pegtubes1_100002_100002.json.gz": "370e72b7daae55066a7b8e2169e93352ce0b551218bdd88dfa73465682ffa0b0",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes1_100003/insert_tubes_perception_verify-bundle_100003_report.json.gz": "f5967b645b5a1b06bb0d7084eaffbd627977c472c01b7277e423deeac599f296",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes1_100003/insert_tubes_perception_verify-bundle_100003_actions.json.gz": "f168eacfb83af835b7eee749dae1ae0aa42cfe9f4c888004048f5240cc18b8e8",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegBr1_pegtubes1_100003_100003.json.gz": "1cbf0ceb40a1c88e06d162e7e49ea8c3cdabbd2daaed5dd9a8d4e4e1370bb8dd",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes1_100003/insert_tubes_perception_verify-bundle_100003_report.json.gz": "0d965a411e107f3fba595e4a8e9dd27c93042d33a9adcc22f455e6ad3ae27c38",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes1_100003/insert_tubes_perception_verify-bundle_100003_actions.json.gz": "861084c5815503d9f54f09195075db1d676a8d41e6e45d61c216b6f93bdd5abf",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegAr1_pegtubes1_100003_100003.json.gz": "2b47b947e84248f9fd0a83038c19a5fa51d9f3cfcb6523e11357784354dc3917",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes1_100004/insert_tubes_perception_verify-bundle_100004_report.json.gz": "e1ab150877eb85b3ad4bf9e0e1f008c8a2aa0ee5ed2edc32a793a7c28c1276a3",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes1_100004/insert_tubes_perception_verify-bundle_100004_actions.json.gz": "89b7acb7bbe66f050f522b6efce4dd843de5348eb2bbe8ec3958cd54153af7bb",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegAr1_pegtubes1_100004_100004.json.gz": "dbc0336c753172b1d23a21613d636958d664bddf58c434ad33be3d934b1ffa2d",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes1_100004/insert_tubes_perception_verify-bundle_100004_report.json.gz": "7322403d82dc77eeebac52433804a8b2c35fb0a1e268ebe5985f2ce0d0f3c00c",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes1_100004/insert_tubes_perception_verify-bundle_100004_actions.json.gz": "0ee0f58874616b6365c5c5952318861ccb04f5b3299af94c10fc418d0b3a2fa0",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegBr1_pegtubes1_100004_100004.json.gz": "b2920138df92219649264e99a1f2661a7a0877cfaad44345f0a04f51f73bd708",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes2_100000/insert_tubes_perception_verify-bundle_100000_report.json.gz": "875a520d46d696204d9d00d1cfff5cecb09ae8e4a9e48b8dcd33fa72b804d50a",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes2_100000/insert_tubes_perception_verify-bundle_100000_actions.json.gz": "4d2d3c40452b9d77c19ca912acd5c04039341688e998e400a421b9cdf741766c",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegBr1_pegtubes2_100000_100000.json.gz": "81ece6e546440bbe8fdd29c7f789d9d828e0a08f056b7e9d1cefcc1124b85c5d",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes2_100000/insert_tubes_perception_verify-bundle_100000_report.json.gz": "4994a54855c3fc5e7cc916490427c74dcc56c1412cd5c9832d31da8883151e3e",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes2_100000/insert_tubes_perception_verify-bundle_100000_actions.json.gz": "52ec8fcd4bc405c69e2df2b2560d51c761945a5de8aa4cb93fb55b7621ee8800",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegAr1_pegtubes2_100000_100000.json.gz": "e249305bb72fb366b36f6efd0679654619a458c831d7017d356553718454d2bb",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes2_100001/insert_tubes_perception_verify-bundle_100001_report.json.gz": "e0c72d3693b706a8222ca5a79b39d26cb76f815c946649528bd6821554b506da",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes2_100001/insert_tubes_perception_verify-bundle_100001_actions.json.gz": "9a615b50442b2e2d246fa7cd8b74ddbd753c57d20a5791e72ab4728b0db2632d",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegAr1_pegtubes2_100001_100001.json.gz": "a8a2a564e6d4d6f2bee00b8ba7aea8940d4848dd83dfba9e2ebd31f41e25b867",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes2_100001/insert_tubes_perception_verify-bundle_100001_report.json.gz": "4a1fb293ebdebc2b97098b5c85ad107db54150fb16cde4804d076f82a2890dbc",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes2_100001/insert_tubes_perception_verify-bundle_100001_actions.json.gz": "79a623e1ccf4c5107458220040a41a9a110db7a7f233ab75aef21361472181a4",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegBr1_pegtubes2_100001_100001.json.gz": "ae13a1145636724363a6ac68e9a84557f5242b56c3b7f0a2e7477e565cd6212b",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes2_100002/insert_tubes_perception_verify-bundle_100002_report.json.gz": "02eae9a203a48b1d739507aba67c853373b98597775ddddff3c708d3d3eafa1c",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes2_100002/insert_tubes_perception_verify-bundle_100002_actions.json.gz": "c89d703fcebf365ea7b68b90c1ff9026dfd3f1255957147e2431bbade3b36d20",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegBr1_pegtubes2_100002_100002.json.gz": "e63ef38b825911285d240af59aeded839e7329f506b428fc9bfebe42f58c1f12",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes2_100002/insert_tubes_perception_verify-bundle_100002_report.json.gz": "fe2354c6ebaa2647e55ecd8a73c046648da5cb99997ee39171d5bf0f079bc2f1",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes2_100002/insert_tubes_perception_verify-bundle_100002_actions.json.gz": "d62d1ab40d3d0d5020001035b630234a879ef5b16d0f956938cdee5a0413fd6e",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegAr1_pegtubes2_100002_100002.json.gz": "a8bbb99e2a8780afda16ff242b4c54aa286a705b5d5c44637c591b3afd39fd5e",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes2_100003/insert_tubes_perception_verify-bundle_100003_report.json.gz": "3e9c781d9fb895660bbd59dc621b37ad5671885a41bf84b9dbac618158b6921e",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes2_100003/insert_tubes_perception_verify-bundle_100003_actions.json.gz": "19ae9e7caf08b2a74f29efabaa63dbc4a2035f1be49ce39f4ab8347d5a2c4279",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegAr1_pegtubes2_100003_100003.json.gz": "82fab2bcaa0cc15b6ed9c462a48e584b15c079070ba4e2104d1eec469560be83",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes2_100003/insert_tubes_perception_verify-bundle_100003_report.json.gz": "48f8b1f6865535bdcb4c348da5123f5110776e38155c89e0bb0a2b7e030b41c9",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes2_100003/insert_tubes_perception_verify-bundle_100003_actions.json.gz": "ac3278befd468e095e5f5abc2acae76b6d26d0355c32fca45819d9cee537b433",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegBr1_pegtubes2_100003_100003.json.gz": "9563f4c9605c95030b0e1c5490e2394365b82c9f5a5f7ab65a48c5b8b3ca5cca",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes2_100004/insert_tubes_perception_verify-bundle_100004_report.json.gz": "cd8eee880fb53e202903d09b50ff1a95f8a0e812274d3f6a4b718d91f7d49d7e",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegBr1_pegtubes2_100004/insert_tubes_perception_verify-bundle_100004_actions.json.gz": "7f5f7e5c3f632bee0f23060c35b2d4846f8a93ff71cc0e682fae1cf374351c36",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegBr1_pegtubes2_100004_100004.json.gz": "82c411df4a06c29d3f12a9c02008f980eda9a6f6a1c06d66d015b4cb93b90b43",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes2_100004/insert_tubes_perception_verify-bundle_100004_report.json.gz": "d24173b3cc13852248371330d91888a6562433f3bcd59d92a8c7de4b292ef1ad",
+        "runs/peg-mechanism/episodes/c4b_insert_tubes_pegAr1_pegtubes2_100004/insert_tubes_perception_verify-bundle_100004_actions.json.gz": "d81c04cc7bf8830976ce5599126e2c76b54fd800fa750f39073dc095ab85f52c",
+        "runs/peg-mechanism/replays/c4b_insert_tubes_pegAr1_pegtubes2_100004_100004.json.gz": "762852bc420807e222f61b08393fd0d13697924bb6e25720b5e7a06201df6e41",
+        "manifest": "c0461c96494665e4acff7936f76b9d48eaa06cdeaf073ba2f5eeb2a551c87612",
+        "write_ledger": "b1f57e841146084449a2c8dca9c85712c77a1a49c01d4f006807d0fae05f249b",
+        "body_geometry": "70b37b6dd832ff7fbffff22df8cd503a7348eb29093f10a480ef8866b0789deb"
+      },
+      "legacy_transport_repairs": [
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain1_100000",
+          "reconstructed_before7": [
+            -0.059869392875462626,
+            -0.20015210219398297,
+            0.9444415739665387,
+            0.9083347596709257,
+            0.0004851550297512811,
+            -0.0019597600372111097,
+            0.4182390325385178
+          ],
+          "step": 788,
+          "label": "block0",
+          "anchor_step": 775,
+          "source": "exact_flange",
+          "before_sync7": [
+            -0.09864723937113491,
+            -0.21932908743255256,
+            0.852773769073867,
+            0.999230413886673,
+            -0.00032412590203966343,
+            -0.0018709200365071245,
+            0.03917875144111811
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain1_100001",
+          "reconstructed_before7": [
+            0.061642060093077364,
+            -0.2024537457706762,
+            0.9375349983592731,
+            0.9642747402106647,
+            0.0007807640846046939,
+            0.0006749754786921333,
+            0.2649021710126257
+          ],
+          "step": 290,
+          "label": "block8",
+          "anchor_step": 277,
+          "source": "commanded_anchor_fk",
+          "before_sync7": [
+            0.030268439319448823,
+            -0.2009229626210919,
+            0.8453503039470028,
+            0.9922936085286627,
+            0.00018036785807633475,
+            0.00022369581914546708,
+            -0.12390848195656974
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain1_100002",
+          "reconstructed_before7": [
+            -0.06106150185261239,
+            -0.20272951934084152,
+            0.9378168525141358,
+            0.9938481585496116,
+            0.0008872998405114746,
+            -0.00044280008715031835,
+            -0.11074680299955367
+          ],
+          "step": 838,
+          "label": "block2",
+          "anchor_step": 818,
+          "source": "commanded_anchor_fk",
+          "before_sync7": [
+            -0.09653405888743523,
+            -0.15998642324965623,
+            0.8462055473997205,
+            0.9938333470116051,
+            0.0007350772573178305,
+            -0.00032876771933140476,
+            -0.11088115232501529
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain1_100002",
+          "reconstructed_before7": [
+            -0.061165023710423774,
+            -0.20565845360537155,
+            0.9384892374414404,
+            0.9936893766959551,
+            -0.0008467317581109847,
+            -0.0025596668664929494,
+            -0.11213453434364716
+          ],
+          "step": 966,
+          "label": "block3",
+          "anchor_step": 946,
+          "source": "exact_flange",
+          "before_sync7": [
+            -0.09674765803375948,
+            -0.16237604463293112,
+            0.8469694321773944,
+            0.9937122630304832,
+            -0.0010478459978241555,
+            -0.002404955226006087,
+            -0.11193326811972197
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain1_100003",
+          "reconstructed_before7": [
+            -0.06013559892209162,
+            -0.20278002845652204,
+            0.937713806411195,
+            0.9995801694237091,
+            0.00031985323207451096,
+            -0.00023747242483424856,
+            0.028971126930558685
+          ],
+          "step": 744,
+          "label": "block2",
+          "anchor_step": 731,
+          "source": "commanded_anchor_fk",
+          "before_sync7": [
+            -0.09847211475008573,
+            -0.19280874180088364,
+            0.8461885861259898,
+            0.9995840836099881,
+            0.00018029506742624912,
+            -9.63146823953562e-05,
+            0.028837787896285667
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain1_100003",
+          "reconstructed_before7": [
+            -0.0603875614282628,
+            -0.206182723249655,
+            0.9379539691261772,
+            0.9996178422192356,
+            0.0015312140546120813,
+            0.0034668711840916944,
+            0.027382580314342476
+          ],
+          "step": 820,
+          "label": "block4",
+          "anchor_step": 807,
+          "source": "exact_flange",
+          "before_sync7": [
+            -0.0988284468052382,
+            -0.19608121707035692,
+            0.8464464506864325,
+            0.9996193586246511,
+            0.001329439091911396,
+            0.003663303443405601,
+            0.02731209736405536
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain1_100004",
+          "reconstructed_before7": [
+            0.06006273207069984,
+            -0.20019664341122978,
+            0.9440162254199668,
+            0.8807302750272837,
+            -0.0008323204380626895,
+            0.00020605686226392008,
+            -0.47361740617678205
+          ],
+          "step": 269,
+          "label": "block5",
+          "anchor_step": 256,
+          "source": "commanded_anchor_fk",
+          "before_sync7": [
+            0.029892579862217925,
+            -0.18405064916698988,
+            0.8519129604234704,
+            0.9949181186355869,
+            -0.0007946688790491993,
+            -0.0005726158341882994,
+            -0.10068255967695353
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain1_100004",
+          "reconstructed_before7": [
+            0.05962845137659589,
+            -0.20051927502640288,
+            0.9446300073291573,
+            0.8809976351912927,
+            -0.0014912496176050154,
+            0.002918180457239946,
+            -0.4731093184294165
+          ],
+          "step": 420,
+          "label": "block9",
+          "anchor_step": 407,
+          "source": "exact_flange",
+          "before_sync7": [
+            0.029951951212551786,
+            -0.18475801480433268,
+            0.8522774013557907,
+            0.994939715487007,
+            -0.002458946536339544,
+            0.0016516306365308687,
+            -0.10043001665242048
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain2_100000",
+          "reconstructed_before7": [
+            0.06530193358805504,
+            -0.20298639068072444,
+            0.9380228340208564,
+            0.8886122092748254,
+            0.0023801916262879246,
+            -0.0021698900350038412,
+            0.45864797807553015
+          ],
+          "step": 381,
+          "label": "block6",
+          "anchor_step": 362,
+          "source": "exact_flange",
+          "before_sync7": [
+            0.031085922927956245,
+            -0.2006872696791556,
+            0.8457754505291188,
+            0.9964660352866412,
+            0.0006426848834500562,
+            -0.0028495492633384403,
+            0.08394586079884221
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain2_100000",
+          "reconstructed_before7": [
+            -0.05993238887620374,
+            -0.20009766252189576,
+            0.944452626429001,
+            0.886053083438254,
+            0.0019170772283344376,
+            -0.00043421898443180793,
+            0.4635796259525831
+          ],
+          "step": 712,
+          "label": "block1",
+          "anchor_step": 699,
+          "source": "exact_flange",
+          "before_sync7": [
+            -0.09752353990902872,
+            -0.22085696154193038,
+            0.8529655575643091,
+            0.9959938715942346,
+            0.0016350210907600544,
+            -0.001066690158040995,
+            0.08940020483682834
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain2_100001",
+          "reconstructed_before7": [
+            -0.060604675926243474,
+            -0.2027600149845289,
+            0.9377048220991572,
+            0.9980621364804584,
+            0.000505314549170101,
+            -0.00044534140172626773,
+            -0.06222152402750347
+          ],
+          "step": 580,
+          "label": "block3",
+          "anchor_step": 559,
+          "source": "commanded_anchor_fk",
+          "before_sync7": [
+            -0.09670812849653468,
+            -0.19453984001085162,
+            0.8459193640530653,
+            0.9980539385447844,
+            0.00035486835175332427,
+            -0.0003193866517739612,
+            -0.06235469361534328
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain2_100002",
+          "reconstructed_before7": [
+            -0.06025496277072517,
+            -0.19996618843641295,
+            0.9442096515231265,
+            0.8775443632754502,
+            0.00019311761253898446,
+            -0.0004170474415738698,
+            0.47949523382459613
+          ],
+          "step": 742,
+          "label": "block2",
+          "anchor_step": 729,
+          "source": "commanded_anchor_fk",
+          "before_sync7": [
+            -0.09704281024022057,
+            -0.23838981464893497,
+            0.8525773390436977,
+            0.9942545544211439,
+            2.412058479163087e-05,
+            -0.0003892402826269178,
+            0.1070407815881984
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain2_100003",
+          "reconstructed_before7": [
+            0.06000242436583719,
+            -0.20016664900207037,
+            0.9441676994313966,
+            0.7852717142126812,
+            -0.00027494838796324493,
+            0.00018998595692263832,
+            -0.6191512118749324
+          ],
+          "step": 377,
+          "label": "block8",
+          "anchor_step": 358,
+          "source": "commanded_anchor_fk",
+          "before_sync7": [
+            0.029444874180167967,
+            -0.21188944812665603,
+            0.8518381825539789,
+            0.9930951280682759,
+            -0.0002190644726903489,
+            -0.0001818743854758258,
+            0.11731148937559119
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain2_100003",
+          "reconstructed_before7": [
+            -0.06447043461219895,
+            -0.2010136778118669,
+            0.9443403811798396,
+            0.6191022218804988,
+            0.0006419444913681189,
+            0.0016277486745443512,
+            0.785308459908686
+          ],
+          "step": 511,
+          "label": "block1",
+          "anchor_step": 494,
+          "source": "exact_flange",
+          "before_sync7": [
+            -0.03421345051955456,
+            -0.22238683363048556,
+            0.8518507630199805,
+            0.993037422491215,
+            0.0017206698426853698,
+            0.0008567793549885266,
+            0.11778362686058615
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain2_100004",
+          "reconstructed_before7": [
+            -0.06012922427586856,
+            -0.1998864759654165,
+            0.9442107203507533,
+            0.9091591039554797,
+            -2.1178111970335426e-07,
+            -9.126955229507332e-05,
+            0.4164489348824093
+          ],
+          "step": 771,
+          "label": "block4",
+          "anchor_step": 758,
+          "source": "commanded_anchor_fk",
+          "before_sync7": [
+            -0.09861023326557905,
+            -0.2244189486683183,
+            0.8527166058663702,
+            0.9993264684537132,
+            -3.375840954881024e-05,
+            2.073847465097686e-06,
+            0.03669616197776999
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain3_100000",
+          "reconstructed_before7": [
+            -0.060383826079813296,
+            -0.2002531129351865,
+            0.9440128335684482,
+            0.7637950831403622,
+            0.0003817705737126047,
+            -0.00045522541562124073,
+            0.6454585331310273
+          ],
+          "step": 635,
+          "label": "block2",
+          "anchor_step": 615,
+          "source": "commanded_anchor_fk",
+          "before_sync7": [
+            -0.09765612910892839,
+            -0.20120290728866497,
+            0.8526371065615443,
+            0.9965034960045996,
+            0.00038649012154310465,
+            -0.00016072267766484232,
+            -0.08355002839148438
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain3_100000",
+          "reconstructed_before7": [
+            -0.05983334695293452,
+            -0.2000870262034858,
+            0.9444906562348442,
+            0.7639214831093579,
+            -0.001908663380734008,
+            -0.0025102653322556087,
+            0.6453014979186549
+          ],
+          "step": 725,
+          "label": "block3",
+          "anchor_step": 705,
+          "source": "exact_flange",
+          "before_sync7": [
+            -0.0975638322151087,
+            -0.20144518102719125,
+            0.8531621716616709,
+            0.9965125143047794,
+            -0.002735008951021376,
+            3.69311885053978e-05,
+            -0.08339860428143894
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain3_100002",
+          "reconstructed_before7": [
+            -0.05961202116499742,
+            -0.2057988544578821,
+            0.9382740557487194,
+            0.9952674006575096,
+            0.0005037156129144248,
+            0.000520617919043529,
+            0.09717137652625976
+          ],
+          "step": 677,
+          "label": "block3",
+          "anchor_step": 664,
+          "source": "exact_flange",
+          "before_sync7": [
+            -0.0972079440703234,
+            -0.23875920702312897,
+            0.8469459115612079,
+            0.9952205179246676,
+            0.00021556505844611028,
+            0.0008529719176409967,
+            0.09764909970076421
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain3_100003",
+          "reconstructed_before7": [
+            -0.05987960571450732,
+            -0.20024922594486214,
+            0.9443597025164442,
+            0.8809498534106681,
+            0.0004934246922311525,
+            -0.0009642070533491045,
+            0.47320839237333256
+          ],
+          "step": 460,
+          "label": "block0",
+          "anchor_step": 447,
+          "source": "exact_flange",
+          "before_sync7": [
+            -0.033127652632172704,
+            -0.20926257358843978,
+            0.8520430829208473,
+            0.994934178090578,
+            0.00012754246340403554,
+            -0.000584223397524621,
+            0.10052673118712117
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain3_100004",
+          "reconstructed_before7": [
+            -0.059770794181866746,
+            -0.2002449788297823,
+            0.9443782225015529,
+            0.8735384108063678,
+            -0.002221678615919368,
+            -0.0023308699660880804,
+            0.48674456960012835
+          ],
+          "step": 492,
+          "label": "block0",
+          "anchor_step": 479,
+          "source": "exact_flange",
+          "before_sync7": [
+            -0.09599215437595689,
+            -0.21572714569582396,
+            0.8530737205620311,
+            0.9932694809534836,
+            -0.002963971096842627,
+            -0.001175800232924497,
+            0.11578242774940789
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain4_100000",
+          "reconstructed_before7": [
+            0.061680930773183346,
+            -0.20255471255186236,
+            0.9374875966686271,
+            0.9596950479160207,
+            0.0006767708290221767,
+            0.0004576666090326659,
+            0.28104225221127643
+          ],
+          "step": 295,
+          "label": "block7",
+          "anchor_step": 282,
+          "source": "commanded_anchor_fk",
+          "before_sync7": [
+            0.030324578906307912,
+            -0.1974379210842275,
+            0.8452771518266851,
+            0.9941875035359794,
+            0.00012317204844558476,
+            0.00015199889115372246,
+            -0.10766229394676982
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain4_100001",
+          "reconstructed_before7": [
+            0.06358453420660184,
+            -0.20474830551396395,
+            0.937916248786024,
+            0.9505784775675893,
+            -0.00288840764879432,
+            -0.0034941153159875242,
+            0.3104512944806274
+          ],
+          "step": 314,
+          "label": "block9",
+          "anchor_step": 301,
+          "source": "exact_flange",
+          "before_sync7": [
+            0.03057511095436845,
+            -0.20577758495880455,
+            0.8457092463186713,
+            0.9970391767006508,
+            -0.004746463892294893,
+            -0.0021003261283194744,
+            -0.07671987900643652
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain4_100002",
+          "reconstructed_before7": [
+            0.05974074830441514,
+            -0.20015984861559896,
+            0.9442995318305104,
+            0.9199333827046848,
+            -0.00261503826065368,
+            0.0009237981684627605,
+            -0.3920648920234448
+          ],
+          "step": 94,
+          "label": "block7",
+          "anchor_step": 81,
+          "source": "exact_flange",
+          "before_sync7": [
+            0.09532149333722031,
+            -0.19493541667483366,
+            0.8518921607660448,
+            0.9999408070096045,
+            -0.0028316427387643133,
+            -0.0003296899879475965,
+            -0.010500265753433595
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain4_100002",
+          "reconstructed_before7": [
+            -0.05990957664022967,
+            -0.20583582570674416,
+            0.9381820337027289,
+            0.999957211899529,
+            -0.003911828321439227,
+            -0.003961400053605742,
+            -0.007387779024806759
+          ],
+          "step": 516,
+          "label": "block2",
+          "anchor_step": 503,
+          "source": "exact_flange",
+          "before_sync7": [
+            -0.033898211781500154,
+            -0.193786135787845,
+            0.8456804443354905,
+            0.999959400052322,
+            -0.003960951289025133,
+            -0.0038927034858446843,
+            -0.007096194153035277
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain4_100003",
+          "reconstructed_before7": [
+            0.061790334478856984,
+            -0.20212827207682524,
+            0.9377113775961732,
+            0.9412516816157758,
+            7.452879788427552e-05,
+            3.491121491400583e-05,
+            0.3377058854715738
+          ],
+          "step": 378,
+          "label": "block8",
+          "anchor_step": 365,
+          "source": "commanded_anchor_fk",
+          "before_sync7": [
+            0.030211766852293643,
+            -0.20882932025922438,
+            0.845266046086666,
+            0.998830385765021,
+            3.7007121291007145e-05,
+            3.394291281080956e-05,
+            -0.04835140071240018
+          ]
+        },
+        {
+          "run": "c4b_play_stacking_toy_pegBr1_peggain4_100004",
+          "reconstructed_before7": [
+            -0.059866236910784354,
+            -0.20016616962864642,
+            0.9441061952258285,
+            0.7531483464478862,
+            -0.004325357478922587,
+            -0.0034523734202300403,
+            0.6578274398679805
+          ],
+          "step": 1056,
+          "label": "block2",
+          "anchor_step": 1035,
+          "source": "exact_flange",
+          "before_sync7": [
+            -0.09927417276147311,
+            -0.19415809266355957,
+            0.8530318074925185,
+            0.9977595837138357,
+            -0.005025590606394952,
+            0.001102381799605454,
+            -0.06670338297731485
+          ]
+        }
+      ]
+    },
+    "kong": {
+      "episodes": 40,
+      "writes": 249,
+      "counts": {
+        "A/watch_lay": {
+          "harmful": 3,
+          "neutral": 4,
+          "helpful": 3
+        },
+        "A/perception": {
+          "neutral": 13,
+          "helpful": 37,
+          "harmful": 10
+        },
+        "A/predicted": {
+          "helpful": 26,
+          "neutral": 2,
+          "harmful": 3
+        },
+        "B/watch_lay": {
+          "harmful": 3,
+          "neutral": 4,
+          "helpful": 3
+        },
+        "B/watch_relocate": {
+          "helpful": 18,
+          "neutral": 11
+        },
+        "B/perception": {
+          "helpful": 54,
+          "harmful": 12,
+          "neutral": 14
+        },
+        "B/predicted": {
+          "helpful": 24,
+          "neutral": 4,
+          "harmful": 1
+        }
+      },
+      "association": {
+        "policy": "first-pick-v1",
+        "missing_body_geometry": [
+          "Rigid/block/00014"
+        ],
+        "writes": 249,
+        "nearest_fallback": 26,
+        "sources": {
+          "initial_tight": 125,
+          "nearest_fallback": 26,
+          "grasp_close": 86,
+          "grasp_probe": 6,
+          "consumed_pick": 6
+        }
+      },
+      "fallback_by_writer": {
+        "A/perception": 11,
+        "B/perception": 14,
+        "A/predicted": 1
+      },
+      "focal_writer": "watch_relocate",
+      "focal_counts": {
+        "helpful": 18,
+        "neutral": 11
+      },
+      "focal_fallbacks": 0,
+      "legacy_repairs_by_source": {},
+      "focal_reconstruction_breakdown": {
+        "('no_transport_repair', 'helpful')": 18,
+        "('no_transport_repair', 'neutral')": 11
+      },
+      "input_hashes": {
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b1_100000__sonnet/make_kong_perception_verify-bundle_100000_report.json.gz": "0390d0a9be992f7f1a9c4356704916cefd76223d1313c3f9e40e415ef459d64f",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b1_100000__sonnet/make_kong_perception_verify-bundle_100000_actions.json.gz": "82d8ce788cb5d39606c5d2736b913d04cf5e20f4f3d43908f9f65ee50b72a524",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongAr1b1_100000__sonnet_100000.json.gz": "3512004edd919492d2c24c72650ea3cf1029ddc95eb732d61108b586d4f0451e",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b1_100000__sonnet/make_kong_perception_verify-bundle_100000_report.json.gz": "a3ea78a8b73f83f08c6f8d238f3e9ab72c8e12a47109682c585f8652c018f1d4",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b1_100000__sonnet/make_kong_perception_verify-bundle_100000_actions.json.gz": "8fb1d646ac37aa5fd22d0f9c29b5eb557e88b8f2dcb9356914dd5169caf34a6b",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongBr1b1_100000__sonnet_100000.json.gz": "22d7095864a103b11e698c09172d0f2f8356874388c338fe5a890083a92834ba",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b1_100001__sonnet/make_kong_perception_verify-bundle_100001_report.json.gz": "cd6bc2617b106082432ffa16b243d150949db4dc94ee47e6bac8c60a658fd89f",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b1_100001__sonnet/make_kong_perception_verify-bundle_100001_actions.json.gz": "dcacec92d9c777f28f34f94b31c4cdc9331f70629cb9dfc298e34b9b3c18e0e0",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongBr1b1_100001__sonnet_100001.json.gz": "598e5ab5e378570432ad7da1c838f1bb591206497f490fa7262f90cf394a83db",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b1_100001__sonnet/make_kong_perception_verify-bundle_100001_report.json.gz": "6e72b98934c937547db4de0ad01d7d8ee30d3e95aa8fc6327ff12f6cf7bf13ff",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b1_100001__sonnet/make_kong_perception_verify-bundle_100001_actions.json.gz": "063f32a331197da0aa35df17f963ae98205f44b3eb492e841a279dbe9f606f7b",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongAr1b1_100001__sonnet_100001.json.gz": "541431f4e131e10e1083498f15a52869e423df897db102cc3ee868348443c9f6",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b1_100002__sonnet/make_kong_perception_verify-bundle_100002_report.json.gz": "7a52a1518c1be7bcbb471e791e54d18d30210356456413afba644794f1f59460",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b1_100002__sonnet/make_kong_perception_verify-bundle_100002_actions.json.gz": "b9ea5ec1cc263c412a9c6f5548d94a2791ade75181b7207b92b6c5b3de718107",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongAr1b1_100002__sonnet_100002.json.gz": "abacac3a5613d1cdb928ccdcea51e5c8f964c218e8d623fbd51a9c53bf591a0e",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b1_100002__sonnet/make_kong_perception_verify-bundle_100002_report.json.gz": "ed32aef24b8d451fe692733a0179a71877fc9744f84ae41c08a5e1769a30bff8",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b1_100002__sonnet/make_kong_perception_verify-bundle_100002_actions.json.gz": "8dc88fe6037c08d7c6c01cb9dbef3e74439392e8b415d585fbd38c9d17065972",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongBr1b1_100002__sonnet_100002.json.gz": "d48a88291614eb333d919dd1b9972b9517a2645449d36a4f9f7548a095ab7e7b",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b1_100003__sonnet/make_kong_perception_verify-bundle_100003_report.json.gz": "f3c29f6e0f245079f8a2cc2e09e2621d81de1032cbaec3a089348f7c5d6264d6",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b1_100003__sonnet/make_kong_perception_verify-bundle_100003_actions.json.gz": "d99bbd39d4f7840a0b467f894347402478a3ccde7f8d8ac88d392898fe965ec3",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongBr1b1_100003__sonnet_100003.json.gz": "ea24982b74669d3700b774e38e5fb4456a241acfe15c9ebce2ea2f1c0d103540",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b1_100003__sonnet/make_kong_perception_verify-bundle_100003_report.json.gz": "c6fe88ae74e8780be3c23a61bebbfce97c45508436a2899048e6c3d4e898d148",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b1_100003__sonnet/make_kong_perception_verify-bundle_100003_actions.json.gz": "e0c10f350862965b740a40281dcb69be336d675dec1622aad9325de1bf5f04b0",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongAr1b1_100003__sonnet_100003.json.gz": "7eaac5e912423ff21d1c0edc5c5925d39289e533c834ef39dc936c1cc2f363a2",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b1_100004__sonnet/make_kong_perception_verify-bundle_100004_report.json.gz": "4a069f17d3157c6f43d2bd6e71acf7aa9a3f77cc6ae793d56d9b6a6eadbf2ac6",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b1_100004__sonnet/make_kong_perception_verify-bundle_100004_actions.json.gz": "90199276118fdeaa30cb23fb2d8b1d09dd55624a3c1d7c3fa8c40b26ac6d2279",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongAr1b1_100004__sonnet_100004.json.gz": "7f1ba60745c299c87decc3114024d8a5da3ac1ed63a8fe1e9842cec4516ba53e",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b1_100004__sonnet/make_kong_perception_verify-bundle_100004_report.json.gz": "9c1495988f11fd75a4a0171dbdc780398392d2650ceb175b7d0153ba1e4748ed",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b1_100004__sonnet/make_kong_perception_verify-bundle_100004_actions.json.gz": "25df5a59896d7a898d3c68352ba7f81d08c37f90629dbd51ea7ac13d02d7c33c",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongBr1b1_100004__sonnet_100004.json.gz": "4da74db506e3a6f76066a69c1d79effe98b98587b85731a391f851f3e609aade",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b2_100000__sonnet/make_kong_perception_verify-bundle_100000_report.json.gz": "1074c1475a29e2528feef26e0948dae43c287a166854ba89615ed5a45ef3a4b5",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b2_100000__sonnet/make_kong_perception_verify-bundle_100000_actions.json.gz": "7577e5dfe339c78f97775916e40ffd8d97667d8c4d9969fc41adf42b21f1e58a",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongBr1b2_100000__sonnet_100000.json.gz": "793f72ccacd16c7ab89ba36df3cad91e2e3ef19bc7b6b72e21e24caaaef5c2f9",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b2_100000__sonnet/make_kong_perception_verify-bundle_100000_report.json.gz": "7c670c99abf1446ff060d4362633ef04eb2b0c51587b0a474e6795f7bfdb2d65",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b2_100000__sonnet/make_kong_perception_verify-bundle_100000_actions.json.gz": "236de5dd0c36c2d2e1cb00944c7b6ea947e9c3453e2aaff69555918fc3c6f1c5",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongAr1b2_100000__sonnet_100000.json.gz": "4072685911286553af749a0c8050a4c33cc98a72438f1baf353ee9257629ff1a",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b2_100001__sonnet/make_kong_perception_verify-bundle_100001_report.json.gz": "87e3fc0d29fb4bc7a3ec7930fb7e82c36b49975670cdf28ec0ead9d6e2564686",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b2_100001__sonnet/make_kong_perception_verify-bundle_100001_actions.json.gz": "ee3dfc04624a752e154ca7307a8da6366ab20775596afd602111c6ad63537517",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongAr1b2_100001__sonnet_100001.json.gz": "c8243c82c0b104599e6c91d74be8e0fd6be05d934b02537ea5984034d0e98825",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b2_100001__sonnet/make_kong_perception_verify-bundle_100001_report.json.gz": "828dafec412e98be28d1e72e0fb3d65cf2efa6b60e324a8304ee0b21b1dfc681",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b2_100001__sonnet/make_kong_perception_verify-bundle_100001_actions.json.gz": "2167d99afd9c20054b303d8351c1800be7ffedb24cb17818aa93098eb996fb17",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongBr1b2_100001__sonnet_100001.json.gz": "d264be3e30d6e8b65f0bc4788a9064f6bd252df699083e26c6182936a2d709fb",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b2_100002__sonnet/make_kong_perception_verify-bundle_100002_report.json.gz": "1e23a2f24e3fb8df14476773d60b0a750641888eaa7b2e1ffcc66ae54843457c",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b2_100002__sonnet/make_kong_perception_verify-bundle_100002_actions.json.gz": "0979d00e4b3456d08ca428c41608220503202edace7f82709fa3d6f7b75589e3",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongBr1b2_100002__sonnet_100002.json.gz": "4536e356e7843dbe851e65860cfdee64c7d14fc179096d5a9afb0b887d8491ee",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b2_100002__sonnet/make_kong_perception_verify-bundle_100002_report.json.gz": "77423f4b8ae8df798219412b5d05059e3b8d7f8b272cc0a8eba9a17245ae2405",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b2_100002__sonnet/make_kong_perception_verify-bundle_100002_actions.json.gz": "98e791452c5cae676ddf6d2ed13d7b9abe29e317fffc34f03b749f4a61691490",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongAr1b2_100002__sonnet_100002.json.gz": "0d086aa19790f35d8969fa95ab4086af8203f764214c02ef7ae1a6ab111e291e",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b2_100003__sonnet/make_kong_perception_verify-bundle_100003_report.json.gz": "8fff63a5f0176c23fed3f6805f0d49d5d133316724dc164f66ad92cd4d2f4001",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b2_100003__sonnet/make_kong_perception_verify-bundle_100003_actions.json.gz": "f7ef5d2efff9367c5284e4e31f8ba9b1cfde45c69e0b26165d70bbe7bb236ca1",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongAr1b2_100003__sonnet_100003.json.gz": "cb8ce1a0182542c5e6537e352bad72dcd9f2acd218146da718c6e87d0dfe0856",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b2_100003__sonnet/make_kong_perception_verify-bundle_100003_report.json.gz": "51e37f18b5c23bbe74cab189e9d54665a487fddbd0e1e013b35133061d845db5",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b2_100003__sonnet/make_kong_perception_verify-bundle_100003_actions.json.gz": "4fa008ecba6f7c25c8cae314efd5a02f80fbcda173efa8ba78a08a3ed811d54d",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongBr1b2_100003__sonnet_100003.json.gz": "9ec93c0f657c019c73c2f3c03f5d4610e98effa35c5e9db1265dbd0de94ff8c5",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b2_100004__sonnet/make_kong_perception_verify-bundle_100004_report.json.gz": "6b41618cd0f92bf8818bdfdc79bd1dbc2007abe262725addfad3e5677b999ef8",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongBr1b2_100004__sonnet/make_kong_perception_verify-bundle_100004_actions.json.gz": "13e6eebe03a42ac4d3bb2497cdbeab27a63aa79cba63e53ee7a0e66bb82d9ce4",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongBr1b2_100004__sonnet_100004.json.gz": "c67b4d73d4c0f5c8bbdd1e9fb0a27590476a0995ff41df2a946a794eeaae5a37",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b2_100004__sonnet/make_kong_perception_verify-bundle_100004_report.json.gz": "d0e6c61e1767530d9cdaa7d335f6cfe5fe2ee9649b2b99b70f1f498bc33f2091",
+        "runs/audit-identity/kong/episodes/c6b_makekongsg_kongAr1b2_100004__sonnet/make_kong_perception_verify-bundle_100004_actions.json.gz": "a9b33863a6a012ef03d057b335e73a03187b7c96c663a7784659ad310c6ef13a",
+        "runs/audit-identity/kong/replays/c6b_makekongsg_kongAr1b2_100004__sonnet_100004.json.gz": "b7ba511df83807b312f625ae63c3e7d2b9798d48376695aa5b0eb83c013f88e3",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongAr1b1_100000__sonnet/imitate_sorting_sequence_perception_verify-bundle_100000_report.json.gz": "3724279a0f67cf0320d0c48557ab1d5a70905fb94017a2a497847a92b7fc6036",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongAr1b1_100000__sonnet/imitate_sorting_sequence_perception_verify-bundle_100000_actions.json.gz": "5de8dcd7ba87964c76a6d2f17fd61f7d43977282a1b993cf2f7871c3c4bd0baf",
+        "runs/audit-identity/kong/replays/c6b_imitatesg_kongAr1b1_100000__sonnet_100000.json.gz": "bb69ab5621ee6d652d7c2b61acc0fe73a4086bb310710540c8289ed1fb154978",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongBr1b1_100000__sonnet/imitate_sorting_sequence_perception_verify-bundle_100000_report.json.gz": "8da9b5cf9f799cc0ec7217c36555944678ac3198fc8ae73c3b7c95ba0da2f200",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongBr1b1_100000__sonnet/imitate_sorting_sequence_perception_verify-bundle_100000_actions.json.gz": "f590ec65bb219195edbef906c09fc6b209c773b05e4fa2e32d5d75eb237367f4",
+        "runs/audit-identity/kong/replays/c6b_imitatesg_kongBr1b1_100000__sonnet_100000.json.gz": "34ef255cc51559b6039678ca97d056cebf3567311f67144898b71201e7b4e659",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongBr1b1_100001__sonnet/imitate_sorting_sequence_perception_verify-bundle_100001_report.json.gz": "6e14213c8c42767eb519786f8abfc37c51b804595b4307a368977332a63117a3",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongBr1b1_100001__sonnet/imitate_sorting_sequence_perception_verify-bundle_100001_actions.json.gz": "f574d6b38939c0accf8e725c7ccd483eb1af7c2b817772219fbc81854eee94a3",
+        "runs/audit-identity/kong/replays/c6b_imitatesg_kongBr1b1_100001__sonnet_100001.json.gz": "cf394151f3494a47973ff7446e182b7b43489d47fa044eff97cc10c19fab0278",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongAr1b1_100001__sonnet/imitate_sorting_sequence_perception_verify-bundle_100001_report.json.gz": "da77ea4c6f20ccc50664a15132227d31d8adef71fe7057a47a024fdda66dda33",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongAr1b1_100001__sonnet/imitate_sorting_sequence_perception_verify-bundle_100001_actions.json.gz": "b4ceaa4f8af74a48c00905faf1dba7eb45ca91fa7529917304a99313d827bcb8",
+        "runs/audit-identity/kong/replays/c6b_imitatesg_kongAr1b1_100001__sonnet_100001.json.gz": "29c429d5e916a5edd60b4ac0a9182dfb36a198165759016b721fa7ea186619fe",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongAr1b1_100002__sonnet/imitate_sorting_sequence_perception_verify-bundle_100002_report.json.gz": "fea39a00eeb3fc5eb7458fdfc5705c6da269634a2780d0267ac2f7982911e630",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongAr1b1_100002__sonnet/imitate_sorting_sequence_perception_verify-bundle_100002_actions.json.gz": "a56dc18ffbb27e152777de38f0e718ceb299469210a3de43fcd8eb2b699a70fd",
+        "runs/audit-identity/kong/replays/c6b_imitatesg_kongAr1b1_100002__sonnet_100002.json.gz": "ae88faabfdba7dc5e2b63f8a70344de65145ac2ca0fc2aa64a70937b4f3cb040",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongBr1b1_100002__sonnet/imitate_sorting_sequence_perception_verify-bundle_100002_report.json.gz": "0f9df7697f49ed356fe9d931de3b268d31d3a4c7be073f7f47b21aea183ae02b",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongBr1b1_100002__sonnet/imitate_sorting_sequence_perception_verify-bundle_100002_actions.json.gz": "16e8a42f4f9097b9899bae61f8267af4a63ae063f14a2f6f1daf08536b75e96f",
+        "runs/audit-identity/kong/replays/c6b_imitatesg_kongBr1b1_100002__sonnet_100002.json.gz": "c08c0169814f0fef39c36113bcca005f5eef93905f654fe96a5ac8a40100a9e4",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongBr1b1_100003__sonnet/imitate_sorting_sequence_perception_verify-bundle_100003_report.json.gz": "063adc1de18c9caf048f96b345e901e79159baed036e1a3a0407ff45b0339655",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongBr1b1_100003__sonnet/imitate_sorting_sequence_perception_verify-bundle_100003_actions.json.gz": "c788e4fb4e4d1b4cfbbe4646790d91130363716ddb86ebc71ac12cc0e9de2a06",
+        "runs/audit-identity/kong/replays/c6b_imitatesg_kongBr1b1_100003__sonnet_100003.json.gz": "e8760bbe9c0c47443f741200ed5147d182cffccb0eea07fbf52c389bb5d32234",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongAr1b1_100003__sonnet/imitate_sorting_sequence_perception_verify-bundle_100003_report.json.gz": "6e23cdfd524465ad542614e9d0ee2aa2277d352c434447de1d3022b76f4af405",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongAr1b1_100003__sonnet/imitate_sorting_sequence_perception_verify-bundle_100003_actions.json.gz": "219c88d48bf0e5be323f40beae37b11a70b5098d5237be6bff7192800ded3f09",
+        "runs/audit-identity/kong/replays/c6b_imitatesg_kongAr1b1_100003__sonnet_100003.json.gz": "a59ce16ea9f0edd5a5b7d53d870ff719be436027afd546be5637418e4108e145",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongAr1b1_100004__sonnet/imitate_sorting_sequence_perception_verify-bundle_100004_report.json.gz": "5ea6879491dfa9f53d30731dc2ab62d54d0b56f94c7efa6b5b6c3469e54b4e10",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongAr1b1_100004__sonnet/imitate_sorting_sequence_perception_verify-bundle_100004_actions.json.gz": "e2b6230f843b21ef8cf6d46a2f527bac137043f1fec5b9bc13d754ea0796e908",
+        "runs/audit-identity/kong/replays/c6b_imitatesg_kongAr1b1_100004__sonnet_100004.json.gz": "6c336fb7544c32a7bbd63e7c7beeb7489507c96fa0372d054951aa0510f2e718",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongBr1b1_100004__sonnet/imitate_sorting_sequence_perception_verify-bundle_100004_report.json.gz": "41a0c89bf1938bd2b90d4054661dc468392010d886dfcb5ea038711dd84db4bf",
+        "runs/audit-identity/kong/episodes/c6b_imitatesg_kongBr1b1_100004__sonnet/imitate_sorting_sequence_perception_verify-bundle_100004_actions.json.gz": "b7f7db5d36f8fa6d4be588d4229e77307c4a273edb784cac74d5f5abb9b17198",
+        "runs/audit-identity/kong/replays/c6b_imitatesg_kongBr1b1_100004__sonnet_100004.json.gz": "ca74bf48190762eb13eeacb0b420dff58c2e71c601dc8acbe46fef7f668de0ce",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongBr1b2_100000__sonnet/stack_blocks_perception_verify-bundle_100000_report.json.gz": "2cbce62927b280ab61526f2b22db1174d62e52c503a854fb84d88dd259230eda",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongBr1b2_100000__sonnet/stack_blocks_perception_verify-bundle_100000_actions.json.gz": "e08886af1e52f6df713b7de0561beb40beb7a3c22c3b3d0350e66511851197b7",
+        "runs/audit-identity/kong/replays/c6b_stackblockssg_kongBr1b2_100000__sonnet_100000.json.gz": "711272a5625c76503f6d526cfebde7694e1e02e2a28d4cdee725ac3d53d93619",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongAr1b2_100000__sonnet/stack_blocks_perception_verify-bundle_100000_report.json.gz": "2087f466a378736da63acb0628121b2dec44c80d40518bb020bcc03bb01711d8",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongAr1b2_100000__sonnet/stack_blocks_perception_verify-bundle_100000_actions.json.gz": "e906931fd6d696fd31483110985d7e8e4120322128915e3e1c199a3007c96701",
+        "runs/audit-identity/kong/replays/c6b_stackblockssg_kongAr1b2_100000__sonnet_100000.json.gz": "aa7b583e10aeb8177715c42f06d86861c4c391a0ceb691c6710b8694a57a6775",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongAr1b2_100001__sonnet/stack_blocks_perception_verify-bundle_100001_report.json.gz": "aa352b7e59dc8150d10ab4c4cd12edad56ef5b18af77e41323f16881daea681e",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongAr1b2_100001__sonnet/stack_blocks_perception_verify-bundle_100001_actions.json.gz": "6fd5cac726f4af12720964a08bec0ea5ceafd6761b5ffba2adcb3c667a252d21",
+        "runs/audit-identity/kong/replays/c6b_stackblockssg_kongAr1b2_100001__sonnet_100001.json.gz": "cd138f831605ba95af49306a8c8f7e4f8fea31240c05f4a1017600a8a007d70a",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongBr1b2_100001__sonnet/stack_blocks_perception_verify-bundle_100001_report.json.gz": "c403e02e9135ada426b5fe9c7147e9deb20067c5f820a1b290eaac2c56a8c5f1",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongBr1b2_100001__sonnet/stack_blocks_perception_verify-bundle_100001_actions.json.gz": "cee08bbb91c84b615c2f2b13913a43dd2efc547a3562d824ce89a22b98dd5256",
+        "runs/audit-identity/kong/replays/c6b_stackblockssg_kongBr1b2_100001__sonnet_100001.json.gz": "5324b9bfe763e42428e1760ec9599b8e2a1fab6c81653d4da22acf806e32d442",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongBr1b2_100002__sonnet/stack_blocks_perception_verify-bundle_100002_report.json.gz": "18abdf29805b812a9566a0f2a45f9ca481ed0542071f1edb787c98ab70d1f71c",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongBr1b2_100002__sonnet/stack_blocks_perception_verify-bundle_100002_actions.json.gz": "eb6fb825d5a030c0e358241d7594cd9fab860bf8160274ad65478f45bbb54cb5",
+        "runs/audit-identity/kong/replays/c6b_stackblockssg_kongBr1b2_100002__sonnet_100002.json.gz": "ec64ca096472350cee900398ac71ed15f3c0bd2789507cddab93ea281ea89bb4",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongAr1b2_100002__sonnet/stack_blocks_perception_verify-bundle_100002_report.json.gz": "c93b02f54fa489b4b96cd47e483b42a36aacf91ab2d68c30c5d66a634387a25b",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongAr1b2_100002__sonnet/stack_blocks_perception_verify-bundle_100002_actions.json.gz": "dc25c6e45883d89fe32dd3f45ba0c40186e16ce0a2b3656c4b2fa5072bbe09a4",
+        "runs/audit-identity/kong/replays/c6b_stackblockssg_kongAr1b2_100002__sonnet_100002.json.gz": "aa96acef8e77eec2c4a2b97c1ce5fb16fa4b47883d109f25e106abcc0a945af6",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongAr1b2_100003__sonnet/stack_blocks_perception_verify-bundle_100003_report.json.gz": "e8953f5a54356e7ac3f96f46408e0242d72a5942b5f796ea13800f9edfe4c026",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongAr1b2_100003__sonnet/stack_blocks_perception_verify-bundle_100003_actions.json.gz": "e50b54536ba40951fd22b26875eda1aef03e03c1f66c24a0bf2395fcba0de33f",
+        "runs/audit-identity/kong/replays/c6b_stackblockssg_kongAr1b2_100003__sonnet_100003.json.gz": "3a1c0eb362ab342004ae5e44e3f9987891129d86a6249118b38f8214c7326267",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongBr1b2_100003__sonnet/stack_blocks_perception_verify-bundle_100003_report.json.gz": "0383041a863b9cb1b22b0d7dc22de657e9cc49bf29dcfec34c04128fd8ebb7b8",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongBr1b2_100003__sonnet/stack_blocks_perception_verify-bundle_100003_actions.json.gz": "070c0b64d6e9d34d87499264fb7cb2b112aa43bacac6fc5bc8f7b1b4b9e69f9c",
+        "runs/audit-identity/kong/replays/c6b_stackblockssg_kongBr1b2_100003__sonnet_100003.json.gz": "a06d2382d5ae4f58d4868e4d30397a46398d7af26ab542c99e63b769602fc599",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongBr1b2_100004__sonnet/stack_blocks_perception_verify-bundle_100004_report.json.gz": "920b5520571996b3f7523b13cfdfb4525f89cdba8f71a696c6ca054d753ac5f3",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongBr1b2_100004__sonnet/stack_blocks_perception_verify-bundle_100004_actions.json.gz": "e6e9f645fedef7066ff9629a0662a6015ab4d9492a046754a7bad06c1bd9fc45",
+        "runs/audit-identity/kong/replays/c6b_stackblockssg_kongBr1b2_100004__sonnet_100004.json.gz": "63d5d5efcecaec5c22c5ed4730eca2c075a1312f4c9ab00fb5c13e49d2b5a2a7",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongAr1b2_100004__sonnet/stack_blocks_perception_verify-bundle_100004_report.json.gz": "a1a3ff32e1f7463d7142572cb236e7f6ff02dc132756ff3cb06410ee70501409",
+        "runs/audit-identity/kong/episodes/c6b_stackblockssg_kongAr1b2_100004__sonnet/stack_blocks_perception_verify-bundle_100004_actions.json.gz": "83626e4a79c80cdc186bc09a43d20368cff6aadeb47d0412cdb314cdaf5dfdb9",
+        "runs/audit-identity/kong/replays/c6b_stackblockssg_kongAr1b2_100004__sonnet_100004.json.gz": "4078614e311fc60fc514337456c6382d9d1a903d2d018347d2250608d1416f1c",
+        "manifest": "c02181bc0f4b2af425e179e040960fb0458e64e8b876908b9b6959ca3d6783e1",
+        "write_ledger": "c02181bc0f4b2af425e179e040960fb0458e64e8b876908b9b6959ca3d6783e1",
+        "body_geometry": "2e0acc455791daef61898f7427b9860ebe3911d90b0f8d669f6e159fa2f3aa32"
+      },
+      "legacy_transport_repairs": []
+    }
+  }
+}
