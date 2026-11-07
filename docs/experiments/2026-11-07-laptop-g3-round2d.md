@@ -42,3 +42,9 @@ Shallower insertion yields 24/124 reachable right-arm grasps but zero paired
 hang endpoints. Next separate pickup feasibility from placement: test a
 standalone checked band pick, and count exact place-endpoint IK/wrist/scene
 rejections. This is pilot diagnosis, not a reason to disable cradle collision.
+
+The standalone 12.9 mm centre-band pick rises 44/80 mm and is rejected for
+33 mm root-relative drift. Instrument one repeat plus 30 stationary closed-
+jaw steps: compare the original pinch site and object root in TCP coordinates
+to distinguish rotation at a maintained pinch from continued sliding/falling.
+Do not override verification or execute a rejected carry in this diagnostic.
