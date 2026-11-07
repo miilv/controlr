@@ -134,3 +134,9 @@ driver may start only once the corresponding LAPTOP slot is free. Two actual
 layout generation, new panel inspection, camera job, model call or board change
 is authorized by this development registration. A fresh panel still requires
 a separate source/salt registration and both gates first.
+
+Before any production job, narrow the new loaded-proof budget/end early return
+to headset objects, preserving all other-object paths even when the global
+field is set. Freeze **04132591** instead of0dc59c72 for the entire
+production screen; no production outcome has been generated on either source.
+The loaded-proof motions and criteria are unchanged;65 focused tests pass.
