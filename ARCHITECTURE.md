@@ -632,3 +632,24 @@ when no vertex lies inside it. It does not shrink the mesh; missing/invalid
 geometry falls back to the legacy box. Hand/arm and other obstacle checks
 remain independent. This addresses empty OBB regions below a tilted sparse
 object, not a physical penetration allowance or a perception calibration fix.
+
+### Basket image experiment
+
+`belt_lift=braced_hook` (RuntimeConfig, Skills and G3; default `off`) changes
+only the final lift in the opt-in `belt_deposit` chain. It refreshes the handle
+pose after transit, inserts closed fingers under its bar, loads the hook while
+the wall arm also lifts, then releases the wall. Missing mesh or an unreachable
+segment refuses the motion. Explicit contact legs retain the existing contact
+motion convention. `new_routes=["basket_image"]` is separately opt-in and
+requires the pictured conveyor instruction plus unique observed basket, belt
+and picture roles. It consumes the existing world and never creates detections.
+
+`belt_first=on` adds an independent, default-off lift-first sequence on the
+pictured-container route. It uses a precomputed end-wall intercept, a measured
+rim-attachment correction, a slow central carry/drop and an airborne loaded
+lift. Its scoped joint envelope intersects current bounds with measured bounds;
+original bounds, flags and IK-cache invalidation restore on every exit.
+`belt_target=match` separately selects the matchbelt 125 mm target lift for
+image-container calls; `off` retains 150 mm. Neither changes match-and-pick.
+These skills consume the existing WorldState and do not add perception or read
+checker state. A terminal environment signal is left to the driver to grade.
