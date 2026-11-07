@@ -71,5 +71,5 @@ The 25-minute cap gives a conservative ceiling of 45.8 lane-hours. Audit/prep co
 
 Call figures are estimates, not enforced caps: retain A’s existing agentic budgets in both arms.
 `agentic_max` counts estimates, not LLM turns; one estimate can use multiple calls.
-Reserve up to 16 calls/episode (8 turns x 2 estimates) for planning, and report held-look
+Reserve 24 calls/episode (8 turns x 3 candidate estimates) for planning, and report held-look
 requests separately; pause for lead budget review if observed consumption exceeds that reserve.
