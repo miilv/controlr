@@ -355,3 +355,13 @@ route monitor was restarted on the amended 80-row effective schedule; only its
 own verified PID was stopped. Actual call-route proof remains required for each
 row. All **nine verified pre-episode ownership refusals** are retained/excluded,
 not controller outcomes. No outcome-dependent replacement or default change.
+
+Post-dispatch [observer correction](data/pour-camera/route-observer-correction.json):
+the metadata monitor's substring test matched a Bash launcher as well as its
+Python child, producing a false interpreter mismatch on cup B/100003. The
+actual Python child matched deployment/model/data/background and call-route
+strings. The original snapshot is retained; exact module-argument matching now
+excludes the wrapper. This changes only the read-only metadata observer, after
+dispatch, with old/new script hashes recorded; frozen camera inputs, control,
+manifest and scoring/audit gates are unchanged. Only the own monitor PID was
+replaced. No model calls are made by the monitor.

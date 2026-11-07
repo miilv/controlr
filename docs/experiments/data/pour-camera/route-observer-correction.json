@@ -1,0 +1,11 @@
+{
+  "utc": "2026-11-07T11:03:34.748278+00:00",
+  "kind": "post-dispatch metadata-only observer correction",
+  "reason": "Substring matched Bash launcher (1082999) as well as actual Python (1083015); exact module-argument matching excludes wrapper. Actual Python deployment/model/data/background match.",
+  "old_script_sha256": "cab40e531eecd2259b6fd994d806324f98adcdb09a8443502d0927888c3b1543",
+  "new_script_sha256": "61e26fa024ea779aa2c7f69f4473da15f0321521d056c390a858dd7d519acf24",
+  "retained_snapshot": "route-checks-launcher-false-positive.json",
+  "new_pid": 1085108,
+  "changes_camera_inputs_or_control": false,
+  "model_calls": 0
+}
