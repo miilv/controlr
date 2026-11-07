@@ -343,6 +343,8 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
             or len(re.findall(r"\bobjects?\s+into\s+the\s+(?:left|middle|center|centre|right)\b", text)) >= 2):
         conts = [o for o in objs if re.search(r"basket|bin\b", o.category.lower())]
         if len(conts) >= 2 and len([o for o in rigid if o not in conts]) >= 2:
+            if (opts or {}).get("classify_route") == "native":
+                return Plan("classify_native", {}, "instruction-grounded native classification")
             mode = (opts or {}).get("classify")
             return run({"p1": "classify_into_bins_p1", "p2": "classify_into_bins_p2"}.get(mode, "classify_into_bins_v3b"))
     # push / drag a flat object onto its pad (a Geometry whose category names the object's kind)
@@ -720,7 +722,7 @@ def solve(sk) -> dict:
     p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on"
              and {"swap": getattr(sk, "ported_swap", "fixed"), "drag": getattr(sk, "ported_drag", "v1"),
                   "pour": getattr(sk, "ported_pour", "v1"), "pickup": getattr(sk, "ported_pickup", "v1"),
-                  "pour_aim": getattr(sk, "ported_pour_aim", "v1"), "pour_profile": getattr(sk, "ported_pour_profile", "off"), "classify": getattr(sk, "ported_classify", "v3b"),
+                  "pour_aim": getattr(sk, "ported_pour_aim", "v1"), "pour_profile": getattr(sk, "ported_pour_profile", "off"), "classify": getattr(sk, "ported_classify", "v3b"), "classify_route": getattr(sk, "classify_route", "off"),
                   "pour_untilt": getattr(sk, "ported_pour_untilt", "direct")})
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")

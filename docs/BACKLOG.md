@@ -1308,3 +1308,13 @@
 - [x] ~~**Actor-relocation audit identity association:** the nearest-pre-write/group rule can select a standing neighbour after the tracked tile has fallen. In the [scoped KONG audit](experiments/2026-11-07-kong-scoped-relocate-prereg.md), two `mahjong7_0` writes are judged against GT `mahjong8_0` (44.3→66.2 mm), while a same-label diagnostic improves 46.31→1.64 mm. Preserve registered flags; review a general identity-aware audit before interpreting these as actual relocation harm. No controller change or retrospective threshold tuning.~~ Fixed by `AuditIdentity`: chronological tight anchors, first-pick/grasp-close finalization and persistent physical identity; nearest fallbacks are counted. Registered verdicts are not revised.
 
 - [x] ~~**Held-pose audit before pose includes arm transport:** cached world pose was compared with the new attachment at the show TCP.~~ The logger now projects the prior attachment at the same current measured arm pose, preserving the raw `before_sync7`; live actions/beliefs are unchanged and covered by a FakeLLM/mock episode.
+
+- [ ] **CLASSIFY2 native transfer remains below the ported baseline.** The first
+  fresh-salt three-layout free-sort screen scores 5 versus p2's 80 (0–15 versus
+  40–100). A generic central `Skills.place` aborts holding on all three layouts;
+  preserve this failure separately from carry slips. The tilt/dogleg follow-up
+  needs its own results. Keep all native switches off. Implement category-aligned
+  grasps, relay-aware assignment, safe held-object recovery before generic finish,
+  and persistent segmenter-to-world candidates with wrist identity confirmation.
+  Watch proposal/count/fragment failures remain open; no retention fix is claimed.
+  See experiment `2026-11-07-classify2`.

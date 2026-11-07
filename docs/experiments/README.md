@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [classify2](2026-11-07-classify2.md) | Do native category assignment, central carry and repairs beat p2? | Rejected diagnostic: p2 80/100 vs native 5/0 (n=3/cell); 33 physics rows; held-object carry limits; no adoption |
 | 2026-11-07 | [IMIT2 mechanisms](2026-11-07-imit2-mechanisms.md) | What limits imitate camera, stage by stage; do RSI-style order / association / carry / retry mechanisms move it? | Camera rows 3.1: order right 18/42, twin pairs 62 %, plan right 10/42. Offline cue pairing 64→90 % pairs (held-out 71→88 %), +elim: plans right 7→21/42. G3 17 dev: 89.1 → 95.0 (home+keep sides) → 100.0 (bundle). No camera run; all off |
 | 2026-11-07 | [IMIT2 camera prereg](2026-11-07-imit2-camera-prereg.md) | Does the IMIT2 bundle raise imitate camera score on fresh layouts? | Proposed: 20 fresh-salt gain pairs (100000–09, 100020–29) + 5 stack + 5 classify parity; ≤180 agentic calls; awaiting lead's slots |
 | 2026-11-07 | [pour-camera-retest-prereg](2026-11-07-pour-camera-retest-prereg.md) | Once-only fresh POUR camera re-test under motion-only scope and cup parity proof | Lead authorized:20 language +10 cup parity +10 Xylophone strong pairs, Sonnet; prep pending; original verdict unchanged |

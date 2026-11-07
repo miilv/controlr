@@ -199,7 +199,7 @@ class FrozenGarmentProvider:
 
 
 # ``--skill-attr NAME=VALUE``: Skills switches a G3 run may set (each mirrors a ``RuntimeConfig`` field; first = default)
-SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "low"), "push_approach": ("off", "tilted"),
+SKILL_ATTRS = {"classify_route": ("off", "native"), "classify_carry": ("off", "fixed"), "classify_repair": ("off", "budget"), "arrange_route": ("off", "lateral"), "arrange_hover": ("off", "low"), "push_approach": ("off", "tilted"),
                "plan_profile": ("legacy", "recover"), "plan_capture": ("off", "requests"), "plan_solver": ("routes", "curobo"), "plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
                "arrange_order": ("near", "big_first", "push_big_first"), "push_stroke": ("face", "press"),
                "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"), "headset_seat": ("off", "on"), "headset_carry": ("legacy", "staged"), "headset_grasp": ("legacy", "dense", "cups"), "headset_table": ("bbox", "mesh"), "headset_stage": ("off", "center", "mesh_center", "mesh_clear"), "headset_retry": ("legacy", "sites"), "headset_lift": ("legacy", "slow"), "headset_hold": ("legacy", "loaded"),
@@ -383,6 +383,8 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
         rec["pour_diagnostic_error"] = f"{type(exc).__name__}: {exc}"
     rec["world_plans"] = sk.motion.world_plans
     rec["category"] = classify(res_j, reward, hist)
+    if "classify2" in sk.world.notes:
+        rec["classify2"] = sk.world.notes["classify2"]
     if getattr(sk, "ported_runs", None):                 # stream P: the adapter's calls of each ported skill (tail)
         rec["ported"] = sk.ported_runs
     infra = watch.since()
