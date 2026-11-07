@@ -229,3 +229,51 @@ silently replace the registered metric. The raw registered totals remain
 requires explicit lead review; no threshold, camera treatment or verdict has
 been changed based on this diagnostic. The known nearest-instance limitation
 is now tracked in BACKLOG with these concrete cases.
+
+## Completed write audit (before any camera verdict)
+
+All **40/40 arms**, matched as **10 make_kong / 5 imitate / 5 stack pairs**,
+have physics-only replays. [Full audit and raw episode metadata](data/kong-scoped-relocate/audit-final.json).
+Coverage is **228 logged writes / 228 scored**, **0 uncertain**. All 40 replays
+report a stable reset. Frozen raw/settled/demo, generator, catalogue, background
+and checkpoint hashes are unchanged. There are no config/routed-vocabulary
+mismatches, ineligible infrastructure attempts or non-kong relocation writes.
+The audit worker completed at **2026-11-07 01:34:36Z** and exited normally.
+
+These are the **unmodified registered nearest-pre-write/group counts**:
+
+| Cell | Writer | Writes A/B | Harmful A/B | Helpful A/B | Neutral A/B |
+|---|---|---|---|---|---|
+| make_kong | perception | 37/47 | 22/28 | 4/9 | 11/10 |
+| make_kong | predicted | 6/8 | 2/3 | 2/2 | 2/3 |
+| make_kong | watch_lay | 10/10 | 6/6 | 0/0 | 4/4 |
+| make_kong | watch_relocate | 0/30 | 0/2 | 0/15 | 0/13 |
+| imitate_sorting_sequence | perception | 6/6 | 3/4 | 1/1 | 2/1 |
+| imitate_sorting_sequence | predicted | 5/10 | 4/9 | 1/1 | 0/0 |
+| stack_blocks | perception | 14/22 | 1/3 | 11/13 | 2/6 |
+| stack_blocks | predicted | 10/7 | 0/1 | 10/6 | 0/0 |
+
+The raw no-excess-harmful-write condition is **not passed**: several writers
+have larger B harmful counts. This includes the two relocation flags whose
+cross-instance association is diagnosed above. The same-label diagnostic is
+supplemental, not a replacement gate; it does not explain or clear all other
+writers' excesses. Lead review is required before interpreting or adopting
+the lever. No camera-score verdict or CANDIDATE/default promotion is made here.
+
+Both guards have **zero relocation writes** in both arms, consistent with
+the scoping invariant. Camera outcomes and other writers can still differ
+across independent model calls; code-path equality is not a promise of identical
+stochastic episode outcomes.
+
+Two imitation episodes, both arms of block 1 / 100003, reached the existing
+wall cap (`time_cap`) and are retained as outcomes. No pair was omitted and
+no input, policy, cap or threshold was changed during collection.
+
+**Reported spend:** 74 logical camera calls, all `cx/gpt-6-luna`;
+763,614 prompt / 25,666 completion / 13,342 reasoning / 588,672 cache-read
+tokens as reported by the episode logs (reasoning/cache are reported separately,
+not added again to totals). Prep and physics audits made **0 model calls**.
+Summed per-replay `replay_s` is **874.2 s**, excluding cold process startup;
+admission/occupancy and transport-attempt logs remain with the remote evidence.
+The original two lanes were left intact; no system changes, compute4/dc19
+access or manual process kills were performed.

@@ -64,3 +64,27 @@ per-run `writes.jsonl`; the worker has a three-hour collection deadline.
 Audit outcomes and camera verdict remain pending. Queue insertion, a live
 route check and successful preparation are not evidence of a passing lever.
 Record measured audit results in the preregistration before any camera verdict.
+
+## Completed audit
+
+At **2026-11-07 01:34:36Z**, all 40 registered arms had completed physics
+write audits; the worker exited normally and released its light lock. All
+20 pairs are matched. Coverage: **228/228 writes**, **0 uncertain**, 40 stable
+replay resets, unchanged frozen input/checkpoint hashes, no scope mismatch
+or ineligible attempt. Both guards have zero relocation writes.
+
+The [full counts and artifacts](../experiments/2026-11-07-kong-scoped-relocate-prereg.md)
+are committed before a camera verdict. Registered nearest/group counts show
+B harmful-write excesses in multiple writers. The relocation writer has
+30 B writes (15 helpful / 13 neutral / 2 harmful) versus none in A. Both
+relocation flags select GT `mahjong8_0` for belief `mahjong7_0`; a supplemental
+same-label check improves 46.31→1.64 mm with unchanged z, while the registered
+neighbour association reports 44.3→66.2 mm. The flags remain unmodified and
+the association issue is in BACKLOG; this diagnostic does not waive other
+writers' excesses or qualify adoption. No camera verdict is issued by KONG.
+
+Reported camera spend is 74 logical cx/gpt-6-luna calls, 763,614 prompt /
+25,666 completion / 13,342 reasoning / 588,672 cache-read tokens. Prep and
+replays used zero model calls. Two imitation wall caps are retained as policy
+outcomes. All attempts, original actions/reports, prefix provenance and replay
+GT remain under the dispatched roots. Unrelated lane work was left running.
