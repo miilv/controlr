@@ -115,3 +115,21 @@ def test_snapshot_queries_checker_without_changing_episode():
     assert r['pending_upright_checks'] == 1 and len(pending) == 1
     assert r['fluids'][0]['predicate_now'] and r['fluids'][0]['in_target'] == 1
     assert calls[0]['percentage_threshold'] == .97 and calls[0]['C_residual_threshold'] == .15
+
+
+@pytest.mark.parametrize('skill,commit', [('pour_bottle', 'a21dd6f'), ('pour_bottle_v2', '6769a6c'),
+                                         ('pour_bottle_v5', '6769a6c'), ('pour_in_order_v5', '6769a6c')])
+def test_later_originals_report_their_actual_source(monkeypatch, skill, commit):
+    from types import SimpleNamespace
+    import dojo.skills.ported as adapter
+    class Robot:
+        def __init__(self, *a, **kw):
+            self.calls, self.truth = [], True
+        def run_skill(self, *a):
+            return {'ok': True, 'verified': True}
+        def grip_source(self):
+            return 'mock'
+    monkeypatch.setattr(adapter, 'HarnessRobot', Robot)
+    sk = SimpleNamespace(ex=SimpleNamespace(steps_used=0, ended=False, steps_left=800),
+                         provider=SimpleNamespace(events=[]), _record=lambda r: None)
+    assert adapter.ported(sk, skill)['source'] == f'robot-harness {commit} skills/{skill}'

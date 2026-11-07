@@ -22,6 +22,9 @@ from dojo.skills.ported.harness_robot import PASS_THROUGH, SOURCE_COMMIT, Harnes
 # order_gen11.tsv, order_K4_gen.tsv). The reserve is one value for every skill (the single-fixed-system audit,
 # 2026-10-28: his pick_up ran with reserve 0, here 20 like the rest)
 RESERVE = 20
+# These later originals were added after the adapter's a21dd6f source snapshot.
+SOURCE_COMMITS = {name: "6769a6c5b3df8c55f56b0324cfdf196084b9ec94"
+                  for name in ("pour_bottle_v2", "pour_bottle_v5", "pour_in_order_v5")}
 BALL_POURS = ("pour", "pour_p1")              # pours verified by counting balls (``ported``: no ball, no verdict)
 TIER_A = {
     "cover_uncover_v2": (RESERVE, {}),
@@ -116,7 +119,7 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
     # "ok" = the skill ran its whole procedure (robot-harness's ``ok``), so the runtime's supervisor does not run it a
     # second time (his runs call it once per episode); a skill that could not start (grounding, an error) is not ok
     out = {"ok": bool(rep.get("ok")), "status": status, "skill": f"ported:{skill}", "steps": steps,
-           "verified": verified, "error": note, "source": f"robot-harness {SOURCE_COMMIT[:7]} skills/{skill}"}
+           "verified": verified, "error": note, "source": f"robot-harness {SOURCE_COMMITS.get(skill, SOURCE_COMMIT)[:7]} skills/{skill}"}
     if rep.get("holding") is not None:
         out["holding"] = rep["holding"]
     if rep.get("companion") is not None:          # pour_bottle_lean's overlap: the next bottle the other arm now holds
