@@ -11,7 +11,6 @@ from dojo.skills.env import KinematicEnv
 from dojo.skills.geometry import R_to_quat, rot_z
 from dojo.skills.kinematics import X5Kin
 from dojo.skills.skills import GTProvider, Skills
-from dojo.skills.world import AssetInfo, ObjectState
 
 SWITCHES = {"disc_align": ("off", "walls"), "disc_snap": ("off", "on"), "disc_lift": ("off", "shallow"),
             "disc_seat": ("off", "table"), "disc_release": ("off", "staged"), "disc_reserve": ("off", "on")}
