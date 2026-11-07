@@ -662,6 +662,19 @@ release gap. Endpoint screening uses the release pose; the rebuilt full
 place and pickup repair retain the ground target for physical verification.
 Every leg uses native hand, held-object and scene checks.
 
+`headset_hold=loaded` (default `legacy`, mirrored in Skills/G3) can prove a
+nominally loose headset pickup through actual following motion. Only an
+originally successful loose lift qualifies: hold30 stationary steps, then
+plan/check a20 mm vertical raise/return with8 steps at each endpoint. Refreshed
+attachment samples must stay within3 mm/3 degrees, the object must rise17 mm
+and its full mesh clear the table20 mm. Original hard rise/30 mm slip gates
+run before and after the challenge. Accepted results retain nominal drift
+in the log and require a measured-attachment place plan. Missing meshes,
+static cached beliefs, unstable holds or failed native paths cannot prove a
+hold. The existing step observer is preserved/restored; default and other
+object transfers execute their old path. This is a G3 mechanical proof;
+camera use needs fresh physical held-pose observations.
+
 The ported liquid pour's optional `ported_pour_profile` selects the original
 multi-bottle v2 (`sparse` or `via`) or the original strict wrapper's v5
 (`checked`). `off` preserves the legacy skill and pacing dispatch. Target pairs

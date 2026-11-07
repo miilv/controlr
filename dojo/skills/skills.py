@@ -383,6 +383,7 @@ class Skills:
         self.headset_stage = "off"
         self.headset_retry = "legacy"
         self.headset_lift = "legacy"
+        self.headset_hold = "legacy"
         # Opposite handle orientation about its upward axis, after original candidates.
         self.hang_half_turn = False
         self.hang_handle_grasp = False
@@ -2278,6 +2279,9 @@ class Skills:
         """Execute a planned transfer: pick, check the grasp, re-plan the place for the measured in-hand
         pose (same target; the nominal plan when the re-plan fails, ``run_place`` re-measures at the
         approach anyway), place."""
+        loaded = (getattr(self, "headset_hold", "legacy") == "loaded"
+                  and self.world.obj(pp.label).category == "headset")
+        before = self.world.obj(pp.label).pos.copy() if loaded else None
         r = self._record(self.run_pick(pp))
         px = getattr(self, "last_pick", None)
         if isinstance(px, PickPlan) and px is not pp and px.label == pp.label:
@@ -2285,6 +2289,11 @@ class Skills:
             if isinstance(px.paired_place, PlacePlan):
                 pl = px.paired_place
             pp = px
+        if loaded and r.ok and r.status == "loose":
+            from dojo.skills.headset_hold import loaded_hold
+            proof = loaded_hold(self, pp, r, before)
+            if proof is not r:
+                r = self._record(proof)
         if not r.ok:
             return r
         if r.status == "ok" and self.refine is not None:
