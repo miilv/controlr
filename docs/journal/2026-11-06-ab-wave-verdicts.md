@@ -78,3 +78,16 @@ This is SEGAB's report.py, run once after all 140 rows completed (23:08Z), under
 - Cost: 833 agentic calls (claude/claude-sonnet-5-5), 12.2M prompt / 0.75M completion tokens, 9.9M cache-read.
 
 **Reading.** v2n names 24 / 49 new-class objects on dev frame-0 (vs 0 for v2b) without hurting old classes, yet four of five gain cells are byte-for-byte equal in score between arms. So naming the new objects is not what limits these cells. Their G3 ceilings are low or zero (store_laptop 0, hang_mugs_random ~20, dolls_random ~50), and make_toast_random was earlier blocked by the toaster vocabulary in routing. The segmenter stays at v2b, and `seg_additive` stays default-off. The next Generalization work should start from each cell's G3 failure class, not from perception.
+
+## key re-test: `key_handover=v2, key_lean=on`, insert_key (fresh salted, n = 9) — NOT ADOPTED (guard failed)
+
+| cell | pairs | A pooled | B pooled | Δ | B-only wins | A-only losses | successes A / B |
+|---|---|---|---|---|---|---|---|
+| insert_key (gain) | 9 | 43.3 | 70.0 | **+26.7** | 3 | 0 | 3 / 6 |
+| plug_in_charger (guard) | 10 | 80.0 | 70.0 | −10.0 | 1 | 2 | 8 / 7 |
+
+- **What passed:** the gain cell (+26.7; flips 3 vs 0, net 3).
+- **What failed:** the plug_in_charger guard (Δ −10 < −5, losses 2 > wins 1), so the lever is not adopted. This was its one fresh-layout re-test.
+- 38 / 38 jobs had rc 0.
+
+**Follow-up (a new lever):** the switches change the shared insertion / handover path that plug_in_charger also uses. As with kong, scope them to the routed insert_key task only, then pre-register a new A/B on new fresh layouts. The gain is worth ~0.67 Average points.
