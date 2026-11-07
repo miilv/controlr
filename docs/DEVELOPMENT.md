@@ -823,3 +823,15 @@ runtime's belt tracker; G3's GT provider has no tracker, so `belt_ref`, `belt_ve
 replays match_and_pick's decision (first object, speed, the match it would take) on recorded camera reports (frame-0
 record + logged reads, robot at home, stub pick); its GT is the layout moved along the belt, for scoring only.
 `scripts/skills/match2_g3_job.sh` runs one scoped compute3 physics job on light3 / light4.
+
+### Classify mechanism diagnostics
+
+`classify_route=native` requires `ported_routes=on`; `classify_carry=fixed` and
+`classify_repair=budget` affect only that native route. `off/off/off` preserves
+the existing ported classify selection. CPU checks are in
+`tests/dojo/test_classify2.py`. The physics-only diagnostic launcher
+`scripts/skills/classify2_diagnostic.sh` uses a private `~/controlr-classify2-data`
+root, light2 lock, <=24 GiB GPU admission, >=10 GB free disk and an 8 GB / 600%
+scope. It refuses to overwrite an existing generated block. This launcher runs
+three diagnostic layouts per cell, not a promotion panel. Inspect the experiment
+report's source revision boundaries before comparing rows.

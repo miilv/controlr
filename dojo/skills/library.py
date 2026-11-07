@@ -3949,6 +3949,11 @@ from dojo.skills.store import ROUTE_SKILLS as _STORE  # noqa: E402
 ROUTE_ONLY.update(_STORE)
 
 
+from dojo.skills.classify import classify as _classify_native  # noqa: E402
+
+ROUTE_ONLY["classify_native"] = _classify_native
+
+
 def skill_fn(name: str):
     """A planned skill's function: the library's, else a route-only one (``ROUTE_ONLY``)."""
     return SKILLS[name] if name in SKILLS else ROUTE_ONLY[name]

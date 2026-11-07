@@ -672,3 +672,22 @@ positions; these are bookkeeping unless a switch reads them, so the off path's b
 `belt_wrist_id` widens the pick look's existing identity refine to the riders' candidate keys for tracked riders
 (`rider_candidates`); it adds no perception op. No switch reads layout ids, GT or the evaluator's termination: a
 retry is decided from the skill's own lift check and the wrist / head reads.
+
+### Native classify diagnostic
+
+With `ported_routes` enabled, `classify_route=native` replaces only an
+instruction-grounded category-to-baskets route. `classify_carry=fixed` checks
+Cartesian carry legs; `classify_repair=budget` permits one extra round, keeping
+the executor-derived home/settle reserve. All three fields default off in
+RuntimeConfig, Skills and G3. The native route refuses unknown identities and
+conflicting fixed maps; free category sorting uses an exact basket permutation
+with a distance objective. It uses top grasps for watch, pen, toy_car and
+chocolate and the ordinary grasp bank for other categories.
+
+The diagnostic drop searches wrist tilts over the table and plans a lateral
+waypoint followed by a central drop before execution. It is an experimental
+replacement without a relay planner or persistent perception evidence. Its
+stage events are action snapshots, not belief writes. A stopped held-object
+transfer still reaches the driver's ordinary finish path. It is unsuitable for
+camera adoption until held-object recovery and per-instance retention are
+validated.

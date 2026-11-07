@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [classify2](2026-11-07-classify2.md) | Do native category assignment, central carry and repairs beat p2? | Diagnostic; initial free-sort p2 80 vs native 5 (n=3); revised carry follow-up; no adoption |
 | 2026-11-07 | [match2-screen](2026-11-07-match2-screen.md) | What do the MATCH2 switches do per stage on camera? (diagnostic, not an adoption test) | Pre-registered: 10 fresh-salt pairs on compute6, A candidate vs B six switches; verdict none by design |
 | 2026-11-07 | [match2](2026-11-07-match2.md) | What limits match_and_pick per stage, and do re-implemented RSI mechanisms close it? | Camera 49/110 dev: reference 20, false veto 14, match identity 21/85; G3 ceiling 45/55; perception switches offline-positive, `belt_grasp=solid` −3/−4 in G3; camera screen requested |
 | 2026-11-07 | [pour-camera-prereg](2026-11-07-pour-camera-prereg.md) | Does budget pacing turn fresh G3 feasibility into camera success? | FAIL / NOT ADOPTED: language0→43,15W/0L (full0→35,7W/0L); cup60→50 guard fails; Xylophone80→90 passes; 467 Sonnet calls; both gain-writer rate gates fail; identity/fidelity limits retained |

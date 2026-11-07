@@ -629,6 +629,9 @@ class RuntimeConfig:
     # (classify_into_bins_p1: sorts the named / largest groups, leaves the rest on the table) | p2 (classify_into_bins_p2:
     # p1, and a carry v3 refuses is tried once more from higher up, then the object is put back and the arm homed)
     ported_classify: str = "v3b"
+    classify_route: str = "off"
+    classify_carry: str = "off"
+    classify_repair: str = "off"
     # ... the pacing of pour_order's pours (pour_by_language; stream H): v1 (the vendored pour_bottle) | lean
     # (pour_bottle_lean: the tilt-up to 90 deg and the untilt at normal speed, a 12-step drain, no home between pours):
     # ``planner.POUR_PACE``. A single pour (pour_liquid) keeps v1's pace either way | overlap (v1's stages at 0.8 of the
@@ -781,7 +784,7 @@ class RuntimePolicy:
                 or self.cfg.disc_hold_evidence not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
-                or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
+                or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.classify_route not in ("off", "native") or self.cfg.classify_carry not in ("off", "fixed") or self.cfg.classify_repair not in ("off", "budget") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
                 or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap", "budget")
                 or self.cfg.ported_pour_profile not in ("off", "sparse", "via", "checked")
                 or self.cfg.plan_profile not in ("legacy", "recover")
@@ -806,7 +809,7 @@ class RuntimePolicy:
                                                                                       "pour": self.cfg.ported_pour,
                                                                                       "pickup": self.cfg.ported_pickup,
                                                                                       "pour_aim": self.cfg.ported_pour_aim,
-                                                                                      "classify": self.cfg.ported_classify,
+                                                                                      "classify": self.cfg.ported_classify, "classify_route": self.cfg.classify_route,
                                                                                       "pour_untilt": self.cfg.ported_pour_untilt}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
@@ -1154,6 +1157,9 @@ class RuntimePolicy:
             sk_.ported_drag = cfg.ported_drag
             sk_.ported_pour_aim = cfg.ported_pour_aim
             sk_.ported_classify = cfg.ported_classify
+            sk_.classify_route = cfg.classify_route
+            sk_.classify_carry = cfg.classify_carry
+            sk_.classify_repair = cfg.classify_repair
             sk_.ported_pour_pace = cfg.ported_pour_pace
             sk_.ported_pour_profile = cfg.ported_pour_profile
             sk_.nest_verify = cfg.nest_verify

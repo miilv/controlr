@@ -309,6 +309,9 @@ class Skills:
         # ``provider.on_consume(ev)`` (the runtime's report events)
         self.consume_log = True
         # how a drop into a container is judged (``library.drop_verdict``): "belief" (today) | "release"
+        self.classify_route = "off"
+        self.classify_carry = "off"
+        self.classify_repair = "off"
         self.drop_verdict = "belief"
         # ``library.put_into``'s options (stream H; empty = today): "spot" (a wider handover search, else a put-back),
         # "patient" (tries / rounds while the budget lasts), "sequence" (no two picks this close in one round)
