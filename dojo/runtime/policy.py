@@ -410,6 +410,10 @@ class RuntimeConfig:
     push_contact: str = "off"
     push_plan: str = "off"
     arrange_retry: str = "off"
+    # stream ORG2 (``dojo.skills.torso``): grasp_torso off | on; stand_offset off | base; retreat_axis off | on
+    grasp_torso: str = "off"
+    stand_offset: str = "off"
+    retreat_axis: str = "off"
     # Additional face-contact approach tilts, with fingertip position preserved.
     push_approach: str = "off"
     arrange_hover: str = "off"
@@ -754,6 +758,8 @@ class RuntimePolicy:
                 or self.cfg.push_goal not in ("centre", "cover", "cover_obb", "clear")
                 or self.cfg.push_contact not in ("off", "pair") or self.cfg.push_plan not in ("off", "sequence")
                 or self.cfg.arrange_retry not in ("off", "once")
+                or self.cfg.grasp_torso not in ("off", "on") or self.cfg.stand_offset not in ("off", "base")
+                or self.cfg.retreat_axis not in ("off", "on")
                 or self.cfg.fill_guard not in ("off", "geometry")
                 or (self.cfg.fill_guard == "geometry" and any(getattr(self.cfg, k) != "off" for k in
                     ("fill_grasp", "fill_holder", "fill_drop", "fill_insert")))
@@ -1144,6 +1150,9 @@ class RuntimePolicy:
             sk_.push_contact = cfg.push_contact
             sk_.push_plan = cfg.push_plan
             sk_.arrange_retry = cfg.arrange_retry
+            sk_.grasp_torso = cfg.grasp_torso
+            sk_.stand_offset = cfg.stand_offset
+            sk_.retreat_axis = cfg.retreat_axis
             sk_.push_approach = cfg.push_approach
             sk_.arrange_hover = cfg.arrange_hover
             sk_.arrange_route = cfg.arrange_route

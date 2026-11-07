@@ -2318,6 +2318,10 @@ def _on_targets(sk: Skills, label: str, support: str, surface: str | None = None
         if len(pts) == 1:      # a support smaller than the object (a stand): small offsets around its centre
             for k in range(8):
                 pts.append(c + 0.012 * np.array([math.cos(k * math.pi / 4), math.sin(k * math.pi / 4)]))
+            if getattr(sk, "stand_offset", "off") == "base":
+                # stream ORG2: rings of the object's base radius, most clearance first (``torso.stand_points``)
+                from dojo.skills.torso import stand_points
+                pts.extend(stand_points(sk, label, support))
         ys = list(yaws)
         if len(pts) <= 3:      # few positions: the diagonals too (on a small stand 9 x 9 poses cost minutes of IK)
             ys += [yb + math.pi / 4 + k * math.pi / 2 for k in range(4)]

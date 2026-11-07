@@ -109,6 +109,8 @@ def probe_push(e, sk, label="keyboard", support="frame", max_strokes=12) -> dict
 
 
 def probe_place(sk, label="garage", support="cube_cushion", place_kw=None) -> dict:
+    """The figurine's transfer screen as ``arrange`` plans it (container obstacles, ``on_targets``), with the
+    alarm / mouse already moved off the table when ``--after`` asks."""
     L.container_obstacle(sk, "drawer")
     L.container_obstacle(sk, support)
     t0 = time.perf_counter()

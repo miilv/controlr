@@ -333,6 +333,12 @@ class Skills:
         # push_plan "off" | "sequence" (the whole stroke sequence planned for both axis orders before each stroke);
         # ``push_goal`` also takes "clear" (the cover region's point with most clearance)
         self.push_contact = "off"
+        # stream ORG2 (``dojo.skills.torso``; ``RuntimeConfig`` mirrors): grasp_torso "off" | "on" (side grasps across an
+        # irregular upright body); stand_offset "off" | "base" (a small support's place positions on rings of its
+        # object's base radius); retreat_axis "off" | "on" (a side-approach place backs out along the fingers, then rises)
+        self.grasp_torso = "off"
+        self.stand_offset = "off"
+        self.retreat_axis = "off"
         self.push_plan = "off"
         # ``library.arrange`` (stream ORG2): "off" | "once" (each failed step tried once more after the others)
         self.arrange_retry = "off"
@@ -685,7 +691,7 @@ class Skills:
                 pre_d = 0.13 if (self.refine is not None and float(obj.asset.extents.max()) > 0.12) else None
                 # an irregular object's bbox is no obstacle model for its own pick (a figurine's slice grasp sits
                 # inside its bbox; the slice generator keeps the finger corridors free of its mesh)
-                own = (label,) if g.method in ("slice", "antipodal") else ()
+                own = (label,) if g.method in ("slice", "antipodal", "torso") else ()
                 to_pre = self.motion.to_pose(a, q0, g.pre(pre_d), approach_rad, "pick_approach", gripper=go, ignore=own)
                 if not to_pre.ok and pre_d is None:
                     # a tall object's top grasp: the default pre-grasp is out of reach (figurine, 19 cm)
@@ -1195,9 +1201,19 @@ class Skills:
             return t
         T_up = T_last.copy()
         T_up[:3, 3] -= T_last[:3, 0] * retreat          # back out along the approach axis
-        if T_last[2, 0] > -0.5:
+        axis_first = getattr(self, "retreat_axis", "off") == "on" and T_last[2, 0] > -0.5
+        if T_last[2, 0] > -0.5 and not axis_first:
             T_up[2, 3] += 0.02
         up = self.motion.line(arm, q_last, T_up, MEDIUM, "place_retreat", gripper=open_g, ignore=ignore)
+        if axis_first and up.ok:
+            # stream ORG2 ``retreat_axis``: out along the fingers first (an appendage over them is not dragged), then up
+            T_hi = T_up.copy()
+            T_hi[2, 3] += 0.04
+            up_b = self.motion.line(arm, up.q_end, T_hi, MEDIUM, "place_rise", gripper=open_g, ignore=ignore)
+            if up_b.ok:
+                t.grip(open_g, open_steps, "release").hold(pre_open_hold, "let_go").move(up, "retreat")
+                t.move(up_b, "rise")
+                return t
         if not up.ok:
             # straight up instead (a hand pointing sideways over a slot: backing out along its approach left the reach)
             T_up = T_last.copy()
@@ -2198,6 +2214,9 @@ class Skills:
                 cands = G.box_grasps(obj, self.kin, a, tilts=tuple(box_tilts)) + G.candidates(obj, self.kin, a)
                 if held_box(obj, np.eye(4)).points is not None:          # irregular: real slices too
                     cands += G.slice_grasps(obj, self.kin, a)
+                    if getattr(self, "grasp_torso", "off") == "on":      # stream ORG2: side grasps across the body
+                        from dojo.skills.torso import torso_grasps
+                        cands += torso_grasps(obj, self.kin, a)
             n_g = n_p = 0
             min_down = math.cos(math.radians(max_pick_tilt))
             n_ik = 0
@@ -2206,7 +2225,7 @@ class Skills:
                 if n_ik > SCREEN_IK_BUDGET:
                     notes.append(f"{a}: screen stopped after {n_ik} place IKs")
                     break
-                if -float(g.T[2, 0]) < min_down:
+                if -float(g.T[2, 0]) < min_down and g.method != "torso":    # torso grasps approach from the side
                     continue
                 r = self.kin.ik(a, g.T, q0, n_random=0)
                 if not r.ok:

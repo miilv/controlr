@@ -226,7 +226,15 @@ def pair_stroke(sk, o, label: str, u, step: float, centre=None):
             T_e = T_from(np.array([end[0], end[1], z]) + offset, R)
             T_up = T_e.copy()
             T_up[2, 3] = o.top_z + 0.03 + TIP_BEYOND_TCP + offset[2]
+            pre = None
             m1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_ab, FAST, "push_above", gripper=PAIR_GRIP, ignore=(label,))
+            if not m1.ok:
+                # by way of home: an arm left out by a fixture (the place before) can neither move across nor rise
+                # from there ("hits drawer; via failed: lift unreachable")
+                pre = escape_home(sk, arm)
+                if pre is not None:
+                    m1 = sk.motion.to_pose(arm, pre.q_end, T_ab, FAST, "push_above", gripper=PAIR_GRIP,
+                                           ignore=(label,))
             if not m1.ok:
                 continue
             m2 = sk.motion.line(arm, m1.q_end, T_s, MEDIUM, "push_down", gripper=PAIR_GRIP, ignore=(label,))
@@ -237,9 +245,38 @@ def pair_stroke(sk, o, label: str, u, step: float, centre=None):
             if not m3.ok:
                 continue
             m4 = sk.motion.line(arm, m3.q_end, T_up, MEDIUM, "push_up", gripper=PAIR_GRIP, check=False)
-            plan = ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm]).grip(PAIR_GRIP, 0).move(m1).move(m2).move(m3)
+            plan = pre if pre is not None else ArmPlan(arm, sk.ex.q[arm].copy(), sk.ex.g[arm])
+            plan.grip(PAIR_GRIP, 0).move(m1).move(m2).move(m3)
             plan.move(m4)
             return plan
+    return None
+
+
+ESCAPE_RISES = (0.0, 0.05, 0.10)     # m: straight rises tried before the joint move home (``escape_home``)
+
+
+def escape_home(sk, arm: str):
+    """A collision-checked way home for an arm that cannot move across from where it is: a straight rise (none, 5 or
+    10 cm), then a checked joint move home, the gripper as it is. ``ArmPlan`` or None (never an unchecked move: an
+    unchecked home swing from a place beside a drawer swept the open fingers through the just-placed object, G3 dev)."""
+    from dojo.skills.executor import ArmPlan
+    q0 = np.asarray(sk.ex.q[arm], float)
+    g = float(sk.ex.g[arm])
+    home = sk.world.home_q[arm]
+    for rise in ESCAPE_RISES:
+        p = ArmPlan(arm, q0.copy(), g)
+        q = q0
+        if rise > 0:
+            T = sk.kin.tcp(arm, q0).copy()
+            T[2, 3] += rise
+            up = sk.motion.line(arm, q0, T, MEDIUM, "escape_rise", gripper=g)
+            if not up.ok:
+                continue
+            p.move(up, "escape_rise")
+            q = up.q_end
+        mv = sk.motion.joint(arm, q, home, FAST, "escape_home", gripper=g)
+        if mv.ok:
+            return p.move(mv, "escape_home")
     return None
 
 

@@ -202,7 +202,7 @@ class FrozenGarmentProvider:
 SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "low"), "push_approach": ("off", "tilted"),
                "plan_profile": ("legacy", "recover"), "plan_capture": ("off", "requests"), "plan_solver": ("routes", "curobo"), "plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
                "arrange_order": ("near", "big_first", "push_big_first", "push_first"), "arrange_retry": ("off", "once"),
-               "push_contact": ("off", "pair"), "push_plan": ("off", "sequence"), "push_stroke": ("face", "press"),
+               "push_contact": ("off", "pair"), "push_plan": ("off", "sequence"), "grasp_torso": ("off", "on"), "stand_offset": ("off", "base"), "retreat_axis": ("off", "on"), "push_stroke": ("face", "press"),
                "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"), "headset_seat": ("off", "on"), "headset_carry": ("legacy", "staged"), "headset_grasp": ("legacy", "dense", "cups"), "headset_table": ("bbox", "mesh"), "headset_stage": ("off", "center", "mesh_center", "mesh_clear"), "headset_retry": ("legacy", "sites"), "headset_lift": ("legacy", "slow"), "headset_hold": ("legacy", "loaded"),
                "hang_half_turn": ("off", "on"),
                "hang_handle_grasp": ("off", "on"),
