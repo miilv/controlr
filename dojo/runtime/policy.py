@@ -403,6 +403,13 @@ class RuntimeConfig:
     # ``library.arrange``'s place order (``Skills.arrange_order``): near (today: nearest the arms first) | big_first (the
     # largest object first, while the table is emptiest) | push_big_first (the pushes first, then big_first)
     arrange_order: str = "near"
+    # stream ORG2 (``dojo.skills.push_plan``; ``Skills`` mirrors, all default off): push_contact off | pair (open two-
+    # fingertip strokes along the support's axes); push_plan off | sequence (the whole stroke sequence planned for both
+    # axis orders); arrange_retry off | once (every failed arrange step once more after the others); ``push_goal`` also
+    # takes clear and ``arrange_order`` push_first (pushes first, then the places nearest first)
+    push_contact: str = "off"
+    push_plan: str = "off"
+    arrange_retry: str = "off"
     # Additional face-contact approach tilts, with fingertip position preserved.
     push_approach: str = "off"
     arrange_hover: str = "off"
@@ -744,7 +751,9 @@ class RuntimePolicy:
                 or self.cfg.drop_verdict not in ("belief", "release")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence", "unblock", "gentle"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
-                or self.cfg.push_goal not in ("centre", "cover", "cover_obb")
+                or self.cfg.push_goal not in ("centre", "cover", "cover_obb", "clear")
+                or self.cfg.push_contact not in ("off", "pair") or self.cfg.push_plan not in ("off", "sequence")
+                or self.cfg.arrange_retry not in ("off", "once")
                 or self.cfg.fill_guard not in ("off", "geometry")
                 or (self.cfg.fill_guard == "geometry" and any(getattr(self.cfg, k) != "off" for k in
                     ("fill_grasp", "fill_holder", "fill_drop", "fill_insert")))
@@ -771,7 +780,7 @@ class RuntimePolicy:
                 or self.cfg.arrange_route not in ("off", "lateral")
                 or self.cfg.arrange_hover not in ("off", "low")
                 or self.cfg.push_approach not in ("off", "tilted")
-                or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
+                or self.cfg.arrange_order not in ("near", "big_first", "push_big_first", "push_first") or self.cfg.push_stroke not in ("face", "press")
                 or self.cfg.headset_retry not in ("legacy", "sites")
                 or self.cfg.headset_lift not in ("legacy", "slow")
                 or self.cfg.headset_hold not in ("legacy", "loaded")
@@ -1132,6 +1141,9 @@ class RuntimePolicy:
             sk_.slot_place = cfg.slot_place
             sk_.slot_carry_read = cfg.slot_carry_read
             sk_.arrange_order = cfg.arrange_order
+            sk_.push_contact = cfg.push_contact
+            sk_.push_plan = cfg.push_plan
+            sk_.arrange_retry = cfg.arrange_retry
             sk_.push_approach = cfg.push_approach
             sk_.arrange_hover = cfg.arrange_hover
             sk_.arrange_route = cfg.arrange_route

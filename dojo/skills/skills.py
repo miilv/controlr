@@ -328,6 +328,14 @@ class Skills:
         # 12 mm) | "cover" (the range of centres where the object covers / lies inside the support: ``cover_region``) |
         # "cover_obb" (the same on the object's rotated footprint: ``cover_goal_obb``)
         self.push_goal = "centre"
+        # ``library.push_to`` (stream ORG2, ``dojo.skills.push_plan``; ``RuntimeConfig`` mirrors): push_contact "off"
+        # (today: closed fingertips) | "pair" (open, two fingertips on the face, strokes along the support's axes);
+        # push_plan "off" | "sequence" (the whole stroke sequence planned for both axis orders before each stroke);
+        # ``push_goal`` also takes "clear" (the cover region's point with most clearance)
+        self.push_contact = "off"
+        self.push_plan = "off"
+        # ``library.arrange`` (stream ORG2): "off" | "once" (each failed step tried once more after the others)
+        self.arrange_retry = "off"
         # ``library.fill_container`` (stream H; ``RuntimeConfig.fill_move_lift``): after the container's move, "off"
         # (today: the place's 50 mm retreat) | "clear" (hands still below its top go straight up clear of it)
         self.fill_move_lift = "off"
