@@ -1,0 +1,78 @@
+{
+ "stream": "COIN2-CAM",
+ "salt": "coin2-cam-20261107-ea2cb662ebd5ef4df5cf0e19c81b1f24",
+ "salt_rule": "'coin2-cam-20261107-' + sha256(code)[:32]",
+ "code": "coin2-cam-20261107:deposit_coin+guards:disc-profile-v1",
+ "model": "claude/claude-sonnet-5-5",
+ "block": "coin2-cam-1",
+ "cells": [
+  {
+   "task": "deposit_coin",
+   "role": "gain",
+   "pairs": 20,
+   "pool": [
+    [
+     100000,
+     10
+    ],
+    [
+     100020,
+     10
+    ]
+   ],
+   "select": "all stable"
+  },
+  {
+   "task": "stack_blocks",
+   "role": "strong_guard",
+   "pairs": 5,
+   "pool": [
+    [
+     100000,
+     10
+    ]
+   ],
+   "select": "first 5 stable by id"
+  },
+  {
+   "task": "insert_key",
+   "role": "parity_guard",
+   "pairs": 5,
+   "pool": [
+    [
+     100000,
+     10
+    ],
+    [
+     100020,
+     10
+    ]
+   ],
+   "select": "first 5 stable by id"
+  },
+  {
+   "task": "play_tic_tac_toe",
+   "role": "parity_guard",
+   "pairs": 5,
+   "pool": [
+    [
+     100000,
+     10
+    ]
+   ],
+   "select": "first 5 stable by id"
+  }
+ ],
+ "overrides": {
+  "A": {},
+  "B": {
+   "disc_align": "walls",
+   "disc_snap": "on",
+   "disc_lift": "shallow",
+   "disc_seat": "table",
+   "disc_release": "staged"
+  }
+ },
+ "candidate": "scripts/dojo/queues/2026-11-06-candidate.txt",
+ "order": "AB for even zero-based index within a cell, BA for odd"
+}

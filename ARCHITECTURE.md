@@ -88,6 +88,20 @@ small steps.
 | `controlr/bench/` | cache probe, latency matrix, sweep runner |
 | `controlr/cli.py` | `controlr run | prompt | bench-cache | bench-latency | sweep | report | models` |
 
+### Offline inference legality tooling
+
+`dojo/legality/audit.py` is the engine shared with the partner team;
+`scripts/legality/scan.py` formats its report and applies the CI debt ratchet.
+The engine parses the repository without importing inference code.
+Declared planner, supervisor, runtime, perception and registry roots reach local
+callees, dispatch tables and imported globals; known prompt resources are inventoried
+as input roots. Unresolved calls remain explicit review debt. The separate test-only
+instruction sentinel runs mock episodes and traps task identity/schema reads, including
+internal ported boundaries. These tools do not affect deployed control behavior.
+CI publishes the report and enforces a shrinking historical exemption list; general
+system directories cannot inherit legacy exemptions. See DEVELOPMENT's legality policy
+and the dated legality inventory for limitations and confirmed board blockers.
+
 ## Contracts
 
 ### LLM client (`controlr/llm/client.py`)
@@ -506,6 +520,18 @@ cannot resolve the disc's thickness is unknown; other held evidence retains its
 normal interpretation. The existing `held_thin` switch applies the same guard to
 all unresolved thin objects. Neither switch measures a pose or guarantees a grasp.
 
+### Thin-disc contact sequence
+
+`dojo.skills.coin_contact` holds default-off switches for a thin disc standing in a fixed holder (a coin in a stand),
+used by `precision.disc_into_slot`. `disc_align=walls` squeezes the holder's walls with open pads at several wrist
+yaws and fits the official jaw value (one finger's travel: V-shaped in the yaw error, linear in the offset along the
+closing axis); a bracketed fit rewrites the coin and holder through `provider.set_pose` (logged `belief_write`,
+writer `wall_probe`). The holder is a fixed Geometry object, so the squeeze moves nothing. `disc_snap` closes on the
+walls and rises with the jaws closing, so the pads shut on the coin where the fingertips clear the walls.
+`disc_lift`, `disc_seat` and `disc_release` slow the shallow hold, re-seat the coin against the table and let go in
+stages; `disc_reserve` gates a pick on the steps left. The skill is chosen by object geometry or by the
+`insert_into(disc_contact=...)` argument, never by task name (one fixed system across tasks).
+
 ### Belief-object free-space routing
 
 Dojo RuntimeConfig.plan_world defaults to table (legacy routing, retaining its
@@ -737,19 +763,6 @@ SAM masks carry allowed candidates rather than asset identities and enter the ex
 silhouette/appearance fit path. Raw prompt categories never become exact identity hints.
 The lane accounts for the shared GPU process once and verifies its health around each job.
 
-### Offline inference legality tooling
-
-`dojo/legality/audit.py` is the engine shared with the partner team;
-`scripts/legality/scan.py` formats its report and applies the CI debt ratchet.
-The engine parses the repository without importing inference code.
-Declared planner, supervisor, runtime, perception and registry roots reach local
-callees, dispatch tables and imported globals; known prompt resources are inventoried
-as input roots. Unresolved calls remain explicit review debt. The separate test-only
-instruction sentinel runs mock episodes and traps task identity/schema reads, including
-internal ported boundaries. These tools do not affect deployed control behavior.
-CI publishes the report and enforces a shrinking historical exemption list; general
-system directories cannot inherit legacy exemptions. See DEVELOPMENT's legality policy
-and the dated legality inventory for limitations and confirmed board blockers.
 ### Sort into containers and per-instance evidence
 
 `sort_into_containers` (`dojo/skills/ported/skills/sort_into_containers`) is the general sort-by-category skill the

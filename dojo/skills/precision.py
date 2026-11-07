@@ -580,32 +580,79 @@ def disc_into_slot(sk: Skills, obj: str, rec: str, targets: list[np.ndarray]) ->
     receptacle's top and let go (it drops in; ``DISC_PLACE_KW``). Every turn of the disc about its normal is a
     target. When no arm reaches both ends: a table relay (laid flat near the middle by one arm, picked flat with a
     pinch by the other, ``pinch_grasps``)."""
+    from dojo.skills import coin_contact as CC
     from dojo.skills.library import place_oriented, free_spots
     w = sk.refresh()
     o = w.obj(obj)
     k = disc_axis(o)
-    tg = [Tk for T in targets for Tk in spin_about_axis(o, T, k)]
     hold = holder_of(sk, obj)
     floor = max(TABLE_Z, o.bottom_z)
     if hold is not None:
         sk.coll.include.add(hold)
         sk.coll.margin_of[hold] = 0.002
         floor = max(floor, w.obj(hold).top_z)
+    probe = None
+    if CC.on(sk, "disc_align", "walls") and hold is not None and abs(float(o.R[2, k])) < 0.9:
+        # COIN2: the holder's walls tell the coin's plane before any grasp is planned on it
+        probe = disc_wall_probe(sk, obj, hold)
+        w = sk.refresh()
+        o = w.obj(obj)
+    tg = [Tk for T in targets for Tk in spin_about_axis(o, T, k)]
     sk.coll.include.add(rec)
     hm = height_map(w.obj(rec))
     if hm is not None:
         sk.coll.heightmaps[rec] = hm
-    place_kw = {**DISC_PLACE_KW, "servo_ref": rec, "sym_axis": k}
+    place_kw = CC.place_kw(sk, {**DISC_PLACE_KW, "servo_ref": rec, "sym_axis": k})
 
     def grasps(a):
         oo = sk.world.obj(obj)
         if abs(float(oo.R[2, k])) > 0.9:
             return pinch_grasps(sk, oo, a)
-        return edge_grasps(sk, oo, a, floor + 0.003)
-    tkw = {"grasps": grasps, "screen_fingers_out": True, "lift": DISC_OUT,
-           "pick_kw": {"squeeze": DISC_SQUEEZE, "lift_rad": DISC_LIFT_RAD}}
+        return edge_grasps(sk, oo, a, CC.edge_floor(sk, floor, floor + 0.003))
+    pkw = CC.pick_kw(sk, {"squeeze": DISC_SQUEEZE, "lift_rad": DISC_LIFT_RAD})
+    if CC.on(sk, "disc_seat", "table") and hold is not None:
+        pkw["post_lift"] = CC.seat_post_lift(sk, obj, hold, CC.SEAT_DEPTH)
+    tkw = {"grasps": grasps, "screen_fingers_out": True, "lift": DISC_OUT, "pick_kw": pkw}
     sk.log(f"[disc] {obj} -> {rec}: {len(tg)} targets, holder {hold}")
     direct = sk.plan_transfer(obj, tg, ignore=(rec,), place_kw=place_kw, **tkw)
+    ok_r, left = CC.reserve_ok(sk, cross=isinstance(direct, SkillResult))
+    if not ok_r:
+        r = sk._record(SkillResult(False, "pick", "step_budget", 0, None,
+                                   note=f"disc reserve: {left} steps left for a "
+                                        f"{'cross-arm' if isinstance(direct, SkillResult) else 'same-arm'} pick"))
+        return {"ok": False, "stage": f"insert {obj}: reserve", "result": r}
+    if probe is not None and probe.get("ok") and probe.get("write") not in (None, "none (square)"):
+        sk.no_refine.add(obj)            # the walls measured its plane: no wrist refine overwrites it at the hover
+    try:
+        return _disc_insert_rest(sk, obj, rec, tg, hold, floor, place_kw, tkw, direct, k, place_oriented)
+    finally:
+        sk.no_refine.discard(obj)
+
+
+def disc_wall_probe(sk: Skills, obj: str, hold: str) -> dict:
+    """``coin_contact.wall_probe`` with the arm that reaches the holder's walls (nearest first); the result is logged
+    (``[disc] wall probe``) and appended to the provider's events when it keeps a list."""
+    from dojo.skills import coin_contact as CC
+    o = sk.world.obj(obj)
+    T0 = CC.wall_frame(sk, o, sk.world.obj(hold))
+    res = {"kind": "wall_probe", "label": obj, "ok": False, "why": "no frame"}
+    if T0 is not None:
+        for a in sorted(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.pos[:2]))):
+            if sk.kin.ik(a, T0, sk.ex.q[a], n_random=2).ok:
+                res = CC.wall_probe(sk, obj, hold, a)
+                break
+        else:
+            res["why"] = "no arm reaches the walls"
+    res["step"] = int(sk.env.steps_used)
+    sk.log(f"[disc] wall probe: {res}")
+    evs = getattr(sk.provider, "events", None)
+    if isinstance(evs, list):
+        evs.append(res)
+    sk.wall_probes = getattr(sk, "wall_probes", []) + [res]
+    return res
+
+
+def _disc_insert_rest(sk, obj, rec, tg, hold, floor, place_kw, tkw, direct, k, place_oriented) -> dict:
     if isinstance(direct, SkillResult) and DISC_AIR_HANDOVER:
         sk.log(f"[disc] no one-arm plan ({direct.note[:200]}); in-air handover")
         h = plan_disc_handover(sk, obj, rec, tg, place_kw, floor)
@@ -714,9 +761,13 @@ def plan_disc_handover(sk: Skills, obj: str, rec: str, tg: list, place_kw: dict,
     for giver in ARMS:
         taker = "right" if giver == "left" else "left"
         side = -1.0 if giver == "left" else 1.0          # the giver's side of the handover point (world x)
-        gs = edge_grasps(sk, o, giver, floor + 0.003)
-        picks = sk.plan_pick(obj, giver, grasps=gs, lift=DISC_OUT, squeeze=DISC_SQUEEZE, lift_rad=DISC_LIFT_RAD,
-                             return_all=True, keep=4)
+        from dojo.skills import coin_contact as CC
+        gs = edge_grasps(sk, o, giver, CC.edge_floor(sk, floor, floor + 0.003))
+        pkw = CC.pick_kw(sk, {"squeeze": DISC_SQUEEZE, "lift_rad": DISC_LIFT_RAD})
+        hold = holder_of(sk, obj)
+        if CC.on(sk, "disc_seat", "table") and hold is not None:
+            pkw["post_lift"] = CC.seat_post_lift(sk, obj, hold, CC.SEAT_DEPTH_GIVER)
+        picks = sk.plan_pick(obj, giver, grasps=gs, lift=DISC_OUT, return_all=True, keep=4, **pkw)
         if not isinstance(picks, list):
             notes.append(f"{giver}: no pick")
             continue

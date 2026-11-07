@@ -1,0 +1,11 @@
+2026-11-07T19:12:30Z FROZEN before generation: design_sha256=71909613c1c180a5cb86406f041738421c75c67518cfcd5b1570a9fe91e8981b
+2026-11-07T19:12:31Z END gen_classify_objects_100020_100029 rc=0
+2026-11-07T19:12:31Z START settle_classify_objects_100020_100029 lock=/home/physicalai/dojo-gpu-light.lock used_MiB=16480 free_GB=83
+2026-11-07T19:14:36Z END settle_classify_objects_100020_100029 rc=0
+2026-11-07T19:14:36Z END gen_classify_objects_by_language_100020_100029 rc=0
+2026-11-07T19:14:36Z START settle_classify_objects_by_language_100020_100029 lock=/home/physicalai/dojo-gpu-light.lock used_MiB=16462 free_GB=83
+2026-11-07T19:16:41Z END settle_classify_objects_by_language_100020_100029 rc=0
+2026-11-07T19:16:41Z END gen_stack_blocks_100020_100024 rc=0
+2026-11-07T19:16:41Z START settle_stack_blocks_100020_100024 lock=/home/physicalai/dojo-gpu-light.lock used_MiB=16489 free_GB=83
+2026-11-07T19:17:34Z END settle_stack_blocks_100020_100024 rc=0
+2026-11-07T19:17:34Z PREP COMPLETE {"classify_objects": 10, "classify_objects_by_language": 10, "stack_blocks": 5}; no model calls

@@ -105,6 +105,57 @@ include speculative skill candidates. Do not treat shared-machine timing as
 a controlled latency benchmark. The GPU request deadline and CPU cooperative
 deadline have different startup/overrun semantics; report them explicitly.
 
+### Inference legality inventory and ratchet
+
+The engine in `dojo/legality/audit.py` is shared with the partner team. Its profiles
+include their `controlr-glib` and our `dojo/legality/profiles.py:controlr_inference`.
+The latter indexes source without importing inference code and covers the planner,
+supervisor, runtime, registered/dynamic skills, perception and known prompt inputs. Every vendored path-loaded module/helper and cmd_* handler
+is an explicit root; unknown/external loader sites remain findings. The inventory
+includes a hashed path-loaded module/root manifest.
+Run `uv run python scripts/legality/scan.py --output /tmp/legality.json`, or add
+`--check --base-ref origin/main` for enforcement. `--root CHECKOUT` audits a different
+source snapshot. Pin a full commit hash before archive/merge operations: remote
+refs such as `origin/main` can advance across shared worktrees. `--candidate FILE` records the exact candidate flags/parsed overrides;
+it does not execute them or claim path feasibility.
+
+The report-only CI job uploads all findings. A separate ratchet rejects new findings
+against `scripts/legality/allowlist.json` and rejects growth relative to the PR base.
+Exemptions pin exact source evidence/reason and occurrence budgets, independently of
+harmless line-number moves. Neither keys nor budgets may grow. Bootstrap is permitted
+only when the base has no scanner/baseline. Remove exemptions as code is retired;
+never regenerate the baseline to make CI green. Historical exemptions are debt, not
+a certificate of board eligibility. Engine carrier/reflective exceptions are pinned
+to one exact source line; duplicate matches fail closed, and a changed pin is a
+finding. Multiline literals pin their offending lines, not opening quotes.
+
+The general-system directories `dojo/general/`, `dojo/skills/general/`,
+`dojo/perception/general/` and `dojo/runtime/general/` are automatically roots.
+They cannot receive exemptions, including for transitive legacy dependencies, even
+when a legacy root reaches the dependency first. Declare additional inference roots
+in the profile as they are introduced. Do not narrow roots, vocabulary or rules to
+bypass findings.
+
+This is conservative source reachability, not complete Python resolution or path
+feasibility. Dynamic/external calls are reported as unresolved. Member-name expansion
+can reach development helpers. Comments/docstrings showing checker provenance are
+review evidence, not proof of a forbidden read. Bare numeric/semantic provenance
+cannot be inferred mechanically. Use the identity-source policy and audit crosswalk
+in the dated inventory alongside the generated rows.
+
+The runtime tests use the shared `InstructionSentinel` / `InstructionRead`, plus
+our test-only task-data tripwires in `scripts/legality/sentinel.py`. Mock runtime
+and FakeLLM episodes keep instruction text available to planning while poisoning task
+identity. Explicit-argument skills also run with the sentinel inside their instruction
+field. Production-mode tests poison RuntimeProvider and bridge observations after
+planning, rebuild Skills through the runtime factory, and exercise the real resync
+and perception-checker path with only the external service mocked. GT access raises.
+Alias calls, cached loaders and task-data files are guarded; sticky hits survive
+swallowed exceptions. Negative controls expose legacy schema fallback and the internal
+ported instruction leak. Passing tests does not certify untested skills or the real
+perception service. Partner glib-specific tests skip explicitly when glib is absent;
+their planted-violation, task-spelling and sentinel tests run here.
+
 ## 4. Pitfalls (already stepped on)
 
 - **Camera lane profiles:** `scripts/dojo/queues/lane2.sh` retains compute4 defaults.
@@ -929,6 +980,35 @@ replays match_and_pick's decision (first object, speed, the match it would take)
 record + logged reads, robot at home, stub pick); its GT is the layout moved along the belt, for scoring only.
 `scripts/skills/match2_g3_job.sh` runs one scoped compute3 physics job on light3 / light4.
 
+### Thin-disc contact switches (COIN2)
+
+Six default-off `RuntimeConfig` fields, copied onto Skills and mirrored in G3 `--skill-attr`
+(`dojo/skills/coin_contact.py`): `disc_align=walls`, `disc_snap=on`, `disc_lift=shallow`, `disc_seat=table`,
+`disc_release=staged`, `disc_reserve=on`. They act only inside `precision.disc_into_slot` /
+`plan_disc_handover`, which `insert_into` reaches by geometry (a thin disc, `disc_axis`, standing in a fixed holder,
+`holder_of`), never by task name. A planner selects them per call with `insert_into(..., disc_contact="on")`
+(`coin_contact.PROFILE`, scoped to the call and restored on exit); `None` keeps the configured switches. The agent
+manual and the J2 registry do not document the argument yet: adding it there changes the chooser prompt for every
+task and needs its own manual version and A/B.
+
+- `disc_align=walls` reads `<arm>_ee_joint_state_official` (strict v2, `DOJO_GRIP_SOURCE=v2` in G3). Without the key
+  the probe ends with "no official jaw reading" and writes nothing. Its writes go through `provider.set_pose`
+  (runtime: a `belief_write` with writer `wall_probe`, before7 / after7; G3 `OffsetBeliefProvider`: the offset is
+  re-derived; the GT provider has none). Include `wall_probe` in the write audit.
+- The V's slope varies by layout and arm (0.0016-0.0021 per degree in the twin): the fit takes it free within
+  `WALL_B_RANGE`. The intercept (pads square and centred) comes from the holder's catalogue mesh at the squeeze
+  height (`wall_intercept`); `WALL_A` only when the mesh is unknown.
+- `coin_contact.insert_thin(obj, receptacle, slot_pose7=None, contact="on")` is the general entry: a perceived slot
+  pose gives the targets (`slot_targets_from_pose`), else the receptacle's perceived pose and catalogue frame. Only
+  discs run the contact sequence; another thin shape is refused with a named stage.
+- `plan_pick` gained `snap_in`, `snap_rad`, `lift_step` and `post_lift`; all default to today's plan (the op list is
+  unchanged, `tests/dojo/test_coin_contact.py`). `plan_place` / `_place_tail` gained `release_stages`.
+- G3 `--belief-offset-file F` (dev) gives per-layout belief offsets `{seed: {label: [dx, dy, dyaw]}}`, on top of
+  `--belief-offset`. Camera-like coin errors: `docs/experiments/data/coin2/camera_pick_errors.json`.
+- `scripts/skills/coin2_stages.py` scores the contact stages from `m95_replay.py --every 1 --full` replays (GT, dev
+  only): fingertip clearance at each close, hold loss stage, slip, end state, release pose in the bank's frame.
+  `scripts/skills/coin2_g3_job.sh` runs one scoped compute3 job on light5 / light6.
+
 ### Offline SAM task-prompt comparison
 
 `scripts/perception/sam/collect_task_frames.py ROOT` exports existing `c4b_` /
@@ -1071,56 +1151,6 @@ vocabulary and record routing counters. A final inactive vocabulary alone does n
 prove that an earlier candidate estimate made zero SAM requests. An active bank
 in a guard's candidate exploration blocks the zero-request parity proof.
 
-### Inference legality inventory and ratchet
-
-The engine in `dojo/legality/audit.py` is shared with the partner team. Its profiles
-include their `controlr-glib` and our `dojo/legality/profiles.py:controlr_inference`.
-The latter indexes source without importing inference code and covers the planner,
-supervisor, runtime, registered/dynamic skills, perception and known prompt inputs. Every vendored path-loaded module/helper and cmd_* handler
-is an explicit root; unknown/external loader sites remain findings. The inventory
-includes a hashed path-loaded module/root manifest.
-Run `uv run python scripts/legality/scan.py --output /tmp/legality.json`, or add
-`--check --base-ref origin/main` for enforcement. `--root CHECKOUT` audits a different
-source snapshot. Pin a full commit hash before archive/merge operations: remote
-refs such as `origin/main` can advance across shared worktrees. `--candidate FILE` records the exact candidate flags/parsed overrides;
-it does not execute them or claim path feasibility.
-
-The report-only CI job uploads all findings. A separate ratchet rejects new findings
-against `scripts/legality/allowlist.json` and rejects growth relative to the PR base.
-Exemptions pin exact source evidence/reason and occurrence budgets, independently of
-harmless line-number moves. Neither keys nor budgets may grow. Bootstrap is permitted
-only when the base has no scanner/baseline. Remove exemptions as code is retired;
-never regenerate the baseline to make CI green. Historical exemptions are debt, not
-a certificate of board eligibility. Engine carrier/reflective exceptions are pinned
-to one exact source line; duplicate matches fail closed, and a changed pin is a
-finding. Multiline literals pin their offending lines, not opening quotes.
-
-The general-system directories `dojo/general/`, `dojo/skills/general/`,
-`dojo/perception/general/` and `dojo/runtime/general/` are automatically roots.
-They cannot receive exemptions, including for transitive legacy dependencies, even
-when a legacy root reaches the dependency first. Declare additional inference roots
-in the profile as they are introduced. Do not narrow roots, vocabulary or rules to
-bypass findings.
-
-This is conservative source reachability, not complete Python resolution or path
-feasibility. Dynamic/external calls are reported as unresolved. Member-name expansion
-can reach development helpers. Comments/docstrings showing checker provenance are
-review evidence, not proof of a forbidden read. Bare numeric/semantic provenance
-cannot be inferred mechanically. Use the identity-source policy and audit crosswalk
-in the dated inventory alongside the generated rows.
-
-The runtime tests use the shared `InstructionSentinel` / `InstructionRead`, plus
-our test-only task-data tripwires in `scripts/legality/sentinel.py`. Mock runtime
-and FakeLLM episodes keep instruction text available to planning while poisoning task
-identity. Explicit-argument skills also run with the sentinel inside their instruction
-field. Production-mode tests poison RuntimeProvider and bridge observations after
-planning, rebuild Skills through the runtime factory, and exercise the real resync
-and perception-checker path with only the external service mocked. GT access raises.
-Alias calls, cached loaders and task-data files are guarded; sticky hits survive
-swallowed exceptions. Negative controls expose legacy schema fallback and the internal
-ported instruction leak. Passing tests does not certify untested skills or the real
-perception service. Partner glib-specific tests skip explicitly when glib is absent;
-their planted-violation, task-spelling and sentinel tests run here.
 ### Sort-into-containers evidence tools
 
 `scripts/perception/classify3/` (dev only, GT read after the fact for scoring):
