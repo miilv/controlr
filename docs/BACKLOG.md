@@ -6,6 +6,23 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **fill_egg_holder has a high native settle-failure rate.** SAMINT's first
+  fresh registered salt rejected **13/20 (65%)** under unchanged two-pass presettle:
+  eggs fell to the floor or remained in motion. All attempts are retained. The lead
+  prospectively permits at most three deterministic fresh-salt refills per failed
+  ID, requiring both default settling and raw-check, with n>=15 or the panel parks.
+  Diagnose the public generator/native physics separately; do not loosen validity
+  or replace records based on camera outcomes ([registration](experiments/2026-11-07-samint-egg-camera-spec.md)).
+
+
+- [ ] **Per-vocabulary SAM exclusion must cover explain-away candidates.**
+  `RuntimePolicy._explain_vocabulary` calls the estimator on each candidate before
+  choosing the final vocabulary. A final inactive route is not a zero-SAM-request
+  proof. Audit all `vocab_explain.candidates` against the frozen route map for the
+  SAMINT parity guards; any active candidate blocks parity qualification. A future
+  planner/registry caller must supply the canonical perception key explicitly.
+
+
 - [ ] **Task-prompt masks need an asset identity/pose gate.** SAM semantic labels
   cannot replace catalogue IDs. Prototype only behind a default-off task-bank
   flag, preserve base v2b identity during union de-duplication, honor SAM API

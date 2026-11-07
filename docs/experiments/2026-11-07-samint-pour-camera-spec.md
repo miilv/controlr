@@ -107,3 +107,11 @@ likewise stops/requeues before execution until the lead performs the drained swi
 A frozen manifest, package/source/asset hashes, canonical configs and Skills snapshots,
 whole-pair schedule and 70-row file will be committed on main **before** the locked append.
 Insertion receipts record positions and queue hashes; STOP stays set throughout insertion.
+
+
+Parity proof must cover all attempted vocabulary estimates, including every
+`vocab_explain.candidates` entry, not only the final selected vocabulary. Resolve
+the frozen routing map for each candidate name. If any guard candidate resolves
+to active SAM, zero-request exclusion is not proven and parity fails; never hide
+an exploratory SAM call behind an inactive final route or a discarded record.
+The candidate's vocabulary-explain policy remains unchanged in both arms.

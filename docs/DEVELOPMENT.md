@@ -1023,7 +1023,7 @@ own server child. Detailed measurements and parked specs: `docs/experiments/data
 
 
 The SAM route key enters at the perception RPC's explicit `vocabulary` field.
-`LocalPerception.estimate` forwards it as `inverse_layout.estimate(..., task=vocabulary)`;
+`_Perception.estimate` forwards it as `inverse_layout.estimate(..., task=vocabulary)`;
 `sam_routing.resolve(config.sam_task_routes, vocabulary)` selects the configuration.
 It is derived from permitted instruction routing in the current runtime, not launcher
 metadata or an environment task ID. A model planner using a skill registry can supply
@@ -1032,3 +1032,10 @@ an instruction-pattern branch to choose SAM. Registry entries must map to an exi
 public candidate vocabulary/bank key; an arbitrary skill display name is not a bank.
 The task key also selects the existing public candidate pool. SAM's route map chooses
 mode/checkpoint/thresholds/filters, while the existing fit stage chooses asset identity.
+
+The key is per **estimate request**, including candidate vocabularies evaluated by
+`RuntimePolicy._explain_vocabulary`, before the final route is chosen. For a scoped
+SAM parity guard, inspect every `vocab_explain.candidates` entry as well as the final
+vocabulary and record routing counters. A final inactive vocabulary alone does not
+prove that an earlier candidate estimate made zero SAM requests. An active bank
+in a guard's candidate exploration blocks the zero-request parity proof.

@@ -107,3 +107,41 @@ likewise stops/requeues before execution until the lead performs the drained swi
 A frozen manifest, package/source/asset hashes, canonical configs and Skills snapshots,
 whole-pair schedule and 70-row file will be committed on main **before** the locked append.
 Insertion receipts record positions and queue hashes; STOP stays set throughout insertion.
+
+
+Parity proof must cover all attempted vocabulary estimates, including every
+`vocab_explain.candidates` entry, not only the final selected vocabulary. Resolve
+the frozen routing map for each candidate name. If any guard candidate resolves
+to active SAM, zero-request exclusion is not proven and parity fails; never hide
+an exploratory SAM call behind an inactive final route or a discarded record.
+The candidate's vocabulary-explain policy remains unchanged in both arms.
+
+
+## Lead-authorized prospective egg input-validity refill
+
+The initial registered salt produced **7/20 stable inputs**, with **13/20 (65%)**
+rejected by unchanged two-pass presettle for falling or remaining in motion.
+These are input-validity observations only; no camera outcome or model call exists.
+The lead authorizes this amendment before any egg row is queued:
+
+- Keep only IDs **100000–100009 / 100020–100029**. For an ID without a qualifying draw,
+  use deterministic salts `registered_salt + "/r1"`, then `"/r2"`, then `"/r3"`.
+  At most three additional draws per ID; no further salts, IDs or retries.
+- Each ID takes its **first** draw passing both unchanged default two-pass presettle
+  and the existing default `presettle --raw-check`. Apply raw-check to the original
+  draws too. A settling success alone is not sufficient under this amendment.
+- Select solely on those validity predicates. Retain every raw/settled/index/log
+  attempt and the reasons for each failed predicate; report attempted, failed and
+  eligible counts per salt, including explicit raw-check denominators.
+- If **15–20 valid gain pairs** result, proceed with the exact disclosed n, one pair
+  per qualifying ID. This supersedes the original fixed n=20 and exhaustion blocker.
+  Keep 10 strong and five parity pairs, all other treatment and decision gates,
+  the primary #417 instrument and both arms' identical inputs unchanged.
+- If fewer than 15 valid gain pairs result after `/r3`, park egg. Pour and
+  classify-language proceed regardless, in the already authorized order.
+
+The selected canonical input tree may copy qualified records from their immutable
+per-salt attempt directories. Freeze both source and canonical byte hashes and
+per-ID salt provenance; never overwrite or remove a failed original. Both arms use
+identical selected bytes. No generator, native physics, tolerance or reward/checker
+change is authorized. Commit the final selection/manifest on main before any egg row.

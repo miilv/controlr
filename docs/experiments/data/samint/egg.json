@@ -50,5 +50,25 @@
     "pour",
     "classify-language",
     "egg"
-  ]
+  ],
+  "input_refill": {
+    "lead_authorized": true,
+    "base_salt": "samint-egg-20261107-670dce1ba6c84e23",
+    "suffixes": [
+      "/r1",
+      "/r2",
+      "/r3"
+    ],
+    "max_additional_draws_per_id": 3,
+    "checks": [
+      "default two-pass presettle",
+      "default raw-check"
+    ],
+    "selection": "first qualifying draw for each ID, validity only",
+    "min_gain_pairs": 15,
+    "max_gain_pairs": 20,
+    "initial_settle_pass": 7,
+    "initial_settle_fail": 13,
+    "failure_rate_first_salt": 0.65
+  }
 }
