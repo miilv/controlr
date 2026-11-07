@@ -88,6 +88,20 @@ small steps.
 | `controlr/bench/` | cache probe, latency matrix, sweep runner |
 | `controlr/cli.py` | `controlr run | prompt | bench-cache | bench-latency | sweep | report | models` |
 
+### Offline inference legality tooling
+
+`dojo/legality/audit.py` is the engine shared with the partner team;
+`scripts/legality/scan.py` formats its report and applies the CI debt ratchet.
+The engine parses the repository without importing inference code.
+Declared planner, supervisor, runtime, perception and registry roots reach local
+callees, dispatch tables and imported globals; known prompt resources are inventoried
+as input roots. Unresolved calls remain explicit review debt. The separate test-only
+instruction sentinel runs mock episodes and traps task identity/schema reads, including
+internal ported boundaries. These tools do not affect deployed control behavior.
+CI publishes the report and enforces a shrinking historical exemption list; general
+system directories cannot inherit legacy exemptions. See DEVELOPMENT's legality policy
+and the dated legality inventory for limitations and confirmed board blockers.
+
 ## Contracts
 
 ### LLM client (`controlr/llm/client.py`)

@@ -95,7 +95,8 @@ def _string_constants(tree: ast.AST):
 
 def test_no_dojo_code_builds_eval_asset_paths():
     """Outside the firewall itself (paths.py), "Eval_Layout" / "Traj" may appear in dojo/ code only as a
-    membership guard (``"Eval_Layout" in p.parts``), never as a path component to open or list."""
+    membership guard (``"Eval_Layout" in p.parts``) or the offline auditor's explicit
+    deny vocabulary/regex, never as a path component to open or list."""
     bad = []
     for f in sorted((REPO / "dojo").rglob("*.py")):
         rel = f.relative_to(REPO).as_posix()
@@ -104,12 +105,26 @@ def test_no_dojo_code_builds_eval_asset_paths():
         if rel.startswith("dojo/perception/agentic/vendor/"):
             continue  # robot-harness files, byte-identical and md5-pinned: j1_schema's FORBIDDEN_VALUE regex *rejects* eval paths
         tree = ast.parse(f.read_text(encoding="utf-8"))
+        audit_guards = set()
+        if rel == "dojo/legality/audit.py":
+            # These two values recognize/reject denied sources. This is not a
+            # module-wide exemption: Path/open/list constructions still fail.
+            for n in tree.body:
+                if not isinstance(n, ast.Assign):
+                    continue
+                names = {t.id for t in n.targets if isinstance(t, ast.Name)}
+                if "TASK_SYMBOLS" in names and isinstance(n.value, ast.Set):
+                    audit_guards.add(id(n.value))
+                if ("DATA_PATHS" in names and isinstance(n.value, ast.Call)
+                        and isinstance(n.value.func, ast.Attribute) and n.value.func.attr == "compile"
+                        and isinstance(n.value.func.value, ast.Name) and n.value.func.value.id == "re"):
+                    audit_guards.add(id(n.value))
         for c, parent in _string_constants(tree):
             v = c.value
             hit = "Eval_Layout" in v or v == "Traj" or "Assets/Traj" in v or "/Traj/" in v
             if not hit:
                 continue
             guard = isinstance(parent, ast.Compare) and any(isinstance(o, (ast.In, ast.NotIn)) for o in parent.ops)
-            if not guard:
+            if not guard and id(parent) not in audit_guards:
                 bad.append(f"{rel}:{c.lineno}: {v!r}")
     assert not bad, "eval asset paths built outside the firewall:\n" + "\n".join(bad)

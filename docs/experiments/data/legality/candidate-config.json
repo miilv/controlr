@@ -1,0 +1,66 @@
+{
+  "flags_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "runtime_overrides": {
+    "save_look_frames": true,
+    "grip_check": "on",
+    "ported_routes": true,
+    "new_routes": [
+      "equation",
+      "largest_number",
+      "align",
+      "row_by_size",
+      "pour_order"
+    ],
+    "ported_swap": "reach",
+    "put_into_opts": [
+      "spot",
+      "patient",
+      "sequence"
+    ],
+    "drop_verdict": "release",
+    "refine_recentre_guard": "vis",
+    "ported_drag": "turn",
+    "ported_pickup": "library",
+    "ported_pour": "full",
+    "align_measure": "parallel",
+    "vocab_found_needs_score": true,
+    "series_labels": "numbered",
+    "ported_classify": "p2",
+    "kong_draw_read": "place",
+    "ported_pour_aim": "b10",
+    "imitate_pairing": "one_to_one",
+    "imitate_wait": "origin",
+    "peg_base_refine": "local",
+    "peg_base_tries": 8,
+    "belt_wrist_veto": "on"
+  },
+  "scope": "static superset of all registered and dynamically ported implementations; not path-feasible execution",
+  "perception_services": [
+    {
+      "model": "kong_v1b",
+      "status": "excluded",
+      "general_system_approved": false,
+      "candidate_flag": "--glyph-kong kong_v1b",
+      "service_kind": "glyphk",
+      "checkpoint": "kong_v1b/model.pt",
+      "environment": [
+        "DOJO_GLYPH_ADDR_KONG",
+        "DOJO_GLYPH_ADDR (legacy fallback)"
+      ],
+      "board_effect": "Blocks a general-system entry wherever these weights are used, including generic/renamed service routes."
+    },
+    {
+      "model": "digit_v2",
+      "status": "under review",
+      "general_system_approved": false,
+      "candidate_flag": "--glyph digit_v2",
+      "service_kind": "glyph",
+      "checkpoint": "digit_v2/model.pt",
+      "environment": [
+        "DOJO_GLYPH_ADDR_DIGIT",
+        "DOJO_GLYPH_ADDR (legacy fallback)"
+      ],
+      "board_effect": "Unresolved admission; neither approved nor classified as excluded."
+    }
+  ]
+}

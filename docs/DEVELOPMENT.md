@@ -105,6 +105,65 @@ include speculative skill candidates. Do not treat shared-machine timing as
 a controlled latency benchmark. The GPU request deadline and CPU cooperative
 deadline have different startup/overrun semantics; report them explicitly.
 
+### Inference legality inventory and ratchet
+
+The engine in `dojo/legality/audit.py` is shared with the partner team. Its profiles
+include their `controlr-glib` and our `dojo/legality/profiles.py:controlr_inference`.
+The latter indexes source without importing inference code and covers the planner,
+supervisor, runtime, registered/dynamic skills, perception and known prompt inputs. Every vendored path-loaded module/helper and cmd_* handler
+is an explicit root; unknown/external loader sites remain findings. The inventory
+includes a hashed path-loaded module/root manifest.
+Run `uv run python scripts/legality/scan.py --output /tmp/legality.json`, or add
+`--check --base-ref origin/main` for enforcement. `--root CHECKOUT` audits a different
+source snapshot. Pin a full commit hash before archive/merge operations: remote
+refs such as `origin/main` can advance across shared worktrees. `--candidate FILE` records the exact candidate flags/parsed overrides;
+it does not execute them or claim path feasibility.
+
+The report-only CI job uploads all findings. A separate ratchet rejects new findings
+against `scripts/legality/allowlist.json` and rejects growth relative to the PR base.
+Exemptions pin exact source evidence/reason and occurrence budgets, independently of
+harmless line-number moves. Neither keys nor budgets may grow. Bootstrap is permitted
+only when the base has no scanner/baseline. Remove exemptions as code is retired;
+never regenerate the baseline to make CI green. Historical exemptions are debt, not
+a certificate of board eligibility. The separate `scripts/legality/transition-review.json`
+records recent additions with an explicit source pin, occurrence budget, reason,
+subsystem and `blocked` or `review required` disposition. These findings remain
+reported and are not certified as clean. A transition pin cannot also appear in
+legacy debt or mask clean-root reachability. After bootstrap, transition records
+may only be removed: new/changed records and increased budgets fail CI. The dated
+inventory explains each subsystem's remaining adoption blockers. Additional general
+modules outside the clean directories must be explicit inventory roots too.
+Engine carrier/reflective exceptions are pinned
+to one exact source line; duplicate matches fail closed, and a changed pin is a
+finding. Multiline literals pin their offending lines, not opening quotes.
+
+The general-system directories `dojo/general/`, `dojo/skills/general/`,
+`dojo/perception/general/` and `dojo/runtime/general/` are automatically roots.
+They cannot receive exemptions, including for transitive legacy dependencies, even
+when a legacy root reaches the dependency first. Declare additional inference roots
+in the profile as they are introduced. Do not narrow roots, vocabulary or rules to
+bypass findings.
+
+This is conservative source reachability, not complete Python resolution or path
+feasibility. Dynamic/external calls are reported as unresolved. Member-name expansion
+can reach development helpers. Comments/docstrings showing checker provenance are
+review evidence, not proof of a forbidden read. Bare numeric/semantic provenance
+cannot be inferred mechanically. Use the identity-source policy and audit crosswalk
+in the dated inventory alongside the generated rows.
+
+The runtime tests use the shared `InstructionSentinel` / `InstructionRead`, plus
+our test-only task-data tripwires in `scripts/legality/sentinel.py`. Mock runtime
+and FakeLLM episodes keep instruction text available to planning while poisoning task
+identity. Explicit-argument skills also run with the sentinel inside their instruction
+field. Production-mode tests poison RuntimeProvider and bridge observations after
+planning, rebuild Skills through the runtime factory, and exercise the real resync
+and perception-checker path with only the external service mocked. GT access raises.
+Alias calls, cached loaders and task-data files are guarded; sticky hits survive
+swallowed exceptions. Negative controls expose legacy schema fallback and the internal
+ported instruction leak. Passing tests does not certify untested skills or the real
+perception service. Partner glib-specific tests skip explicitly when glib is absent;
+their planted-violation, task-spelling and sentinel tests run here.
+
 ## 4. Pitfalls (already stepped on)
 
 - **Camera lane profiles:** `scripts/dojo/queues/lane2.sh` retains compute4 defaults.
