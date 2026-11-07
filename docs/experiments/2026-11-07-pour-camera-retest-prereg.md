@@ -132,7 +132,7 @@ No new camera outcomes are used before freezing this panel.
 
 Queue family: c6b_<taskslug>_pourrt[AB]r1_<id>, distinct from the original pourcam rows.
 
-**Receipt:** pending preparation. This prereg/index/design commit queues no rows.
+**Receipt:** dispatched 2026-11-07 15:43:21 UTC, positions9–88, after all eight remaining MATCH2 rows. The initial registration commit queued no rows; see the receipt below.
 
 ## Preparation freeze before queue insertion
 
@@ -176,3 +176,46 @@ No supplementary audit has run on this panel before camera collection.
 Every row explicitly pins Sonnet5.5, aim b10, profileoff and the common route,
 with fresh private DOJO_DATA and the same episode caps. All preparation made
 zero model calls. This complete freeze reaches main before insertion.
+
+## Dispatch receipt — 2026-11-07 15:43:21 UTC
+
+[Machine-readable receipt](data/pour-camera-retest/dispatch.json). Under admission
+then queue locks, **80 re-test rows were inserted at positions9–88**, immediately
+after the eight remaining MATCH2 screen rows (four intact pairs, ids100006–09).
+Both active MATCH2 arms at100005 were untouched; no started pair was split.
+There were **no unstarted tie rows in the queue** at this snapshot, so none can
+precede POUR. All eight old rows retain exact bytes and relative order; the
+queue had88 rows after insertion. No lane, STOP, cap, service or other process
+setting changed.
+
+- Registration/design/index/journal rationale on main: **d956bc00**.
+- Complete frozen inputs/configs/source proof/rows on main: **fb3f70db**, before
+  any re-test row was queued.
+- Queue SHA256 before: a83a2027d3c2e94e230e5d3c178fc018efe6c8f34a27f59af42ab8f759a25d36.
+- Queue SHA256 after: 88ddd338fd135332566ff357fde3bfb5ae39cd5079102b5c890d3ed548c56102.
+- Manifest SHA256: 3334e3eba4862f99c7b0f53e40b7e4c52602122445ec13802028406975745218.
+
+Post-insertion snapshot hash/order verification passed. All80 new rows remained
+queued at verification with one explicit Sonnet pin each. The bounded, read-only
+route monitor PID1259069 is alive with no violations and zero model calls of
+its own; actual per-row call proof is pending as collection starts. It also
+recognizes classified retry paths and the task-suffixed report format.
+Preparation exited normally and left no own simulator running.
+
+Timing estimate at insertion: first POUR work around **16:10 UTC**, completion
+around **19:30 UTC on7November**. This uses preceding MATCH2 timing plus original
+19121 summed lane-seconds and the lane's serialized150-second startup cadence
+(~3h20 for the block). Admission, caps and infra retries can delay it. Planned
+spend remains about470 logical Claude calls; actuals are reported later.
+
+The final selected sample is40 pairs from45 attempts: language20/20 valid,
+cup10/13, Xylophone10/12. Three cup settles and two Xylophone raw reset failures
+are retained. Raw checks passed43/45 attempts; two-pass settling passed40/43.
+Every selected input passed both checks, with only ascending eligible refills.
+No camera outcome selected a replacement, and no previous POUR record was used.
+
+Write gate remains **N/A by motion-only scope proof**; #417 audit is
+supplementary. Cup is gated by its post-collection parity proof, Xylophone by
+the ordinary camera rule, language by both registered gain screens. No verdict,
+adoption, candidate or default change is made by dispatch. The original POUR
+verdict remains **NOT ADOPTED**.

@@ -236,3 +236,153 @@ exactly. No existing row was reordered, rewritten or removed by this task.
 The panel is dispatched at the full original n: 20 deposit_coin pairs and
 10 pairs each of insert_key, play_tic_tac_toe and stack_blocks. This task ends
 at dispatch; no verdict, adoption recommendation or camera outcome analysis.
+
+## COIN re-test verdict — 7 Nov: FAIL / NOT ADOPTED
+
+The once-only fresh-layout re-test fails the registered camera gain rule.
+The original panel is not pooled into this result. No adoption, candidate/default
+change, tuning or further re-test is authorized by this verdict.
+
+| cell | pairs | A pooled | B pooled | Δ | score wins / losses (≥10 pts) | success flips (B / A) | successes A / B |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| deposit_coin (gain) | 20 | 17.0 | 12.0 | -5.0 | 2 / 4 | 1 / 2 | 2 / 1 |
+| play_tic_tac_toe (guard) | 10 | 90.0 | 90.0 | +0.0 | 0 / 0 | 0 / 0 | 8 / 8 |
+| stack_blocks (guard) | 10 | 100.0 | 100.0 | +0.0 | 0 / 0 | 0 / 0 | 10 / 10 |
+| insert_key (guard) | 10 | 23.5 | 32.0 | +8.5 | 2 / 1 | 2 / 1 | 1 / 2 |
+
+Gain checks: pooled Δ **−5.0 < +5**; score wins **2 < 2 × 4** losses;
+net score wins **−2 < +2**. All three guard cells pass: B pooled is at least
+A − 5 and success-flip losses do not exceed wins (key 1 loss / 2 wins;
+tic-tac-toe and stack 0 / 0). Success flips are supplementary for the gain,
+not substituted for its score rule. All 50 registered pairs / 100 arms are
+complete, with exactly one terminal episode and rc 0 per arm, no retries,
+infra exclusions, cooking failures or time-capped episodes.
+
+### Spread, paired bootstrap and absolute score
+
+| cell | A sample SD | B sample SD | paired mean Δ 95% CI, points |
+|---|---:|---:|---:|
+| deposit_coin | 29.93 | 22.85 | [-21.0, +11.0] |
+| play_tic_tac_toe | 21.08 | 21.08 | [+0.0, +0.0] |
+| stack_blocks | 0.00 | 0.00 | [+0.0, +0.0] |
+| insert_key | 26.88 | 35.84 | [-17.0, +34.0] |
+
+CIs are paired percentile bootstrap intervals: 10,000 resamples of the salted
+layout pairs within each cell, NumPy default_rng(0), B − A mean score in points.
+One repeat per identity; equal numeric ids across salts remain distinct pairs.
+The deposit_coin CI **[−21, +11]** includes zero. The CI is descriptive; it adds
+no unregistered significance criterion and does not replace the threshold rule.
+
+B's absolute deposit_coin mean is **12.0** (1/20 successes), versus the lead's
+D-C19 score **8**: **+4.0 points**; versus PyRUA-RSI **79.6**: **−67.6 points**.
+These are cross-panel benchmark comparisons, not paired improvements: this
+fresh salted panel differs from those benchmark evaluation populations.
+Its matched A baseline is 17.0, so the lever's actual paired estimate is −5.0.
+
+### Registered write audit and supplementary #417 instrument
+
+The registration reached main at a4563552 before #417. Its frozen
+EXPERIMENTS.md defined the tracked object as the nearest pre-write GT object
+in the label group, and required **no excess raw harmful writes per writer**.
+Therefore the primary instrument is the frozen `416a2a03` scorer, not the later
+persistent-identity instrument or its newer rate-based gate. A harmful write
+adds **>2 mm** of unrounded 3-D body-centre error; helpful removes >2 mm;
+z is reported separately. Both arms and all registered cells are included.
+The primary gate is not retroactively replaced by a new-writer or rate rule.
+
+Saved numeric action trajectories were replayed physics-only on compute4 using
+the original frozen deployment and settled inputs. Normalized audit reports
+union the unmodified extractor's explicit writes with its legacy before/after
+writes (deduplicated by step, label and poses rounded to four decimals), while
+preserving original consume/probe identity evidence. Original reports, actions,
+call logs and layouts were not modified. Replays request every write step
+exactly, plus the standard grasp/gripper snapshots and terminal state; audit
+uses --back 0 / --harm-mm 2. No model is queried.
+
+Primary coverage: **582/582 writes**, 100/100 trajectories, zero uncertain writes and zero frame lag. All 100 replay starts were stable. Terminal-score matches: **100/100**; grasp-close probe agreement within 2 mm: **262/262**, worst deviation **0.0 mm**.
+
+| writer | writes A / B | harmful A / B | helpful A / B | neutral A / B | uncertain A / B |
+|---|---:|---:|---:|---:|---:|
+| perception | 112 / 111 | 31 / 34 | 51 / 50 | 30 / 27 | 0 / 0 |
+| post_place | 5 / 5 | 1 / 0 | 3 / 3 | 1 / 2 | 0 / 0 |
+| predicted | 82 / 88 | 44 / 46 | 37 / 40 | 1 / 2 | 0 / 0 |
+| refine_look | 6 / 8 | 0 / 0 | 3 / 4 | 3 / 4 | 0 / 0 |
+| refine_look+confirm | 1 / 2 | 0 / 0 | 1 / 2 | 0 / 0 | 0 / 0 |
+| refine_pick | 73 / 81 | 1 / 3 | 3 / 7 | 69 / 71 | 0 / 0 |
+| refine_pick+confirm | 4 / 2 | 0 / 0 | 4 / 2 | 0 / 0 | 0 / 0 |
+| refine_place | 0 / 2 | 0 / 0 | 0 / 2 | 0 / 0 | 0 / 0 |
+
+Registered write gate: **FAIL**. Raw harmful counts exceed A for `perception` (31 → 34), `predicted` (44 → 46), `refine_pick` (1 → 3). Helpful writes cannot offset these excesses under the registered gate. On deposit_coin alone, harmful `perception` writes rise 2 → 4 and `predicted` writes 0 → 4; the failure is also present in the gain cell.
+
+Mean absolute z below uses the scorer’s rounded 0.1-mm z rows; the harmful gate uses unrounded 3-D error changes.
+
+| writer | A mean absolute z before → after, mm | B mean absolute z before → after, mm |
+|---|---:|---:|
+| perception | 0.97 → 4.72 | 1.17 → 3.80 |
+| post_place | 1.02 → 1.02 | 1.52 → 1.52 |
+| predicted | 9.28 → 23.73 | 11.52 → 26.00 |
+| refine_look | 0.00 → 0.00 | 0.00 → 0.00 |
+| refine_look+confirm | 0.00 → 0.00 | 0.00 → 0.00 |
+| refine_pick | 0.07 → 0.07 | 0.22 → 0.22 |
+| refine_pick+confirm | 1.25 → 1.25 | 2.50 → 2.50 |
+| refine_place | — | 0.00 → 0.00 |
+
+Supplementary #417 re-score uses exact merge `77b45719`, the same frozen write
+ledger and replay frames, and persistent first-pick identity associations.
+There are no held_pose writes, so no legacy show-prior transport reconstruction
+is needed. This instrument is supplementary and cannot change the registered
+verdict. Its raw harmful counts are reported on the same basis below.
+
+| writer | harmful A / B | helpful A / B | neutral A / B |
+|---|---:|---:|---:|
+| perception | 12 / 14 | 70 / 70 | 30 / 27 |
+| post_place | 1 / 0 | 3 / 3 | 1 / 2 |
+| predicted | 4 / 7 | 78 / 80 | 0 / 1 |
+| refine_look | 0 / 0 | 3 / 4 | 3 / 4 |
+| refine_look+confirm | 0 / 0 | 1 / 2 | 0 / 0 |
+| refine_pick | 1 / 4 | 3 / 6 | 69 / 71 |
+| refine_pick+confirm | 1 / 0 | 3 / 2 | 0 / 0 |
+| refine_place | 0 / 0 | 0 / 2 | 0 / 0 |
+
+The supplementary raw-count comparison also has excesses: `perception` 12 → 14, `predicted` 4 → 7 and `refine_pick` 1 → 4. This does not replace the primary instrument or apply the newer rate gate.
+
+Supplementary coverage: **582/582 writes**; uncertain **0**; nearest fallbacks **55/582**. Body-geometry cache has zero missing assets. Consumed-pick evidence lacks an exact replay frame at 41/179 steps; #417 uses other available tight/grasp evidence or its explicitly reported nearest fallback. These sparse identity-anchor limitations are not silently treated as exact first-pick associations.
+
+[Audit summary](data/coin-disc-verdict-1107/audit-summary.json) contains per-cell
+and per-writer counts, rates, z, fidelity and replay hashes. Full frozen ledgers:
+[registered](data/coin-disc-verdict-1107/writes-registered.jsonl) and
+[#417 supplementary](data/coin-disc-verdict-1107/writes-fixed417.jsonl).
+[Body bounds/group cache](data/coin-disc-verdict-1107/body-geometry.json) preserves
+the public asset-derived body-centre metric. Raw sources, normalized inputs,
+replays and reproduction scripts remain in
+`compute4:~/dojo-data/coin-disc-verdict-1107/`. No sealed data were read.
+
+### Actual route proof and spend
+
+All 100 arms' actual call logs were checked, independently of the queued route:
+**164 model-labelled records all name claude/claude-sonnet-5-5**. The other
+21 unlabelled records have zero logical calls (local held-evidence paths),
+so there is no unlabelled positive-call route, Luna or cx request in this panel.
+The report's aggregate logical-call and available token counters reconcile with
+the call logs on every arm. Source SHA256s and pair-level results are retained in
+[the camera snapshot](data/coin-disc-verdict-1107/verdict-camera.json).
+
+| arm | logical Claude calls | recorded prompt | recorded completion | recorded reasoning | recorded cache-read |
+|---|---:|---:|---:|---:|---:|
+| A | 214 | 3,052,629 | 136,411 | 72,481 | 2,425,768 |
+| B | 214 | 3,045,704 | 139,825 | 76,837 | 2,428,810 |
+| total | 428 | 6,098,333 | 276,236 | 149,318 | 4,854,578 |
+
+**Token coverage caveat:** 28 positive-call held_look records (28 logical calls)
+have tokens=null (A 13 calls, B 15); their usage is unavailable. Therefore the token columns are
+**recorded lower bounds**, not complete billing totals or zeros for missing
+usage. All 428 logical calls are counted; token usage covers 400. Another 21
+zero-call records also lack token fields. Seventeen surfaced error entries
+remain included in the logs and accounting; successful hidden HTTP retries
+cannot be separately enumerated. Reasoning is included in completion and
+cache-read in prompt; do not add these subset columns again. The pre-dispatch
+estimate was 433 logical calls. Verdict/physics audits made **zero new LLM calls**. The missing held-look usage is recorded as a landmine in [BACKLOG](../BACKLOG.md).
+
+**Final disposition:** FAIL / NOT ADOPTED. The once-only re-test is exhausted.
+No candidate field changes: disc_hold_evidence remains off; all other fields
+remain unchanged. No automatic adoption or new dispatch follows.

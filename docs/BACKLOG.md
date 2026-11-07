@@ -11,7 +11,12 @@
   flag, preserve base v2b identity during union de-duplication, honor SAM API
   minima below the current server's 0.3 processor floor, and measure phantoms
   before any camera A/B ([SAMBAKE](experiments/2026-11-07-sam3-task-prompts.md)).
-
+- [ ] **Persist token usage for agentic held-look calls.** `held_look_impl`
+  counts logical calls and records their model, but discards each response's
+  token usage before writing `calls.jsonl`. Preserve summed prompt/completion/
+  reasoning/cache counters and distinguish unavailable usage from zero, so
+  camera reports can state complete spend rather than recorded lower bounds
+  ([COIN re-test verdict](experiments/2026-11-07-coin-disc-retest-prereg.md)).
 
 - [ ] **Complete first-grasp identity anchors for ported skills in write audits.**
   POUR's frozen audit scored all 81 writes, but association sources were 76
