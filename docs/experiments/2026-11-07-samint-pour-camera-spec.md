@@ -30,7 +30,7 @@ Require identical resolved estimator config (excluding inactive task-map entries
 parameters, zero SAM requests/actions and zero SAM-origin belief writes on *every* guard episode.
 Report its scores but gate only parity; the strong guard still has the ordinary score/flip gate.
 
-Every row: `AGENTIC_sam3=claude/claude-sonnet-5-5`, renderer isaac51, candidate step limits,
+Every row: `AGENTIC_MODEL=claude/claude-sonnet-5-5`, renderer isaac51, candidate step limits,
 25-minute episode/job caps, native watchdog600, existing lane watchdog and infrastructure requeue.
 Pin and verify actual model route from transcripts. No new policy switches or dynamic defaults.
 Use saved looks and images; no LLM calls in preparation or physics-only audits.
@@ -65,3 +65,45 @@ Call figures are estimates, not enforced caps: retain A’s existing agentic bud
 `agentic_max` counts estimates, not LLM turns; one estimate can use multiple calls.
 Reserve 24 calls/episode (8 turns x 3 candidate estimates) for planning, and report held-look
 requests separately; pause for lead budget review if observed consumption exceeds that reserve.
+
+## Lead-authorized compute4 preparation and queue amendment
+
+The lead authorizes **pour → classify-language → egg** on compute4, appended behind every
+remaining `kongre` row. This prospective authorization supersedes this spec's PARKED label
+and its blanket wait for IMIT2/POUR; neither earlier experiment's arms are modified or mixed.
+Imitate and conveyor SAM specs remain parked for IMIT2/MATCH2. Only queue preparation/insertion
+is authorized while compute4's intentional global STOP is set; the lead alone resumes lanes.
+No service, simulator or camera job is started on compute4 by this dispatch preparation.
+
+Camera source is merged #424, **3e08be8f6ba460abbe0b582cdad4eff1dec89053**, independently
+deployed to `compute4:~/dojo-integ-c4-3e08be8f`. Preparation code is merged main
+**f2c7d9962335fe04716073071f65d546c47e1aa1**, deployed under compute3's own controlr tree;
+no generator, settling settings or camera candidate changes are introduced by that prep pin.
+Input root: `compute4:~/dojo-data/samint-1107/pour/data`. Salt/owned IDs, 20 gain pairs,
+10 Xylophone strong pairs and five classify parity pairs remain exactly as designed.
+Default two-pass presettle, validity-only selection and all failed attempts are retained.
+Any insufficient panel parks; no silent reduction, new IDs or score-dependent selection.
+
+Both arms explicitly set **AGENTIC_MODEL=claude/claude-sonnet-5-5**. The original template's
+`AGENTIC_sam3` / `AGENTIC_sam3.1_text` spelling was a documentation substitution error;
+those names are not valid route settings and never enter queued rows. Queue validation
+checks the exact variable on every row, then collection must verify actual call metadata.
+The primary offline audit is fixed to #417 merge **77b4571907f6ce49eec11c0685db8f0c7ba05d64**;
+nearest-GT remains supplementary. Apply the current refined per-writer gate to the gain
+cell, ordinary strong guard gate, and post-collection config/Skills/zero-request/write
+parity proof on classify. No changed audit threshold or retrospective instrument choice.
+
+One shared checkpoint serves both lanes: SAM3 for pour/classify-language, then a **drained
+switch** to SAM3.1 text for egg. Existing seg/glyph services and their venv remain unchanged.
+The lead-run service helper reuses the pinned lane's exact cap and `boot_gate` definitions,
+including the sole `~/coord/lane_gate.stamp` access and 120-second protocol. No other coord
+path is accessed. Shared SAM counts once in `sides()` and actual nvidia-smi admission;
+the measured opt-in reserves 12 GiB for each SAM camera lane, including the inner launch gate.
+The helper refuses to start while the global STOP is set. It never removes a STOP.
+The old KONG rows remain intact: absent SAM at the first SAMINT row yields a safe requeue/stop,
+then the lead starts the shared service and resumes both lanes. Egg's checkpoint mismatch
+likewise stops/requeues before execution until the lead performs the drained switch.
+
+A frozen manifest, package/source/asset hashes, canonical configs and Skills snapshots,
+whole-pair schedule and 70-row file will be committed on main **before** the locked append.
+Insertion receipts record positions and queue hashes; STOP stays set throughout insertion.

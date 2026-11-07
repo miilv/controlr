@@ -1020,3 +1020,15 @@ little room for two lanes and the other services. Load one checkpoint per box/wa
 Use `scripts/perception/sam/shared_bench.py` under a light lock to reproduce startup,
 request and two-client timings on an existing permitted RGB. It terminates only its
 own server child. Detailed measurements and parked specs: `docs/experiments/data/samint/`.
+
+
+The SAM route key enters at the perception RPC's explicit `vocabulary` field.
+`LocalPerception.estimate` forwards it as `inverse_layout.estimate(..., task=vocabulary)`;
+`sam_routing.resolve(config.sam_task_routes, vocabulary)` selects the configuration.
+It is derived from permitted instruction routing in the current runtime, not launcher
+metadata or an environment task ID. A model planner using a skill registry can supply
+the same canonical perception vocabulary explicitly: the estimator does not require
+an instruction-pattern branch to choose SAM. Registry entries must map to an existing
+public candidate vocabulary/bank key; an arbitrary skill display name is not a bank.
+The task key also selects the existing public candidate pool. SAM's route map chooses
+mode/checkpoint/thresholds/filters, while the existing fit stage chooses asset identity.

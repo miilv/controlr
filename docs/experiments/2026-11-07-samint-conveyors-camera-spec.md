@@ -30,7 +30,7 @@ Require identical resolved estimator config (excluding inactive task-map entries
 parameters, zero SAM requests/actions and zero SAM-origin belief writes on *every* guard episode.
 Report its scores but gate only parity; the strong guard still has the ordinary score/flip gate.
 
-Every row: `AGENTIC_sam3.1_text=claude/claude-sonnet-5-5`, renderer isaac51, candidate step limits,
+Every row: `AGENTIC_MODEL=claude/claude-sonnet-5-5`, renderer isaac51, candidate step limits,
 25-minute episode/job caps, native watchdog600, existing lane watchdog and infrastructure requeue.
 Pin and verify actual model route from transcripts. No new policy switches or dynamic defaults.
 Use saved looks and images; no LLM calls in preparation or physics-only audits.
