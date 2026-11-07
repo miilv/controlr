@@ -1058,13 +1058,69 @@
     },
     "stack_bowls": {
       "dimension": "Generalization",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "280f32a441f1c4256c5d237dc7493650c1a062e3aec5e2474aa5bfde1b5fc57c",
+          "official_score": 100.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T180811fb1b99Z_stack_bowls",
+          "steps": 268,
+          "success": true,
+          "task": "stack_bowls",
+          "wall_s": 84.90118303091731
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "657a4bedd6d012898ffc3bece69fecb6cd269044c1b85c8cf37bb87cd22f777f",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T180811fb1b99Z_stack_bowls",
+          "steps": 410,
+          "success": true,
+          "task": "stack_bowls",
+          "wall_s": 104.52900696801953
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "37eff5c0959be998f98603f9859a45e26f5e97541077dca1371658f0044de66b",
+          "official_score": 100.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T180811fb1b99Z_stack_bowls",
+          "steps": 342,
+          "success": true,
+          "task": "stack_bowls",
+          "wall_s": 100.92863794101868
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "64cd659fa1ca13b9104de64b47a8f9a6e40c6808e545ff625bc00d7afaa03e6d",
+          "official_score": 100.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T180811fb1b99Z_stack_bowls",
+          "steps": 244,
+          "success": true,
+          "task": "stack_bowls",
+          "wall_s": 46.585711712017655
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "5c1f1bddae7a32a9686db57fbe08499889cc244e1bfa0f5e870c4cec952d38d9",
+          "official_score": 100.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T180811fb1b99Z_stack_bowls",
+          "steps": 723,
+          "success": true,
+          "task": "stack_bowls",
+          "wall_s": 166.90467113198247
+        }
+      ],
+      "n": 5,
+      "official_score": 100.0,
+      "score_sd": 0.0,
+      "steps": 1987,
+      "successes": 5,
+      "wall_s": 503.84921078395564,
       "weight": 0.008333333333333333
     },
     "stack_bowls_random": {
