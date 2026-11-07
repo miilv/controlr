@@ -3,7 +3,7 @@
 # then frame0_e2e.py per arm, then both servers stopped by their own PIDs. One free light lock (light3 / light4), a
 # systemd user scope 12G / 600 %; B1's silhouettes on CPU (DOJO_GL=0: no rendering), SAM / v2b on CUDA (SAM <= 10 GB).
 #   REPO=~/controlr-classify3-samint scripts/perception/classify3/e2e_job.sh ROWS OUT_DIR ARM[=ROUTES_JSON] ...
-#   e.g. ... v2b 'union={"classify_objects_by_language": {"mode": "union", "model": "sam3"}}'
+#   (E2E_ONLY=row-substrings: a subset)  e.g. ... v2b 'union={"classify_objects_by_language": {"mode": "union", "model": "sam3"}}'
 set -uo pipefail
 REPO="${REPO:?the deployed tree with SAM routing}"
 ROWS="$1"; OUTD="$2"; shift 2
@@ -47,6 +47,6 @@ for spec in "$@"; do
   ( cd "$REPO" && DOJO_SAM_ADDR="$([[ -n "$routes" ]] && echo "$SAM_SOCK")" DOJO_PERCEPTION_CFG="$cfg" PYTHONPATH="$REPO:$VEND" \
       systemd-run --user --scope -q -p MemoryMax=12G -p CPUQuota=600% \
       "$PY" scripts/perception/classify3/frame0_e2e.py --rows "$ROWS" --layouts "$HOME/dojo-data/simlab/layouts" --arm "$arm" \
-      --out "$OUTD/$arm.jsonl" ) >> "$OUTD/e2e.log" 2>&1
+      --out "$OUTD/$arm.jsonl" --only "${E2E_ONLY:-}" ) >> "$OUTD/e2e.log" 2>&1
 done
 echo "[e2e] done"

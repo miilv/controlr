@@ -82,7 +82,9 @@ def main(argv=None):
         done = {json.loads(ln)["row"] for ln in open(a.out) if ln.strip()}
     rows = sorted(Path(a.rows).glob("c4b_*_1000??"))
     if a.only:
-        rows = [r for r in rows if any(s in r.name for s in a.only.split(","))]
+        rows = [r for r in rows if any(s in r.name for s in a.only.split(",") if s)]
+    if not rows:
+        raise SystemExit(f"no c4b_*_1000?? rows under {a.rows}")
     for row in rows:
         if row.name in done:
             continue

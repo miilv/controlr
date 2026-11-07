@@ -1,7 +1,7 @@
 # CLASSIFY3 (2026-11-07): classify_into_bins_p2 with a choice of container test (our own wrapper; p2 itself unchanged).
 """classify_into_bins_p3: p2 (``classify_into_bins_p2``) run with its container test chosen by ``contain``.
 
-run(robot, contain="bottom", **p2 arguments)
+run(robot, contain="bottom", park_other="off", **p2 arguments)
 
 ``contain``:
   * ``"root"``: p2's own test, the object's root position inside the container's box and below its rim + 10 mm;
@@ -10,6 +10,9 @@ run(robot, contain="bottom", **p2 arguments)
     orientation (standing, on its side), so its root sits 15-110 mm above the rim while it rests on the floor: on 20
     recorded camera rows (journal 2026-11-07-dojo-classify3) 25 of 96 releases that physics had inside read "not in"
     under the root test, and the skill re-did them (retries, fallbacks, nudges) until the step budget ran out.
+``park_other``: ``"off"`` (p2) | ``"home"``: before a stage that carries with one arm (direct, drop_held, nudge), the
+other arm goes home (v3's checked ``home_safe``) when it is away from home with open jaws. In G3 with the true state
+(the same 20 dev layouts) the idle arm was the commonest obstacle of a refused carry: 30 of 74 refusals.
 Everything else (grounding, stages, retries, fallbacks, home) is p2's.
 """
 import importlib.util
@@ -20,6 +23,8 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONTAIN = ("root", "bottom")
+PARK = ("off", "home")
+CARRY_STAGES = ("direct", "drop_held", "nudge")
 
 
 def load_p2():
@@ -41,13 +46,41 @@ def in_bin_bottom(objs, k, c):
     return bool(lo[0] <= p[0] <= hi[0] and lo[1] <= p[1] <= hi[1] and z_low <= hi[2] + 0.01 and p[2] >= lo[2] - 0.01)
 
 
-def run(robot, contain="bottom", **kw):
+def parking(load_v3, parks: list):
+    """``load_v3`` whose instances home the idle arm before a one-arm carry stage (``park_other="home"``); every park
+    is appended to ``parks``."""
+    def load():
+        V3 = load_v3()
+        run0 = V3.run
+
+        def run(robot, stage, *a, **kw):
+            arm = kw.get("arm")
+            if stage in CARRY_STAGES and arm in ("left", "right"):
+                other = "right" if arm == "left" else "left"
+                e = robot.obs(cameras=[])["eef"][other]
+                if not e.get("at_home") and float(e.get("grip_cmd", 1.0)) >= 0.5:
+                    h = V3.home_safe(robot, [other], "auto", 0.04, 7.0)
+                    parks.append({"stage": stage, "obj": kw.get("obj"), "arm": other,
+                                  "ok": bool(h.get("ok", True)) if isinstance(h, dict) else None})
+            return run0(robot, stage, *a, **kw)
+        V3.run = run
+        return V3
+    return load
+
+
+def run(robot, contain="bottom", park_other="off", **kw):
     if contain not in CONTAIN:
         return {"ok": False, "verified": False, "error": f"contain must be one of {CONTAIN}, not {contain!r}"}
+    if park_other not in PARK:
+        return {"ok": False, "verified": False, "error": f"park_other must be one of {PARK}, not {park_other!r}"}
     m = load_p2()
     if contain == "bottom":
         m.in_bin = in_bin_bottom
+    parks: list = []
+    if park_other == "home":
+        m.load_v3 = parking(m.load_v3, parks)
     r = m.run(robot, **kw)
     if isinstance(r, dict):
-        r.setdefault("details", {})["contain"] = contain
+        d = r.setdefault("details", {})
+        d["contain"], d["park_other"], d["parks"] = contain, park_other, parks
     return r

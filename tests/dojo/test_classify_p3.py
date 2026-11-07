@@ -79,3 +79,52 @@ def test_p3_runs_through_the_ported_loader_with_its_contain_mode():
     d = json.loads(sk.ported_runs[-1]["details"])
     assert r["ok"] and r["steps"] > 0, r
     assert d["contain"] == "bottom" and d["skipped"] == []
+
+
+def test_park_other_is_off_by_default_and_reaches_p3_through_the_planner():
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from dojo.skills.g3 import SKILL_ATTRS
+    assert RuntimeConfig().ported_classify_park == "off" and SKILL_ATTRS["ported_classify_park"][0] == "off"
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(ported_classify_park="survey"))
+    env, sk = gt_skills(rows_classify(), INSTR)
+    w = sk.refresh()
+    assert planner.plan(INSTR, w, ported={"classify": "p3"}).args["args"] == {}
+    p = planner.plan(INSTR, w, ported={"classify": "p3", "classify_park": "home"})
+    assert p.args["skill"] == "classify_into_bins_p3" and p.args["args"] == {"park_other": "home"}
+    p = planner.plan(INSTR, w, ported={"classify": "p2", "classify_park": "home"})   # p2 takes no such argument
+    assert p.args["args"] == {}
+    assert _p3().run(object(), park_other="survey")["error"].startswith("park_other must be")
+
+
+class _Robot:
+    def __init__(self, other_home, grip):
+        self.e = {"left": {"at_home": True, "grip_cmd": 1.0}, "right": {"at_home": other_home, "grip_cmd": grip}}
+
+    def obs(self, cameras=None):
+        return {"eef": self.e}
+
+
+@pytest.mark.parametrize("home,grip,stage,parks", [(False, 1.0, "direct", 1), (True, 1.0, "direct", 0),
+                                                   (False, 0.0, "direct", 0), (False, 1.0, "relay", 0),
+                                                   (False, 1.0, "nudge", 1)])
+def test_parking_homes_only_an_idle_away_arm_before_a_one_arm_carry(home, grip, stage, parks):
+    m = _p3()
+    calls = []
+
+    class V3:
+        @staticmethod
+        def run(robot, stage, **kw):
+            calls.append(stage)
+            return {"ok": True}
+
+        @staticmethod
+        def home_safe(robot, arms, mode, margin_m, margin_deg):
+            calls.append(("home", tuple(arms)))
+            return {"ok": True}
+    log: list = []
+    V = m.parking(lambda: V3, log)()
+    V.run(_Robot(home, grip), stage, arm="left", obj="o")
+    assert len(log) == parks and calls[-1] == stage
+    if parks:
+        assert calls[0] == ("home", ("right",)) and log[0]["arm"] == "right"
