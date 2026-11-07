@@ -1704,7 +1704,11 @@ def _deposit_then_lift(sk: Skills, container: str, target: str, v: np.ndarray, i
     w = sk.refresh()
     inside = inside_xy(w.obj(target), w.obj(container))
     sk.log(f"[belt] {target} {'in' if inside else 'not in'} {container} after the drop")
-    rl = _handle_lift(sk, container, parm, sarm, ign + (target,))
+    if getattr(sk, "belt_lift", "off") == "braced_hook":
+        from dojo.skills.basket import braced_hook
+        rl = braced_hook(sk, container, parm, sarm, ign + (target,))
+    else:
+        rl = _handle_lift(sk, container, parm, sarm, ign + (target,))
     w = sk.refresh()
     ok = rl.ok and inside_xy(w.obj(target), w.obj(container))
     return {"ok": ok, "stage": "lifted" if rl.ok else "lift", "note": rl.note}

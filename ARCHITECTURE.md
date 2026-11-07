@@ -620,3 +620,14 @@ Actor lay-face-up events (`watch_lay`) and accepted relocation events retain ful
 The audit includes these exact writes alongside the coarse version log,
 replacing a matching coarse endpoint record to avoid counting a relocation twice;
 subthreshold relocation writes remain visible. These fields do not feed policy decisions.
+
+### Basket image experiment
+
+`belt_lift=braced_hook` (RuntimeConfig, Skills and G3; default `off`) changes
+only the final lift in the opt-in `belt_deposit` chain. It refreshes the handle
+pose after transit, inserts closed fingers under its bar, loads the hook while
+the wall arm also lifts, then releases the wall. Missing mesh or an unreachable
+segment refuses the motion. Explicit contact legs retain the existing contact
+motion convention. `new_routes=["basket_image"]` is separately opt-in and
+requires the pictured conveyor instruction plus unique observed basket, belt
+and picture roles. It consumes the existing world and never creates detections.

@@ -719,3 +719,10 @@ For the opt-in egg endpoint-search experiment, use G3
 `test_egg_grasp_height.py` covers unchanged baseline geometry. Its endpoint screen
 must never bypass the subsequent collision and motion planner. Clear the IK cache
 when entering and leaving a scoped joint envelope: cache keys omit joint limits.
+
+The basket-image experiment uses `--routes basket_image` and
+`--skill-attr belt_container=on --skill-attr belt_deposit=on` in G3;
+`--skill-attr belt_lift=braced_hook` selects its candidate lift. Runtime mirrors
+these fields; all are off by default. CPU guards live in `test_basket_hook.py`.
+Belt riders cannot pass the stationary presettle check: use a documented
+belt-relative rest check and identical frozen inputs in both comparison arms.
