@@ -277,3 +277,23 @@ Summed per-replay `replay_s` is **874.2 s**, excluding cold process startup;
 admission/occupancy and transport-attempt logs remain with the remote evidence.
 The original two lanes were left intact; no system changes, compute4/dc19
 access or manual process kills were performed.
+
+## Lead amendment: route corrected to the candidate perceiver (2026-11-07 02:14 UTC)
+
+The arms above pinned `AGENTIC_MODEL=cx/gpt-6-luna`. That came from the lead's
+"no Claude-route calls" brief, which was meant for the dev agents. It was never
+meant for camera rows. The lever would be adopted into the candidate, and the
+candidate's perceiver is `claude/claude-sonnet-5-5`. So the adoption
+measurement has to run on that route; a lift measured on Luna does not carry
+over to it. The lead caught this before computing the camera-score verdict.
+
+- **Primary (adoption) measurement:** all 40 rows were re-queued blind on
+  compute6 with `AGENTIC_MODEL=claude/claude-sonnet-5-5` and the name suffix
+  `__sonnet`. Pairs, layouts, settled inputs, blocks, budgets and the decision
+  rule are unchanged.
+- **The Luna panel is supplementary:** it is complete, with 74 logical calls.
+  It is reported beside the primary result but never pooled with it and never
+  used for adoption.
+- **The write audit has to be redone on Sonnet:** the raw no-excess-harmful-write
+  condition above is not passed, and lead review stays open. That audit gates
+  adoption only for the Sonnet rows.

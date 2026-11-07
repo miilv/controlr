@@ -246,3 +246,21 @@ key search may be slower. This is not a deadline: 25-minute episode caps and
 the existing 33-minute job caps permit about 11 two-lane hours before waits /
 retries. Report actual camera spend at verdict. No camera result, adoption or
 physics-audit pass is claimed at dispatch; prep used zero model calls.
+
+## Lead amendment: route corrected to the candidate perceiver (2026-11-07 02:14 UTC)
+
+Every KEY row pinned `cx/gpt-6-luna`, for the same reason as the KONG
+prereg: the lead's "no Claude-route calls" brief was for dev agents, not camera
+rows. Adoption is measured on the candidate perceiver,
+`claude/claude-sonnet-5-5`. At 02:14 UTC the lead set `STOP` on compute6, so no
+new jobs were admitted. Under the queue lock the lead then rewrote the 39
+not-yet-started KEY rows to `claude/claude-sonnet-5-5`, with names, order and
+everything else unchanged.
+
+One Luna attempt had already started: `c6b_insertkeysg_keyAr1b1_100001`.
+It is **excluded** from every analysis. Its arm was re-queued at the head of
+the queue as `c6b_insertkeysg_keyAr1b1_100001__sonnet`, so the pair runs
+entirely on Sonnet. `STOP` was cleared at 02:15 UTC. No row was dropped, and the
+panel, guards and decision rule are unchanged. The 40 KONG Sonnet re-run rows
+sit after the KEY rows and before the remaining tie rows (see the KONG prereg
+amendment). `compute6:~/dojo-data/key-1107/notes.log` records each step.
