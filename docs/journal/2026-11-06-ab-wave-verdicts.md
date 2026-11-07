@@ -91,3 +91,12 @@ This is SEGAB's report.py, run once after all 140 rows completed (23:08Z), under
 - 38 / 38 jobs had rc 0.
 
 **Follow-up (a new lever):** the switches change the shared insertion / handover path that plug_in_charger also uses. As with kong, scope them to the routed insert_key task only, then pre-register a new A/B on new fresh layouts. The gain is worth ~0.67 Average points.
+
+## pen: #397 conditional inset, fill_pen_holder (compute4, moved from compute3) — NOT ADOPTED (gain below +5)
+
+| cell | pairs | A pooled | B pooled | Δ | success flips (B / A) | score wins / losses (≥ 10 pts) | successes A / B |
+|---|---|---|---|---|---|---|---|
+| fill_pen_holder (gain) | 10 | 4.0 | 7.0 | +3.0 | 0 / 0 | 4 / 1 | 0 / 0 |
+
+- The 100020 pair ran once as the disclosed `__rerun_c4`. One infra attempt (100029 A) was retried under the rule.
+- The pooled gain of +3 is below the +5 bar, so the lever is not adopted. The direction matches G3 (+6 pooled), but the camera effect is smaller.
