@@ -301,3 +301,34 @@ and improve the mechanism, but final ids100000–14 remain untouched.
 No final-panel generation or paired candidate selection is authorized by
 this development registration. Same two light slots, scopes and admission
 gates; zero model calls and no camera jobs/board change.
+
+Cross-shape slow results: standard45 now earns20 with right7.3 mm and left5.6
+mm pickup drift, then0.6/2.5 mm carry shifts. Heavy standard48 stays0 (first
+slow pickup8.8 mm loose); it also scored0 with the frozen centre-stage baseline.
+Integration source **fc90c405** merges current main's unrelated opt-in pour
+code; the headset implementation is identical to fb39b381. Use fc90c405 for
+the registered production/coverage screen after all older-source jobs exit.
+Both observed enclosure/rest regressions have been rescued by slowing lift,
+without changing the verifiers. Random49's slow cross-check remains pending.
+
+The superseded production screen completes at **standard2/4** and
+**random3/5** (ids45–48 /45–49 respectively); all full-task successes0.
+Additional ids were not dispatched after the parent drivers stopped. Keep
+the original12/cell intent above and this actual-n amendment together.
+The added bank's first ten random draws all use asset8; its independent
+positions do not close the rare-shape gap. Existing new45–49 pilots retain
+assets9/10 coverage. Do not replace the predeclared first ten for better
+policy outcomes or describe them as shape-stratified sampling.
+
+The random settling batch completes15/15 stable. Its freed light8 slot is
+used for standard settling: cancel only the verified own queued light2 bash
+wrapper/flock child, record their pidfile/commands and requeue the same
+untouched standard bank on light8. No active runner or other stream is stopped.
+
+Slow random49 completes at0:30 mm pickups loose8.3/8.9 mm,80 mm pickup47 mm
+slip. Both added banks settle15/15. The fb39b381 full suite finds one default
+contract regression: legacy hang passes an empty `pick_kw` dict instead of
+omitting it (2136 passed/191 skipped, one failure). Preserve the original
+omitted keyword when seat/lift are legacy; keep the existing regression
+test unchanged. This does not change any seat-on candidate motion. Re-run
+the focused suite and full suite against the integrated source before merging.
