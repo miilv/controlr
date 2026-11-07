@@ -289,12 +289,22 @@
   Only 6.0-proxy leave-one-out folds exist (`compute3:~/dojo-data/pbake-identity/bg_byimg{A,B}`), so every genuine-5.1
   run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
   dev layouts + `build` into every box's `bg_folds_51/fold{0,1}/scene/Dynamic_conveyor_00001/` (journal
-  2026-10-28-dojo-conveyor-belt-blind §5; waits for compute2).
+  2026-10-28-dojo-conveyor-belt-blind §5). Follow-up on compute6: record genuine Isaac 5.1
+  head + both wrist RGB/depth/intrinsics/extrinsics on fresh v15 dev layouts with the empty belt fixture
+  `Dynamic/conveyor/00001`, build its background in a separate frozen calibration set, and validate
+  belt foreground and moving rider tracks before camera A/B. compute3 cannot render on driver 595.99;
+  do not substitute 6.0 proxy frames or modify its drivers.
 - [ ] **dojo skills: pick_from_conveyor_by_image, the lift binds** (stream H after C, parked; journal
   2026-10-29-dojo-h95-conveyor-image). On my v15 dev draws C's belt_deposit scores 1/20: 14 episodes end at the lift
   with the target already in the basket. A horizontal hook under the handle bar (`belt_lift` "hook", branch
   `feat/dojo-h95-conveyor-image`) engaged twice in probes but 0 extra in screens, because the basket drifts 6-22 cm
   before the hook. Hold it still first. The basket's collider is one convexDecomposition mesh.
+  BYIMG's re-aimed hook with coupled wall loading also fails: [fresh paired G3](experiments/2026-11-07-byimg-g3.md),
+  0/10 vs 0/10, two lift endings rise 5.2/0.7 mm. The wall pinch is not a fixed brace.
+  Isolated opposite-wall grasps (80 candidates) all fail IK; a farther drag slips instead of bringing
+  that wall in reach. Need a restraint/support that physically holds, then re-screen on fresh layouts.
+  Belt-relative frozen records advance phase again during reset; preserve authored belt phase in a
+  future settling protocol rather than comparing their absolute rate to old raw-v15 screens.
 - [ ] **dojo skills: pick_from_conveyor_by_image, the basket lifted level with the target in it** (stream C, parked;
   journal/2026-10-29-dojo-conveyor-deposit.md). The checker wants the target on the basket's bottom 8 cm above its
   start. A rim pinch holds the basket 40 deg tilted. `belt_deposit` (default off) stops it on the belt, drags it toward
@@ -306,6 +316,12 @@
   On rendered 5.1 the frame-0 record is empty: B1 and the agentic perceiver miss all 6 labels (basket, target, object1-3,
   photo), even with the `Dynamic_conveyor_00001` background installed. Every episode ends at step 3/700 (integ-c4
   round 2, 7f29156, 4 rows; journal 2026-10-28-dojo-integ-c4-round2 §3).
+  BYIMG adds a separately default-off `basket_image` observed-roles route; it creates no objects.
+  On compute6, first record and inspect frame 0 plus an unobstructed board view; require all six roles
+  (basket, pictured target, three distractors, photo) with geometry and photo identity evidence.
+  Audit why B1 and the agentic record stay empty even with the right background. Test the route on
+  those real observations, then pre-register fresh paired camera layouts only after a physical chain
+  gains in G3. No camera jobs are dispatched by the BYIMG physics study.
 - [ ] **dojo runtime: far-end belt reads are noisy.** In the offline genuine-5.1 replays (journal
   2026-10-28-dojo-conveyor-belt-blind §3.1), newcomer tracks at the upstream end give belt velocities of
   2.1-5.5 mm / step (4.0 true) while they are the only trusted tracks. The rider predictions, and so the intercept, use
