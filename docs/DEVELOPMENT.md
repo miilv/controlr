@@ -61,6 +61,15 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 | cache / router / timings | `llm/` | `test_llm_*`; live `bench-cache` |
 | an experiment axis | field in `config.py` + `configs/base.yaml` | `test_cli` / `test_loop`; the default must not change behaviour |
 
+### Task-scoped key switches
+
+`RuntimeConfig.key_scope_task` accepts `""` (legacy global behavior) or
+`"insert_key"`. With the latter, `key_handover` / `key_lean` are copied into
+Skills only for the exact instruction-routed key vocabulary; all other routes
+resolve `v1/off`, including Skills rebuilds. Scope alone enables neither switch.
+Use runtime config for camera scoping; G3's direct `--skill-attr` overrides
+remain global. Defaults and presets retain legacy behavior.
+
 ### Testing belief-object routing
 
 G3 uses --skill-attr plan_world=objects and optionally
