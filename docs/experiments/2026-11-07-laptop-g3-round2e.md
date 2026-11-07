@@ -187,3 +187,11 @@ verification, current-orientation carry and released-support proof. If this
 variant also fails, park the upright-bridge mechanism and proceed with the
 physically supported enclosure/rest improvements rather than adding more
 unregistered variants. No final-panel record is involved.
+
+## Downward bridge result and cross-shape check
+
+The final tilt variant succeeds on standard48: 20 points, bridge pickup3.3 mm
+drift, after an upright rest. The earlier balanced horizontal grip was loose
+18.1 mm, followed by a186 mm slip. Before any production integration, cross-check
+the unchanged tilt recipe on standard45 (a lighter shape) and random49 (asset9).
+These are pilot records, not final-panel observations.
