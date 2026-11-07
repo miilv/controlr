@@ -367,3 +367,26 @@ recipe; no change to the production candidate or its registered screens.
 These jobs queue behind current batches on light2/light8; at most two actual
 physics scopes. Any bridge integration requires separate production evidence
 and registration; do not infer reliability from the single heavy-shape success.
+
+## Upright-rest geometry and heading feasibility
+
+Both bridge cross-checks stop before motion at the original conservative
+rest predicate. Asset8 has COM height71.24 mm and shrunken minimum support
+half-width8.60 mm versus the predicate's14.25 mm requirement; asset10 has
+79.54 mm/8.00 mm versus15.91 mm. Heavy2 passes18.80 versus16.20 mm; asset9
+passes17.22 versus14.29 mm yet its earlier physical rest later tipped.
+The predicate uses an axis-aligned footprint bbox and is yaw-dependent. These
+refusals bound this protocol; they do not prove upright rest physically
+impossible or justify lowering the threshold. Preserve raw support numbers.
+
+One additional pilot-only feasibility check samples desired upright heading
++25 then−25 degrees about world z relative to the cradle, retaining the
+original static predicate and both centre spots. Changing yaw does not widen
+the real support base; it changes approach/re-grasp reach and the conservative
+screen. Require an actual30-step released upright rest and original lift
+verification before a fixed-current-orientation bridge carry. A25-degree
+heading fits the unchanged30-degree checker allowance only if the physical
+rest/pinch/carry errors also fit; count any violation as0, not an exemption.
+Run unchanged source504daaef plus this retained probe on random45 and47.
+No production source/bundle change, no final-panel record, no forced pose or
+collision/hold/stability threshold relaxation. Two queued jobs, same slots.
