@@ -100,3 +100,26 @@ This is SEGAB's report.py, run once after all 140 rows completed (23:08Z), under
 
 - The 100020 pair ran once as the disclosed `__rerun_c4`. One infra attempt (100029 A) was retried under the rule.
 - The pooled gain of +3 is below the +5 bar, so the lever is not adopted. The direction matches G3 (+6 pooled), but the camera effect is smaller.
+
+## 7 Nov 02:14Z: KONG / KEY scoped A/Bs moved to the candidate perceiver
+
+The compute6 rows for both scoped levers (#410/#411 KONG, #412 KEY) pinned
+`AGENTIC_MODEL=cx/gpt-6-luna`. The lead's "no Claude-route calls" brief was meant
+for dev agents, but it was carried over to the camera rows. Adoption is
+measured on the candidate perceiver (`claude/claude-sonnet-5-5`). The tie and
+seg rows already used it.
+
+- **The fix:** `STOP` was set and the not-yet-started KEY rows were rewritten.
+  All 40 KONG rows were re-queued blind as `__sonnet`. The single started Luna KEY
+  arm (`keyAr1b1_100001`) is excluded and was re-run as `__sonnet` at the head
+  of the queue.
+- **Data status:** no Sonnet result had been read. The Luna KONG panel was
+  complete but had no verdict, so it stays supplementary. See the amendments in
+  both preregs.
+- **Restart:** heavy2 on compute6 exited on the `STOP`. It was restarted by the
+  dispatcher's own command (sources `dojo-env.sh` + `lane.env`, segab lane
+  script).
+- **compute4 caps:** `lane2.caps` raised from `1 4` to `2 4`. Since D-C19 there
+  are no other GPU users, and the 32 GB card fits two Isaac jobs. The VRAM and
+  boot gates are unchanged, and heavy2 was started on the same 416a2a03
+  deployment. This roughly halves the peg / waist re-test tail.
