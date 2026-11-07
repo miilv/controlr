@@ -3564,16 +3564,25 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
     oriented like the rack's first one. Each object is carried, re-oriented, to just beyond the hook's tip (hole on
     the arm's line), slid along the arm onto it, lowered 6 mm and let go; grippers open after each (per-object
     credit). Objects and hooks are paired by the first one-arm plan found."""
-    dense = "handle" not in handle_tag.lower() and getattr(sk, "headset_grasp", "legacy") == "dense"
+    cradle = "handle" not in handle_tag.lower()
+    cup_mode = cradle and getattr(sk, "headset_grasp", "legacy") == "cups"
+    dense = cradle and getattr(sk, "headset_grasp", "legacy") in ("dense", "cups")
+    site_mode = cradle and getattr(sk, "headset_retry", "legacy") == "sites"
+    from dojo.skills.headset import GraspSites
+    rejected_sites = GraspSites() if site_mode else None
 
-    def hang_grasps(o, arm):
-        if o.label in cup_labels:
+    def proposals(o, arm):
+        if cup_mode or o.label in cup_labels:
             from dojo.skills.headset import cup_grasps
             return cup_grasps(sk, o, arm, handle_tag)
         if dense:
             from dojo.skills.headset import dense_grasps
             return dense_grasps(sk, o, arm)
         return G_hang(sk, o, arm)
+
+    def hang_grasps(o, arm):
+        candidates = proposals(o, arm)
+        return rejected_sites.filter(o, arm, candidates) if site_mode else candidates
 
     w = sk.refresh()
     rk = w.obj(rack)
@@ -3665,7 +3674,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
             r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=24 if dense or lab in cup_labels else 8, pair_rank=wide_rank,
                                  grasps=(lambda a, o=o: [g for g in hang_grasps(o, a)
                                                          if g.method not in slipped.get(o.label, ())
-                                                         and (not seat or g.width >= HANG_WIDE_W or o.label in cup_labels)]),
+                                                         and (not seat or g.width >= HANG_WIDE_W or cup_mode or o.label in cup_labels)]),
                                  **({"pick_kw": {"squeeze": 8}} if seat else {}),
                                  place_kw={"pre_h": 0.03, "release": False, "approach_rad": carry_rad, "purpose": "hang",
                                            **({"approach_staged": True} if not thread and
@@ -3721,7 +3730,8 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
     # object is tried once more with the others
     slipped: dict = {}
     retry_slip = getattr(sk, "hang_cradle", "strict") == "straddle"
-    for _round in range(2 * len(pool)):
+    site_attempts = {}
+    for _round in range((6 if site_mode else 2) * len(pool)):
         if not pool:
             break
         w = sk.refresh()
@@ -3771,6 +3781,17 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
         # tol_xy < LOOSE_OK_TOL: a grasp that shifted in the hand is put down (and the object tried once more)
         r = sk.run_transfer(pp, pl, tol_xy=0.015, tol_tilt=25.0, tol_z=0.05)
         arm = pp.arm
+        if site_mode and r.status in ("loose", "grasp_slip") and sk.held[arm] is None:
+            rejected_sites.remember_pick(sk, pp)
+            site_attempts[lab] = site_attempts.get(lab, 0) + 1
+            used.discard(hi)
+            if site_attempts[lab] < 4:
+                pool.append(lab)
+                sk.log(f"[hang] {lab}: reject this {arm} site, retry {site_attempts[lab] + 1}/4")
+            else:
+                failed.append(lab)
+            sk.bank()
+            continue
         if r.status == "loose" and lab not in retried:
             retried.add(lab)
             pool.append(lab)

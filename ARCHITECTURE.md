@@ -641,6 +641,12 @@ bank. No held state is inferred from a plan alone; original physical lift,
 loose-hold and release verification still apply. The default `off` bypasses
 staging and retains the prior candidate bank.
 
+`headset_grasp=cups` independently enables narrow cup proposals from the current
+world pose. `headset_retry=sites` stores failed object-frame pinch neighborhoods
+per arm instead of rejecting a whole method. It uses the executed pick's
+attachment, preserving site identity across object motion and refined picks.
+Both switches retain legacy defaults; physical verification remains mandatory.
+
 ### Basket image experiment
 
 `belt_lift=braced_hook` (RuntimeConfig, Skills and G3; default `off`) changes

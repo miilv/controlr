@@ -126,3 +126,71 @@ def test_stage_result_scopes_cup_bank_and_mesh_guard(monkeypatch):
     assert library.hang_on_hooks(sk, ["headset"], "stand", "cradle", "headband_bridge") == {"ok": True}
     assert seen == [("mesh", {"cup_labels": {"headset"}})]
     assert sk.coll.held_table == "bbox"
+
+
+def test_failed_sites_follow_object_motion_and_preserve_other_arm_and_axes():
+    from dojo.skills.geometry import inv_T
+    from dojo.skills.grasps import Grasp
+
+    sites = headset.GraspSites()
+    local = T_from([.04, 0, -.05])
+    pick = SimpleNamespace(label="headset", arm="right", T_tcp_obj=inv_T(local))
+    sites.remember_pick(SimpleNamespace(), pick)
+    obj = SimpleNamespace(label="headset", T=T_from([.2, -.1, .8], rot_z(.6)))
+    same = Grasp("antipodal", obj.T @ local, .025)
+    near = Grasp("antipodal", obj.T @ T_from([.045, 0, -.05]), .025)
+    far = Grasp("antipodal", obj.T @ T_from([.06, 0, -.05]), .025)
+    different_axis = Grasp("antipodal", obj.T @ local @ T_from([0, 0, 0], rot_z(.8)), .025)
+    finger_flip = same.T.copy()
+    finger_flip[:3, 1:3] *= -1
+    flip = Grasp("antipodal", finger_flip, .025)
+    assert sites.filter(obj, "right", [same, near, far, different_axis, flip]) == [far, different_axis]
+    assert sites.filter(obj, "left", [same]) == [same]
+
+
+def test_sites_record_the_actual_refined_pick_attachment():
+    from dojo.skills.geometry import inv_T
+
+    sites = headset.GraspSites()
+    planned = SimpleNamespace(label="headset", arm="left", T_tcp_obj=np.eye(4))
+    actual = SimpleNamespace(label="headset", arm="left", T_tcp_obj=T_from([.03, 0, .02]))
+    sites.remember_pick(SimpleNamespace(last_pick=actual), planned)
+    assert np.allclose(sites.rejected[("headset", "left")][0], inv_T(actual.T_tcp_obj))
+
+
+def test_site_staging_caps_physical_attempts_without_relaxing_verifier(monkeypatch):
+    pick = SimpleNamespace(label="headset", arm="right", T_tcp_obj=np.eye(4))
+    sk, calls = stage_fixture(monkeypatch, outcomes=[(pick, "place")] * 4)
+    sk.headset_retry = "sites"
+    def fail(*a, **kw):
+        calls.append(("run", kw))
+        return SkillResult(False, "transfer", "loose")
+    sk.run_transfer = fail
+    assert not headset.stage_for_cradle(sk, ["headset"], "stand", "cradle", "bridge")
+    assert [c[0] for c in calls] == ["plan", "run", "bank"] * 4
+    assert all(c[1]["tol_xy"] == .015 for c in calls if c[0] == "run")
+
+
+@pytest.mark.parametrize("status", ["place_miss", "step_budget", "ended"])
+def test_site_staging_does_not_retry_other_failures(monkeypatch, status):
+    sk, calls = stage_fixture(monkeypatch, outcomes=[("pick", "place")])
+    sk.headset_retry = "sites"
+    sk.run_transfer = lambda *a, **kw: SkillResult(False, "transfer", status)
+    assert not headset.stage_for_cradle(sk, ["headset"], "stand", "cradle", "bridge")
+    assert [c[0] for c in calls] == ["plan", "bank"]
+
+
+def test_retry_defaults_and_cup_mode_validation():
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.g3 import SKILL_ATTRS
+    from dojo.skills.skills import Skills
+    from dojo.skills.world import WorldState
+
+    assert RuntimeConfig().headset_retry == "legacy"
+    assert SKILL_ATTRS["headset_retry"] == ("legacy", "sites")
+    sk = Skills(KinematicEnv([]), SimpleNamespace(refresh=lambda: WorldState("", "", {}, {}, {})))
+    assert sk.headset_retry == "legacy" and sk.headset_grasp == "legacy"
+    RuntimePolicy(RuntimeConfig(headset_grasp="cups", headset_retry="sites"), assets=object())
+    with pytest.raises(ValueError, match="bad runtime config"):
+        RuntimePolicy(RuntimeConfig(headset_retry="invalid"), assets=object())

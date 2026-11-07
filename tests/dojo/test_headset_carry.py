@@ -89,7 +89,7 @@ def test_dense_grasp_switch_default_and_validation():
     from dojo.skills.env import KinematicEnv
     from dojo.skills.world import WorldState
     assert RuntimeConfig().headset_grasp == 'legacy'
-    assert SKILL_ATTRS['headset_grasp'] == ('legacy','dense')
+    assert SKILL_ATTRS['headset_grasp'] == ('legacy','dense','cups')
     sk=Skills(KinematicEnv([]),SimpleNamespace(refresh=lambda:WorldState('','',{}, {}, {})))
     assert sk.headset_grasp == 'legacy'
     with pytest.raises(ValueError,match='bad runtime config'):

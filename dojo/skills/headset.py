@@ -73,8 +73,8 @@ def cup_grasps(sk, obj, arm, bridge_tag="headband_bridge"):
 def stage_for_cradle(sk, objects, rack, hook_tag, bridge_tag):
     """Use a checked table rest when pickup and cradle favor different arms.
 
-    Keep the lying orientation, execute at most one transfer per object, then
-    let the ordinary hang planner re-grasp from the measured rest. Failures
+    Keep the lying orientation; legacy executes at most one transfer per object,
+    optional site retries allow four. Re-plan from the measured rest. Failures
     retain the original physical verdict and never manufacture a held state.
     """
     from dojo.skills.library import free_spots, hook_frames, on_hook, rest_with_R
@@ -97,20 +97,61 @@ def stage_for_cradle(sk, objects, rack, hook_tag, bridge_tag):
         arm = nearest(o.pos[:2])
         if arm == nearest(H[:2, 3]) or float(np.linalg.norm(o.pos[:2] - H[:2, 3])) <= 0.40:
             continue
-        for xy in free_spots(sk, label, near_xy=(0.0, -0.15), clearance=0.03, avoid=(rack,))[:8]:
-            target = rest_with_R(sk, label, xy, o.R)
-            plans = sk.plan_transfer(label, [target], arms=[arm], max_full=24,
-                                     grasps=lambda a: cup_grasps(sk, o, a, bridge_tag),
-                                     pick_kw={"squeeze": 8},
-                                     place_kw={"pre_h": 0.03, "approach_rad": 0.03, "approach_line": True})
-            if isinstance(plans, SkillResult):
-                sk.log(f"[headset_stage] {label} {xy}: {plans.note}")
-                continue
-            result = sk.run_transfer(*plans, tol_xy=0.015, tol_tilt=25.0, tol_z=0.05)
-            sk.log(f"[headset_stage] {label} {arm}: {result.status} {result.note}")
-            sk.bank()
-            sk.refresh()
-            if result.ok:
-                staged.add(label)
-            break
+        sites = GraspSites() if getattr(sk, "headset_retry", "legacy") == "sites" else None
+        for _attempt in range(4 if sites is not None else 1):
+            o = sk.world.obj(label)
+            executed = False
+            result = None
+            for xy in free_spots(sk, label, near_xy=(0.0, -0.15), clearance=0.03, avoid=(rack,))[:8]:
+                target = rest_with_R(sk, label, xy, o.R)
+                def grasps(a):
+                    candidates = cup_grasps(sk, o, a, bridge_tag)
+                    return sites.filter(o, a, candidates) if sites is not None else candidates
+                plans = sk.plan_transfer(label, [target], arms=[arm], max_full=24, grasps=grasps,
+                                         pick_kw={"squeeze": 8},
+                                         place_kw={"pre_h": 0.03, "approach_rad": 0.03, "approach_line": True})
+                if isinstance(plans, SkillResult):
+                    sk.log(f"[headset_stage] {label} {xy}: {plans.note}")
+                    continue
+                executed = True
+                result = sk.run_transfer(*plans, tol_xy=0.015, tol_tilt=25.0, tol_z=0.05)
+                sk.log(f"[headset_stage] {label} {arm}: {result.status} {result.note}")
+                if sites is not None and result.status in ("loose", "grasp_slip"):
+                    sites.remember_pick(sk, plans[0])
+                sk.bank()
+                sk.refresh()
+                if result.ok:
+                    staged.add(label)
+                break
+            if not executed or label in staged or result.status not in ("loose", "grasp_slip"):
+                break
     return staged
+
+
+class GraspSites:
+    """Failed pinch neighborhoods in the object frame, separately for each arm."""
+
+    def __init__(self):
+        self.rejected = {}
+
+    def remember_pick(self, sk, planned):
+        actual = getattr(sk, "last_pick", None)
+        pick = actual if (actual is not None and actual.label == planned.label
+                          and actual.arm == planned.arm) else planned
+        self.rejected.setdefault((pick.label, pick.arm), []).append(inv_T(pick.T_tcp_obj))
+
+    def filter(self, obj, arm, candidates):
+        bad = self.rejected.get((obj.label, arm), ())
+        if not bad:
+            return candidates
+        out = []
+        T_inv = inv_T(obj.T)
+        cos_close, cos_approach = np.cos(np.deg2rad(20)), np.cos(np.deg2rad(30))
+        for g in candidates:
+            local = T_inv @ g.T
+            duplicate = any(float(np.linalg.norm(local[:3, 3] - T[:3, 3])) < 0.015
+                            and abs(float(local[:3, 1] @ T[:3, 1])) > cos_close
+                            and float(local[:3, 0] @ T[:3, 0]) > cos_approach for T in bad)
+            if not duplicate:
+                out.append(g)
+        return out

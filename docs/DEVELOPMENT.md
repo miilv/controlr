@@ -771,10 +771,20 @@ snapshot method; its pure correction has a CPU test.
 `headset_stage=center` (default `off`, mirrored by Skills and G3) adds one
 checked table rest when pickup and cradle favor different arms and their xy
 separation exceeds 0.40 m. It tries up to eight native free spots but executes
-at most one transfer, retaining the lying orientation and physical verification.
+at most one transfer in legacy retry mode, retaining the lying orientation and physical verification.
 Only a verified stage enables additional narrow ear-cup proposals: 18–35 mm,
 at least 60 mm below the bridge, broad pad patch and >=6 mm contact depth.
 The original loose-hold and method-slip rejection remain. Staging failures
 return to the ordinary hang planner from the refreshed world; threaded hooks
 never enter this path. `test_headset_stage.py` covers gates, checked planning,
 failed physical holds, scope/defaults and proposal geometry.
+
+
+`headset_grasp=cups` adds geometry-verified narrow cup proposals even before
+a successful stage; `legacy` and `dense` retain their original banks.
+`headset_retry=sites` (default `legacy`) keeps failed pinch neighborhoods in
+the object frame per arm, including the actual refined pick attachment.
+It excludes nearby equivalent approaches/closing axes and permits four physical
+staging and four hang attempts. Plan refusals do not trigger repeated identical
+searches; place/budget/end failures are not retried. Every attempt retains
+native planning and the original lift/loose verifier and episode step budget.
