@@ -106,17 +106,18 @@ def belief_writes(rep: dict) -> list[dict]:
     return out
 
 
-def cmd_audit(a) -> None:
+def cmd_audit(a, *, footprints=None, group_factory=None) -> None:
     """Write-level audit (the perceptor review, 2026-10-28): for every logged belief write, the belief's error against
     GT at that step before vs after the write (mm, 3-D and z). A write is harmful when it adds > ``--harm-mm``, helpful
     when it removes as much; reported per writer whatever the task's tolerance (the threading servo consumes z at
     ~1 mm). Replays with frames near each write step are needed (``m95_replay --every 4``)."""
     import numpy as np
-    from dojo.perception.grasp_metric import Footprints, Groups, gt_rows_asset
-    fp = Footprints()
+    from dojo.perception.grasp_metric import Footprints, gt_rows_asset
+    from dojo.perception.audit_identity import AuditIdentity
+    fp = footprints if footprints is not None else Footprints()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    rows, groups = [], {}
+    rows = []
     for d, r, rp, ap in episodes(a.runs):
         run = os.path.basename(d)
         rpath = Path(a.replays) / f"{run}_{r['layout_id']}.json.gz"
@@ -126,7 +127,10 @@ def cmd_audit(a) -> None:
         rp_ = json.load(gzip.open(rpath, "rt"))
         frames = rp_["frames"]
         ks = sorted(int(k) for k in frames)
-        for w in belief_writes(rep):
+        group = group_factory(r["task"]) if group_factory is not None else None
+        actions = json.load(gzip.open(ap, "rt"))["actions"]
+        identity = AuditIdentity(rep, frames, r["task"], fp, back=a.back, group=group, actions=actions)
+        for w in sorted(belief_writes(rep), key=lambda w: w["step"]):
             f = frame_at(frames, w["step"], back=a.back)
             if f is None:
                 continue
@@ -140,13 +144,9 @@ def cmd_audit(a) -> None:
             key = next((x.get("key") for x in rows_g.values() if x["label"] == w["label"]), None)
             b0 = fp.centre(key, w["before"], w["q_before"]) if key else np.asarray(w["before"], float)
             b1 = fp.centre(key, w["after"], w["q_after"]) if key else np.asarray(w["after"], float)
-            # the object the belief tracked: the GT object of the label's group nearest the pre-write belief
-            # (interchangeable nuts: the belief's nut0 was GT nut1 on 5.1 screws 100002); a label the layout lacks (a
-            # tracker's rider): the nearest GT object
-            grp = groups.setdefault(r["task"], Groups(r["task"]))
-            same = {k: v for k, v in gts.items() if grp.of(k) == grp.of(w["label"])} or gts
-            g = min(same.values(), key=lambda p: float(np.linalg.norm(p - b0)))
-            lab_g = next(k for k, v in same.items() if v is g)
+            association = identity.resolve(w, f, b0)
+            lab_g = association["gt_label"]
+            g = gts[lab_g]
             moving = lab_g not in g_next or float(np.linalg.norm(g_next[lab_g] - g)) > 0.001
             e0, e1 = float(np.linalg.norm(b0 - g)) * 1000, float(np.linalg.norm(b1 - g)) * 1000
             rows.append({"run": run, "task": r["task"], "layout_id": r["layout_id"], "success": r.get("success"),
@@ -154,12 +154,17 @@ def cmd_audit(a) -> None:
                          "err_before_mm": round(e0, 1), "err_after_mm": round(e1, 1),
                          "z_before_mm": round((b0[2] - g[2]) * 1000, 1), "z_after_mm": round((b1[2] - g[2]) * 1000, 1),
                          "gt": [round(float(v), 4) for v in g], "frame_lag": w["step"] - max(int(k) for k in frames if int(k) <= w["step"]),
-                         "gt_label": lab_g, "gt_moving": bool(moving),
+                         **association, "gt_moving": bool(moving),
                          "verdict": ("uncertain" if moving and w["step"] not in ks else
                                      "harmful" if e1 - e0 > a.harm_mm else ("helpful" if e0 - e1 > a.harm_mm else "neutral"))})
     with open(out / "writes.jsonl", "w") as fo:
         for x in rows:
             fo.write(json.dumps(x) + "\n")
+    association_counts = {"policy": "first-pick-v1", "missing_body_geometry": sorted(fp.missing),
+                          "writes": len(rows), "nearest_fallback": sum(x["identity_fallback"] for x in rows),
+                          "sources": dict(Counter(x["identity_source"] for x in rows))}
+    (out / "association.json").write_text(json.dumps(association_counts, indent=2) + "\n")
+    print(f"Identity association: {association_counts['nearest_fallback']}/{len(rows)} nearest fallbacks")
     import re
     by = defaultdict(list)
     for x in rows:

@@ -72,10 +72,10 @@ def test_runtime_logs_every_held_reattachment_even_before_tail_sigma_gate():
 
     pol = RuntimePolicy(RuntimeConfig(peg_held_read="on"))
     pol.report = {"events": [], "skill": "stack_on_pegs"}
-    pol.bridge = SimpleNamespace(steps_used=10, observe=lambda: {"state": {}})
+    pol.bridge = SimpleNamespace(steps_used=10, observe=lambda: {"state": {"left_arm_joint_state": [0.] * 6}})
     obj = SimpleNamespace(T=np.eye(4))
     attachment = T_from([0.003, 0, 0])
-    belief = SimpleNamespace(objects={"ring": obj}, attached={"left": ("ring", np.eye(4))},
+    belief = SimpleNamespace(kin=SimpleNamespace(tcp=lambda *a: np.eye(4)), objects={"ring": obj}, attached={"left": ("ring", np.eye(4))},
                              held_labels=lambda: ["ring"], movable=lambda: [],
                              sync_robot=lambda state: setattr(obj, "T", attachment.copy()))
     prov = SimpleNamespace(belief=belief, stats={})
