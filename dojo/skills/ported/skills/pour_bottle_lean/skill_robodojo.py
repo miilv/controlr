@@ -194,7 +194,7 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
         shoulder_frac=0.55, slip_deg=14.0, slip_m=0.012, set_dz=0.004, min_return_steps=60, home=True,
         rush_to=None, rush_carry=False, rush_speed="normal", rush_ramp=2,
         flow_speed="slow", untilt_speed="slow", lift_speed="slow", tilt_speed=None, tilt_below=100.0,
-        companion=None, pre_held=None, arm_pref=None, untilt_reserve=None):  # H
+        companion=None, pre_held=None, arm_pref=None, untilt_reserve=None, profile_reserve=None):  # H
     P = load_pour()
     Bottle = bottle_class(P)
     log = []
@@ -360,7 +360,7 @@ def run(robot, container=None, target=None, arm="auto", grasp_frac=0.72, back=0.
         if o.get("ended"):
             stop = "episode ended"
             break
-        if o.get("steps_left", 999) < min_return_steps:
+        if o.get("steps_left", 999) < (min_return_steps if profile_reserve is None else max(0, int(profile_reserve))):  # H: POUR profile-only reserve
             stop = "step budget"
             break
         e, cp = o["eef"][A], o["objects"][ci]

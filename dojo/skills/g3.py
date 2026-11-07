@@ -222,7 +222,8 @@ SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "lo
                "belt_waist_first": ("off", "on"),
                "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured"),
                "kong_draw_read": ("off", "place", "place3"), "kong_draw_first": ("near", "far"),
-               "ported_pour_pace": ("v1", "lean", "overlap"),
+               "ported_pour_pace": ("v1", "lean", "overlap", "budget"),
+               "ported_pour_profile": ("off", "sparse", "via", "checked"),
                "nest_verify": ("target", "support"),
                "push_goal": ("centre", "cover", "cover_obb"), "fill_move_lift": ("off", "clear"),
                "fill_guard": ("off", "geometry"), "fill_grasp": ("off", "vertical", "rolled", "rolled_tilt"),
@@ -371,6 +372,11 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
                 "plan_s": round(wall - sim_time[0], 1), "result": res_j, "reward": reward, "skills": hist,
                 "final_objects": {o.label: np.round(np.r_[o.pos, o.quat], 4).tolist()
                                   for o in sk.refresh().task_objects()}})
+    from dojo.skills.pour_diagnostics import snapshot as pour_snapshot
+    try:
+        rec["pour_final"] = pour_snapshot(run, task)
+    except Exception as exc:  # diagnostics must not discard a completed episode
+        rec["pour_diagnostic_error"] = f"{type(exc).__name__}: {exc}"
     rec["world_plans"] = sk.motion.world_plans
     rec["category"] = classify(res_j, reward, hist)
     if getattr(sk, "ported_runs", None):                 # stream P: the adapter's calls of each ported skill (tail)

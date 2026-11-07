@@ -23,3 +23,9 @@ Our variants (new directories, changes marked in the file):
   skills/classify_into_bins_p2                 stream N: p1 + a refused carry retried from higher up, then put back
   skills/pour_bottle_lean                      stream H: pour_bottle paced for pour_by_language's three pours
                                                (RuntimeConfig.ported_pour_pace)
+  skills/pour_bottle_v2                         robot-harness 6769a6c5b3df8c55f56b0324cfdf196084b9ec94,
+                                               unchanged apart from attribution; opt-in sparse/via profiles
+  skills/pour_bottle_v5                         same 6769a6c5; underlying skill used by original strict RGB wrapper;
+                                               opt-in checked profile, original staged roll and checked return
+  skills/pour_in_order_v5                       same 6769a6c5; checked composite's adaptive budget, retries,
+                                               refusal handling and held-bottle put-down; pairs are our language handles
