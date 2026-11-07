@@ -67,6 +67,7 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
     def fake_transfer(lab, targets, **kw):
         if kw.get("place_kw") is not None:
             seen.setdefault("carry", kw["place_kw"]["approach_rad"])
+        seen.setdefault("max_full", kw.get("max_full"))
         seen.setdefault("staged", (kw.get("place_kw") or {}).get("approach_staged", False))
         seen.setdefault("pick_kw", kw.get("pick_kw"))
         candidates = kw["grasps"]("left")
@@ -76,8 +77,13 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
         return SkillResult(False, "transfer", "ik_fail", 0, None, note="right: 0/1 grasps reachable, 0 grasp-place pairs")
     monkeypatch.setattr(L, "G_hang", lambda *a: [SimpleNamespace(width=0.025, method="thin"),
                                                SimpleNamespace(width=0.04, method="wide")])
-    for flag, expect, seat, carry in ((False, None, "off", "legacy"), ("on", "fn", "off", "legacy"),
-                                      (False, None, "on", "legacy"), (False, None, "on", "staged")):
+    from dojo.skills import headset
+    monkeypatch.setattr(headset, "dense_grasps", lambda *a: [SimpleNamespace(width=0.04, method="wide")])
+    for flag, expect, seat, carry, grasp in ((False, None, "off", "legacy", "legacy"),
+                                           ("on", "fn", "off", "legacy", "legacy"),
+                                           (False, None, "on", "legacy", "legacy"),
+                                           (False, None, "on", "staged", "legacy"),
+                                           (False, None, "on", "staged", "dense")):
         seen.clear()
         stand = ObjectState("stand", "Geometry", "headset_stand", 0, np.array([-0.2, -0.1, Z]), np.array([1.0, 0, 0, 0]),
                             AssetInfo(key="Geometry/headset_stand/00000", bbox_min=np.array([-0.02, -0.02, 0.0]),
@@ -87,10 +93,11 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
                          AssetInfo(key="Rigid/headset/00000", bbox_min=np.full(3, -0.05), bbox_max=np.full(3, 0.05),
                                    active_functional={"headband_bridge": {"frame": [[0.0, 0.0, 0.05, 1, 0, 0, 0]]}}))
         w = WorldState("", "", {"stand": stand, "headset": hs}, {}, {})
-        sk = SimpleNamespace(world=w, refresh=lambda: w, log=lambda m: None, hang_wide=flag, hang_cradle="strict", hang_carry_slow=True, headset_seat=seat, headset_carry=carry,
+        sk = SimpleNamespace(world=w, refresh=lambda: w, log=lambda m: None, hang_wide=flag, hang_cradle="strict", hang_carry_slow=True, headset_seat=seat, headset_carry=carry, headset_grasp=grasp,
                              coll=SimpleNamespace(include=set(), parts={}, held_skip={}), plan_transfer=fake_transfer,
                              bank=lambda: None, held={"left": None, "right": None})
         L.hang_on_hooks(sk, ["headset"], "stand", "support_cradle", "headband_bridge")
+        assert seen["max_full"] == (24 if grasp == "dense" else 8)
         assert seen["staged"] is (carry == "staged")
         assert seen["pick_kw"] == ({"squeeze": 8} if seat == "on" else None)
         assert seen["widths"] == ([0.04] if seat == "on" else [0.025, 0.04])

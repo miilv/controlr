@@ -3553,6 +3553,14 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
     oriented like the rack's first one. Each object is carried, re-oriented, to just beyond the hook's tip (hole on
     the arm's line), slid along the arm onto it, lowered 6 mm and let go; grippers open after each (per-object
     credit). Objects and hooks are paired by the first one-arm plan found."""
+    dense = "handle" not in handle_tag.lower() and getattr(sk, "headset_grasp", "legacy") == "dense"
+
+    def hang_grasps(o, arm):
+        if dense:
+            from dojo.skills.headset import dense_grasps
+            return dense_grasps(sk, o, arm)
+        return G_hang(sk, o, arm)
+
     w = sk.refresh()
     rk = w.obj(rack)
     hooks = hook_frames(rk, hook_tag)
@@ -3640,8 +3648,8 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                 T_pre[:3, 3] += H[:3, 0] * (tip + HANG_PRE)
             # then lifted to the pre-hang height first: the carry low across the table met the clutter (twin, rand: a
             # lamp), and its via path over the top hook was out of reach
-            r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=8, pair_rank=wide_rank,
-                                 grasps=(lambda a, o=o: [g for g in G_hang(sk, o, a)
+            r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=24 if dense else 8, pair_rank=wide_rank,
+                                 grasps=(lambda a, o=o: [g for g in hang_grasps(o, a)
                                                          if g.method not in slipped.get(o.label, ())
                                                          and (not seat or g.width >= HANG_WIDE_W)]),
                                  **({"pick_kw": {"squeeze": 8}} if seat else {}),
@@ -3679,7 +3687,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                 if _time.perf_counter() - t0 > budget_s:
                     return None
                 T_sp = rest_with_R(sk, lab, sp, level_R(o.R))
-                leg = _plan_leg(sk, lab, [T_sp], 4, transfer_kw={"grasps": (lambda a, o=o: G_hang(sk, o, a))})
+                leg = _plan_leg(sk, lab, [T_sp], 4, transfer_kw={"grasps": (lambda a, o=o: hang_grasps(o, a))})
                 if isinstance(leg, SkillResult):
                     continue
                 saved = (o.pos.copy(), o.quat.copy())
@@ -3729,7 +3737,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                 lab, T_sp, leg = mv
                 sk.log(f"[hang] {lab}: no hook plans from where it is; relay to {np.round(T_sp[:2, 3], 3).tolist()} "
                        f"({leg[0].arm})")
-                rr = _run_leg(sk, lab, [T_sp], 4, first=leg, transfer_kw={"grasps": (lambda a, lab=lab: G_hang(sk, sk.world.obj(lab), a))})
+                rr = _run_leg(sk, lab, [T_sp], 4, first=leg, transfer_kw={"grasps": (lambda a, lab=lab: hang_grasps(sk.world.obj(lab), a))})
                 for a in ARMS:
                     if sk.held[a] is not None:
                         sk._record(sk.regrasp(a))

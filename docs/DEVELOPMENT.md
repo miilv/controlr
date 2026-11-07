@@ -734,3 +734,10 @@ held object's current xy, then translate to the hover along a checked Cartesian
 line at fixed orientation. A failed leg rejects the whole placement. This
 retains the existing cradle contact allowance and all hand/arm collision checks;
 it does not enable straddling or change grasp/loose verification by itself.
+
+`RuntimeConfig.headset_grasp` defaults to `legacy`; G3 mirrors it. `dense`
+changes only cradle proposals to 400 opposed-face samples and thirteen
+approach angles, retaining box/slice candidates at widths >=35 mm. It screens
+up to 24 full hang plans instead of eight. Threaded-hook proposals retain
+the legacy generator. This does not bypass physical lift/loose verification
+or enable staged carries, straddling or seating independently.

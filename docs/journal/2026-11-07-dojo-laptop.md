@@ -74,3 +74,20 @@ per cell; selection/hashes and final candidate are pre-registered in the
 [round-2 report](../experiments/2026-11-07-laptop-g3-round2.md). Existing panel
 records are never used for tuning. No camera/board changes or external work
 are touched. Full local suite runs concurrently with settling after source freeze.
+
+Round-2 staged panel (source 43d5882b, fresh variant-12 ids 100070–79):
+standard 4 ±8.43 -> 12 ±10.33 points (4 wins / 0 losses / 6 ties), random
+2 ±6.32 -> 14 ±9.66 (6/0/4). Headset credits A/B 2/10->6/10 and 1/10->7/10;
+full-task success 0 in every arm. All 40 valid, no mesh/infra exclusions.
+This passes the score gain gate, but misses the lead's standard 7/10 target.
+Full suite on staged source: 2061 passed / 191 skipped, 987.22 s.
+
+Returned only to the original loose-hold pilot (not panel failures). A denser
+opposed-face/approach bank finds a 44 mm pinch with 3.0 mm lift drift and
+1.3 mm carry shift, rescuing standard 100030. The standard six approach angles
+miss zero tilt; thirteen include it. New default-off `headset_grasp=dense`
+samples 400 faces and thirteen approaches, retains box/slice proposals at
+>=35 mm and screens 24 full hangs. Original lift/loose checks remain. Fresh
+round-2b panel registration uses new salt, variant 13 and ids 100050–64.
+Another stream owns light7 now; only our waiting wrapper PID was stopped,
+and subsequent work uses light2/light8. No other process is signalled.

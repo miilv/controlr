@@ -398,6 +398,7 @@ class RuntimeConfig:
     # Cradle only: wide holds, squeeze, and seat the bridge before release.
     headset_seat: str = "off"
     headset_carry: str = "legacy"
+    headset_grasp: str = "legacy"
     # Try the opposite handle orientation on threaded hooks (same hole axis).
     hang_half_turn: bool = False
     # Mesh-confirmed pinches on the handle outer bar before body-wall pinches.
@@ -703,6 +704,7 @@ class RuntimePolicy:
                 or self.cfg.arrange_hover not in ("off", "low")
                 or self.cfg.push_approach not in ("off", "tilted")
                 or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
+                or self.cfg.headset_grasp not in ("legacy", "dense")
                 or self.cfg.headset_carry not in ("legacy", "staged")
                 or self.cfg.headset_seat not in ("off", "on")
                 or self.cfg.hang_cradle not in ("strict", "straddle") or self.cfg.artic_geom not in ("authored", "measured")
@@ -1052,6 +1054,7 @@ class RuntimePolicy:
             sk_.hang_wide = bool(cfg.hang_wide)
             sk_.headset_seat = cfg.headset_seat
             sk_.headset_carry = cfg.headset_carry
+            sk_.headset_grasp = cfg.headset_grasp
             sk_.hang_half_turn = bool(cfg.hang_half_turn)
             sk_.hang_handle_grasp = bool(cfg.hang_handle_grasp)
             sk_.hang_carry_slow = bool(cfg.hang_carry_slow)

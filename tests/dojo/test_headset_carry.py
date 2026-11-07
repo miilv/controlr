@@ -64,3 +64,33 @@ def test_headset_carry_default_and_config_validation():
     assert RuntimePolicy(RuntimeConfig(headset_carry='staged'),assets=object()).cfg.headset_carry == 'staged'
     with pytest.raises(ValueError,match='bad runtime config'):
         RuntimePolicy(RuntimeConfig(headset_carry='nope'),assets=object())
+
+
+def test_dense_grasps_only_changes_proposals_and_filters_width(monkeypatch):
+    from dojo.skills import grasps as G
+    from dojo.skills.headset import dense_grasps
+    seen = []
+    thin = SimpleNamespace(width=.026)
+    wide = SimpleNamespace(width=.041)
+    monkeypatch.setattr(G,'box_grasps',lambda *a:[thin])
+    monkeypatch.setattr(G,'slice_grasps',lambda *a:[wide])
+    def antipodal(*a,**kw):
+        seen.append(kw)
+        return [thin,wide]
+    monkeypatch.setattr(G,'antipodal_grasps',antipodal)
+    assert dense_grasps(SimpleNamespace(kin=object()),object(),'left') == [wide,wide]
+    assert seen == [dict(n_samples=400,n_approach=13)]
+
+
+def test_dense_grasp_switch_default_and_validation():
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from dojo.skills.g3 import SKILL_ATTRS
+    from dojo.skills.skills import Skills
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.world import WorldState
+    assert RuntimeConfig().headset_grasp == 'legacy'
+    assert SKILL_ATTRS['headset_grasp'] == ('legacy','dense')
+    sk=Skills(KinematicEnv([]),SimpleNamespace(refresh=lambda:WorldState('','',{}, {}, {})))
+    assert sk.headset_grasp == 'legacy'
+    with pytest.raises(ValueError,match='bad runtime config'):
+        RuntimePolicy(RuntimeConfig(headset_grasp='other'),assets=object())

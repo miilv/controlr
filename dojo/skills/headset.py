@@ -24,3 +24,16 @@ def staged_carry(motion, arm, q0, T_goal, step_rad, name, *, gripper, held, igno
     carry = motion.line(arm, turn.q_end, T_goal, step_rad, name + "_upright", gripper=gripper,
                         held=held, ignore=ignore, check=True)
     return turn.then(carry)
+
+
+def dense_grasps(sk, obj, arm):
+    """Wide cradle pinches with denser opposed-face and approach coverage.
+
+    The fixed RNG in the existing sampler retains reproducibility. This bank
+    changes proposals only; native IK, collision and physical pick verification
+    still decide what may execute.
+    """
+    from dojo.skills import grasps as G
+    candidates = (G.box_grasps(obj, sk.kin, arm) + G.slice_grasps(obj, sk.kin, arm)
+                  + G.antipodal_grasps(obj, sk.kin, arm, n_samples=400, n_approach=13))
+    return [g for g in candidates if g.width >= 0.035]
