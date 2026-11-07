@@ -6,6 +6,8 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [ORG2 G3](2026-11-07-org2-g3.md) | Do general (task-blind, default-off) push / torso-grasp / stand / release capabilities close organize_table's gap to the RSI yardstick (85.0 on 100000-04)? | Registered fresh panel 18 pairs: 36.1 -> 58.3 (+22.2), 12W/2L/4T, successes 0 -> 2: rule passes, bar not reached (B CI 47-69). Alarm 2 -> 13, keyboard 2 -> 8, figure 0 -> 3; wide-shouldered figures limit B. Base refit null (14 harmful / 1 helpful). 0 LLM calls |
+| 2026-11-07 | [ORG2 G3 prereg](2026-11-07-org2-g3-prereg.md) | Fresh paired G3 panel of the ORG2 bundle | Registered before any panel episode; result in the ORG2 G3 report |
 | 2026-11-07 | [SAMINT pour camera spec](2026-11-07-samint-pour-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
 | 2026-11-07 | [SAMINT egg camera spec](2026-11-07-samint-egg-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
 | 2026-11-07 | [SAMINT classify-language camera spec](2026-11-07-samint-classify-language-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
