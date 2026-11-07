@@ -297,3 +297,153 @@ over to it. The lead caught this before computing the camera-score verdict.
 - **The write audit has to be redone on Sonnet:** the raw no-excess-harmful-write
   condition above is not passed, and lead review stays open. That audit gates
   adoption only for the Sonnet rows.
+
+## Sonnet primary: full physics write audit, recorded before camera verdict
+
+This section applies only to the 40 `__sonnet` arms. Earlier audit sections
+above describe the **supplementary Luna panel**, as clarified by the lead's
+route amendment. The [Sonnet audit snapshot](data/kong-scoped-relocate/audit-sonnet.json)
+retains every arm, per-writer counts, every scored write’s pre/post 3-D and z errors, raw source hashes and replay provenance.
+
+Coverage is **40/40 arms, 249/249 logged/scored writes, 0 uncertain**; all 40 resets are
+stable. All 10/5/5 pairs are covered. The frozen raw/settled/demo, catalogue, generator,
+candidate, design, background and checkpoint hashes remain unchanged. No
+scoped-config/routed-task mismatch, ineligible attempt or non-kong relocation write was
+found. Replays use the identical salted dev layouts/demos and recorded action prefixes,
+with exact write-step snapshots and the original Luna scoring method. No new model
+calls. Audit worker completed at **2026-11-07T07:02:54Z**, before this verdict. Summed
+`replay_s`: **1190.6 s**, excluding cold startup and admission waits.
+
+| Cell | Writer | Writes A/B | Harmful A/B | Helpful A/B | Neutral A/B |
+|---|---|---|---|---|---|
+| imitate_sorting_sequence | perception | 11/12 | 7/9 | 3/2 | 1/1 |
+| imitate_sorting_sequence | predicted | 15/12 | 11/10 | 4/2 | 0/0 |
+| make_kong | perception | 37/50 | 22/29 | 4/11 | 11/10 |
+| make_kong | predicted | 6/8 | 2/3 | 2/2 | 2/3 |
+| make_kong | watch_lay | 10/10 | 6/6 | 0/0 | 4/4 |
+| make_kong | watch_relocate | 0/29 | 0/2 | 0/16 | 0/11 |
+| stack_blocks | perception | 12/18 | 2/1 | 9/14 | 1/3 |
+| stack_blocks | predicted | 10/9 | 0/0 | 10/8 | 0/1 |
+
+Pooled across the matched full panel, harmful A/B by writer: perception **31/39**,
+predicted **13/13**, watch_lay **6/6**, watch_relocate **0/2**. All scored writes use
+exact frames (frame lag 0).
+
+**Raw write gate: DOES NOT PASS.** Per-cell B harmful-write increases:
+imitate_sorting_sequence/perception 7→9, make_kong/perception 22→29, make_kong/predicted
+2→3, make_kong/watch_relocate 0→2. These are the unchanged registered
+nearest-pre-write/group results (>2 mm added 3-D error, z recorded separately). Helpful
+writes do not cancel harmful writes.
+
+### Sonnet relocation association diagnostic (supplementary)
+
+[All 29 exact relocation records and same-label
+diagnostics](data/kong-scoped-relocate/relocation-sonnet.json) retain the raw gate
+labels and separate z errors. Mesh fallback count in the diagnostic is 0.
+
+- `c6b_makekongsg_kongBr1b1_100002__sonnet`, step 32, belief `mahjong7_0`: registered GT `mahjong8_0`, 3-D 44.3→66.2 mm, z -16.1→-16.1 mm. Same-label GT: 3-D 46.31→1.64 mm, z -0.23→-0.23 mm.
+- `c6b_makekongsg_kongBr1b2_100003__sonnet`, step 32, belief `mahjong7_0`: registered GT `mahjong8_0`, 3-D 44.3→66.2 mm, z -16.1→-16.1 mm. Same-label GT: 3-D 46.31→1.64 mm, z -0.23→-0.23 mm.
+
+These same-frame diagnostics do not replace the registered nearest-object metric or
+clear other writers’ excesses. No threshold or acceptance rule changed.
+
+## Camera verdict: DOES NOT PASS — imitate guard and raw write gate
+
+The preregistration explicitly selected the current **score-based** rule,
+despite its 6 November commit date. The gain gate therefore counts pair score
+wins/losses at ≥10 points; guards retain the registered success-flip check.
+The primary panel alone determines adoption. No Luna observations are pooled.
+
+**Route and integrity:** every primary row verifies actual
+`claude/claude-sonnet-5-5` in call logs, transcript starts and positive-call
+report agentic metadata: **40/40, zero primary route violations**. Static
+`code.model` is stale Luna on this deployment and is not used as route proof.
+The original Luna route mismatch with the candidate is disclosed in the lead
+amendment and remains supplementary. All frozen RuntimeConfig fields and
+instruction-routed task vocabularies match their respective frozen arm on all
+80 analysed rows.
+[Per-row evidence, paired scores, usage and analysis source](data/kong-scoped-relocate/verdict.json).
+
+All 40 Sonnet arms have one rc-0 completion; no missing pair, episode retry or
+outcome exclusion. The final completion is **2026-11-07 06:16:41Z**, from
+heavy1's lane log (heavy2's final B arm was 06:14:26Z). Both B imitation
+100001 and 100003 hit the existing wall cap and remain policy outcomes.
+
+### Primary candidate Sonnet (40 arms)
+
+Scores are on 0–100; A/B spread is sample SD. CIs are percentile intervals
+from 10,000 paired-layout resamples, `numpy.default_rng(0)` reset per cell.
+Pair identity is (task, salted block, id), so equal numeric ids across blocks
+are distinct. The CI is descriptive, with no additional CI gate.
+
+| Cell | Pairs | A pooled | B pooled | Δ | Success flips B/A | Score W/L/T (≥10 pts) | Successes A/B | Paired bootstrap 95% CI |
+|---|---|---|---|---|---|---|---|---|
+| make_kong | 10 | 40.0 ± 51.6 | 60.0 ± 51.6 | +20.0 | 2/0 | 2/0/8 | 4/6 | [+0.0, +50.0] |
+| imitate_sorting_sequence | 5 | 23.0 ± 43.5 | 7.0 ± 13.0 | -16.0 | 0/1 | 0/2/3 | 1/0 | [-44.0, +0.0] |
+| stack_blocks | 5 | 100.0 ± 0.0 | 100.0 ± 0.0 | +0.0 | 0/0 | 0/0/5 | 5/5 | [+0.0, +0.0] |
+
+- **Gain passes:** +20 ≥ +5; score wins 2 ≥ 2×0 losses, net 2 ≥2.
+  Success flips also happen to be 2/0, but they are not the gain decision rule.
+- **Imitate fails both guard checks:** −16 <−5; success-flip losses 1 > wins 0.
+  Stack passes: delta 0, flips 0/0.
+- **Write gate independently fails**, as recorded above. Therefore the scoped
+  lever is not an adopt-candidate. No CANDIDATE, default or configuration change
+  is made; no field promotion is proposed under this failed gate.
+
+The imitation drop does not establish a relocation effect on imitation.
+Both guard tasks resolve relocation false and have zero relocation writes in
+both arms. Frozen report configs/vocabularies and inputs match; nine focused
+scoping tests pass, including byte-identical resolved skill parameters,
+watcher runtime call paths, event/pose bytes and perception reads for excluded
+tasks. Independent stochastic perceiver calls and simulation can still produce
+different outcomes. This integrity check does not waive the registered guard.
+
+Primary mean steps A/B: make_kong 275.4/356.1, imitate 991.8/984.4, stack
+181.6/195.8. Full row steps and categories are in the evidence snapshot.
+Summed primary camera episode wall is **12,080.9 s**; lane locks **14,283 s**,
+excluding admission waits. These are summed occupancy across both lanes.
+
+### Supplementary Luna (40 arms; never used for adoption)
+
+| Cell | Pairs | A pooled | B pooled | Δ | Success flips B/A | Score W/L/T (≥10 pts) | Successes A/B | Paired bootstrap 95% CI |
+|---|---|---|---|---|---|---|---|---|
+| make_kong | 10 | 40.0 ± 51.6 | 50.0 ± 52.7 | +10.0 | 1/0 | 1/0/9 | 4/5 | [+0.0, +30.0] |
+| imitate_sorting_sequence | 5 | 7.0 ± 13.0 | 11.0 ± 21.9 | +4.0 | 0/0 | 1/0/4 | 0/0 | [+0.0, +12.0] |
+| stack_blocks | 5 | 100.0 ± 0.0 | 80.0 ± 44.7 | -20.0 | 0/1 | 0/1/4 | 5/4 | [-60.0, +0.0] |
+
+Luna would miss the net-score-win gain check (1 <2) and the stack guard
+(−20 <−5, success losses 1 >0 wins); this is descriptive only. Its completed
+write audit above remains 228/228 writes, zero uncertain, raw harmful excesses
+including relocation 0/2 A/B. Its two imitation 100003 wall caps remain in the
+panel. No exclusions or episode retries. Summed episode wall 9,194.9 s;
+lane locks 11,432 s. Mean steps A/B: kong 275.6/330.9, imitate 846.0/969.4,
+stack 181.6/214.0.
+
+### Actual reported spend and transport limits
+
+| Panel / actual model | Logical calls | Prompt | Completion | Reasoning | Cache-read |
+|---|---|---|---|---|---|
+| Primary `claude/claude-sonnet-5-5` | 142 | 2,182,217 | 150,450 | 99,674 | 1,687,743 |
+| Supplementary `cx/gpt-6-luna` | 74 | 763,614 | 25,666 | 13,342 | 588,672 |
+
+Call-log totals equal transcript reply counts and episode-reported totals for
+every row. Reasoning/cache are reported separately, not added again to prompt
+or completion totals. Prep and physics audits made zero model calls.
+
+**Retries cannot be fully counted from this instrumentation:** OmniChat drops
+underlying attempt counters/status and usage from failed/recovered attempts.
+Primary Sonnet has **one surfaced `stream error: Internal server error`**
+(imitation B 100001), **11 no-JSON parser errors**, and **zero logged 429s**.
+Those logical calls and subsequent correction turns are included in 142;
+zero episode reruns does not imply zero transport retries. Luna has three
+surfaced disconnect failures, each explicitly `gave up after 3 attempts`:
+**at least six HTTP retries**, with any recovered retries additional and
+unobservable. It also has four no-JSON parser errors and zero logged 429s.
+Reported token totals cannot meter unreported failed transport attempts; no
+claim of exact upstream attempt spend or zero transient retries is made.
+
+No new camera runs, policy tuning, candidate adoption, queue edits or manual
+process kills were performed for this verdict. Audit jobs used free compute6
+light locks with the registered VRAM/load gates and bounded scopes; existing
+tie lanes were untouched. Raw evidence and scripts remain at
+`compute6:~/dojo-data/kong-1107/`.
