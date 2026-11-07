@@ -6,12 +6,11 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [Laptop centre re-grasp G3](2026-11-07-laptop-g3-round2d.md) | Verified centre rest and cup re-grasp | 7/7 pilots per cell; fresh ten-pair/cell panel registered, pending |
 | 2026-11-07 | [Laptop staged G3](2026-11-07-laptop-g3-round2.md) | Separate headset rotation from cradle approach | Ten pairs/cell: 4→12 / 2→14 points; 6/10 / 7/10 headset credits, misses standard reliability target |
 | 2026-11-07 | [Laptop mesh-table G3](2026-11-07-laptop-g3-round2c.md) | Conservative full-mesh held-table guard | Ten pairs/cell: 0→18 / 4→10 points; 9/10 / 5/10 credits, random reliability still open |
 | 2026-11-07 | [Laptop dense G3](2026-11-07-laptop-g3-round2b.md) | Denser wide pinches plus staged carry | Ten pairs/cell: 0→12 / 2→18 points; 6/10 / 9/10 credits, development continues on fresh pilots |
-
 | 2026-11-07 | [Laptop G3](2026-11-07-laptop-g3.md) | Wide headset hold and seated release | Ten pairs/cell: 0→2 points in both, one win each; below gain gate, default off |
-
 | 2026-11-07 | [BYIMG lift-first](2026-11-07-byimg-g3-r2.md) | Can a level raised basket support catching and loading? | Fresh 10 pairs: 10→20, 1/10→2/10 success, 2 wins/1 loss; released-target replay confirmed; gate fails |
 | 2026-11-07 | [BYIMG fresh retest](2026-11-07-byimg-g3-r2-retest.md) | Does the unchanged positive lift-first bundle generalize? | 14 fresh pairs: 14.29→21.43, 2/14→3/14 success, 2 wins/1 loss; gate fails; stays off |
 | 2026-11-07 | [BYIMG G3](2026-11-07-byimg-g3.md) | Does a braced, re-aimed hook lift the loaded basket? | Ten fresh settled v15 pairs: 0±0→0±0, 0/10 successes both, 0 wins/0 losses; rejected, no camera jobs |

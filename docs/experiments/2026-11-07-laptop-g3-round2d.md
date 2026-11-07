@@ -135,3 +135,37 @@ and seating. No asset/id dispatch. Screen all seven independent pilots/cell
 Only after that screen freeze source/bundle and register new unused panel ids
 100015–29, a new salt/variant, first ten stable ascending; no individual old
 panel failure may be used for development. No panel dispatch under this section.
+
+## Frozen fresh paired panel registration
+
+Production action source **7faef88e** completes **7/7 standard and 7/7 random**
+independent pilots, versus 7/7 and 6/7 with the preceding mesh-table bundle.
+No pilot is a panel record. The hard random-100066 pilot is rescued in 362
+steps; no verifier was relaxed. Source includes current main's unrelated
+switches at their unchanged defaults. Focused unit suite: 27 passed; full
+local suite is running. No action-source changes during generation/panel.
+
+Generate v15 **variant 16**, salt
+`laptop-round2d-centerstage-2026-11-07-88c48b74`, ids **100015–29** in both cells.
+Preflight found no existing records at these ids in this stream. Settle once,
+select first ten stable ascending before outcomes (expected 100015–24), hash
+exact settled bytes, and share those records between A/B. Reserve 25–29 only
+for prespecified stability/infrastructure replacement, never policy scores.
+Never use protected/sealed ids >=100100 or rendered jobs.
+
+A: `hang_cradle=straddle`, `headset_seat=off`, `headset_carry=legacy`,
+`headset_grasp=legacy`, `headset_table=bbox`, `headset_stage=off`.
+B: same straddle plus `headset_seat=on`, `headset_carry=staged`,
+`headset_grasp=dense`, `headset_table=mesh`, `headset_stage=center`.
+All other flags/source/step limits identical; no laptop route. Alternate which
+arm runs first by id parity. Ten A/B pairs per cell; report actual n,
+mean/sample SD on 0–100 points, headset credits, full successes, W/L/T,
+success flips, steps and every exclusion. No selected pooling with prior panels.
+
+Stopping criterion: **B headset credit >=7/10 in EACH cell**. Paired gain gate
+for the prospective camera spec: pooled mean gain >=5 points, wins >=2*losses
+and >=2 net wins. This remains a G3 finding, with camera qualification separate.
+Two concurrent physics-only LAPTOP scopes max on light2/light8, who/GPU checks
+and <=24 GiB used / >=10 GB free admission before each job, 8G /600% user
+scopes and bounded timeout. Zero LLM calls/tokens/spend; no camera dispatch or
+board candidate changes.

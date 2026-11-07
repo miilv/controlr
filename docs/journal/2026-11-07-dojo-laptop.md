@@ -141,3 +141,25 @@ Mesh-table fresh panel source 18e70412: standard A0 ±0 -> B18 ±6.32,
 exclusions. Random reliability fails; continue on independent pilot 100066,
 not individual panel failures. Full local suite 2071 passed /191 skipped,
 934.65 s. No model calls, camera dispatch or board changes.
+
+Independent random-100066 cup diagnosis: 16 per-arm physical sites screened,
+reset each time. Two right 25 mm cup pinches remain suspended through 30 steps
+(patch 1.0, one clean 6.2 mm lift drift), but right cannot reach the cradle;
+left pickups reach commanded poses yet slip. The 13 mm bridge pinch falls
+with jaws closing to zero: stationary pinch-site error ~10->82 mm, rather
+than a maintained pendulum. No verifier exemption is adopted.
+
+A checked centre table rest lets right pick/put down, then left re-grasp and
+hang. Prototype earns 20 in 412 steps with 0.3 mm staging carry shift and
+0.8 mm final carry shift. An upright rest also works physically but is not
+included. One wrapper-registration bug is retained as a direct-hang null,
+not a staging result. New default-off `headset_stage=center` scopes staging
+to >0.40 m transfers whose pickup/cradle favor different arms. Only verified
+stages enable narrow broad-patch cup proposals for hanging; ordinary retry,
+loose-hold and method-slip rules remain. Runtime/Skills/G3 mirror the field.
+
+Production source 7faef88e screens 7/7 standard and 7/7 random on original
+30/31 plus independent 65–69, including random66 in 362 steps. Focused suite
+27 passed; full local suite running. Freeze and register variant-16 fresh
+ids 100015–29 (first ten stable), new salt, ten paired layouts per cell.
+All earlier panels remain separate, no selected pooling or camera dispatch.
