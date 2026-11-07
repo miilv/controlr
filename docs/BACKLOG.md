@@ -1330,6 +1330,11 @@ Default-off routing/shared service implemented by [SAMINT](journal/2026-11-07-sa
 - [ ] **dojo coin: camera A/B of the thin-disc contact profile** (`insert_into(disc_contact="on")` / the `disc_*`
   RuntimeConfig fields; COIN2 report 2026-11-07-coin2-contact). Needs strict v2 (`_official`) for `disc_align`; audit
   the `wall_probe` writer. Its chooser text (manual / J2 registry) is not written: a new manual version + A/B.
+- [ ] **dojo coin: retry after a snap that did not take the coin** (COIN2 panel: 4 / 20 first closes never lifted the
+  coin under belief error; the put-down then finds no rim grasp and `disc_into_slot` stops; with GT beliefs 3 / 3
+  recover). Re-probe the walls and re-plan instead of `disc_lift_and_return`, within `disc_reserve`.
+- [ ] **dojo thin objects: the contact sequence covers discs only** (`insert_thin` refuses other thin shapes):
+  edge grasps / spins for a thin rectangle (a card) are the missing piece.
 - [ ] **dojo coin: tilted edge grasps under `disc_snap`.** All 3 snap failures at +10 deg were +-12 deg in-plane
   tilted grasps (lost in the lift). Try tilt 0 first, or no snap for tilted grasps.
 - [ ] **dojo coin: the wall probe's fit is biased toward 0 when the true yaw is near a squeeze turn** (three squeezes,

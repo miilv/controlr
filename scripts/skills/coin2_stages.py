@@ -143,6 +143,8 @@ def episode(rep: dict, actions: list[dict]) -> dict:
                 stage = "release"
             rows.append({"arm": arm, "close": k_close, "open": k_end,
                          "tip_clear_mm": round((float(tips[2]) - holder_top) * 1000, 1),
+                         # at the settled grasp (after a snap rise from the walls)
+                         "tip_clear_settled_mm": round((float((Ts[:3, 3] + Ts[:3, 0] * TIP)[2]) - holder_top) * 1000, 1),
                          "coin_up_mm": round((float(c[2]) - float(c0[2])) * 1000, 1),
                          "depth_mm": round(float(rel[0]) * 1000, 1),
                          "depth_settled_mm": round(float(rel_s[0]) * 1000, 1),
@@ -196,8 +198,8 @@ def main(argv=None):
         rep = json.load(gzip.open(p))
         cands = ([rep["actions"]] if os.path.exists(rep["actions"]) else []) + \
             glob.glob(os.path.join(a.reports or "", rep["name"], "*_actions.json.gz")) + \
-            (glob.glob(os.path.join(a.actions_dir, "**", os.path.basename(rep["actions"])), recursive=True)
-             if a.actions_dir else [])
+            ([c for c in glob.glob(os.path.join(a.actions_dir, "**", os.path.basename(rep["actions"])), recursive=True)
+              if c.split(os.sep)[-3:] == rep["actions"].split("/")[-3:]] if a.actions_dir else [])
         if not cands:
             print(f"{rep['name']}: no actions file, skipped")
             continue
@@ -216,7 +218,7 @@ def main(argv=None):
     for e in out:
         print(f"{e['name']}: score {e['score']} end {e['end']} steps {e['steps']}")
         for c in e["closes"]:
-            print("   ", {k: c[k] for k in ("arm", "close", "open", "tip_clear_mm", "coin_up_mm", "depth_mm",
+            print("   ", {k: c[k] for k in ("arm", "close", "open", "tip_clear_mm", "tip_clear_settled_mm", "coin_up_mm", "depth_mm",
                                            "depth_settled_mm", "lateral_mm", "left_holder", "lost_at", "lost_stage",
                                            "slip_mm", "peak_rise_mm")})
         if e.get("held_looks"):

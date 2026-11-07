@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [COIN2 contact](2026-11-07-coin2-contact.md) ([prereg](2026-11-07-coin2-g3-panel-prereg.md)) | Does a thin-object contact sequence (wall-squeeze yaw probe, snap close, seat, staged release) hold the coin under camera-like belief errors? | Camera replays: 14/30 lift losses from 3.9° median plane-yaw error. G3 fresh 20 pairs, mode B + camera errors: 49 → 76 (9/3 wins, pass); GT guard 83 → 100. All default off; camera A/B requested |
 | 2026-11-07 | [SAMINT pour camera spec](2026-11-07-samint-pour-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
 | 2026-11-07 | [SAMINT egg camera spec](2026-11-07-samint-egg-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
 | 2026-11-07 | [SAMINT classify-language camera spec](2026-11-07-samint-classify-language-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |

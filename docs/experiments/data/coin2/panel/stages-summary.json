@@ -1,0 +1,79 @@
+{
+ "gain_A": {
+  "n": 20,
+  "first": {
+   "lift": 5,
+   "release": 12,
+   "never rose": 1,
+   "carry": 2
+  },
+  "tip_close": 3.7,
+  "tip_grip": 3.8,
+  "depth": 17.75,
+  "slip": 5.300000000000001,
+  "ends": {
+   "elsewhere": 2,
+   "in_bank": 9,
+   "on_table_flat": 7,
+   "in_holder": 2
+  },
+  "slot_err": 0.0,
+  "across": 1.2,
+  "holder_closes": 20
+ },
+ "gain_B": {
+  "n": 20,
+  "first": {
+   "release": 15,
+   "never rose": 4,
+   "lift": 1
+  },
+  "tip_close": -4.7,
+  "tip_grip": 0.95,
+  "depth": 14.850000000000001,
+  "slip": 2.65,
+  "ends": {
+   "in_bank": 15,
+   "on_table_flat": 5
+  },
+  "slot_err": 1.4,
+  "across": 1.15,
+  "holder_closes": 24
+ },
+ "guard_A": {
+  "n": 20,
+  "first": {
+   "release": 19,
+   "lift": 1
+  },
+  "tip_close": 3.7,
+  "tip_grip": 3.7,
+  "depth": 17.75,
+  "slip": 1.95,
+  "ends": {
+   "in_bank": 18,
+   "in_holder": 1,
+   "on_table_flat": 1
+  },
+  "slot_err": 0.0,
+  "across": 1.0,
+  "holder_closes": 20
+ },
+ "guard_B": {
+  "n": 20,
+  "first": {
+   "release": 17,
+   "never rose": 3
+  },
+  "tip_close": -4.55,
+  "tip_grip": 1.0,
+  "depth": 14.8,
+  "slip": 0.5,
+  "ends": {
+   "in_bank": 20
+  },
+  "slot_err": 1.05,
+  "across": 1.25,
+  "holder_closes": 24
+ }
+}
