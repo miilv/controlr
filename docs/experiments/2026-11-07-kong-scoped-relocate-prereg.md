@@ -197,3 +197,17 @@ Other writers' harmful counts match in this pair: perception 4/4, predicted
 2/2, watch_lay 1/1 (A/B). This demonstrates ingestion of the new writer,
 including exact pre/post poses; it is **one pair**, not a passing full-panel
 audit or camera verdict. The worker continues through all 40 registered arms.
+
+### Completed gain-cell write audit (before camera verdict)
+
+All **20 gain arms / 10 pairs** have physics replays: **148 logged writes /
+148 scored**, **0 uncertain**, no config/routed-vocabulary mismatch or
+ineligible infrastructure attempt. [Gain snapshot](data/kong-scoped-relocate/audit-gain.json).
+
+`watch_relocate` has **A: 0 writes / 0 harmful** versus **B: 30 writes**:
+**15 helpful, 13 neutral, 2 harmful, 0 uncertain** under the unchanged >2 mm
+3-D error rule. Thus the no-excess-harmful-write condition is already missed
+for this writer. Helpful writes do not cancel harmful writes under the
+registered rule. This is a write-audit finding, not a camera score verdict;
+no adoption is authorized. Scheduled guards continue without changing the
+lever, speed, thresholds, sample size or frozen inputs.
