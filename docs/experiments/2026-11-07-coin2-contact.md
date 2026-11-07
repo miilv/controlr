@@ -102,4 +102,16 @@ no further retry), one coin lost at the in-air handover, and one layout with a 1
 **Found along the way → BACKLOG:** tilted grasps under snap; the probe fit's bias near a squeeze turn (a fourth
 squeeze at the apex); held_look's false "dropped" on held coins; the camera A/B of the profile.
 
-**Next:** the camera A/B (slot request in the PR / reply).
+**Next: camera-slot request (not dispatched; the lead decides).**
+
+- Arms: A = the current candidate as in the disc re-test (strict v2 grip source, Sonnet perceiver pinned); B = A +
+  RuntimeConfig `disc_align=walls, disc_snap=on, disc_lift=shallow, disc_seat=table, disc_release=staged` (general,
+  geometry-scoped fields; no task route).
+- Rows: deposit_coin gain 20 fresh-salt pairs (ids 100000-09, 100020-29, new salts); stack_blocks 5 pairs (strong
+  guard); insert_key 5 and play_tic_tac_toe 5 pairs as parity guards (no thin disc standing in a holder: zero
+  `wall_probe` events and zero disc writes, checked from the logs). 70 camera rows.
+- Calls (from the re-test's call logs: 6.7 / coin episode, 3.8 / key, 2.3 / stack, 2.0 / tic-tac-toe): about 270 +
+  38 + 23 + 20 = **~350 logical Claude calls** (~5 M prompt tokens); the profile adds no perception call (the wall
+  probe reads proprioception), so per-episode calls should not grow. Lane time: ~300 s / row, ~6 lane-hours.
+- Gate: the camera A/B rule (7 Nov) and the write audit with `wall_probe` as a new writer (helpful >= 2 x harmful).
+
