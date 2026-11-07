@@ -161,6 +161,18 @@
   pickup quality and shape coverage remain blockers. The old random pilot bank only used asset8;
   the new independent bank also covers9/10. Camera spec stays blocked; no dispatch or board change.
   Closing the lid alone earns no credit; the laptop80-point conjunction still needs a physical pick.
+  Source3866 wide/clear screen completes44 development rows: original11/12 standard,
+  10/12 random; independent6/10 standard,9/10 random. Standard admission gate fails,
+  so its conditional fresh panel stays unexecuted. Loaded-hold diagnosis continues
+  on existing failed pilots; no claim of the requested fresh7/10-per-cell reliability.
+- [ ] **dojo transfer endpoint screening ignores release clearance.** `plan_transfer`
+  can reject every endpoint at the ground pose although `plan_place` with release_gap
+  is feasible. Headset `mesh_clear` fixes only its optional staging helper by screening
+  raised then rebuilding/repairing against true ground. General planner unchanged.
+- [ ] **dojo upright-rest stability is a yaw-dependent conservative screen.** Native
+  `rests_stably` uses an axis-aligned support footprint, not contact equilibrium;
+  rejected headset8/10 footprints are8.60/8.00 mm versus14.25/15.91 mm required.
+  A native refusal is not proof that the physical upright rest is impossible.
 - [ ] **dojo skills: store_laptop: the headset hang plans now; its hold and the laptop's pick do not** (journal
   2026-10-29-dojo-newskill-hang, store_laptop sections).
   - Done: `hang_cradle` "straddle" (#345) lets the held headset straddle the stand's top, so the hang plans in 16 of
