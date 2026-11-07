@@ -1,0 +1,23 @@
+{
+  "status": "FROZEN_BEFORE_INFERENCE",
+  "component_commit": "e695260c0367f65a2aa83e6f5881d13e6988a9f3",
+  "frame_manifest": "docs/experiments/data/2026-11-07-sam3-task-prompts/manifest.json",
+  "frames": 60,
+  "images": 180,
+  "tasks": 11,
+  "model": "sam3",
+  "sam_threshold": 0.2,
+  "v2b_confidence": 0.25,
+  "dedup_iou": 0.5,
+  "instruction_context_words": 3,
+  "max_instruction_phrase_words": 6,
+  "prompt_sources": ["actual logged episode instruction", "all category labels and names in the one shared catalogue index"],
+  "forbidden_predictor_inputs": ["task identity", "task configs", "per-task phrase banks", "GT", "checker values", "layout identity"],
+  "uniform_filters": ["positive mask area", "base-first mask-IoU deduplication"],
+  "primary_metrics": ["IoU>=0.5 recall at >=30 visible pixels", "mean IoU including misses", "phantoms per image"],
+  "qualify_overall": {"micro_recall_gain_at_least": 0.05, "macro_task_recall_gain_at_least": 0.05},
+  "material_harm_in_any_task_view_phase_group": {"recall_drop_at_least": 0.05, "mean_IoU_drop_at_least": 0.02, "phantoms_per_image_increase_at_least": 0.5, "phantoms_added_at_least": 2},
+  "uncertainty": "paired layout-cluster bootstrap, 10000 resamples, RNG seed 0; descriptive, not a waiver for practical harm",
+  "camera_condition": "overall gates pass, no material harm group, and end-to-end runtime demonstrates no task-config/checker inputs; otherwise no camera A/B is queued",
+  "LLM_calls": 0
+}
