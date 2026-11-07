@@ -770,3 +770,9 @@ hashes and a fixed A/B order, alternates AB/BA by layout, and refuses duplicate
 or mixed-source/settings rows. Completed episodes are skipped on resume;
 admission or process failures stop the driver for diagnosis. It never generates
 layouts or selects a candidate from outcomes.
+
+`python3 scripts/skills/pour_g3_report.py --root ~/dojo-data/pour` reads the
+registration and retained rows without simulator imports. It reports paired
+coverage, official/full-only means and sample SD, >=10-point wins/losses,
+clean final-predicate successes and first-blocking-stage diagnostics. Missing
+or infrastructure pairs cannot yield a passing completed decision.
