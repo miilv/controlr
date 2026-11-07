@@ -2313,6 +2313,12 @@ class Skills:
         screened.sort(key=lambda x: x[0])
         for _, a, g, T_obj in screened[:max_full]:
             kw_p = dict(pick_kw)
+            if g.method == "torso":
+                # stream ORG2: a side grasp across a tall body squeezes before a slow lift (G3 dev: lifted right after
+                # the close, a 0.45 kg figure stayed on the table, the jaws closed around it, 3 of 5 torso picks)
+                from dojo.skills.torso import TORSO_SQUEEZE
+                kw_p.setdefault("squeeze", TORSO_SQUEEZE)
+                kw_p.setdefault("lift_rad", SLOW)
             if lift_to_pre and "lift_to_z" not in kw_p:
                 kw_p["lift_to_z"] = self._pre_place_z(obj, g, T_obj, ignore, place_kw)
             pp = self.plan_pick(label, a, grasps=[g], lift=lift, keep=1, q_start=q_start, **kw_p)

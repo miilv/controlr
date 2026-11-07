@@ -38,6 +38,7 @@ FINGER_REACH = 0.014                      # m: how far a finger extends past the
 PRE = 0.07                                # m: the pre-grasp retreat (``Grasp.pre_dist``)
 TORSO_FIRST = -0.6                        # score offset: screened and planned before the slice pinches (G3 dev: all 5
                                           # executed slice picks of a figure slid out, dev baseline)
+TORSO_SQUEEZE = 8                         # still steps closing on the body before the lift (``plan_pick(squeeze=)``)
 WIDE_W = 0.06                             # m: sections wider than this rank later, 1 per 20 mm (G3 dev: a 73 mm torso
                                           # section near the jaws' 84 mm limit slid 94 mm in the pads)
 PALM_DEPTH, PALM_HALF_W, PALM_HALF_H = 0.084, 0.08, 0.03   # m: ``X5Kin.palm_points``' box (flange frame)

@@ -35,7 +35,10 @@ def base_band(V: np.ndarray, F: np.ndarray, band: float = BAND, step: float = ST
     z0 = float(V[:, 2].min())
     F = F[V[F, 2].min(axis=1) < z0 + band]              # only faces that reach into the band
     P = _surface_samples(V, F, step=step)
-    return P[P[:, 2] < z0 + band]
+    P = P[P[:, 2] < z0 + band]
+    # one point per ``step`` voxel (a dense mesh puts a sample on every small face: 3e5 points for a 14 cm base)
+    _, keep = np.unique(np.floor((P - P.min(0)) / step).astype(np.int64), axis=0, return_index=True)
+    return P[np.sort(keep)]
 
 
 def _ring(P: np.ndarray, ring: float) -> np.ndarray:
