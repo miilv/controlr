@@ -645,7 +645,8 @@ class RuntimeConfig:
     # the general sort-into-containers skill's options (``sort_into_containers``: p2's mechanics); either one set, the
     # sort route runs that skill with it. sort_contain: root (p2's "in the container" test on the object's root) |
     # bottom (on its lowest point: a believed object let go into a container keeps its in-hand orientation);
-    # sort_park: off | home (the idle arm goes home before a one-arm carry). Journal 2026-11-07-dojo-classify3
+    # sort_park: off | home (the idle arm goes home before every one-arm carry) | blocked (only after a carry the other
+    # arm blocked, then one more try). Journal 2026-11-07-dojo-classify3
     sort_contain: str = "root"
     sort_park: str = "off"
     # the episode's persistent per-instance evidence (``dojo.perception.evidence``): off | log (every estimate record
@@ -815,7 +816,7 @@ class RuntimePolicy:
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
-                or self.cfg.sort_contain not in ("root", "bottom") or self.cfg.sort_park not in ("off", "home")
+                or self.cfg.sort_contain not in ("root", "bottom") or self.cfg.sort_park not in ("off", "home", "blocked")
                 or self.cfg.instance_evidence not in ("off", "log")
                 or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap", "budget")
                 or self.cfg.ported_pour_profile not in ("off", "sparse", "via", "checked")

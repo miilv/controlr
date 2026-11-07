@@ -120,3 +120,31 @@ def test_parking_homes_only_an_idle_away_arm_before_a_one_arm_carry(home, grip, 
     assert len(log) == parks and calls[-1] == stage
     if parks:
         assert calls[0] == ("home", ("right",)) and log[0]["arm"] == "right"
+
+
+@pytest.mark.parametrize("result,parks,runs", [
+    ({"in_container": False, "held": False, "transits": [{"refused": True, "direct_block": {"what": "other_arm"}}]}, 1, 2),
+    ({"in_container": False, "held": False, "transits": [{"refused": True, "direct_block": {"what": "pen_0_0"}}]}, 0, 1),
+    ({"in_container": True, "held": True, "transits": [{"refused": True, "direct_block": {"what": "other_arm"}}]}, 0, 1),
+    ({"in_container": False, "held": True, "transits": [{"refused": True, "direct_block": {"what": "other_arm"}}]}, 0, 1),
+])
+def test_blocked_mode_parks_and_retries_only_after_the_other_arm_refused_a_carry(result, parks, runs):
+    m = _sort()
+    calls = []
+
+    class V3:
+        @staticmethod
+        def run(robot, stage, **kw):
+            calls.append(stage)
+            return dict(result)
+
+        @staticmethod
+        def home_safe(robot, arms, mode, margin_m, margin_deg):
+            calls.append(("home", tuple(arms)))
+            return {"ok": True}
+    log: list = []
+    V = m.parking(lambda: V3, log, "blocked")()
+    V.run(_Robot(False, 1.0), "direct", arm="left", obj="o")
+    assert len(log) == parks and calls.count("direct") == runs
+    if parks:
+        assert calls == ["direct", ("home", ("right",)), "direct"] and log[0]["why"] == "blocked"
