@@ -34,34 +34,36 @@ def spawn(command: list[str], host: Host, out: Path, label: str, env: dict) -> s
     return process
 
 
-def commands(host: Host, task: str, layouts: Path, count: int, port: int, out: Path):
+def commands(host: Host, task: str, layouts: Path, count: int, port: int, out: Path, start_position: int = 0):
     rd = host.rdhome / 'RoboDojo'
     xpl = rd / 'XPolicyLab'
     policy = [str(host.root / 'venv/bin/python'), str(xpl / 'setup_policy_server.py'),
               '--config_path', str(xpl / 'policy/PyRUA_RSI/deploy.yml'), '--overrides',
               f'port={port}', 'host=127.0.0.1', 'policy_name=PyRUA_RSI', 'bench_name=RoboDojo',
               f'task_name={task}', 'ckpt_name=offline', 'env_cfg_type=arx_x5', 'seed=0', 'action_type=joint']
-    client = [str(host.python), '-u', str(host.code / 'dojo/simlab/dev_eval.py'),
+    entrypoint = Path(__file__).with_name('client.py') if start_position else host.code / 'dojo/simlab/dev_eval.py'
+    client = [str(host.python), '-u', str(entrypoint),
               '--task_name', task, '--env_cfg_type', 'arx_x5', '--num_envs', '1', '--enable_cameras',
               '--kit_args', ' --enable isaacsim.replicator.behavior --enable isaacsim.sensors.camera',
               '--device_id', '0', '--policy_name', 'PyRUA_RSI', '--port', str(port), '--protocol', 'ws',
               '--policy_server_url', f'ws://127.0.0.1:{port}', '--additional_info', 'rsi_yardstick',
               '--seed', '0', '--host', '127.0.0.1', '--headless']
     env = host.env() | dict(SIMLAB_DEV_LAYOUTS=str(layouts), EVAL_NUM=str(count),
-                           PYRUALEAN_RESULT_DIR=str(out / 'episodes'), ROBODOJO_RUN_ID=out.name.split('_')[0])
+                           PYRUALEAN_RESULT_DIR=str(out / 'episodes'), ROBODOJO_RUN_ID=out.name.split('_')[0],
+                           RSI_START_POSITION=str(start_position))
     return policy, client, env
 
 
-def run(host: Host, task: str, layouts: Path, count: int, phase: str, timeout: int = 3600) -> Path:
+def run(host: Host, task: str, layouts: Path, count: int, phase: str, timeout: int = 3600, start_position: int = 0) -> Path:
     import fcntl
-    if host.profile == 'desktop' and count > 5:
+    if host.profile == 'desktop' and (count > 5 or start_position != 0):
         raise ValueError('desktop permission allows at most five episodes per cell')
     host.directories()
     with regular_lock(host.state / 'freeze.lock', create=True) as freeze:
         fcntl.flock(freeze, fcntl.LOCK_EX)
         manifest = verify(layouts)
         manifest_sha256 = digest(layouts / 'manifest.json')
-    if task not in manifest['tasks'] or not 1 <= count <= len(manifest['tasks'][task]):
+    if task not in manifest['tasks'] or not 1 <= count <= len(manifest['tasks'][task]) - start_position:
         raise ValueError('task/count absent from frozen inputs')
     if digest(host.checkpoint) != CHECKPOINT_SHA256:
         raise ValueError('checkpoint hash mismatch')
@@ -73,9 +75,9 @@ def run(host: Host, task: str, layouts: Path, count: int, phase: str, timeout: i
         with socket.socket() as sock:
             sock.bind(('127.0.0.1', 0))
             port = sock.getsockname()[1]
-        policy_cmd, client_cmd, env = commands(host, task, layouts, count, port, out)
+        policy_cmd, client_cmd, env = commands(host, task, layouts, count, port, out, start_position)
         (out / 'call.json').write_text(json.dumps(dict(task=task, count=count, lane=host.lane,
-            manifest_sha256=manifest_sha256, ids=[e['id'] for e in manifest['tasks'][task][:count]])))
+            manifest_sha256=manifest_sha256, start_position=start_position, ids=[e['id'] for e in manifest['tasks'][task][start_position:start_position + count]])))
         children = []
         try:
             policy = spawn(policy_cmd, host, out, 'policy', env)
@@ -102,7 +104,7 @@ def run(host: Host, task: str, layouts: Path, count: int, phase: str, timeout: i
     return out
 
 
-def publish(host: Host, expected: int = 5) -> dict:
+def publish(host: Host, expected: int = 5, start_position: int = 0) -> dict:
     """Atomic per-cell publication; missing cells stay missing; duplicate calls refuse."""
     import fcntl
     with regular_lock(host.state / 'publication.lock', create=True) as lock, regular_lock(host.state / 'freeze.lock', create=True) as freeze:
@@ -110,34 +112,37 @@ def publish(host: Host, expected: int = 5) -> dict:
         fcntl.flock(freeze, fcntl.LOCK_EX)
         rows = []
         completed = set()
-        for marker in sorted((host.state / 'yardstick').glob('*.done')):
+        phase = 'yardstick-remaining' if start_position else 'yardstick'
+        for marker in sorted((host.state / phase).glob('*.done')):
             completed.add(marker.stem)
             run_dir = Path(marker.read_text().strip())
             manifest = verify(host.state / 'yardstick-layouts')
             rows.extend(episodes(run_dir, manifest))
-        result = dict(schema='rsi-yardstick-results/1', expected_per_cell=expected, per_cell=per_cell(rows))
+        result = dict(schema='rsi-yardstick-results/1', expected_per_cell=expected,
+                      positions=list(range(start_position, start_position + expected)), per_cell=per_cell(rows))
         for task, cell in result['per_cell'].items():
             if task in completed and cell['n'] != expected:
                 raise ValueError('cell did not produce its expected scored count')
-        path = host.state / 'per_cell.json'
+        path = host.state / ('per_cell.remaining.json' if start_position else 'per_cell.json')
         temp = path.with_suffix('.json.partial')
         temp.write_text(json.dumps(result, indent=2) + '\n')
         temp.replace(path)
     return result
 
 
-def batch(host: Host, count: int, shard: int, shards: int) -> None:
-    if host.profile == 'desktop' and (shards != 1 or count != 5):
+def batch(host: Host, count: int, shard: int, shards: int, start_position: int = 0) -> None:
+    if host.profile == 'desktop' and (shards != 1 or count != 5 or start_position != 0):
         raise ValueError('desktop permission: one worker, five episodes per cell')
     if not 0 <= shard < shards <= 2:
         raise ValueError('at most two disjoint shards')
     manifest_path = host.state / 'yardstick-layouts'
+    phase = 'yardstick-remaining' if start_position else 'yardstick'
     for index, task in enumerate(tasks()):
         if index % shards != shard:
             continue
         if stopped(host):
             return
-        done = host.state / 'yardstick' / f'{task}.done'
+        done = host.state / phase / f'{task}.done'
         if done.exists():
             continue
         # Freeze missing cells before this cell is scored; prior cells/records are immutable.
@@ -156,9 +161,9 @@ def batch(host: Host, count: int, shard: int, shards: int) -> None:
         start.parent.mkdir(parents=True, exist_ok=True)
         with start.open('x') as stream:
             stream.write(datetime.datetime.now(datetime.timezone.utc).isoformat())
-        out = run(host, task, manifest_path, count, 'yardstick')
+        out = run(host, task, manifest_path, count, phase, start_position=start_position)
         done.write_text(str(out))
-        publish(host, count)
+        publish(host, count, start_position)
         print(task, 'scored', flush=True)
 
 
@@ -170,6 +175,7 @@ def main() -> None:
     parser.add_argument('--layouts', type=Path)
     parser.add_argument('--episodes', type=int, default=5)
     parser.add_argument('--phase', choices=('smoke', 'yardstick'), default='yardstick')
+    parser.add_argument('--start-position', type=int, choices=(0, 5), default=0)
     parser.add_argument('--shard', type=int, default=0)
     parser.add_argument('--shards', type=int, default=1)
     parser.add_argument('--dry-run', action='store_true', help='CPU only: print resolved commands, no writes or GPU query')
@@ -177,7 +183,7 @@ def main() -> None:
     host = host_from(args)
     if args.dry_run:
         policy, client, env = commands(host, args.task or PRIORITY[0], args.layouts or host.state / 'yardstick-layouts',
-                                       args.episodes, 12345, host.state / 'dry-run')
+                                       args.episodes, 12345, host.state / 'dry-run', args.start_position)
         print(json.dumps(dict(policy=policy, client=client, environment=env, profile=host.profile,
                               lane=host.lane, lock=str(host.lock), order=tasks()), indent=2))
         return
@@ -188,16 +194,17 @@ def main() -> None:
         watcher = spawn([sys.executable, str(Path(__file__).with_name('power_watch.py')),
                          '--state', str(host.state)], host, host.state, 'power-watch.' + host.lane, host.env())
         try:
-            batch(host, args.episodes, args.shard, args.shards)
+            batch(host, args.episodes, args.shard, args.shards, args.start_position)
         finally:
             terminate(watcher, host.state / f'power-watch.{host.lane}.pid')
     elif args.mode == 'collect':
-        publish(host, args.episodes)
+        publish(host, args.episodes, args.start_position)
     elif args.mode == 'smoke':
         for task in ('stack_blocks', 'press_by_number', 'insert_tubes'):
             run(host, task, args.layouts or host.state / 'smoke-layouts', 2, 'smoke')
     elif args.task and args.layouts:
-        print(run(host, args.task, args.layouts, args.episodes, args.phase))
+        phase = 'yardstick-remaining' if args.start_position else args.phase
+        print(run(host, args.task, args.layouts, args.episodes, phase, start_position=args.start_position))
     else:
         parser.error('run requires --task and --layouts')
 

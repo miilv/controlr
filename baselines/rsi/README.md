@@ -61,9 +61,11 @@ For a box sharing the boot protocol, pass only its agreed `--boot-stamp`;
 no other coordination paths are read. See [install recipe](INSTALL.md).
 
 The official client seeds by position in the ten-input call, including dynamic
-choices and instruction wording. First five means positions 0–4. Later work
-on positions 5–9 must preserve those original positions; do not reindex a
-five-file directory as 0–4. The original ten inputs remain frozen for ports.
+choices and instruction wording. First five means positions 0–4. After separate authorization, camera workers can pass `--start-position 5`
+with `--episodes 5`: the client excludes completed prefix positions without
+renumbering the ten-input seed map. Results go to `yardstick-remaining/` and
+`per_cell.remaining.json`, preserving the published first pass. Never reindex
+a five-file directory as 0–4. The original ten inputs remain frozen for ports.
 
 Operational evidence: `docs/journal/2026-11-07-rsi-repro.md`. Historical smoke
 files under experiments/data are not yardstick episodes. A partial five/cell

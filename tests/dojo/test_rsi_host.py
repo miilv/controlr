@@ -193,3 +193,25 @@ def test_desktop_checks_actual_scope_limits(host, monkeypatch, memory, quota, al
     else:
         with pytest.raises(RuntimeError, match='scope must have'):
             H.validate_scope(host)
+
+
+def test_suffix_keeps_native_positions_and_first_pass_results(host):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('rsi_suffix', Path(R.__file__).with_name('client.py'))
+    client = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(client)
+    class Seeds:
+        def init_eval(self, completed_layout_ids=None, abandoned_layout_ids=None):
+            self.seed_info = {i: 100000 + i for i in range(10)}
+            excluded = set(completed_layout_ids or []) | set(abandoned_layout_ids or [])
+            self.seed_list = [i for i in range(10) if i not in excluded]
+    client.exclude_prefix(Seeds, 5)
+    manager = Seeds()
+    manager.init_eval(abandoned_layout_ids=[7])
+    assert manager.seed_list == [5, 6, 8, 9]
+    assert manager.seed_info[5] == 100005
+    policy, command, env = R.commands(host, 'deposit_coin', host.state / 'layouts', 5, 12345,
+                                      host.state / 'out', start_position=5)
+    assert command[2].endswith('/client.py') and env['RSI_START_POSITION'] == '5'
+    with pytest.raises(ValueError, match='desktop permission'):
+        R.run(host, 'deposit_coin', host.state / 'layouts', 5, 'yardstick-remaining', start_position=5)

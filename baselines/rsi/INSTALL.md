@@ -68,9 +68,11 @@ STOPs and disk can reduce actual concurrency below two. Do not widen the
 lane gate or VRAM thresholds when SAM3 does not fit.
 
 This command splits cells, not the two halves of one cell. The first pass is
-positions 0–4 of each frozen ten. Running the remaining positions 5–9 needs a
-separately authorized position-preserving client invocation; the first-pass
-command must not be reused on a reindexed five-layout directory.
+positions 0–4 of each frozen ten. After separate authorization, add `--start-position 5 --episodes 5` to either
+camera worker for the remaining five. Keep all ten files and their original
+order: the suffix wrapper marks prefix positions complete, retaining native
+seeds 5–9. It writes `yardstick-remaining/` and `per_cell.remaining.json`, so
+first-pass bars are preserved. Do not stage a reindexed five-layout directory.
 
 ## Desktop partial-use profile
 
