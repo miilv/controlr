@@ -98,3 +98,18 @@ credits EACH cell**. Separate real-gain gate: pooled B−A>=5 points, score wins
 a prospective camera spec with fresh physical held-observation prerequisites;
 no camera dispatch or board change. If the mechanical target fails, retain
 this null and resume pilot work without rerolling this salt.
+
+## Development scheduling amendment before standard outcomes
+
+The H random screen runs on light8 while G standard finishes on light2.
+H standard has produced no manifest or outcome yet. Replace its waiting-only
+parent with a two-worker batch scheduler: after the G standard completion
+marker, write BOTH H standard bank manifests, assign the predetermined eleven
+two-episode groups alternately to light2/light8, and queue through the same
+locks/admission wrappers. The existing H random driver still competes for
+light8; there are at most two actual scopes, with unchanged8G/600% limits.
+This keeps a released slot useful when only one cell remains. Controller,
+flags, source, layouts, group membership, gate and all policy outcomes stay
+unchanged; bank order is not an experimental condition. Retain the cancellation
+of only our verified waiting parent PID and both scheduler recipes. Never
+stop an in-flight physics job or overwrite an existing outcome.
