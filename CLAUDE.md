@@ -1,113 +1,212 @@
-# controlr — a robotics harness
+# controlr: a robot harness where a model is the controller
 
-A harness in the spirit of coding agents, but for a robot: camera frames + a system prompt
-(the "robot operating manual") + a task → a vision LLM over an API → **low-level numeric
-actions** (`MOVE ee_delta dx dy dz`, `GRIP`, `STATUS`) → safety envelope → robot → new frame +
-feedback. Turn-based (the robot holds still while the model thinks); the transcript is
-append-only and fully prompt-cached. The goal is an experimentation platform: can large API
-models, with the right prompt and architecture, act as the controller without a VLA?
+Two lines of work share this repo:
 
-Today: UR3 CB3 + Robotiq in Isaac Sim 6.0 (PHANTOM's calibrated scene) on `compute3`, and a
-real SO-101 arm with a wrist camera ([docs/SO101.md](docs/SO101.md)); models through one
-OpenAI-compatible router (omniroute). Next: the real UR3.
+- **RoboDojo (the main work).** The `dojo/` stack plays the RoboDojo benchmark: Isaac Sim 5.1, two ARX X5 arms,
+  three RGB cameras and 42 tasks / 54 cells. It has a runtime and planner, a skill library, camera-only perception
+  (silhouette fitting B1, a twin-trained segmenter, glyph readers, an agentic perceiver on Claude Sonnet), a
+  generator for dev layouts, and a camera A/B pipeline on the GPU boxes. This is joint work with Mikhail's team.
+- **The original controlr.** A vision LLM emits low-level numeric actions (`MOVE ee_delta dx dy dz`, `GRIP`,
+  `STATUS`) for a UR3 in Isaac (PHANTOM's scene) and a real SO-101, through a safety envelope; turn-based, with a
+  fully prompt-cached transcript. See "Original controlr" below.
+
+## THE HARD RULE (Ilia, 7 Nov 2026; it cannot be changed)
+
+Our RoboDojo system is **one general system**:
+
+- a model planner composes **general skills** (pick, place, push, pour, press, open, insert, handover, ...) and
+  perception queries;
+- it writes code against the same primitives only when no skill fits or a skill fails;
+- code that works becomes a candidate general skill, and is promoted only if it holds on other layouts (the ratchet);
+- one perception path and one object catalogue serve every episode.
+
+**Forbidden:**
+
+- task names in prompts or code: `if task == ...`, task-named vocabularies, task-keyed switches or routes, per-task
+  prompt banks;
+- per-task builds or entries;
+- values taken from task configs or checkers (positions, counts, slots, thresholds); perceive or measure them;
+- evaluator-termination feedback ("the episode is still running, so the attempt failed");
+- the three PyRUA-RSI tricks: picking blocks into the dustpan instead of sweeping, kong's slot→group table, and
+  termination as a retry signal.
+
+The board says the same. RoboDojo's submission rules, verbatim:
+
+> "Each submission shall represent a single fixed system ... follow the exact same inference procedure across all
+> tasks. An agent or planner inside that system is allowed ... We do not allow a router that switches between
+> different policies or checkpoints by task."
+
+A Codex audit found that our D-C19 system (48.44) is *not* defensibly a single system: tasks.json lookups,
+`ported_plan` and checker rules. See [audit](docs/journal/2026-11-07-codex-legality-audit-controlr.md) and
+[decision](docs/journal/2026-11-07-general-system-rule.md). The task-keyed parts listed in BACKLOG are to be
+retired. Per-cell work is how we discover a general mechanism, never a task program.
+
+**Enforcement.** `dojo/legality/audit.py` is shared with the partner team and runs a transitive call-graph scan
+plus a runtime instruction sentinel (landing in PR #429). `scripts/legality/scan.py` holds the CI ratchet; the inventory is
+`docs/experiments/2026-11-07-legality-inventory.md`.
+- New general-system code must have zero findings.
+- The legacy allowlist may only shrink.
+- Path-loaded code (`ported/skills/**`, `cmd_*` handlers) is scanned too.
+
+**Identity sources.** Allowed: robot / camera / scene env_cfg, URDF, and intrinsic asset files (`object.usd`,
+`metadata.json`, `description.json`), derived the same way for the whole catalogue. Forbidden: task configs,
+checkers, Eval_Layout, Traj, logs, and per-task candidate lists or counts. Task-conditioned candidate pruning is also
+forbidden. Perception models trained on one task's data (e.g. `kong_v1b`) are task-shaped and are excluded.
+
+## Joint work with Mikhail (Misha's team)
+
+- **Joint system:** their model planner (`planner="model"`, a skill registry described in scene words, no task names)
+  over a **shared general skill library** that both sides co-own.
+- **Repo:** we are moving into `github.com/msannikov03/robot-harness`. Agreed with Mikhail on 7 Nov:
+  - controlr goes in as the subdirectory `controlr/`, via `git subtree add` with full history, in one PR
+    (`ilia/import-controlr`). Both founders approve it; agents never approve.
+  - Cutover is about 08:00Z on 8 Nov, at a frozen SHA that is announced first.
+  - After the move: follow robot-harness `AGENTS.md`. Our branches are `ilia/*`, theirs `night/*`. PRs into main
+    only, CI green, never force-push. Every change to a frozen interface needs a D-C entry.
+  - miilv/controlr becomes read-only. Until the cutover, work here.
+- **Bus:** `ssh anywherevla@100.64.0.2`, `~/data2/coord/inbox/{ilia,misha}/`. One file per message, with
+  `from` / `type` / `re` front matter; move processed files to `done/`.
+  - Re-read the inbox at least every 2 h and after any context compaction.
+  - Only the lead writes to the bus.
+- **Joint decisions** (D-C*) live in robot-harness `coord/DECISIONS.md`.
+- **Standing guidance:** say yes to Misha's requests, share everything except secrets, and never use his key or give
+  him ours.
+
+## Machines (check the latest user word before putting load on any box)
+
+| Box | Use | Rules |
+|---|---|---|
+| compute4 (`haptics`) | 2 camera lanes, `c4b_` | Shared with Mikhail's side: lane gate `~/coord/lane_gate.stamp` only, no other `~/coord` access. Their final tests get priority when asked. |
+| compute6 (`robotics`) | 2 camera lanes, `c6b_` | Ours. Log power (lab power budget). |
+| compute3 (`physicalai`, a colleague's box) | physics-only G3 and CUDA inference; Isaac RTX crashes on driver 595.99 | Check `who` / GPU first; never touch PID 3613 or anything that isn't ours. Driver rollback only if the colleague provably runs nothing and would not notice. |
+| compute7 (`robotics`, a desktop user) | partial use: 1 GPU job, ≤ 8 cores / 16 GB, nice | Yield to the user; never touch the desktop session. |
+| compute1 / compute5 / compute8 | not ours right now | |
+
+- **Kill by PID only,** from pid files: never `pkill -f` or `killall`.
+- **No apt / drivers / reboot** without explicit request.
+- **Nothing autostarts on reboot.**
+- **Write only under** `~/controlr*`, `~/dojo-*`, `~/dojo-data/<stream>`.
+
+## Experiments (RoboDojo)
+
+- **Layout ids.** Rendered or camera runs use ONLY `OUR_MEASUREMENT_SLICES` (100000-09, 100020-29), made fresh by a
+  new salt. Mikhail's slices are 100010-19 and 100050-99; 100030-49 is the training block. Ids ≥ 100100 are sealed
+  joint runs. Never read sealed data (`~/dojo-data/dc19`, `~/coord/scored`, `~/rh-misha`, `~/dojo-official-rh-*`).
+- **Camera A/B protocol** ([EXPERIMENTS.md](docs/EXPERIMENTS.md)):
+  - pre-register before any data;
+  - paired fresh layouts;
+  - the score-based gain rule (pooled +5, wins ≥ 2× losses, net ≥ 2);
+  - guards, plus parity guards for scoped levers;
+  - a per-writer write audit with the identity instrument (#417);
+  - one re-test per rejected lever.
+
+  Each A/B keeps the rule it registered with.
+- **Route:** the candidate perceiver is `claude/claude-sonnet-5-5`. Verify the route of every camera row from its
+  call logs.
+- **G3** (perfect-perception physics) and offline replays on recorded frames come first; spend camera time only on
+  the survivors.
+- **Yardstick:** PyRUA-RSI's per-task programs (`research/robodojo-teardown/pyrua-rsi.md`,
+  `docs/experiments/data/rsi-yardstick/`) are a measure of what is physically reachable. They are never a design to
+  copy: their task routing is not board-legal. Write our own code only, with no attribution lines.
+- **Landmine:** our generated imitate demos run 669-728 actions, while the official ones are likely ≤ 640. Absolute
+  imitate numbers on our layouts may not transfer.
+
+## Agents (the lead delegates; see memory for details)
+
+- **Who does what.**
+  - Claude Opus agents (T3 `claudeAgent`, through omniroute) do the creative per-mechanism work.
+  - Codex agents (T3 `codex`, gpt-6.1-sol) do procedure: preregs, dispatch, verdicts, moves, infra.
+  - Several Claude agents at once is fine (omniroute balances about 5 accounts). Stop them at the first HTTP 429.
+- **Every brief states:**
+  - the stopping condition: a result at the bar, or a written physical limit with numbers; not a time box;
+  - several mechanisms to probe;
+  - allowed concurrency;
+  - the hard rule;
+  - layout ids;
+  - box rules;
+  - "no per-event watchers that wake you".
+- **The lead owns PR merges and CI watching**; sub-agents cannot watch PRs.
 
 ## Components
 
 | Code | What |
 |---|---|
-| `controlr/llm/` | streaming client (timings, usage, early stop), decision head (`decisions.py`: Decisions API → grammar text), cache markers, append-only transcript, `FakeLLM` |
-| `controlr/protocol/` | reply grammar (MOVE/GRIP/HOLD/STATUS) and feedback text |
-| `controlr/prompts/` | system prompt = robot operating manual (`system_v0.md`), planner prompt |
-| `controlr/observation/` | frame renderers: resize, grid, ee_marker, axes, diff, heatmap, tile |
-| `controlr/robot/` | `Robot` ABC, `spec`, UR3 kinematics, `SafetyEnvelope`, mock, replay, `isaac/` (server in Isaac's python + client), `so101/` (real SO-101: server on the rig in LeRobot's python + client) |
-| `controlr/loop.py`, `runlog.py`, `cli.py`, `bench/` | episode (planner + turn loop), run logs, CLI, cache/latency benchmarks, sweeps |
-| `configs/` | experiments as YAML (`extends:`); every experiment axis is a config field |
-| `scripts/` | deploy and run on compute3, Isaac server, run videos |
-| `research/` | literature review and teardown of other harnesses |
-| `runs/` | run outputs — **not in git** |
+| `dojo/runtime/` | episode runtime, planner / supervisor, belief state, `RuntimeConfig` |
+| `dojo/skills/` | skill library, routes, G3 (perfect-perception physics) |
+| `dojo/perception/` | B1 silhouette fitting, segmenter / SAM proposers, glyph readers, write audit |
+| `dojo/simlab/` | dev layout generator, presettle, id slices (`paths.py`) |
+| `dojo/agent/`, `dojo/bridge/` | agentic perceiver and manual, RoboDojo bridge |
+| `scripts/dojo/queues/` | camera lane scripts (`lane2.sh`), queue tools |
+| `controlr/` | the original harness: LLM client, protocol, prompts, robots (UR3 / SO-101), safety, loop |
+| `configs/`, `research/`, `runs/` (not in git) | experiment YAML, literature and teardowns, outputs |
 
 ## Commands
 
 ```bash
-uv sync --extra dev                         # environment
-uv run pytest -q                            # unit tests (live/isaac skip themselves) — same as CI
-uv run controlr prompt -c configs/sim_waffle.yaml     # the manual as the model sees it (no robot, no LLM)
-uv run controlr run -c configs/mock.yaml --fake-llm   # dry run of the whole pipeline, no network
-
-# compute3 (Isaac): deploy, then run — the Isaac server starts and stops by itself
-scripts/deploy.sh
-scripts/remote_run.sh run -c configs/sim_waffle_yaw.yaml --seeds 0,1,2,3
-ssh compute3 'cd ~/controlr && CONTROLR_ISAAC=1 .venv/bin/python -m pytest -q tests/'   # ~20 min
-scripts/bootstrap_gpu_box.sh HOST [--dry-run]   # a new GPU box for the dojo streams (docs/RUNBOOK-new-gpu-box.md)
-
-# analysis
+uv sync --extra dev
+uv run pytest -q                                      # unit tests, same as CI (live / isaac tests skip themselves)
+uv run controlr run -c configs/mock.yaml --fake-llm   # original harness, dry run
+scripts/bootstrap_gpu_box.sh HOST [--dry-run]         # provision a GPU box (docs/RUNBOOK-new-gpu-box.md)
 uv run controlr report runs/<run_dir> [--csv out.csv]
-uv run --no-project --with pillow python scripts/turn_video.py runs/<run_dir> docs/video/<name>.mp4 "<title>"
-uv run controlr bench-cache --model claude/claude-sonnet-5-5 --turns 20   # ⚠️ live calls
 ```
 
 ## Rules (mandatory)
 
-**Step 0 of any code task: read [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and [ARCHITECTURE.md](ARCHITECTURE.md) BEFORE the first change.** For an experiment task, also [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
+**Step 0 of any code task:** read [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) and [ARCHITECTURE.md](ARCHITECTURE.md).
+For RoboDojo work, also read [docs/ROBODOJO.md](docs/ROBODOJO.md) and [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md).
 
-1. **The model is the controller.** No high-level skills ("pick up the box") and no VLA in the
-   action path. Alternatives are config switches, not code forks. Every experiment axis is a
-   field in `controlr/config.py`; defaults never change silently (that breaks comparability
-   across runs) — changing a default = a journal entry.
-2. **Workflow:** branch (`git worktree add ../controlr-<task> -b feat/<task>` for parallel tasks)
-   → tests locally → if you touched `robot/`, `loop.py`, safety or Isaac: `scripts/deploy.sh` and
-   the Isaac tests on compute3 → **open the PR yourself** → green CI → merge. Direct push to
-   `main` — docs only (journal, experiments, incidents).
-3. **Live LLM calls cost money, but limits are generous.** No daily cap (the OpenAI models on
-   omniroute sit on a subscription with weekly limits: burn most of it); don't waste calls on
-   runs that can't teach anything, and say so if a run would eat most of the week. Unit
-   tests use only `FakeLLM` / `httpx.MockTransport`; live tests are marked `@pytest.mark.live`
-   and run only with `CONTROLR_LIVE=1`. Keys: only `OMNIROUTE_*` (and `OPENROUTER_API_KEY` for the decision head) from `.env`,
-   **never** the agent session's credentials (`ANTHROPIC_AUTH_TOKEN` etc.). Actual spend (calls, tokens) goes into
-   the report.
-4. **compute3 is a shared machine** (someone else's work runs there too). Write only under
-   `~/controlr*`; the GPU is ours, CPU/RAM in moderation; never touch other processes; stop the
-   Isaac server when done. `apt` / drivers / reboot — only on explicit request
-   ([RUNBOOK](docs/RUNBOOK.md)). PHANTOM (`~/phantom-icra-2027` on compute3,
-   `~/skoltech/research` locally) is **never modified** — import it or copy with attribution.
-5. **Secrets:** `.env` lives only locally, in `~/controlr/.env` on compute3, on our own GPU
-   boxes provisioned by `scripts/bootstrap_gpu_box.sh` and in `~/data2/ilia/.env` on isr-lab
-   (shared with Mikhail's side; `OMNIROUTE_*` only, mode 600) — not in dev copies, git, `runs/`
-   or logs. New variable → `.env.example` +
-   [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md).
-6. **Cache invariants:** the transcript is append-only, history is never edited; an image is
-   encoded once and stored as bytes; feedback text is deterministic (fixed decimals);
-   reasoning effort never changes within an episode. Any change to serialisation → a prefix
-   stability test + a `cache_read` check on a live run.
-7. **Safety lives in code, not in the prompt.** Every action goes through `SafetyEnvelope`;
-   clamps and stops are reported back to the model as feedback. The real UR3 — only through
-   PHANTOM's drivers + `SafetyMonitor` and only with explicit per-session permission (a human
-   at the e-stop). Same for the real SO-101: a human at its power switch, workspace cleared.
-8. **An experiment is reproducible or it doesn't count:** config in git, seeds × repeats, the
-   same plan (`planner.plan_file`) when comparing control models, n and spread in the report;
-   "2/4" is noise, not a finding. Report: `docs/experiments/YYYY-MM-DD-<slug>.md` + a row in the
-   index; videos of successes and a typical failure via `scripts/turn_video.py`.
-9. **Research agents have no side effects:** don't download models/video/audio, don't install
-   torch/CUDA, clones are shallow in `/tmp` and get deleted; keep disk use in check (see
-   [incidents](docs/incidents/)).
-10. **Loose ends go in the same PR:** closed a [BACKLOG](docs/BACKLOG.md) item — strike it,
-    found a landmine — add it; changed behaviour — update [ARCHITECTURE](ARCHITECTURE.md) /
-    [DEVELOPMENT](docs/DEVELOPMENT.md); significant work — `docs/journal/YYYY-MM-DD-<slug>.md`;
-    incident — `docs/incidents/`. Stable docs carry no dates or statuses; everything
-    time-bound goes to journal/experiments.
-11. **Git hygiene:** `git status` first; `git add` file by file (no `-A` / `.`); never commit
-    `runs/`, `.env`, `research/repos/`; videos only when short and needed by a report.
+1. **The hard rule above.** Every experiment axis is a config field. Defaults never change silently; changing a
+   default needs a journal entry.
+2. **Workflow:** branch / worktree → local tests → open the PR yourself → green CI → merge. If you touched the runtime,
+   skills, safety or Isaac code, deploy and test on a box. Direct pushes to `main` are for docs only: journal,
+   experiments, incidents.
+3. **Live LLM calls cost money; the limits are generous.** Don't waste calls on runs that teach nothing.
+   - Unit tests use only `FakeLLM` / mocks.
+   - Keys: only `OMNIROUTE_*` (and `OPENROUTER_API_KEY`) from `.env`, **never** the agent session's credentials.
+   - Report actual spend.
+4. **Shared boxes:** see the Machines table above. PHANTOM (`~/phantom-icra-2027` on compute3,
+   `~/skoltech/research` locally) is never modified.
+5. **Secrets:** `.env` lives only locally, on the boxes' `~/controlr/.env` / lane env files, and in
+   `~/data2/ilia/.env` on isr-lab (mode 600). Never in git, `runs/`, logs or chat. Never print key values. A new
+   variable goes into `.env.example` and [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md).
+6. **Cache invariants (original harness):**
+   - the transcript is append-only;
+   - images are encoded once;
+   - feedback text is deterministic;
+   - effort never changes within an episode.
+7. **Safety lives in code.** Every real-robot action goes through `SafetyEnvelope` / PHANTOM's `SafetyMonitor`, with
+   explicit per-session permission and a human at the e-stop or power switch.
+8. **Reproducible or it doesn't count:**
+   - the config is in git;
+   - seeds × repeats;
+   - n and spread are in the report;
+   - the report goes in `docs/experiments/YYYY-MM-DD-<slug>.md` plus an index row.
+9. **Research agents have no side effects.**
+   - No model / media downloads unless the lead allows it.
+   - Clones are shallow, in `/tmp`, and get deleted.
+   - Keep disk use bounded.
+10. **Loose ends go in the same PR:** BACKLOG, ARCHITECTURE / DEVELOPMENT updates, a journal entry for significant
+    work, incidents. Stable docs carry no dates or statuses.
+11. **Git hygiene:**
+    - `git status` first;
+    - `git add` file by file;
+    - never commit `runs/`, `.env` or `research/repos/`.
+
+## Original controlr (UR3 / SO-101)
+
+The original rule still holds for that harness: the model emits low-level actions, with no high-level skills and no
+VLA in the action path. UR3 in Isaac on compute3 (`scripts/deploy.sh`, `scripts/remote_run.sh`); real SO-101
+([docs/SO101.md](docs/SO101.md)); the real UR3 only through PHANTOM's drivers with explicit permission.
 
 ## Where to look
 
 | When | File |
 |---|---|
-| Any code task | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) — playbook: setup, workflow, tests, typical changes, pitfalls |
-| How the system works, module contracts | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| Design / read an experiment | [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md), reports in [docs/experiments/](docs/experiments/) |
-| Something broke (compute3, Isaac, router, cache) | [docs/RUNBOOK.md](docs/RUNBOOK.md) + [docs/incidents/](docs/incidents/) |
-| Pick a task / known landmines | [docs/BACKLOG.md](docs/BACKLOG.md) |
-| Env variables, machines, paths | [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) |
-| Context of past work | [docs/journal/](docs/journal/), code reviews in [docs/reviews/](docs/reviews/) |
-| Why it's built this way, what others tried | [research/README.md](research/README.md) |
-| How to give the agent tasks (for humans) | [HUMAN.md](HUMAN.md) |
+| Any code task | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), [ARCHITECTURE.md](ARCHITECTURE.md) |
+| RoboDojo stack, bridge, lanes | [docs/ROBODOJO.md](docs/ROBODOJO.md), [docs/BRIDGE-RUNBOOK.md](docs/BRIDGE-RUNBOOK.md), [dojo/README.md](dojo/README.md) |
+| Experiment rules and reports | [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md), [docs/experiments/](docs/experiments/) |
+| Something broke | [docs/RUNBOOK.md](docs/RUNBOOK.md), [docs/incidents/](docs/incidents/) |
+| Open tasks and landmines | [docs/BACKLOG.md](docs/BACKLOG.md) |
+| Past work | [docs/journal/](docs/journal/) |
+| Other harnesses, RoboDojo teardowns | [research/README.md](research/README.md), [research/robodojo-teardown/](research/robodojo-teardown/) |
+| Env variables and machines | [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) |
