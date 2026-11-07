@@ -39,3 +39,10 @@ New legacy rows remain debt, not board permission; no clean-path exemptions were
 The resolver recognizes only named numeric/record leaves, with shadowed callbacks and
 file-loading calls still unresolved. The updated branch ratchet passes locally and
 combined tooling/provider/firewall tests pass: 43 passed / 8 glib-only skips.
+
+The joint reader decision excludes kong_v1b (single-task tile training) from the
+general system. digit_v2 is under review pending the model-read crop comparison
+on 8 November. The inventory and machine-readable candidate/service records mark
+both statuses, covering dedicated/shared/official launchers, model-root variables
+and the legacy generic glyph-address fallback. Historical candidate bytes and
+runtime behavior are unchanged; no model was loaded or evaluated.

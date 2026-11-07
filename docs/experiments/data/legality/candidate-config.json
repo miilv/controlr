@@ -34,5 +34,33 @@
     "peg_base_tries": 8,
     "belt_wrist_veto": "on"
   },
-  "scope": "static superset of all registered and dynamically ported implementations; not path-feasible execution"
+  "scope": "static superset of all registered and dynamically ported implementations; not path-feasible execution",
+  "perception_services": [
+    {
+      "model": "kong_v1b",
+      "status": "excluded",
+      "general_system_approved": false,
+      "candidate_flag": "--glyph-kong kong_v1b",
+      "service_kind": "glyphk",
+      "checkpoint": "kong_v1b/model.pt",
+      "environment": [
+        "DOJO_GLYPH_ADDR_KONG",
+        "DOJO_GLYPH_ADDR (legacy fallback)"
+      ],
+      "board_effect": "Blocks a general-system entry wherever these weights are used, including generic/renamed service routes."
+    },
+    {
+      "model": "digit_v2",
+      "status": "under review",
+      "general_system_approved": false,
+      "candidate_flag": "--glyph digit_v2",
+      "service_kind": "glyph",
+      "checkpoint": "digit_v2/model.pt",
+      "environment": [
+        "DOJO_GLYPH_ADDR_DIGIT",
+        "DOJO_GLYPH_ADDR (legacy fallback)"
+      ],
+      "board_effect": "Unresolved admission; neither approved nor classified as excluded."
+    }
+  ]
 }

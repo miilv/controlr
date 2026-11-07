@@ -89,6 +89,61 @@ for both snapshots. Dynamic import/spec/exec sites are separately inventoried as
 certified by this audit. The manifest is a conservative superset, not a claim
 that all these modules execute in the candidate.
 
+## Perception checkpoint training scope
+
+**Joint decision supplied by the lead:** a globally fixed checkpoint is not sufficient
+for general-system admission. Training scope is a separate provenance requirement.
+These classifications apply wherever the candidate uses the weights, regardless of
+service name, socket alias or whether launch flags are identical across episodes.
+The [machine-readable reader/service inventory](data/legality/perception-services.json)
+and [candidate summary](data/legality/candidate-config.json) record both decisions.
+They are additional model-provenance findings; the AST signal counts above are unchanged.
+
+- **`kong_v1b` — EXCLUDED from the general system; blocks board entry.** It was
+  trained on a single task's tile set and counts as task-shaped perception. The
+  historical candidate selects `--glyph-kong kong_v1b`, loading
+  `kong_v1b/model.pt` through the `glyphk` service. Freezing that checkpoint globally
+  does not make it general. This supersedes any favorable reading of the earlier
+  audit's observation that glyph components were globally pinned.
+- **`digit_v2` — UNDER REVIEW.** It may qualify as a general digit perception
+  service. The candidate selects `--glyph digit_v2`, loading `digit_v2/model.pt`
+  through `glyph`. Its admission is undecided, not approved and not classified as
+  excluded. The planned comparison against model-read crops is on 8 November;
+  no crop comparison, training or model call was performed for this inventory.
+
+### Candidate, service and environment wiring
+
+The dated [candidate flags](data/legality/dc19-candidate.txt) enable both models and
+set `DOJO_PERCEPTION_CFG` to `glyph_read=on`. Keep those historical bytes unchanged
+for reproducibility; their presence is not authorization for a general-system run.
+
+- `scripts/dojo/queues/lane2.sh:181-229` parses both flags and either starts per-job
+  services or reuses shared ones. `glyphk` exports **`DOJO_GLYPH_ADDR_KONG`**;
+  `glyph` exports **`DOJO_GLYPH_ADDR_DIGIT`** and legacy **`DOJO_GLYPH_ADDR`**.
+  `LANE_MODELS` selects their model directory (default
+  `~/dojo-data/segtrain/models`), with the model name selecting `model.pt`.
+- `scripts/dojo/queues/shared_side.sh:37-40` explicitly starts **excluded**
+  `glyphk/kong_v1b` and **under-review** `glyph/digit_v2`.
+  `sam_shared.sh:19` starts this shared bundle too: enabling a shared SAM service
+  does not clear the glyph reader's exclusion or review status.
+- `scripts/dojo/official_eval.sh:160-161,296-298` uses the same `glyph`/`glyphk`
+  environment mapping and `glyph_read serve --model ...`. Here
+  **`DOJO_SEG_MODELS`** selects the model root. The frozen file hashes/provenance
+  and the matching mapping in `scripts/dojo/candidate_parity.py:32-33` establish
+  identity/parity only, not general-system eligibility.
+- `dojo/perception/glyph_read.py:_GlyphModel` loads the checkpoint with
+  `torch.load`. `MODEL_OF` routes numerals/operators to `digit` and mahjong tiles
+  to `kong`; `ENV_ADDR_OF` chooses the dedicated endpoints. `client()` falls back
+  to **`DOJO_GLYPH_ADDR`**, and the legacy category-less client uses that address
+  without a family check. `model_fits()` checks model family, not training scope.
+  Thus clearing only `DOJO_GLYPH_ADDR_KONG`, renaming a socket, using generic
+  `--glyph kong_v1b`, or passing those weights directly to `serve --model` does
+  **not** make them admissible. The exclusion follows the actual weights.
+- `dojo/perception/inverse_layout.py` consumes slot/numeral glyph evidence when
+  `EstimatorConfig.glyph_read` is enabled. Its own task-config candidate/identity
+  dependencies remain separate blockers even if the excluded reader is removed
+  or the digit service is later approved.
+
 ## Identity-source policy
 
 **Legitimate:** robot/camera/scene `env_cfg`, `X5A.urdf`, and intrinsic asset files
@@ -128,6 +183,9 @@ legitimate intrinsic-file names are deliberately not flagged as task data. Scann
 rules cannot establish numeric/semantic provenance from a bare literal.
 
 ## Confirmed blockers to retire
+
+The excluded `kong_v1b` checkpoint is an additional blocker; `digit_v2` remains
+under review as detailed above. A fixed service/checkpoint is not a clean bill of health.
 
 | Mechanism / our location | Candidate activation | Board classification / audit crosswalk |
 |---|---|---|

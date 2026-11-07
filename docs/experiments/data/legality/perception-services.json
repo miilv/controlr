@@ -1,0 +1,90 @@
+{
+  "schema": "legality-perception-services/1",
+  "decision_date": "2026-11-07",
+  "source": "Joint decision supplied by the lead; not inferred from checkpoint names.",
+  "scope": "Main and D-C19 candidate/service wiring. Historical flags remain evidence, not approval.",
+  "readers": [
+    {
+      "loader": "dojo.perception.glyph_read:_GlyphModel (torch.load); main -> serve --model",
+      "runtime_enable": "DOJO_PERCEPTION_CFG glyph_read=on / EstimatorConfig.glyph_read",
+      "model_roots": {
+        "queue_and_shared": "LANE_MODELS (default ~/dojo-data/segtrain/models)",
+        "official_eval": "DOJO_SEG_MODELS (same default)"
+      },
+      "model": "kong_v1b",
+      "status": "excluded",
+      "general_system_approved": false,
+      "decision_basis": "Joint decision: trained on a single task tile set; task-shaped perception.",
+      "candidate_flag": "--glyph-kong kong_v1b",
+      "service_kind": "glyphk",
+      "checkpoint": "kong_v1b/model.pt",
+      "category_route": "MODEL_OF mahjong -> kong",
+      "environment": [
+        "DOJO_GLYPH_ADDR_KONG",
+        "DOJO_GLYPH_ADDR (legacy fallback)"
+      ],
+      "board_effect": "Blocks a general-system entry wherever these weights are used, including generic/renamed service routes."
+    },
+    {
+      "loader": "dojo.perception.glyph_read:_GlyphModel (torch.load); main -> serve --model",
+      "runtime_enable": "DOJO_PERCEPTION_CFG glyph_read=on / EstimatorConfig.glyph_read",
+      "model_roots": {
+        "queue_and_shared": "LANE_MODELS (default ~/dojo-data/segtrain/models)",
+        "official_eval": "DOJO_SEG_MODELS (same default)"
+      },
+      "model": "digit_v2",
+      "status": "under review",
+      "general_system_approved": false,
+      "decision_basis": "May qualify as a general digit perception service; not yet decided.",
+      "review_plan": "Evaluate against model-read crops on 2026-11-08; no evaluation performed by this inventory update.",
+      "candidate_flag": "--glyph digit_v2",
+      "service_kind": "glyph",
+      "checkpoint": "digit_v2/model.pt",
+      "category_route": "MODEL_OF numerals/operators -> digit",
+      "environment": [
+        "DOJO_GLYPH_ADDR_DIGIT",
+        "DOJO_GLYPH_ADDR (legacy fallback)"
+      ],
+      "board_effect": "Unresolved admission; neither approved nor classified as excluded."
+    }
+  ],
+  "wiring_sites": [
+    {
+      "file": "scripts/dojo/queues/2026-11-06-candidate.txt",
+      "role": "Actual legacy candidate flags select both readers."
+    },
+    {
+      "file": "docs/experiments/data/legality/dc19-candidate.txt",
+      "role": "Byte-preserved candidate evidence; same reader classifications."
+    },
+    {
+      "file": "scripts/dojo/queues/lane2.sh",
+      "role": "Parses --glyph/--glyph-kong; starts per-job glyph/glyphk services or reuses shared sockets; exports their env vars."
+    },
+    {
+      "file": "scripts/dojo/queues/shared_side.sh",
+      "role": "Shared bundle explicitly starts glyph=digit_v2 and glyphk=kong_v1b."
+    },
+    {
+      "file": "scripts/dojo/queues/sam_shared.sh",
+      "role": "Calls shared_side.sh start; therefore also inherits its glyphk exclusion even for a SAM operation."
+    },
+    {
+      "file": "scripts/dojo/official_eval.sh",
+      "role": "SIDE maps glyph/glyphk to checkpoint files and env vars, then starts glyph_read serve; sealed provenance hashes do not imply admissibility."
+    },
+    {
+      "file": "scripts/dojo/candidate_parity.py",
+      "role": "Records the same flag/service/env mapping for parity; matching hashes is not approval."
+    },
+    {
+      "file": "dojo/perception/glyph_read.py",
+      "role": "Loads --model with torch.load; MODEL_OF, ENV_ADDR_OF and client route categories to endpoints; model_fits checks family, not training provenance."
+    },
+    {
+      "file": "dojo/perception/inverse_layout.py",
+      "role": "glyph_read enabled in candidate; calls slot/numeral readers and consumes glyph evidence."
+    }
+  ],
+  "fallback_policy": "A generic --glyph/--model launch or DOJO_GLYPH_ADDR can still carry excluded weights. Classify the actual checkpoint/provenance, not the socket or service label."
+}
