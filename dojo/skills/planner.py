@@ -344,6 +344,13 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
         conts = [o for o in objs if re.search(r"basket|bin\b", o.category.lower())]
         if len(conts) >= 2 and len([o for o in rigid if o not in conts]) >= 2:
             mode = (opts or {}).get("classify")
+            # the general sort's options (RuntimeConfig.sort_contain / sort_park): set, the sort runs as
+            # sort_into_containers (p2's mechanics) with them; unset, the selected variant as before
+            sort_kw = {k: v for k, v in (("contain", (opts or {}).get("sort_contain", "root")),
+                                          ("park_other", (opts or {}).get("sort_park", "off")))
+                       if v not in ("root", "off")}
+            if sort_kw:
+                return run("sort_into_containers", **sort_kw)
             return run({"p1": "classify_into_bins_p1", "p2": "classify_into_bins_p2"}.get(mode, "classify_into_bins_v3b"))
     # push / drag a flat object onto its pad (a Geometry whose category names the object's kind)
     if re.search(r"\bpush\b|\bslide\b|\bdrag\b", text) and re.search(r"\bpad\b|\balign", text):
@@ -721,6 +728,7 @@ def solve(sk) -> dict:
              and {"swap": getattr(sk, "ported_swap", "fixed"), "drag": getattr(sk, "ported_drag", "v1"),
                   "pour": getattr(sk, "ported_pour", "v1"), "pickup": getattr(sk, "ported_pickup", "v1"),
                   "pour_aim": getattr(sk, "ported_pour_aim", "v1"), "pour_profile": getattr(sk, "ported_pour_profile", "off"), "classify": getattr(sk, "ported_classify", "v3b"),
+                  "sort_contain": getattr(sk, "sort_contain", "root"), "sort_park": getattr(sk, "sort_park", "off"),
                   "pour_untilt": getattr(sk, "ported_pour_untilt", "direct")})
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")

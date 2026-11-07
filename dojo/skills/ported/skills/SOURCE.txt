@@ -21,6 +21,8 @@ Our variants (new directories, changes marked in the file):
   skills/planar_drag_p1, skills/pour_p1        stream P
   skills/classify_into_bins_p1                 stream N: v3b with grounding that leaves unnamed / surplus categories
   skills/classify_into_bins_p2                 stream N: p1 + a refused carry retried from higher up, then put back
+  skills/sort_into_containers                  our own wrapper: p2's sort mechanics with general options
+                                               (``contain``, ``park_other``; p2 unchanged)
   skills/pour_bottle_lean                      stream H: pour_bottle paced for pour_by_language's three pours
                                                (RuntimeConfig.ported_pour_pace)
   skills/pour_bottle_v2                         robot-harness 6769a6c5b3df8c55f56b0324cfdf196084b9ec94,

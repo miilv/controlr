@@ -1070,3 +1070,17 @@ SAM parity guard, inspect every `vocab_explain.candidates` entry as well as the 
 vocabulary and record routing counters. A final inactive vocabulary alone does not
 prove that an earlier candidate estimate made zero SAM requests. An active bank
 in a guard's candidate exploration blocks the zero-request parity proof.
+
+### Sort-into-containers evidence tools
+
+`scripts/perception/classify3/` (dev only, GT read after the fact for scoring):
+- `replay_job.sh`: physics-only `m95_replay.py --full` of recorded camera rows on a compute3 light lock;
+- `stage_audit.py`: per GT instance the first failing stage, and the skill's own `truth_in` records against physics;
+- `release_rest_offline.py`: container tests on every recorded release;
+- `candidates_offline.py`: evidence-ledger candidates against the missed instances;
+- `frame0_e2e.py` / `e2e_job.sh`: the perception service's frame-0 estimate re-run on recorded frames under a general
+  `DOJO_PERCEPTION_CFG`, with v2b and optionally a SAM server; B1 on CPU (`DOJO_GL=0`, ~6 min per frame);
+- `g3_job.sh`: a scoped G3 panel.
+
+Two pitfalls: the eval's per-episode `perception` block misreads numbered series (score series cells from a replay),
+and G3 `--belief-drop` does not fit the ported skills (their picks fail).
