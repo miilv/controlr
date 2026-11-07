@@ -98,3 +98,10 @@ passed native-phase settling; A/B launch from that exact frozen source. No
 camera dispatch, board change or merge. Full local suite on this implementation
 is running. The central-window alternative completed 5/10 in both native
 profiles and is rejected; no central-window code enters the candidate.
+
+First registered round-2 panel: **10.0 ±31.62 → 20.0 ±42.16**, successes
+1/10→2/10, score/success wins 2, loss 1, ties 7. B succeeds on 100012/17;
+A on 100016. B ends at target pick (3), carry/drop (4), basket intercept (1).
+The mean improves, but one net win fails the registered two-net-win condition.
+A once-only independent 14-pair retest is registered in a separate report;
+no tuning from these paired inputs enters it. All new behavior stays off.
