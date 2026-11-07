@@ -94,7 +94,12 @@ def main() -> None:
         checkpoint.write_text(json.dumps(chosen, indent=2))
         print(task, 'prepared', flush=True)
     manifest = dict(schema='rsi-yardstick/1', salt=SALT, generator=GENERATOR,
-                    tasks=entries, preparation='first ten stable ids; imitation demo speed 1.5')
+                    tasks=entries, source_sha256={
+                        name: digest(ROOT / 'code' / name) for name in (
+                            'dojo/simlab/gen_layouts.py', 'dojo/simlab/presettle.py',
+                            'dojo/simlab/demo_gen.py', 'dojo/simlab/dev_eval.py')},
+                    preparation_script_sha256=digest(Path(__file__)),
+                    preparation='first ten stable ids; imitation demo speed 1.5')
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n')
     (target / 'manifest.sha256').write_text(digest(manifest_path) + '  manifest.json\n')
 
