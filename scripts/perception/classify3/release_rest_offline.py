@@ -1,5 +1,5 @@
-"""CLASSIFY3 (dev only): the container release rest (``RuntimeConfig.release_rest``) evaluated offline on every release
-of the recorded classify camera rows, against physics-only replays of the same actions.
+"""CLASSIFY3 (dev only): container tests (and, where the code has it, a container-floor release rest) evaluated offline
+on every release of recorded sort-into-containers camera rows, against physics-only replays of the same actions.
 
     python scripts/perception/classify3/release_rest_offline.py --rows ROWS --layouts LAYOUT_ROOT --replay REPLAY \\
         --catalog CATALOG [--out out.json]
@@ -8,9 +8,10 @@ A release is a ``post_place`` event (the runtime's post-place read after the jaw
 pose (xy, orientation) is the label's next ``belief_write``. For each release the ported classify skill's own container
 test (``in_bin``: the root position inside the basket's box, below its rim + 10 mm) is evaluated on
 * **legacy**: the belief the skill read next (the first ``dev_belief_probe`` snapshot after the release);
-* **container**: the same release pose (as logged; raised to 5 mm over the rim if lower) with ``drop_rest(container=True)``
-  over the three baskets and the other believed objects (the nearest earlier ``dev_belief_probe`` snapshot);
-and compared with **physics**: the matched GT instance (frame 0, <= 50 mm) in the replay's next frame after the release.
+* **container** (only with a ``dojo.runtime.belief.drop_rest`` that takes ``container=``: the prototype of commit
+  197e79b4, removed after this measurement): the same release pose (as logged; raised to 5 mm over the rim if lower)
+  with ``drop_rest(container=True)`` over the three baskets and the other believed objects;
+each with the root test and the alternative tests ``TESTS`` (bbox centre, lowest point), compared with **physics**: the matched GT instance (frame 0, <= 50 mm) in the replay's next frame after the release.
 Counts: true / false placement claims per rule. GT is read for scoring only.
 """
 
@@ -61,7 +62,10 @@ TESTS = {"centre": lambda o: [o.center_w[0], o.center_w[1], o.center_w[2]],
 
 
 def row_releases(row: str, layouts: str, replay: str, catalog: str, cache: dict) -> list:
+    import inspect
+
     from dojo.runtime.belief import drop_rest
+    has_container = "container" in inspect.signature(drop_rest).parameters
     ep = json.loads(open(glob.glob(os.path.join(row, "*_episodes.jsonl"))[0]).readline())
     if int(ep["layout_id"]) not in SLICES:
         raise SystemExit(f"{row}: outside our slices")
@@ -97,7 +101,7 @@ def row_releases(row: str, layouts: str, replay: str, catalog: str, cache: dict)
                   catalog, cache) for j, o in enumerate(bk)]
         o = obj(lab, key, a7[:3], a7[3:], catalog, cache)
         o.pos[2] += max(0.0, (BASKET_TOP + 0.005) - float(o.aabb()[0][2]))  # let go where logged, never below the rim
-        pos_c, ev_c = drop_rest(o, others, fx, container=True)
+        pos_c, ev_c = drop_rest(o, others, fx, container=True) if has_container else (o.pos, None)
         pos_c = o.pos if pos_c is None else pos_c
         oc = obj(lab, key, pos_c, o.quat, catalog, cache)
         nb = basket_of([a7[0], a7[1], 0.80], baskets)          # the basket its release xy is over (None: none)
@@ -112,11 +116,12 @@ def row_releases(row: str, layouts: str, replay: str, catalog: str, cache: dict)
         gp = next((fo["pos"] for fo in frames[k]["objects"] if fo["label"] == g), None) if g else None
         out.append({"row": os.path.basename(row.rstrip("/")), "label": lab, "gt": g, "step": step, "basket": nb,
                     "legacy_in": nb is not None and in_bin(leg, baskets[nb]),
-                    "container_in": nb is not None and in_bin(pos_c, baskets[nb]),
+                    "container_in": has_container and nb is not None and in_bin(pos_c, baskets[nb]),
                     "container_how": (ev_c or {}).get("how"),
                     # alternative container tests on the same beliefs: the bbox centre / the bbox bottom below the rim
                     **{f"{rule}_{t}_in": nb is not None and in_bin(test(ob_), baskets[nb])
-                       for rule, ob_ in (("legacy", ol), ("container", oc)) for t, test in TESTS.items()},
+                       for rule, ob_ in (("legacy", ol), ("container", oc)) for t, test in TESTS.items()
+                       if rule == "legacy" or has_container},
                     "physics_in": None if gp is None or nb is None else basket_of(gp, baskets) == nb,
                     "legacy_z": round(float(leg[2]), 4), "write_z": round(float(a7[2]), 4), "container_z": round(float(pos_c[2]), 4),
                     "post_place_ok": e.get("ok"), "writer": w.get("writer")})
@@ -139,7 +144,10 @@ def main(argv=None):
     for task in ("classifysg", "classifylangsg"):
         rs = [r for r in rel if f"c4b_{task}_" in r["row"] and r["basket"] is not None and r["physics_in"] is not None]
         s = {"releases_over_a_basket": len(rs), "physics_in": sum(r["physics_in"] for r in rs)}
-        for rule in ("legacy", "container", "legacy_centre", "container_centre", "legacy_bottom", "container_bottom"):
+        rules = ("legacy", "legacy_centre", "legacy_bottom")
+        if any("container_bottom_in" in r for r in rs):     # the prototype rest rule is in this checkout
+            rules += ("container", "container_centre", "container_bottom")
+        for rule in rules:
             s[rule] = {"claim_in": sum(r[f"{rule}_in"] for r in rs),
                        "true_in": sum(r[f"{rule}_in"] and r["physics_in"] for r in rs),
                        "false_in": sum(r[f"{rule}_in"] and not r["physics_in"] for r in rs),

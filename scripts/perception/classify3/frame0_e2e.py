@@ -2,7 +2,7 @@
 GT instance against the row's own layout (GT is read only after the estimate, for scoring).
 
     DOJO_BG_FOLDS=... DOJO_CALIB_SET=frozen_d0_100040_49 DOJO_CATALOG=... DOJO_SEG_ADDR=... [DOJO_SAM_ADDR=...] \\
-    [DOJO_PERCEPTION_CFG='{"sam_task_routes": {...}}'] \\
+    [DOJO_PERCEPTION_CFG='{...general EstimatorConfig overrides...}'] \\
         python scripts/perception/classify3/frame0_e2e.py --rows ROWS --layouts LAYOUT_ROOT --arm NAME --out OUT.jsonl
 
 Per row (``c4b_<arm>_<id>/``): frame 0 as the episode saved it (``*_look_frames/frame0_cam_*.png`` +
