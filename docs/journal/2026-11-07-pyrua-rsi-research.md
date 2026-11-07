@@ -23,3 +23,13 @@ Validation: source citation ranges, local Markdown targets, ranking arithmetic
 and git whitespace checked. No application code changed. No simulator/camera
 jobs, model/media downloads, model installs or paid API calls; calls/tokens/spend
 0/0/0. The temporary upstream checkout was deleted after verification.
+
+Lead steer: chosen strategy is independent mechanism implementation, with no
+upstream code, bitmap or comment copying into implementations and no attribution
+text in implementation code/PRs. Added a 43-row exact SAM phrase/threshold/view
+inventory covering all 54 cells, a full weighted cell ranking from the expressly
+authorized published aggregate, and implementation packets for the first eight.
+Only `/home/agent/dojo-lead/dc19-read/per_cell.json` was opened there; no sibling,
+sealed episode or coord paths were accessed. Recomputed D-C19 48.441667 and
+released seed-0 87.161667; empty cells explicitly zero. Later wave verdicts remain
+rejected as registered and are not substituted for D-C19 baselines.
