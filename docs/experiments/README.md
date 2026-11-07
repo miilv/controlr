@@ -6,7 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
-| 2026-11-07 | [Laptop wide/clear G3](2026-11-07-laptop-g3-round2f.md) | Keep strong wide holds and plan actual staging release height | Bundled production screen registered; fresh paired panel remains gated |
+| 2026-11-07 | [Laptop wide/clear G3](2026-11-07-laptop-g3-round2f.md) | Keep strong wide holds and plan actual staging release height | Original11/12 standard,10/12 random; independent6/10,9/10; gate fails, no fresh panel |
 | 2026-11-07 | [Laptop shape diagnosis](2026-11-07-laptop-g3-round2e.md) | Diagnose enclosure, load onset, carry and release reach | Source504: old9/12 both; independent6/10 standard,8/10 random; gate fails, no fresh panel |
 | 2026-11-07 | [Laptop centre re-grasp G3](2026-11-07-laptop-g3-round2d.md) | Verified centre rest and cup re-grasp | Ten pairs/cell: 0→14 / 0→10 points; 7/10 / 5/10 credits, random target still open |
 | 2026-11-07 | [Laptop staged G3](2026-11-07-laptop-g3-round2.md) | Separate headset rotation from cradle approach | Ten pairs/cell: 4→12 / 2→14 points; 6/10 / 7/10 headset credits, misses standard reliability target |

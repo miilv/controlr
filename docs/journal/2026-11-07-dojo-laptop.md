@@ -237,3 +237,18 @@ slow/cup/mesh/staged/seat/sites flags). Its full local suite passes2174/191
 preserves root504 while it finishes; old/new share only permitted data/public
 assets, at most two actual light2/light8 scopes. Original12+independent10/cell
 new-source screen registered before outcomes; final ids0–14 remain unused.
+
+
+## Wide priority and release-clearance screen completes
+
+Frozen3866ad73 completes44 development episodes: original11/12 standard and
+10/12 random, independent6/10 standard and9/10 random. Standard fails8/10
+admission, so the conditional fresh variant19 protocol remains unexecuted;
+ids100000–14 remain ungenerated. All rows and provenance retained in the
+[wide/clear report](../experiments/2026-11-07-laptop-g3-round2f.md), no infra
+exclusions, full-task successes0. Opposite-arm staging on existing failed
+coverage18 standard30 also scores0. Continue measured loaded-hold diagnosis
+on that pilot before proposing another grasp/admission mechanism. Source3866
+full local suite2174 passed/191 skipped. Zero model spend, no camera dispatch
+or board change. The latest actual paired panel remains standard7/10 and
+random5/10; the user stopping condition has not been reached.

@@ -1,5 +1,34 @@
 # Laptop G3 round 2f — wide priority and checked release clearance
 
+## Completed decision
+
+All44 registered development episodes complete on frozen source3866ad73. The
+original bank passes11/12 standard and10/12 random, but independent placement
+coverage is **6/10 standard,9/10 random**. The standard8/10 admission gate
+fails. The conditional fresh paired registration below is **unexecuted**:
+no layouts100000–14 were generated, selected or inspected. Continue pilot
+mechanism diagnosis; this is not a qualified headset policy.
+
+| Development bank | Cell | n | Headset credits | Score mean ± sample SD /100 | Full successes |
+|---|---|---:|---:|---:|---:|
+| Original pilots | Standard | 12 | 11 | 18.33 ±5.77 | 0 |
+| Original pilots | Random | 12 | 10 | 16.67 ±7.78 | 0 |
+| Independent coverage18 | Standard | 10 | 6 | 12.00 ±10.33 | 0 |
+| Independent coverage18 | Random | 10 | 9 | 18.00 ±6.32 | 0 |
+
+These are candidate-only development screens, not paired A/B results. No
+infrastructure exclusions or replacement of policy failures. Independent
+random coverage contains only asset8; the original bank includes9/10. Keep
+all earlier candidate panels separate. Raw rows, manifests, code hashes,
+recipes and admissions are in the [retained archive](2026-11-07-laptop-g3-round2f-results.json).
+
+The separate opposite-arm probe on coverage18 standard100030 also scores0:
+right26 mm pickup is loose15.5 mm, a later pickup rises74 mm but drifts80 mm,
+and the final attempt falls683 mm with1391 mm drift. This is an auxiliary
+feasibility failure, not a production-screen row. The next
+[loaded-hold diagnostic](2026-11-07-laptop-g3-round2g.md) distinguishes
+settling from continued sliding without changing any admission criterion.
+
 ## Production-screen registration before outcomes
 
 Action source **3866ad73**; current main integration73a783bf changes docs only.
