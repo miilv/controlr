@@ -86,3 +86,15 @@ can generalize beyond one pilot.
 
 Round-1 full local suite completed: **2058 passed, 191 skipped, 18m19s**.
 CI passed on e68dd094; the newer evidence-only head needs a fresh CI trigger.
+
+The complete end-wall prototype on pilot 100023 scores **1.0 at step 179**
+(the environment terminates during placement). The clean implementation
+`belt_first=on,belt_target=match` reproduces **1.0 at step 177** in G3, with
+no instability or missing mesh. This is one tuned pilot, not a rate claim.
+
+[Round-2 registration](../experiments/2026-11-07-byimg-g3-r2.md) is committed at
+`db52accf` before any paired outcomes. Ten new variant-11 draws, ids 100010–19,
+passed native-phase settling; A/B launch from that exact frozen source. No
+camera dispatch, board change or merge. Full local suite on this implementation
+is running. The central-window alternative completed 5/10 in both native
+profiles and is rejected; no central-window code enters the candidate.
