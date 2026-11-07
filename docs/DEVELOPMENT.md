@@ -966,6 +966,27 @@ See [the install recipe](../baselines/rsi/INSTALL.md). CPU tests mock telemetry
 and verify admission, credential isolation, portable commands and input hashes.
 Running a recipe still requires current permission for the destination box.
 
+### General instruction/catalogue mask proposals
+
+`dojo.perception.general_masks.propose(image, instruction, index, v2b, sam, cfg)`
+is the task-free component API. Its inputs are RGB, the actual episode instruction,
+the one shared catalogue index and the two detector clients. `GeneralMaskConfig`
+contains one uniform set of model/confidence/deduplication parameters for every
+episode. There is no task key, registry selector, checker or task-config input.
+Catalogue category labels and caption names are global; catalogue geometry, roles
+and placement priors are ignored. Generic grammatical chunks add instruction
+object phrases. All catalogue labels are included on every call. Existing v2b
+identities precede score-ordered SAM proposals during mask-IoU de-duplication;
+SAM proposals carry candidate categories and text, never exact asset identities.
+
+This API is an offline component, with no runtime activation or default change.
+It does not make the downstream task-prior inverse-layout fitter board-compliant.
+`scripts/perception/sam/general_eval.py` validates the frozen image/layout hashes
+and passes GT/task metadata only to scoring after prediction. `general_summary.py`
+requires the complete panel, checks the rerun v2b reference and evaluates the
+prospectively frozen all-cell harm gates. Historical task-bank scores are references
+only. An offline gate failure prohibits camera dispatch for that configuration.
+
 ### Task-scoped SAM camera proposals and shared service
 
 `EstimatorConfig.sam_task_routes` defaults to `{}`. Keys are the instruction-routed
