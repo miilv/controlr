@@ -27,3 +27,11 @@
 - A scanner must check its starting roots, not only descendants, before walking.
 - Prefixes are matched without a trailing separator.
 - The PUBAUDIT thread is not reused for further work.
+
+**Follow-up (8 Nov, ~00:00Z).**
+- The partner team asked for the matched file paths (no contents), the patterns, and whether tranche B (ids 100105–100109) was touched.
+- The same finished agent was asked once to answer from its own record, with no re-scan.
+- Its answer: the record is incomplete and individual paths were not retained. Tranche B and whether results were in the matched lines are both **unknown**.
+- Its patterns file was forwarded to the partner unread by the lead.
+- We will not re-scan the sealed roots to rebuild the list.
+- Until the founders decide, tranche B is "under review". Our suggestion: treat every sealed block under those roots as possibly exposed, and cut a fresh sealed block for the hidden-layout rehearsal.
