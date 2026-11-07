@@ -339,3 +339,11 @@ The original12/cell and first-ten-stable coverage18 screen use source504daaef
 with exactly the registered slow enclosure/rest flags, two concurrent slots
 and fixed settled files. Full integrated local suite starts before dispatch.
 No new fresh-panel id or checker/verifier threshold is changed.
+
+Before any coverage18 policy outcome, set the screening gate for spending
+the remaining never-used panel ids: at least9/12 credits in the original
+pilot bank and8/10 in coverage18 **in each cell**. Complete both registered
+screens and report all outcomes, rather than stopping on an early favourable
+count. If this gate fails, diagnose pilots and continue development; do not
+reroll the final panel or alter its future selection rule. These are
+development gates, not a formal estimate of population reliability.
