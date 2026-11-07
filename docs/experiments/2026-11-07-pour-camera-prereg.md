@@ -335,3 +335,23 @@ Frozen controller/native source, candidate, packages and shared assets rehash
 unchanged. [Staging](data/pour-camera/replacement-stage-script.txt) and
 [insertion](data/pour-camera/replacement-insert-script.txt) are frozen here.
 The updated manifest is committed to main before any replacement row is queued.
+
+### Replacement dispatch receipt — 2026-11-07 11:00:37 UTC
+
+The [receipt](data/pour-camera/replacement-dispatch.json) records **22 new rows
+at positions 33–54**, after all 32 remaining POUR rows and immediately before
+`c6b_imitatesg_tieAr1_100027`. Admission then queue locks were held;
+all 92 existing rows retain exact bytes and order. No queued mate of a started
+tie needed protection at this snapshot. KONG's held rows, lane controls and
+other processes are unchanged. The updated manifest was on main in
+**fed64759** before insertion; the prospective amendment was **eb68d14b**.
+
+- Queue SHA256 before: `e3d6b5923f9c8fa4ed450cf33e2fb73de7edbb11ac7573d6bab97035685f7e13`.
+- Queue SHA256 after: `9c438d5b44b11c1f258017c822e6e6d06991613d2ebec478db87a37427bcb2a1`.
+- Updated manifest SHA256: `78bcfec5af4071ff069a2ba01b4fc7151dbf0d09a513ebab7ef13ffee2e8dd44`.
+
+All 22 rows passed the explicit Sonnet route and owned-id checks. The metadata
+route monitor was restarted on the amended 80-row effective schedule; only its
+own verified PID was stopped. Actual call-route proof remains required for each
+row. All **nine verified pre-episode ownership refusals** are retained/excluded,
+not controller outcomes. No outcome-dependent replacement or default change.

@@ -42,3 +42,25 @@ to admission/startup/caps/retries. No camera outcome is claimed by dispatch.
 `84f2697c888a300c1ca5abbc71fcf773a5992b82c607ebd144839cd34490ef93`. The prereg freezes score/guard gates and the refined
 per-writer audit if implementation/settings/schema or observed writes differ;
 pacing adds no writer or perception change. Guard score gates are retained.
+
+## Rendered ownership repair
+
+The initial <100100 bound incorrectly admitted Mikhail's 100010–19 slice.
+The lead held refused rows and restarted valid work at 10:41Z. The prospective
+amendment eb68d14b discloses that the lead saw 100000–09 outcomes during diagnosis;
+replacement is strictly a mechanical eligibility shift, using the same salts,
+recipe and gates. Prep now asserts OUR_MEASUREMENT_SLICES and BACKLOG records
+the ownership landmine. All ten language 100020–29 and cup 100020 passed raw
+checks/two-pass settling without a refill, at zero prep model calls. Frozen
+source/candidate/packages/shared assets rehash unchanged.
+
+The exact refusal ledger verifies nine attempts (not the initially reported
+seven): four each on 100010 and 100011, one on 100012. All rc=2 with ownership
+refusal before any episode; all are retained/excluded. No controller outcome
+is replaced. Updated manifest fed64759 was on main before dispatch.
+At 11:00:37Z, 22 rows were inserted at 33–54 after 32 remaining POUR rows,
+before the next unstarted tie, under admission/queue locks. All 92 old rows
+retain bytes/order. KONG held rows and lane controls are untouched. The own
+metadata-only monitor was restarted for the amended 80-row effective panel.
+See the [replacement receipt](../experiments/data/pour-camera/replacement-dispatch.json)
+for queue/manifest hashes. No adoption or default change.
