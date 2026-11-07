@@ -207,3 +207,32 @@ The previous preparation-only freeze and non-dispatch receipt are retained
 as history and superseded by this complete freeze. Projected spend remains
 433 logical Claude calls; actual before dispatch: zero calls and zero tokens.
 This complete freeze must be on main before any row is appended.
+
+## Dispatch receipt — 2026-11-07T03:29:40Z
+
+Complete freeze was pushed to main at `e7ca8286` before append.
+Appended **100 rows at queue positions 116–215**
+(1-based positions at append), after all 115 existing queued rows,
+under `flock ~/dojo-integ-c4-state/queue2.txt.lock`. Existing bytes were preserved
+exactly. No existing row was reordered, rewritten or removed by this task.
+
+- [Receipt with every row and its append position](data/coin-disc-retest-1107/dispatch-receipt.json).
+- Manifest SHA256: `9eea63ddebf016dcfd71b1c9f21cd7169dad8de14c0868de6a6a64e76153947d`.
+- Row-file SHA256: `90acca0d52de076720b85c6291d2af7d6b493aef4e51bd8a8eb06d5cc5f2951e`.
+- Queue SHA256 before: `735f9d6fcbad1d78e262e566115e4afd74d4aae2a2409c41b716a00cd1c24e19`.
+- Queue SHA256 after: `4dde2fdcea6a108c8ea4d011e4ee162088299c8cdc22b2bcb13f3fbfc39514bc`.
+- Route rechecked on **100/100** rows before append and again after append:
+  `AGENTIC_MODEL=claude/claude-sonnet-5-5`, with no Luna/cx route.
+- Post-append verification: all 100 frozen rows present in their frozen order;
+  heavy1 and heavy2 lane processes alive. No panel row had started.
+- Actual spend at dispatch: **0 logical calls, 0 prompt/completion/reasoning/cache
+  tokens**. Estimated full-panel spend remains **433 logical Claude calls**.
+- Occupancy-only historical estimate: 9.0 lane-hours
+  ahead, 9.3 lane-hours for this panel; about
+  9.2 elapsed hours on two lanes from append,
+  approximately **12:40 UTC on 7 Nov** for completion. Admission waits, active jobs,
+  adaptive perception and infra retries can extend this. It is not a deadline.
+
+The panel is dispatched at the full original n: 20 deposit_coin pairs and
+10 pairs each of insert_key, play_tic_tac_toe and stack_blocks. This task ends
+at dispatch; no verdict, adoption recommendation or camera outcome analysis.

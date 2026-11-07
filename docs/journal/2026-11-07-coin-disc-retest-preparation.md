@@ -19,3 +19,10 @@ blocks, with an 8-pair minimum fallback. Amendment and salts reached main at
 key pairs by ascending stability-only selection. Final key second-pass rejection
 was 13/25 versus 0/40 in the other cells; BACKLOG now records the landmine.
 Complete 50-pair manifest SHA256 `9eea63ddebf016dcfd71b1c9f21cd7169dad8de14c0868de6a6a64e76153947d` is frozen before dispatch.
+
+At 03:29:40Z, after the complete freeze reached main at e7ca8286, appended
+100 frozen rows under the queue lock at positions 116–215, preserving all
+existing bytes. Rechecked Sonnet in 100/100 rows; both lanes were alive and
+none of this panel had started. Actual spend at dispatch was zero calls/tokens.
+The prereg contains the full dispatch receipt and queue hashes. Verdict remains
+later work.
