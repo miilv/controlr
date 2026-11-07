@@ -152,3 +152,30 @@ is not triggered. Evidence: the only switch reads in `dojo/skills/regrasp.py`
 are at the search selector and waypoint-slice selector, and #412 changes only
 RuntimeConfig validation/resolution and Skills assignment, with route parity
 regressions. No physics write-audit pass is claimed or needed for this lever.
+
+## Lead pre-collection amendment — one additional bounded refill
+
+The original two blocks and two frozen refills produced **9/20** valid key
+settles (4, 1, 1, 3 by block); every raw check passed. No camera data has
+been collected. The lead explicitly authorizes **one** additional five-id
+block, 100000–100004, under identical raw-check and two-pass validation.
+The original design is retained in the remote pre-generation freeze. The
+[updated machine-readable design](data/key-scoped/design-amended.json) adds only
+`key-scoped-refill-3` and the explicit sample-size exception below.
+
+Before generating this block, its freshly drawn UTF-8 salt (no newline) is:
+
+`queue-key-scoped-lead-refill-20261107-07e01a85c97bbaa056e7225cfac8ad4714ee9c2c2befdaaa`
+
+SHA256: `ad5e8a3ee750a1f81638fd5b4613b2da708863570d44affbcb8154cb6055899e`.
+
+Generate all five records once, retain every validation result and exclusion,
+and add only the **lowest valid id** needed to bring gain n to ten. Unused
+valid records are retained without camera evaluation. If all five fail normal
+validation, the lead authorizes dispatch with **nine gain pairs**, explicitly
+reported as n=9, superseding only the ten-pair minimum/launch blocker. The
+score-delta threshold, >=10-point pair wins/losses, win/loss ratio, two-net-win
+requirement and both five-pair guard rules remain unchanged. No further
+blocks, retries of failed settles, relaxed validation or outcome-based draws
+are allowed. This amendment is committed before extra generation and before
+any camera collection.
