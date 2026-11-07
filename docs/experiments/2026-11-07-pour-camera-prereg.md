@@ -181,7 +181,7 @@ threshold, salt or pool change was made.
 
 The [manifest](data/pour-camera/manifest.json), including all selected and failed
 input hashes, validations and 80 expanded camera rows, has SHA256
-`710d14faffa1536faf07d2371e556414d95982f7abf2f93d27cc206d97a2a6a5`. The [selection ledger](data/pour-camera/selection.json),
+`84f2697c888a300c1ca5abbc71fcf773a5992b82c607ebd144839cd34490ef93`. The [selection ledger](data/pour-camera/selection.json),
 [pre-generation freeze](data/pour-camera/pre-generation-freeze.json),
 [candidate equivalence](data/pour-camera/resolved-config-parity.json),
 [package parity](data/pour-camera/parity.json),
@@ -207,3 +207,21 @@ Inputs, scripts, complete logs and operational metadata remain under
 route pin and the frozen settled input. Actual per-row call/process route checks
 run during collection and are required before qualification. The monitor makes
 no model calls. This complete freeze is committed to main before insertion.
+
+### Pre-launch operational amendment
+
+Freeze commit **c1b4170a** reached main before the first insertion attempt.
+That attempt aborted before any queue snapshot or write: an old tie retry name
+used `__retry`, while the parser recognized only dotted retry suffixes. The
+[amendment record](data/pour-camera/operational-amendment.json) preserves the
+original script hash and prior manifest hash. The
+[amended insertion script](data/pour-camera/insert-script.txt) treats that suffix
+as the same original pair, so its started mate/retry stays ahead of POUR.
+Expanded mock tests and all 434 historical/current names passed before retry.
+The old script remains on compute6 as `insert-prefreeze.py`.
+
+All 80 camera rows, inputs, salts, order, configs, model pins, source and gates
+are unchanged. Rechecking 224 frozen dependency/input descriptors passed.
+Only the operational parser and manifest metadata changed; the amended complete
+manifest above is committed to main before a second insertion attempt. No model
+calls or camera outcomes informed this correction.

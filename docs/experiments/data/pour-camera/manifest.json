@@ -50,8 +50,8 @@
     },
     {
       "path": "/home/robotics/dojo-data/pour-cam/insert.py",
-      "bytes": 6362,
-      "sha256": "38293627ba1ef081269446a6ca2571cbfc10b8f945056b4ae3ec0e57de0a65cf"
+      "bytes": 6670,
+      "sha256": "512f9adfb3091e5a09e7a45d0a02530529f6cc0b6a3263783eb66bfc9e595112"
     },
     {
       "path": "/home/robotics/dojo-data/pour-cam/route_monitor.py",
@@ -20622,5 +20622,15 @@
     "bytes": 717,
     "sha256": "a211b685c3343748fc63284ec380d3a5978c7ab76b66415bf921c83ae7ec296a"
   },
-  "finalized_before_dispatch_utc": "2026-11-07T09:28:32.391545+00:00"
+  "finalized_before_dispatch_utc": "2026-11-07T09:31:20.652881+00:00",
+  "operational_amendment": {
+    "path": "/home/robotics/dojo-data/pour-cam/operational-amendment.json",
+    "bytes": 1519,
+    "sha256": "883c0325f1f1e8d11406e4eea3f41f87ca2947c6966a8f1490e12138814df0b0"
+  },
+  "operational_amendment_script": {
+    "path": "/home/robotics/dojo-data/pour-cam/amend-ops.py",
+    "bytes": 2544,
+    "sha256": "c10134f2dca697775643dd60e943c3315ebe19b524e1468541d6fde0b26b1c9a"
+  }
 }
