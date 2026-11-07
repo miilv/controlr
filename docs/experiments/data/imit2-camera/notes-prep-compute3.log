@@ -1,0 +1,20 @@
+2026-11-07T15:12:26Z FROZEN before generation: design_sha256=0a650e5d0b82bf5476128f7d7aff8c88c899e422b4671e115e522bfa3738c408
+2026-11-07T15:12:26Z END gen_imitate_sorting_sequence_100000_100009 rc=126
+2026-11-07T15:13:10Z FROZEN before generation: design_sha256=0a650e5d0b82bf5476128f7d7aff8c88c899e422b4671e115e522bfa3738c408
+2026-11-07T15:13:10Z END gen_imitate_sorting_sequence_100000_100009 rc=0
+2026-11-07T15:13:10Z START settle_imitate_sorting_sequence_100000_100009 lock=/home/physicalai/dojo-gpu-light.lock used_MiB=5994 free_GB=84
+2026-11-07T15:15:31Z END settle_imitate_sorting_sequence_100000_100009 rc=0
+2026-11-07T15:15:31Z END gen_imitate_sorting_sequence_100020_100029 rc=0
+2026-11-07T15:15:31Z START settle_imitate_sorting_sequence_100020_100029 lock=/home/physicalai/dojo-gpu-light.lock used_MiB=11983 free_GB=84
+2026-11-07T15:17:55Z END settle_imitate_sorting_sequence_100020_100029 rc=0
+2026-11-07T15:17:55Z START demo125_imitate_sorting_sequence lock=/home/physicalai/dojo-gpu-light.lock used_MiB=3497 free_GB=84
+2026-11-07T15:50:49Z END demo125_imitate_sorting_sequence rc=0
+2026-11-07T15:50:49Z START demo150_imitate_sorting_sequence lock=/home/physicalai/dojo-gpu-light.lock used_MiB=3399 free_GB=84
+2026-11-07T15:58:19Z END demo150_imitate_sorting_sequence rc=0
+2026-11-07T15:58:20Z END gen_stack_blocks_100000_100004 rc=0
+2026-11-07T15:58:20Z START settle_stack_blocks_100000_100004 lock=/home/physicalai/dojo-gpu-light.lock used_MiB=3416 free_GB=84
+2026-11-07T15:58:53Z END settle_stack_blocks_100000_100004 rc=0
+2026-11-07T15:58:53Z END gen_classify_objects_100000_100004 rc=0
+2026-11-07T15:58:53Z START settle_classify_objects_100000_100004 lock=/home/physicalai/dojo-gpu-light.lock used_MiB=3376 free_GB=84
+2026-11-07T15:59:34Z END settle_classify_objects_100000_100004 rc=0
+2026-11-07T15:59:34Z PREP COMPLETE {"imitate_sorting_sequence": 19, "imitate_excluded": 1, "stack_blocks": 5, "classify_objects": 5}; no model calls
