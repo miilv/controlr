@@ -415,13 +415,69 @@
     },
     "fold_clothes_random": {
       "dimension": "Generalization",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "0a40ca63a65e1ebff82664de40eef97442ba9d5ffc9431a6c794c6cd664e5c23",
+          "official_score": 20.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T191651476297Z_fold_clothes_random",
+          "steps": 477,
+          "success": false,
+          "task": "fold_clothes_random",
+          "wall_s": 100.91252187103964
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "80c1cbdb08831413cb052812a699a152989a6cde8bff25781ff533138b5e4250",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T191651476297Z_fold_clothes_random",
+          "steps": 386,
+          "success": true,
+          "task": "fold_clothes_random",
+          "wall_s": 74.34689952398185
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "1ae6fbd1bf70572147156a48bd24652b9fed8d1af92e192d9f56f0d12276637f",
+          "official_score": 100.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T191651476297Z_fold_clothes_random",
+          "steps": 465,
+          "success": true,
+          "task": "fold_clothes_random",
+          "wall_s": 90.58424768701661
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "cdf6fa1b93fae5bcc41eb80d08e2ac01a5f9109127815ab7d9fe0ded3f13a986",
+          "official_score": 100.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T191651476297Z_fold_clothes_random",
+          "steps": 473,
+          "success": true,
+          "task": "fold_clothes_random",
+          "wall_s": 89.15285201102961
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "d900354a1f98a043dee35519fc761ff2afd01838ab34d8144cbb9de2ce2130ed",
+          "official_score": 100.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T191651476297Z_fold_clothes_random",
+          "steps": 369,
+          "success": true,
+          "task": "fold_clothes_random",
+          "wall_s": 71.44749064405914
+        }
+      ],
+      "n": 5,
+      "official_score": 84.0,
+      "score_sd": 35.77708763999664,
+      "steps": 2170,
+      "successes": 4,
+      "wall_s": 426.44401173712686,
       "weight": 0.008333333333333333
     },
     "general_pickup": {
