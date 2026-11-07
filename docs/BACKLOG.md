@@ -1070,8 +1070,10 @@
     reports).
 - [ ] **dojo skills: match_and_pick, rim pinches on solid riders** (MATCH2, G3 perfect perception, 60+ layouts):
   `plan_intercept`'s no-top-grasp fallback takes rim pinches ("phi") first, and they hold 0 / 14 cameras and 0 / 4
-  headsets (antipodal 9 / 9, 3 / 3). `belt_grasp=solid` (default off): antipodal ranked by `lift_hold`, waist, rims
-  last; plates keep today's order. G3 per category, today: bottle 18 / 18, phone 13 / 13, puppet 11 / 11, game
+  headsets (antipodal 9 / 9, 3 / 3). `belt_grasp=solid` (default off: antipodal first, waist, rims last) LOST in G3
+  (45 -> 42 / 41 of 55): today's retry after a rim slip lands on the good antipodal pair, `solid`'s retry skips the
+  whole antipodal family. Next: retry within the family (skip the failed grasp, not its method) and re-plan before
+  homing (the rider passes out of reach: "no intercept"). G3 per category, today: bottle 18 / 18, phone 13 / 13, puppet 11 / 11, game
   machine 12 / 13, plate 8 / 10, camera 10 / 17, ice cream 4 / 10.
 - [ ] **dojo skills: match_and_pick, objects wider than the hand at the top** (ice cream 104 mm on a 69 mm cone, 3 of
   25 dev targets) have no intercept grasp within 40 deg of vertical; a side grasp of the cone on the moving belt.
