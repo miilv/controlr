@@ -32,3 +32,28 @@ jobs:
             echo "::error::Possible secret value committed"; exit 1
           fi
           echo "secret scan clean"
+
+  legality-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Inference reachability inventory (report only)
+        run: uv run --no-project python scripts/legality/scan.py --output legality.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: legality-inventory
+          path: legality.json
+
+  legality-ratchet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v5
+      - name: No new exemptions or general-path findings
+        run: >-
+          uv run --no-project python scripts/legality/scan.py --check
+          --output legality.json
+          --base-ref '${{ github.event.pull_request.base.sha || github.event.before }}'

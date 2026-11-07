@@ -1049,3 +1049,41 @@ SAM parity guard, inspect every `vocab_explain.candidates` entry as well as the 
 vocabulary and record routing counters. A final inactive vocabulary alone does not
 prove that an earlier candidate estimate made zero SAM requests. An active bank
 in a guard's candidate exploration blocks the zero-request parity proof.
+
+### Inference legality inventory and ratchet
+
+Run `uv run python scripts/legality/scan.py --output /tmp/legality.json` for the
+report, or add `--check --base-ref origin/main` for enforcement. It parses source
+without importing inference code or reading any catalogue. `--root` audits another
+checkout; repeat `--entry package.module:function` to audit the partner library.
+Defaults cover the runtime, planner, supervisor, perception and every local registry
+entry, including candidates. Dispatch-table references are followed transitively.
+
+The report-only CI job uploads all findings. A separate ratchet rejects new findings
+against `scripts/legality/allowlist.json`, and rejects additions to that file relative
+to the PR base. The initial baseline is bootstrapped only where the base has no file.
+Exemptions are hashes of file, symbol, category and exact source evidence, independent
+of line numbers. They are historical debt, never a certificate of board eligibility.
+Remove exemptions as code is retired; do not regenerate or expand the baseline to
+make CI green. A changed source line needs to eliminate the finding. The general
+system directories `dojo/general/`, `dojo/skills/general/`,
+`dojo/perception/general/` and `dojo/runtime/general/` are automatically roots and
+cannot receive exemptions, including for transitive findings in legacy dependencies.
+Declare additional production entry points in `DEFAULT_ENTRIES` as they are introduced.
+Do not narrow the roots, frozen task vocabulary or detection rules to bypass a finding.
+
+This is conservative reachability, not path feasibility or a Python security boundary.
+Attribute receivers without precise types are expanded by member name. Dynamic calls,
+reflection and external dependencies are reported as unresolved, not certified safe.
+Counts include comments/docstrings showing checker provenance; a mention is evidence
+for review, not proof of a forbidden read. Numeric provenance cannot be inferred from
+unannotated literals. Review the audit crosswalk alongside the generated inventory.
+
+`tests/dojo/test_legality_sentinel.py` runs mock perception/runtime episodes with a
+poisoned task identity and a scripted FakeLLM planner. Test-only profile tripwires catch
+schema access through pre-imported aliases and retain hits swallowed by worker code;
+file guards cover task config/checker reads. Instruction text remains available to the
+planner. Explicit negative controls document the legacy unknown-instruction schema
+fallback and the internal ported instruction leak. Passing these tests does not certify
+untested skills, RPC service internals, or current board compliance. Keep those negative
+controls visible until replaced by zero-hit episodes during migration to the shared tool.

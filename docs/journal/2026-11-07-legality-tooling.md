@@ -1,0 +1,18 @@
+# Inference legality tooling and baseline
+
+The LEGAL stream adds an offline transitive source inventory and mock-only runtime
+sentinels after Ilia's general-system hard rule. No inference defaults changed.
+The [baseline report](../experiments/2026-11-07-legality-inventory.md) inventories
+main and sealed D-C19, cross-checks both partner audits, distinguishes confirmed
+blockers from risky evidence and retains all unresolved calls for review.
+
+CI uploads the inventory without failing on historical findings. A separate ratchet
+rejects new findings, growing exemptions and any finding reachable from the declared
+new general-system directories. Runtime tests keep task instruction text available
+to the planner while poisoning task identity and trapping schema accesses. Negative
+controls reproduce the legacy schema fallback and the transitive ported instruction
+leak; their presence is not permission to use those paths in a board entry.
+
+The partner implementation is expected separately. Compare both tools on these
+fixtures, then retain one shared tool after the move to robot-harness. This PR does
+not introduce another general library or attempt to retire the blocked controllers.

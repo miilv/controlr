@@ -736,3 +736,15 @@ SAM3/SAM3.1 models live in one serialized side service per box, reused by both c
 SAM masks carry allowed candidates rather than asset identities and enter the existing
 silhouette/appearance fit path. Raw prompt categories never become exact identity hints.
 The lane accounts for the shared GPU process once and verifies its health around each job.
+
+### Offline inference legality tooling
+
+`scripts/legality/scan.py` parses the repository without importing inference code.
+Declared planner, supervisor, runtime, perception and registry roots reach local
+callees, dispatch tables and imported globals; known prompt resources are inventoried
+as input roots. Unresolved calls remain explicit review debt. The separate test-only
+instruction sentinel runs mock episodes and traps task identity/schema reads, including
+internal ported boundaries. These tools do not affect deployed control behavior.
+CI publishes the report and enforces a shrinking historical exemption list; general
+system directories cannot inherit legacy exemptions. See DEVELOPMENT's legality policy
+and the dated legality inventory for limitations and confirmed board blockers.

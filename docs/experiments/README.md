@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [Legality inventory](2026-11-07-legality-inventory.md) | Transitive inference leaks in main and D-C19 | Board blocked; source inventories, mock sentinels, CI debt ratchet; 0 calls |
 | 2026-11-07 | [SAMINT pour camera spec](2026-11-07-samint-pour-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
 | 2026-11-07 | [SAMINT egg camera spec](2026-11-07-samint-egg-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
 | 2026-11-07 | [SAMINT classify-language camera spec](2026-11-07-samint-classify-language-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
