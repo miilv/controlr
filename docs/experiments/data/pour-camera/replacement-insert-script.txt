@@ -1,0 +1,27 @@
+import datetime,fcntl,hashlib,json,pathlib,re,sys,os
+H=pathlib.Path.home();R=H/'dojo-data/pour-cam';S=H/'dojo-integ-c6-state';Q=S/'queue2.txt'
+ns={};exec((R/'insert.py').read_text().split("if '--self-test'")[0],ns);pair=ns['pair'];position=ns['position']
+def sha(p):return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+M=json.loads((R/'replacement-manifest.json').read_text());new=(R/'queue-replacements.txt').read_bytes();names={x['name'] for x in M['replacement_schedule']}
+assert len(names)==22 and sha(R/'queue-replacements.txt')==M['queue']['sha256'];assert (R/'replacement-freeze-commit.txt').exists();assert not (R/'replacement-dispatch.json').exists()
+sys.path.insert(0,M['deployment']);from dojo.simlab.paths import is_our_measurement_id
+for x in M['replacement_schedule']:
+ assert is_our_measurement_id(x['id']);assert sha(x['layout'])==next(f['sha256'] for f in M['files'] if f['path']==x['layout'])
+for l in new.decode().splitlines():assert l.split().count('AGENTIC_MODEL='+M['model'])==1
+with (S/'wave-start.lock').open('a') as admission:
+ fcntl.flock(admission,fcntl.LOCK_EX)
+ with (S/'queue2.txt.lock').open('a') as lock:
+  fcntl.flock(lock,fcntl.LOCK_EX);started=set();started_names=set()
+  for p in S.glob('lane2_heavy*.log'):
+   for l in p.read_text().splitlines():
+    m=re.match(r'^\S+ \[[^]]+\] start (\S+)',l)
+    if m:
+     started_names.add(m[1]);k=pair(m[1])
+     if k:started.add(k)
+  assert not names.intersection(started_names)
+  before=Q.read_bytes();ls=before.decode().splitlines(keepends=True);assert not names.intersection(l.split()[0] for l in ls)
+  at,protected=position(ls,started);assert all(i<at for i,l in enumerate(ls) if '_pourcam' in l.split()[0]),'Remaining POUR must stay ahead'
+  after=b''.join(l.encode() for l in ls[:at])+new+b''.join(l.encode() for l in ls[at:]);assert b''.join(l for l in after.splitlines(keepends=True) if l.split()[0].decode() not in names)==before
+  (R/'replacement-queue-before.txt').write_bytes(before);tmp=S/'queue2.pour-replacement.tmp';tmp.write_bytes(after);os.replace(tmp,Q);(R/'replacement-queue-after.txt').write_bytes(after)
+  d={'inserted_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'positions_1_based':[at+1,at+22],'new_rows':22,'existing_rows':len(ls),'queue_sha256_before':hashlib.sha256(before).hexdigest(),'queue_sha256_after':hashlib.sha256(after).hexdigest(),'manifest_sha256':sha(R/'replacement-manifest.json'),'freeze_commit':(R/'replacement-freeze-commit.txt').read_text().strip(),'preserved_old_bytes_and_order':True,'protected_started_pair_rows':[ls[i].split()[0] for i in protected],'remaining_pour_ahead':sum('_pourcam' in l.split()[0] for l in ls[:at]),'next_tie':ls[at].split()[0] if at<len(ls) else None,'route_checked_rows':22,'model':M['model'],'infra_refusals_excluded':M['refusal_attempts_excluded']}
+  (R/'replacement-dispatch.json').write_text(json.dumps(d,indent=2)+'\n');print(json.dumps(d,indent=2))

@@ -1,0 +1,13 @@
+{
+  "state": "fixed",
+  "primary": "identity-association",
+  "commit": "77b4571907f6ce49eec11c0685db8f0c7ba05d64",
+  "pull_request": "https://github.com/miilv/controlr/pull/417",
+  "merged_utc": "2026-11-07T07:51:39Z",
+  "first_start": null,
+  "selection_basis": "merged before first re-test row start; selected without outcome reads",
+  "supplementary": "nearest-GT",
+  "recorded_utc": "2026-11-07T07:52:34.851091+00:00",
+  "recorder_sha256": "a8ff712f4259b600df3bc422f710ee5cfeee3f1d7d57205a991bf0d4a3d85e4b",
+  "outcomes_read": false
+}

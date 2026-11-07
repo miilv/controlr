@@ -1,0 +1,65 @@
+{
+  "checked_utc": "2026-11-07T09:28:32.066392+00:00",
+  "kind": "post-generation pre-dispatch integrity check; does not alter or backdate original pre-generation freeze",
+  "pre_generation_sha256": "7921d36da123b6be1e1da49a8a8b8ad34e2ba54deb098ca8fe9e68d01dcd1496",
+  "unchanged_frozen_dependencies": 138,
+  "simulation_versions": {
+    "python": "3.11.18",
+    "msgpack": "1.2.4",
+    "isaacsim": "5.1.0.0"
+  },
+  "simulation_versions_match_KEY_prefreeze": true,
+  "robodojo_git": "f57e1633ffed59761bc8e568cfe7530c4b33381c",
+  "startup_logs": [
+    {
+      "path": "/home/robotics/dojo-data/pour-cam/raw_play_Xylophone_100000_100009.log",
+      "sha256": "bfec90703e9244be89f469613d95507e010a0d87f190ebdf4834549788231c00",
+      "active_gpu": "NVIDIA GeForce RTX 5090",
+      "cuda_or_cooking_failure_markers": []
+    },
+    {
+      "path": "/home/robotics/dojo-data/pour-cam/raw_pour_by_language_100000_100019.log",
+      "sha256": "fe17af1cecd5b800dd4d5f7879ada96b507782a960417295e651bc6fd166d483",
+      "active_gpu": "NVIDIA GeForce RTX 5090",
+      "cuda_or_cooking_failure_markers": []
+    },
+    {
+      "path": "/home/robotics/dojo-data/pour-cam/raw_pour_liquid_into_cup_100000_100009.log",
+      "sha256": "100d176d49b5e8a265949f2e208030df5715b45853f80a422c0bc5e98c391623",
+      "active_gpu": "NVIDIA GeForce RTX 5090",
+      "cuda_or_cooking_failure_markers": []
+    },
+    {
+      "path": "/home/robotics/dojo-data/pour-cam/raw_pour_liquid_into_cup_100010_100010.log",
+      "sha256": "5f636acf6a53d29ad77f917da1efbffb3190baf7933c866c58a0dc769ff551e7",
+      "active_gpu": "NVIDIA GeForce RTX 5090",
+      "cuda_or_cooking_failure_markers": []
+    },
+    {
+      "path": "/home/robotics/dojo-data/pour-cam/settle_play_Xylophone_100000_100009.log",
+      "sha256": "a9852ba8bd6d32fe5c2f2f9d9c366d0e3ce6b7d927f2990c36a428f5fe686004",
+      "active_gpu": "NVIDIA GeForce RTX 5090",
+      "cuda_or_cooking_failure_markers": []
+    },
+    {
+      "path": "/home/robotics/dojo-data/pour-cam/settle_pour_by_language_100000_100019.log",
+      "sha256": "5b117bc4f39962fc4cef660953f380de45f458ddb5a43134efbf86b7df86d8c9",
+      "active_gpu": "NVIDIA GeForce RTX 5090",
+      "cuda_or_cooking_failure_markers": []
+    },
+    {
+      "path": "/home/robotics/dojo-data/pour-cam/settle_pour_liquid_into_cup_100000_100009.log",
+      "sha256": "bf88ee8cccdefdcb73f74e33ba672d3ecbf45be4f6538955e0168189911d86fd",
+      "active_gpu": "NVIDIA GeForce RTX 5090",
+      "cuda_or_cooking_failure_markers": []
+    },
+    {
+      "path": "/home/robotics/dojo-data/pour-cam/settle_pour_liquid_into_cup_100010_100010.log",
+      "sha256": "19fcee5c0abe51a975bc3c4c1248ca56d681a3354ad201b6c886a637597e5dbc",
+      "active_gpu": "NVIDIA GeForce RTX 5090",
+      "cuda_or_cooking_failure_markers": []
+    }
+  ],
+  "known_asset_warnings": "Native nested rigid-body/reset and external material references are retained in logs; no validation relaxation or environment change.",
+  "model_calls": 0
+}

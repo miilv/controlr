@@ -6,6 +6,14 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Camera layout ownership landmine:** every camera A/B prereg and prep
+  must select ids only from `OUR_MEASUREMENT_SLICES` (100000–09, 100020–29)
+  in `dojo/simlab/paths.py`. A fresh salt does not grant ownership of an id;
+  merely checking <100100 admits Mikhail's slices and integ refuses them before
+  an episode. Gate generation and dispatch explicitly; retain infra refusals
+  ([POUR amendment](experiments/2026-11-07-pour-camera-prereg.md)).
+  KONG also prepared refused ids; its 60 rows were removed before any start.
+
 - [ ] **Preserve agentic transport retry telemetry.** `OmniChat` drops
   `LLMResult.attempts` / `http_status` when building `ChatReply`, so logical
   call logs cannot certify actual recovered retries or transient 429 counts.

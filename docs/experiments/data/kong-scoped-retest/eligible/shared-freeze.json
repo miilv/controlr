@@ -1,0 +1,745 @@
+{
+  "weights": [
+    {
+      "path": "/home/robotics/dojo-data/segtrain/models/v2b/best.pt",
+      "bytes": 20953828,
+      "sha256": "d7b2f167a69584697628ba967c0f82f4ecfacd3152267f12b23644cc46e8ca88",
+      "md5": "2f546196145fc424f76a5e2e47dd3210"
+    },
+    {
+      "path": "/home/robotics/dojo-data/segtrain/models/v2b/classes.json",
+      "bytes": 28760,
+      "sha256": "900b4967d0ff4353b02efd782c065f556c8cb46289eb31d1e7f2cae56b5b027d",
+      "md5": "5560c910621654614e25d9f076adf36a"
+    },
+    {
+      "path": "/home/robotics/dojo-data/segtrain/models/digit_v2/model.pt",
+      "bytes": 44811851,
+      "sha256": "a9c341e949d08afd806d0118d63b67e109430a918b612dbbddf37231ea8d548b",
+      "md5": "df7da507a3d3e65e1736a16ce955932b"
+    },
+    {
+      "path": "/home/robotics/dojo-data/segtrain/models/kong_v1b/model.pt",
+      "bytes": 44867083,
+      "sha256": "dc35be09bfa6588203983668f0e3bf7b10061b42e824519a3a4126cb978d628e",
+      "md5": "300f319c1f77ac1b04551cf2a957f64f"
+    }
+  ],
+  "backgrounds": [
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/cam_head.png",
+      "bytes": 389155,
+      "sha256": "bd55ed6f183b15cd2909f704c934d6f71f45cb7187c634607246d9919b9a279b",
+      "md5": "6b40735a70fb678a3b5abadc8623c7a8"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/cam_head_clean.png",
+      "bytes": 377626,
+      "sha256": "1e5c53c7cc0b448487e616e1aaa88043aff4bfc5749d853e2e9a7a213e588126",
+      "md5": "910580beeb874a55ea6ed05f9ac2a44e"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/cam_head_clean_unseen.png",
+      "bytes": 1842,
+      "sha256": "c51cb73d85747c61f16877eb62ec9786622f2341a769e60a962b4996d1186fe9",
+      "md5": "b02256fbe8a5129e65a4f8d4acdea7f1"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/cam_left_wrist.png",
+      "bytes": 363653,
+      "sha256": "4ff222269d3ba15eeb30385e43890d046d3e03fa841cf4eb753a840eb879f2b3",
+      "md5": "e63c31be90bf58d822e6e7a1c0aa59a8"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/cam_right_wrist.png",
+      "bytes": 365765,
+      "sha256": "fb2784a5262890823880dfa961ed3ba82c8baceae0b9744c0b2f2b78be954155",
+      "md5": "402ce96686262ed2317df70062b2c3f3"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00000/cam_head.png",
+      "bytes": 346017,
+      "sha256": "6cbe1d1a0e050404a27348f772f8c1b035f686b021c8b183508e7d9729e8ac15",
+      "md5": "a03d9e1bab9ece0b00d967eb4198d138"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00000/cam_head_clean.png",
+      "bytes": 332582,
+      "sha256": "f183ee83062f9b4a3879e20c7bcfeffaca276743688df329b8ddaa65a5462819",
+      "md5": "ad3c31e7b0a0abf78ec5509810fab82c"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00000/cam_head_clean_unseen.png",
+      "bytes": 1878,
+      "sha256": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+      "md5": "f6940b496710d3a85785cc4444207aa7"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00000/cam_left_wrist.png",
+      "bytes": 295082,
+      "sha256": "771bc26166e77aa99f710840f3351711704155e69786472f6a1d16ce83dea44e",
+      "md5": "debfc2dbd3921808aa86945d460adeaa"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00000/cam_right_wrist.png",
+      "bytes": 304520,
+      "sha256": "af4fecd3399e6423843050eeacbbbe2deef7ff578bd73b0f0fd76a4fc890f0c1",
+      "md5": "dac69ef8519873e108cb6a853f554671"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00000/provenance.json",
+      "bytes": 596,
+      "sha256": "606667ad8d3442532464e5cbeb40f4ad8151778b0b2a95e9536538588890f36f",
+      "md5": "9e63672c28e148a8f61f14e870082e25"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00001/cam_head.png",
+      "bytes": 347626,
+      "sha256": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+      "md5": "724dd487ade3f2ce16a46232d268e386"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00001/cam_head_clean.png",
+      "bytes": 347626,
+      "sha256": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+      "md5": "724dd487ade3f2ce16a46232d268e386"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00001/cam_head_clean_unseen.png",
+      "bytes": 3073,
+      "sha256": "19ca316b103ac680f497c72b3f6bfe62b65dfe6741b3d2b4958184423fd81051",
+      "md5": "edc7a9ad919cbb15b4e107dee356abbb"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00001/cam_left_wrist.png",
+      "bytes": 298897,
+      "sha256": "a9011fc794ac7048a2b9043977a7177e460c05ab25960b0cf36a4470f02f7ffd",
+      "md5": "2e746117390c660b7a9fc1966bc3e267"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00001/cam_right_wrist.png",
+      "bytes": 300736,
+      "sha256": "969b41c88e0442d977ac82275f446194e6bb1520a191cf78ede63a2c09f4b3ef",
+      "md5": "f725a39b99d134abcb6efdec7b7000a4"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Dynamic_conveyor_00001/provenance.json",
+      "bytes": 592,
+      "sha256": "2d21a65826e60a65fe3ca211152f2299716e42859f9395b40f09432b77f96599",
+      "md5": "e32ab43a9e615ca0536778fc0ab59677"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_basket_00005/cam_head.png",
+      "bytes": 395250,
+      "sha256": "ac5f41b7de931a5e8ab3f8ae68141a1c00bef5a8de37cc6946237561df16ad76",
+      "md5": "c83aa17a3d127b38b1aef5a81928073a"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_basket_00005/cam_head_actor_mask.png",
+      "bytes": 1866,
+      "sha256": "e04e558c73246b7343e23de7182c09ae74cd433ad4d51aba27063a32600836e8",
+      "md5": "2e16aa0c215595bb849e6d00c95942a7"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_basket_00005/cam_head_clean.png",
+      "bytes": 385348,
+      "sha256": "2f947887214ed62f3e4b6a4fa1fbc36f3cd1bd24c4eb2c1df34d040fb9dcc7a7",
+      "md5": "cd5172b45e5ce902ed8d903cfbde74d3"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_basket_00005/cam_head_clean_unseen.png",
+      "bytes": 1878,
+      "sha256": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+      "md5": "f6940b496710d3a85785cc4444207aa7"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_basket_00005/cam_head_noactor.png",
+      "bytes": 392484,
+      "sha256": "a6a04098ef3cd93fec55d31b6dad2aec9a9eb918a48c9d2effe52132dd9ffb79",
+      "md5": "85750e2c4e777319a64c188883038bdf"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_basket_00005/cam_left_wrist.png",
+      "bytes": 322145,
+      "sha256": "e653d0761c52420686b393c791f97d418792d4a6adc79e8c0fd557f2cb8ded69",
+      "md5": "f3089cd0474a6c1174fa6aa223b267bb"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_basket_00005/cam_right_wrist.png",
+      "bytes": 356134,
+      "sha256": "0fe60df8733d6a31cc4bd3b7cd42d868daed07ff4b516004265ba67fcd539e88",
+      "md5": "0d1b7a2e772c29c23af252d07f163cc9"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_basket_00005/provenance.json",
+      "bytes": 3715,
+      "sha256": "5b9c9418c7307b2d6986cd9dd68f6b5cd763110923ccef73746d18cd846fcbbe",
+      "md5": "afa450742019f5e80274c85603e2bad2"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_cube_cushion_00002/cam_head.png",
+      "bytes": 394177,
+      "sha256": "349de6a10637ddd4752817649e6691c9925cf34c919ba786ac8c961a0849f04a",
+      "md5": "b4898bc692700e0179ac64c9384ea694"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_cube_cushion_00002/cam_head_clean.png",
+      "bytes": 381153,
+      "sha256": "b97410a8b7500ec0d295b5eea87d3765f653ec48f3a4bbb67fe3469d1d1d6060",
+      "md5": "2bea20abec894123cf806b456b9986d4"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_cube_cushion_00002/cam_head_clean_unseen.png",
+      "bytes": 3888,
+      "sha256": "fa5abb73d18755e3407bd402c1d22c70417ce1d2be49f692d67ed376e85d2c18",
+      "md5": "4f83a74837713143fca567ff77f0b5b4"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_cube_cushion_00002/cam_left_wrist.png",
+      "bytes": 362502,
+      "sha256": "a00ea008bc8631b9b5539632484bbf9b09cf294734c26070fca1c3a5f92a566c",
+      "md5": "8351ac4f6ceb8e59aa60c4ab2e6ebd47"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_cube_cushion_00002/cam_right_wrist.png",
+      "bytes": 380470,
+      "sha256": "74e3390d6c065549b6eb0823620917e2c96e754a4ec6c9184047f25e62970908",
+      "md5": "98ae34c42d4bf1f402b4b36a3e613d23"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold0/scene/Geometry_cube_cushion_00002/provenance.json",
+      "bytes": 622,
+      "sha256": "4c3da2251eacf768b9c7dd60481a5ff0aa9ac383261c2515f4aeb048b4a8590a",
+      "md5": "ea42f71ce1f39ccbeca9b49313665650"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/cam_head.png",
+      "bytes": 389275,
+      "sha256": "0b4df2c15213f2838d3641953b1eca0ee323a618c854c6d03e556a641023573d",
+      "md5": "fc58dc1ea85bd5de9049ed599a9e3636"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/cam_head_clean.png",
+      "bytes": 377008,
+      "sha256": "77ed0115a3a90c97670c584695a6475dd89dcc376a2397f2bcb77b47c6623057",
+      "md5": "9b35239354e8628a0eee73afaf35af05"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/cam_head_clean_unseen.png",
+      "bytes": 1823,
+      "sha256": "1c49409f62d5e6056cddfc902432f8dab83319caca63b4062e1762f7253574c7",
+      "md5": "af9f01277dd218c7e3d736a25b5f39d2"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/cam_left_wrist.png",
+      "bytes": 364554,
+      "sha256": "f862a1d5871277c20db32288832d930d10530f587479fbfb34031ffe3dbadd52",
+      "md5": "b569f9243a89f4ae83c67a200f8c2abe"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/cam_right_wrist.png",
+      "bytes": 366205,
+      "sha256": "9b9fb7e2b31b360f946890b2945e62a86d442b0884ce2138e5848ef37d2b5bfb",
+      "md5": "8587e8eaa5e8d842c4bc06981453d1cf"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00000/cam_head.png",
+      "bytes": 346017,
+      "sha256": "6cbe1d1a0e050404a27348f772f8c1b035f686b021c8b183508e7d9729e8ac15",
+      "md5": "a03d9e1bab9ece0b00d967eb4198d138"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00000/cam_head_clean.png",
+      "bytes": 332582,
+      "sha256": "f183ee83062f9b4a3879e20c7bcfeffaca276743688df329b8ddaa65a5462819",
+      "md5": "ad3c31e7b0a0abf78ec5509810fab82c"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00000/cam_head_clean_unseen.png",
+      "bytes": 1878,
+      "sha256": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+      "md5": "f6940b496710d3a85785cc4444207aa7"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00000/cam_left_wrist.png",
+      "bytes": 295082,
+      "sha256": "771bc26166e77aa99f710840f3351711704155e69786472f6a1d16ce83dea44e",
+      "md5": "debfc2dbd3921808aa86945d460adeaa"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00000/cam_right_wrist.png",
+      "bytes": 304520,
+      "sha256": "af4fecd3399e6423843050eeacbbbe2deef7ff578bd73b0f0fd76a4fc890f0c1",
+      "md5": "dac69ef8519873e108cb6a853f554671"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00000/provenance.json",
+      "bytes": 596,
+      "sha256": "606667ad8d3442532464e5cbeb40f4ad8151778b0b2a95e9536538588890f36f",
+      "md5": "9e63672c28e148a8f61f14e870082e25"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00001/cam_head.png",
+      "bytes": 347626,
+      "sha256": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+      "md5": "724dd487ade3f2ce16a46232d268e386"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00001/cam_head_clean.png",
+      "bytes": 347626,
+      "sha256": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+      "md5": "724dd487ade3f2ce16a46232d268e386"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00001/cam_head_clean_unseen.png",
+      "bytes": 3073,
+      "sha256": "19ca316b103ac680f497c72b3f6bfe62b65dfe6741b3d2b4958184423fd81051",
+      "md5": "edc7a9ad919cbb15b4e107dee356abbb"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00001/cam_left_wrist.png",
+      "bytes": 298897,
+      "sha256": "a9011fc794ac7048a2b9043977a7177e460c05ab25960b0cf36a4470f02f7ffd",
+      "md5": "2e746117390c660b7a9fc1966bc3e267"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00001/cam_right_wrist.png",
+      "bytes": 300736,
+      "sha256": "969b41c88e0442d977ac82275f446194e6bb1520a191cf78ede63a2c09f4b3ef",
+      "md5": "f725a39b99d134abcb6efdec7b7000a4"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Dynamic_conveyor_00001/provenance.json",
+      "bytes": 592,
+      "sha256": "2d21a65826e60a65fe3ca211152f2299716e42859f9395b40f09432b77f96599",
+      "md5": "e32ab43a9e615ca0536778fc0ab59677"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_basket_00005/cam_head.png",
+      "bytes": 395250,
+      "sha256": "ac5f41b7de931a5e8ab3f8ae68141a1c00bef5a8de37cc6946237561df16ad76",
+      "md5": "c83aa17a3d127b38b1aef5a81928073a"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_basket_00005/cam_head_actor_mask.png",
+      "bytes": 1869,
+      "sha256": "4aa247e46ff3bd7d750ace6e07ddaf0c4ce6ca356211e0cd6cd742a7cffa2ea7",
+      "md5": "5974c43be51db0b1ae8048546a748790"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_basket_00005/cam_head_clean.png",
+      "bytes": 385348,
+      "sha256": "2f947887214ed62f3e4b6a4fa1fbc36f3cd1bd24c4eb2c1df34d040fb9dcc7a7",
+      "md5": "cd5172b45e5ce902ed8d903cfbde74d3"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_basket_00005/cam_head_clean_unseen.png",
+      "bytes": 1878,
+      "sha256": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+      "md5": "f6940b496710d3a85785cc4444207aa7"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_basket_00005/cam_head_noactor.png",
+      "bytes": 392496,
+      "sha256": "78b2e7f41a8717416f9587bd598a41aa07d04f71b07a427e31de8cc5babd4f5f",
+      "md5": "d0bfa156ecfa07c6ba976e9e81ac6c0d"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_basket_00005/cam_left_wrist.png",
+      "bytes": 322145,
+      "sha256": "e653d0761c52420686b393c791f97d418792d4a6adc79e8c0fd557f2cb8ded69",
+      "md5": "f3089cd0474a6c1174fa6aa223b267bb"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_basket_00005/cam_right_wrist.png",
+      "bytes": 356134,
+      "sha256": "0fe60df8733d6a31cc4bd3b7cd42d868daed07ff4b516004265ba67fcd539e88",
+      "md5": "0d1b7a2e772c29c23af252d07f163cc9"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_basket_00005/provenance.json",
+      "bytes": 3715,
+      "sha256": "3f953ab6455703b806838ead12b214c32f883efa1d55a8350c60f66178b75f97",
+      "md5": "4e6060805df3b771e2b816d078c9edd5"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_cube_cushion_00002/cam_head.png",
+      "bytes": 394112,
+      "sha256": "35ff64145ace8b60d401b988fb87aa2085c2c8a6ca450f437fd3bd729c1685b7",
+      "md5": "5fc03d8d7871c8b70311f9879c3e6d59"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_cube_cushion_00002/cam_head_clean.png",
+      "bytes": 381041,
+      "sha256": "db7c43ccb3c63f46d71207938496485d7379d54a34f7278aabbc24b5f67d0bf6",
+      "md5": "31751637d3b128acd301242bae67b4e5"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_cube_cushion_00002/cam_head_clean_unseen.png",
+      "bytes": 3888,
+      "sha256": "fa5abb73d18755e3407bd402c1d22c70417ce1d2be49f692d67ed376e85d2c18",
+      "md5": "4f83a74837713143fca567ff77f0b5b4"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_cube_cushion_00002/cam_left_wrist.png",
+      "bytes": 362776,
+      "sha256": "1f8a0bd1be291c9d037fd32aafd4c9f1e9481283f5ba96c4c40bc0bd37ce9adc",
+      "md5": "5fdd0232bfc9d4d52f1ee27f70a886a2"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_cube_cushion_00002/cam_right_wrist.png",
+      "bytes": 380400,
+      "sha256": "f13d42adfa507603067ee3c2c8290d7040a5e10d8a67dd3ca02ddd0c20358353",
+      "md5": "d9700db789300932024671b5cf544d4b"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/fold1/scene/Geometry_cube_cushion_00002/provenance.json",
+      "bytes": 622,
+      "sha256": "6f157cd5dbc2499d957a21154ff976c12603f6fef68554c0f2df0b1193675f81",
+      "md5": "2757640937c319206543d53f0187eb90"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/cam_head.png",
+      "bytes": 389844,
+      "sha256": "8f3bb24455dc4c447a9f0dfb0f00f7463431d696169548a67b33bd1259f9b5b2",
+      "md5": "630e2b24a8d19207daedf0b3eff265b8"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/cam_head_clean.png",
+      "bytes": 377199,
+      "sha256": "eda876a8eea7272fd8c1c22fc47077c3eeca57dbd531d1a407984cec8e9479ed",
+      "md5": "65c6cf2a9522d2d94b021f326f2f2213"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/cam_head_clean_unseen.png",
+      "bytes": 1845,
+      "sha256": "88507c6ddbaaad62dfbf9a4b539f283e54bad7784da3d754ad13a60f12ae4555",
+      "md5": "3b028feb38137ed5f0bb52e19a0557ad"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/cam_left_wrist.png",
+      "bytes": 363868,
+      "sha256": "3fa6a4854054cf3119de98802c191cad9b7496a3a958c3755d33f71d86c308da",
+      "md5": "8a1716575806e423402baf581bdd840d"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/cam_right_wrist.png",
+      "bytes": 365726,
+      "sha256": "864ec3b4880aecb4582a30ac9c0904cf80d70b85aaca76e0faf87e72cf00d9bf",
+      "md5": "d68411042dc7bcb812d245f9951dcdd0"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/color_M.json",
+      "bytes": 373,
+      "sha256": "8ae724bb2a72815d36b76582bb908994536ef901431f9647c1e58a9ae12fb608",
+      "md5": "f934e231530b8db1ed843d8715b02ca1"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/manifest.json",
+      "bytes": 2682,
+      "sha256": "b7b70b68d21152bf730727c7ec0f83816c4c8e729ff8bf4bfde79706e091c0c1",
+      "md5": "0c77057bdb9b72edbbe3e2b5bffc308f"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00000/cam_head.png",
+      "bytes": 346017,
+      "sha256": "6cbe1d1a0e050404a27348f772f8c1b035f686b021c8b183508e7d9729e8ac15",
+      "md5": "a03d9e1bab9ece0b00d967eb4198d138"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00000/cam_head_clean.png",
+      "bytes": 332582,
+      "sha256": "f183ee83062f9b4a3879e20c7bcfeffaca276743688df329b8ddaa65a5462819",
+      "md5": "ad3c31e7b0a0abf78ec5509810fab82c"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00000/cam_head_clean_unseen.png",
+      "bytes": 1878,
+      "sha256": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+      "md5": "f6940b496710d3a85785cc4444207aa7"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00000/cam_left_wrist.png",
+      "bytes": 295082,
+      "sha256": "771bc26166e77aa99f710840f3351711704155e69786472f6a1d16ce83dea44e",
+      "md5": "debfc2dbd3921808aa86945d460adeaa"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00000/cam_right_wrist.png",
+      "bytes": 304520,
+      "sha256": "af4fecd3399e6423843050eeacbbbe2deef7ff578bd73b0f0fd76a4fc890f0c1",
+      "md5": "dac69ef8519873e108cb6a853f554671"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00000/provenance.json",
+      "bytes": 596,
+      "sha256": "606667ad8d3442532464e5cbeb40f4ad8151778b0b2a95e9536538588890f36f",
+      "md5": "9e63672c28e148a8f61f14e870082e25"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00001/cam_head.png",
+      "bytes": 347626,
+      "sha256": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+      "md5": "724dd487ade3f2ce16a46232d268e386"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00001/cam_head_clean.png",
+      "bytes": 347626,
+      "sha256": "fbda6dd9e83b55a4be4dee12882df711548315943f6f114d924eeb62ab617828",
+      "md5": "724dd487ade3f2ce16a46232d268e386"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00001/cam_head_clean_unseen.png",
+      "bytes": 3073,
+      "sha256": "19ca316b103ac680f497c72b3f6bfe62b65dfe6741b3d2b4958184423fd81051",
+      "md5": "edc7a9ad919cbb15b4e107dee356abbb"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00001/cam_left_wrist.png",
+      "bytes": 298897,
+      "sha256": "a9011fc794ac7048a2b9043977a7177e460c05ab25960b0cf36a4470f02f7ffd",
+      "md5": "2e746117390c660b7a9fc1966bc3e267"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00001/cam_right_wrist.png",
+      "bytes": 300736,
+      "sha256": "969b41c88e0442d977ac82275f446194e6bb1520a191cf78ede63a2c09f4b3ef",
+      "md5": "f725a39b99d134abcb6efdec7b7000a4"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Dynamic_conveyor_00001/provenance.json",
+      "bytes": 592,
+      "sha256": "2d21a65826e60a65fe3ca211152f2299716e42859f9395b40f09432b77f96599",
+      "md5": "e32ab43a9e615ca0536778fc0ab59677"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_basket_00005/cam_head.png",
+      "bytes": 395250,
+      "sha256": "ac5f41b7de931a5e8ab3f8ae68141a1c00bef5a8de37cc6946237561df16ad76",
+      "md5": "c83aa17a3d127b38b1aef5a81928073a"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_basket_00005/cam_head_actor_mask.png",
+      "bytes": 1866,
+      "sha256": "e04e558c73246b7343e23de7182c09ae74cd433ad4d51aba27063a32600836e8",
+      "md5": "2e16aa0c215595bb849e6d00c95942a7"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_basket_00005/cam_head_clean.png",
+      "bytes": 385348,
+      "sha256": "2f947887214ed62f3e4b6a4fa1fbc36f3cd1bd24c4eb2c1df34d040fb9dcc7a7",
+      "md5": "cd5172b45e5ce902ed8d903cfbde74d3"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_basket_00005/cam_head_clean_unseen.png",
+      "bytes": 1878,
+      "sha256": "4a47d127d2a229f5b3ca0c3b34c3b9ea19ec8460bb1b69204778d61b8186b9c3",
+      "md5": "f6940b496710d3a85785cc4444207aa7"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_basket_00005/cam_head_noactor.png",
+      "bytes": 392484,
+      "sha256": "a6a04098ef3cd93fec55d31b6dad2aec9a9eb918a48c9d2effe52132dd9ffb79",
+      "md5": "85750e2c4e777319a64c188883038bdf"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_basket_00005/cam_left_wrist.png",
+      "bytes": 322145,
+      "sha256": "e653d0761c52420686b393c791f97d418792d4a6adc79e8c0fd557f2cb8ded69",
+      "md5": "f3089cd0474a6c1174fa6aa223b267bb"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_basket_00005/cam_right_wrist.png",
+      "bytes": 356134,
+      "sha256": "0fe60df8733d6a31cc4bd3b7cd42d868daed07ff4b516004265ba67fcd539e88",
+      "md5": "0d1b7a2e772c29c23af252d07f163cc9"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_basket_00005/provenance.json",
+      "bytes": 3715,
+      "sha256": "5b9c9418c7307b2d6986cd9dd68f6b5cd763110923ccef73746d18cd846fcbbe",
+      "md5": "afa450742019f5e80274c85603e2bad2"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/cam_head.png",
+      "bytes": 394177,
+      "sha256": "349de6a10637ddd4752817649e6691c9925cf34c919ba786ac8c961a0849f04a",
+      "md5": "b4898bc692700e0179ac64c9384ea694"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/cam_head_clean.png",
+      "bytes": 381153,
+      "sha256": "b97410a8b7500ec0d295b5eea87d3765f653ec48f3a4bbb67fe3469d1d1d6060",
+      "md5": "2bea20abec894123cf806b456b9986d4"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/cam_head_clean_unseen.png",
+      "bytes": 3888,
+      "sha256": "fa5abb73d18755e3407bd402c1d22c70417ce1d2be49f692d67ed376e85d2c18",
+      "md5": "4f83a74837713143fca567ff77f0b5b4"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/cam_left_wrist.png",
+      "bytes": 362502,
+      "sha256": "a00ea008bc8631b9b5539632484bbf9b09cf294734c26070fca1c3a5f92a566c",
+      "md5": "8351ac4f6ceb8e59aa60c4ab2e6ebd47"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/cam_right_wrist.png",
+      "bytes": 380470,
+      "sha256": "74e3390d6c065549b6eb0823620917e2c96e754a4ec6c9184047f25e62970908",
+      "md5": "98ae34c42d4bf1f402b4b36a3e613d23"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49/scene/Geometry_cube_cushion_00002/provenance.json",
+      "bytes": 622,
+      "sha256": "4c3da2251eacf768b9c7dd60481a5ff0aa9ac383261c2515f4aeb048b4a8590a",
+      "md5": "ea42f71ce1f39ccbeca9b49313665650"
+    },
+    {
+      "path": "/home/robotics/dojo-data/bg_folds_51_ilia/frozen_d0_100040_49.color_calib.json",
+      "bytes": 524,
+      "sha256": "c1b5f5672247291f53153115529fc73796f7f6a8cfcb9c2f6ddd4ef90336ca86",
+      "md5": "249f12908c6b043ccd7921644af941ad"
+    }
+  ],
+  "packages": {
+    "path": "/home/robotics/dojo-data/kong-1107/packages-new.json",
+    "bytes": 503,
+    "sha256": "0c1de1113eeddff0606d3489bbdbfa5a50bb4dcd1efb6e0f52f27ec52da02ff8",
+    "md5": "9f5d72e9ebc805e7f09a3ddaac4690b9"
+  },
+  "parity": {
+    "path": "/home/robotics/dojo-data/kong-1107/parity.json",
+    "bytes": 16353,
+    "sha256": "4d56d5506388dc484e768c402a7aa760854f9137cb04afe06c35951d8355c418",
+    "md5": "4eb10b46a1215f504afabb516cd9e8a0"
+  },
+  "resolved_config_parity": {
+    "path": "/home/robotics/dojo-data/kong-1107/resolved-config-parity.json",
+    "bytes": 11365,
+    "sha256": "004476db8239c7f926307a7f10319b27dbfb3bc5ae0fd604c9992c1ad91538d5",
+    "md5": "2fe6b4f8dabe01c7da8e80f2ced4621c"
+  },
+  "catalogue_index": {
+    "path": "/home/robotics/dojo-perception-data/catalog/index.json",
+    "bytes": 114342,
+    "sha256": "0c49bf1d05d435f24c37ab3981fb1a7bb4de9dc663b785958768f937c2489cb1",
+    "md5": "2cd7455cbdce2ab38e4e9d586e28db61"
+  },
+  "original_design": {
+    "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/design-original.json",
+    "bytes": 3227,
+    "sha256": "34013bb45306a543f5de55fe00a6bea43403dc28586312d262d0f345927d56b0",
+    "md5": "9bfc120b592421cc9e9cad98b10ec3f7"
+  },
+  "demo_input_amendment_commit": "c8c4eef1",
+  "code_pins": {
+    "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/code-pins.json",
+    "bytes": 1114,
+    "sha256": "99981170ec06f77c4a4764930f31003cd5f00bd5394751a19ca8407d6e2e2ea6",
+    "md5": "3e2e6cf50358c2759b34f289c66dab6c"
+  },
+  "current_packages": {
+    "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/packages-current.json",
+    "bytes": 503,
+    "sha256": "0c1de1113eeddff0606d3489bbdbfa5a50bb4dcd1efb6e0f52f27ec52da02ff8",
+    "md5": "9f5d72e9ebc805e7f09a3ddaac4690b9"
+  },
+  "current_package_parity": {
+    "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/package-parity-current.json",
+    "bytes": 17,
+    "sha256": "4e0198562b2cd42304bdac3cba2b7fb272a2e41071415e3c9b2c0c027054f67a",
+    "md5": "a9131bb11c8a584269a7e2a66701a2a1"
+  },
+  "code": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+  "candidate": {
+    "path": "/home/robotics/dojo-integ-c6-kong-ffb2c151/scripts/dojo/queues/2026-11-06-candidate.txt",
+    "bytes": 1942,
+    "sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+    "md5": "5509d7be9bd1dac30dd454cceb377d1d"
+  },
+  "design": {
+    "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/design.json",
+    "bytes": 3227,
+    "sha256": "34013bb45306a543f5de55fe00a6bea43403dc28586312d262d0f345927d56b0",
+    "md5": "9bfc120b592421cc9e9cad98b10ec3f7"
+  },
+  "generator": {
+    "path": "/home/robotics/dojo-integ-c6-kong-ffb2c151/dojo/simlab/gen_layouts.py",
+    "bytes": 49343,
+    "sha256": "64496ed372dbbce85e6785b355cccc86d0a3f5a9ce44d38fe5aea5f898e1de62",
+    "md5": "7994b3522c8b9d6f37cb38dd8c147ca0"
+  },
+  "presettle": {
+    "path": "/home/robotics/dojo-integ-c6-kong-ffb2c151/dojo/simlab/presettle.py",
+    "bytes": 19407,
+    "sha256": "2a60f0cf17b9f4f62a71070d51a917b4613dcec3ac3adc180b83fb2e9ed05c85",
+    "md5": "dda26afd5eaff9bcb94b33792645c334"
+  },
+  "demo_generator": {
+    "path": "/home/robotics/dojo-integ-c6-kong-ffb2c151/dojo/simlab/demo_gen.py",
+    "bytes": 23037,
+    "sha256": "f76b8332ae01493539e6737af451e14cb7ad6b88a7ac5bc3cab9514fc030ac04",
+    "md5": "bc727327eae982a34951c63b9e34f7d5"
+  },
+  "parity_proof": {
+    "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/parity-proof.json",
+    "bytes": 113809,
+    "sha256": "a10ede99530e19d89ccfbaacfc70c9ae878726a5c5f4c2c90559a1add47a3a51",
+    "md5": "5682e750882623ce08433b84d0859cb1"
+  },
+  "selection": {
+    "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/selection.json",
+    "bytes": 59630,
+    "sha256": "a0c4044af53c90fdbaceb26153882dd231a7e087c9238a8243a59c3576b2c681",
+    "md5": "54edd53cda554ced07775ba7d81e7003"
+  },
+  "prereg_commit": "c8c4eef1",
+  "model": "claude/claude-sonnet-5-5",
+  "operational_scripts": [
+    {
+      "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/prepare.py",
+      "bytes": 4883,
+      "sha256": "6deaa6b935dd829fb56c07ba43f6bfa4fd9758bceb87c783dcfe28fec81d68aa",
+      "md5": "93713c9b902ee4e453b649a57f7f6020"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/parity-proof.py",
+      "bytes": 3437,
+      "sha256": "dd73fdbf76e5333083e94ca7480e0c6da4325b0b1d3b143d72675115eca6adeb",
+      "md5": "68dd855f91b7c9cb90d96c3f17150487"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/stage.py",
+      "bytes": 6345,
+      "sha256": "5c9988147892f2b5824af7bccb9d3d00b91b870e0eb5e591b932b7a3fb93738a",
+      "md5": "51582927158c6f25822a17b74d46578a"
+    },
+    {
+      "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/append.py",
+      "bytes": 4797,
+      "sha256": "855ede688dc6f152b35867b028ab625f565ac0ae9b07694062ff92f482cb8530",
+      "md5": "3093f3480c674a1e4ed1db4f59e4a5f3"
+    }
+  ],
+  "audit_instrument": {
+    "state": "fixed",
+    "primary": "identity-association",
+    "commit": "77b4571907f6ce49eec11c0685db8f0c7ba05d64",
+    "pull_request": "https://github.com/miilv/controlr/pull/417",
+    "merged_utc": "2026-11-07T07:51:39Z",
+    "first_start": null,
+    "selection_basis": "merged before first re-test row start; selected without outcome reads",
+    "supplementary": "nearest-GT",
+    "recorded_utc": "2026-11-07T07:52:34.851091+00:00",
+    "recorder_sha256": "a8ff712f4259b600df3bc422f710ee5cfeee3f1d7d57205a991bf0d4a3d85e4b",
+    "outcomes_read": false
+  },
+  "id_refusal_check": {
+    "path": "/home/robotics/dojo-data/kong-retest-eligible-1107/refusal-check.log",
+    "bytes": 612,
+    "sha256": "603241cbb0fe4a571bc2068fba96e973bb733c0d54c5ba3fc8e0868536c4dd4e",
+    "md5": "d9250e91e35f93001da970eb6c29355b"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "inserted_utc": "2026-11-07T11:00:37.961561+00:00",
+  "positions_1_based": [
+    33,
+    54
+  ],
+  "new_rows": 22,
+  "existing_rows": 92,
+  "queue_sha256_before": "e3d6b5923f9c8fa4ed450cf33e2fb73de7edbb11ac7573d6bab97035685f7e13",
+  "queue_sha256_after": "9c438d5b44b11c1f258017c822e6e6d06991613d2ebec478db87a37427bcb2a1",
+  "manifest_sha256": "78bcfec5af4071ff069a2ba01b4fc7151dbf0d09a513ebab7ef13ffee2e8dd44",
+  "freeze_commit": "fed64759aeb85f7e726e54539f2d76126ad11b05",
+  "preserved_old_bytes_and_order": true,
+  "protected_started_pair_rows": [],
+  "remaining_pour_ahead": 32,
+  "next_tie": "c6b_imitatesg_tieAr1_100027",
+  "route_checked_rows": 22,
+  "model": "claude/claude-sonnet-5-5",
+  "infra_refusals_excluded": 9
+}

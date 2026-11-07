@@ -1,0 +1,76 @@
+import fcntl, hashlib, json, os, subprocess, sys, time
+from pathlib import Path
+H=Path.home(); ROOT=H/'dojo-data/kong-retest-eligible-1107'; REPO=Path(sys.argv[1]).resolve()
+sys.path.insert(0,str(REPO))
+from controlr.keyguard import child_env
+D=json.loads((ROOT/'design.json').read_text())
+
+def note(msg):
+    with (ROOT/'notes.log').open('a') as f:f.write(time.strftime('%Y-%m-%dT%H:%M:%SZ ',time.gmtime())+msg+'\n')
+
+def run(tag, args, env, gpu=False):
+    done=ROOT/(tag+'.done')
+    if done.exists():return
+    lock=None
+    if gpu:
+        deadline=time.monotonic()+9000
+        while time.monotonic()<deadline:
+            used=int(subprocess.check_output(['nvidia-smi','--query-gpu=memory.used','--format=csv,noheader,nounits'],text=True).strip())
+            load=os.getloadavg()[0]
+            if used<=20480 and load<=26:
+                for name in ['dojo-gpu-light.lock']+[f'dojo-gpu-light{i}.lock' for i in range(1,9)]:
+                    p=H/name
+                    if not p.exists() or p.is_symlink():continue
+                    f=p.open('a+')
+                    try:fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)
+                    except BlockingIOError:f.close();continue
+                    lock=f;break
+            if lock:break
+            time.sleep(20)
+        if not lock:raise RuntimeError('No admitted free light lock before prep deadline')
+        used=int(subprocess.check_output(['nvidia-smi','--query-gpu=memory.used','--format=csv,noheader,nounits'],text=True).strip())
+        if used>20480 or os.getloadavg()[0]>26:lock.close();return run(tag,args,env,gpu)
+        lock.seek(0);lock.truncate();lock.write(f'pid={os.getpid()} stream=KONG prep={tag}\n');lock.flush()
+        note(f'PREP START {tag} lock={lock.name} used_MiB={used} load={os.getloadavg()[0]}')
+    cmd=['bash',str(REPO/'scripts/simlab/rdpy.sh')]+args
+    if gpu:cmd=['systemd-run','--user','--scope','-q',f'--unit=kong_rt_prep_{tag}_{os.getpid()}','-p','MemoryMax=20G','-p','CPUQuota=600%']+cmd
+    try:
+        with (ROOT/(tag+'.log')).open('a') as out:
+            rc=subprocess.run(cmd,cwd=REPO,env=env,stdout=out,stderr=subprocess.STDOUT).returncode
+        note(f'PREP END {tag} rc={rc}')
+        if rc:raise RuntimeError(f'{tag}: rc={rc}, see log')
+        done.touch()
+    finally:
+        if lock:lock.close()
+
+from dojo.simlab.paths import is_our_measurement_id
+
+def refuse(ids):
+ bad=[i for i in ids if not is_our_measurement_id(i)]
+ if bad:raise PermissionError('Not OUR_MEASUREMENT_SLICES rendered ids: '+repr(bad))
+if len(sys.argv)>2 and sys.argv[2]=='--check-ids':
+ refuse(list(map(int,sys.argv[3:])));print('eligible');raise SystemExit(0)
+for cell in D['cells']:refuse(cell['candidate_ids'])
+assert (REPO/'.deployed_commit').read_text().strip()==D['code']
+assert hashlib.sha256(D['salt'].encode()).hexdigest()==D['salt_sha256']
+assert int(subprocess.check_output(['df','--output=avail','-B1',str(ROOT)],text=True).splitlines()[-1])>50*1024**3
+note('ELIGIBLE DESIGN frozen before generation sha256='+hashlib.sha256((ROOT/'design.json').read_bytes()).hexdigest()+' salt='+D['salt_sha256'])
+sel={'selected':{},'attempts':{}};data=ROOT/D['block'];env=child_env({'DOJO_DATA':str(data),'SIMLAB_GPU':'0','AGENTIC_MODEL':D['agentic_model']})
+for cell in D['cells']:
+ task=cell['task'];pool=cell['candidate_ids'];valid=[];attempts=[];cursor=0;ld=data/'simlab/layouts'/task
+ while len(valid)<cell['pairs']:
+  n=cell['pairs']-len(valid);batch=pool[cursor:cursor+n]
+  if len(batch)!=n:raise RuntimeError('Eligible input pool exhausted: '+task)
+  refuse(batch);tag=task+'_'+str(batch[0])+'_'+str(batch[-1])
+  # Never generate across the 100010-19 gap.
+  for lid in batch:run('gen_'+task+'_'+str(lid),['-m','dojo.simlab.gen_layouts','--task',task,'--start',str(lid),'--n','1','--seed-salt',D['salt']],env)
+  run('settle_'+tag,['-m','dojo.simlab.presettle','--task',task,'--ids',*map(str,batch)],env,True)
+  idx=json.loads((ld/'settled_index.json').read_text());good=[i for i in batch if idx[str(i)]['status']=='ok'];attempts.extend({'id':i,**idx[str(i)]} for i in batch)
+  if task=='imitate_sorting_sequence' and good:
+   run('demo125_'+tag,['-m','dojo.simlab.demo_gen','--task',task,'--speed','1.25','--ids',*map(str,good)],env,True)
+   demos=json.loads((data/'simlab/traj'/task/'demo_index.json').read_text());good=[i for i in good if demos[str(i)]['status']=='ok'];sel['demo_attempts']=demos
+   failed=[{'id':int(i),'status':rec['status'],'record':rec} for i,rec in demos.items() if rec['status']!='ok'];sel['demo_failed_ids']=failed;sel['demo_failure_rate']=len(failed)/len(demos)
+  valid.extend(good);cursor+=n;sel['selected'][task]=valid;sel['attempts'][task]=attempts
+  (ROOT/'selection.json').write_text(json.dumps(sel,indent=2)+'\n')
+ refuse(valid);note('SELECTED '+task+' '+json.dumps(valid))
+(ROOT/'prep.done').touch();note('PREP COMPLETE eligible 20/5/5; no model calls')

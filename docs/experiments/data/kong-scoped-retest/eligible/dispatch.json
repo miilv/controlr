@@ -1,0 +1,57 @@
+{
+  "inserted_utc": "2026-11-07T11:08:16.550470+00:00",
+  "prereg_commit": "c8c4eef1",
+  "existing_rows": 111,
+  "appended_rows": 60,
+  "positions_1_based": [
+    112,
+    171
+  ],
+  "queue_sha256_before": "c9741a7906dbc0c2ac5271b3d7f0e36deb275fd33f70be1c89ed9f2c9ff7b187",
+  "queue_sha256_after": "0e8d4a33e8a15f340d45afc015ec957c7ba70e4fe2c34b5cbc6d920c48280657",
+  "manifest_sha256": "8b3a0dc168c8637f8adb1f161b04cdcfe89dbb9e5e851eb8a605fdaf58d1a3fd",
+  "new_rows_sha256": "04688cc81e5acc56a46a9a14e47e91d8803640218be5e3dfbbaebf10b443b8e9",
+  "existing_prefix_byte_identical": true,
+  "route_checked_rows": 60,
+  "route": "claude/claude-sonnet-5-5",
+  "deployment": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+  "active_jobs": [
+    {
+      "name": "c6b_pourliquidsg_pourcamAr1_100004",
+      "elapsed_s": 68,
+      "estimated_remaining_s": 232
+    }
+  ],
+  "expected_start_utc": "2026-11-07T18:06:10.275235+00:00",
+  "expected_finish_utc": "2026-11-07T20:28:22.775235+00:00",
+  "estimated_queued_lane_s": 50147,
+  "estimated_block_lane_s": 17065,
+  "timing_basis": {
+    "tie_recent_mean_seconds": {
+      "imitatesg": 749.8,
+      "makekongsg": 139.1,
+      "stackblockssg": 162.3
+    },
+    "new_block_previous_sonnet_mean_seconds": {
+      "makekongsg": 139.1,
+      "imitatesg": 987.8,
+      "stackblockssg": 162.3
+    },
+    "lanes": 2,
+    "qualification": "rough occupancy estimate; shared admission/startup/caps/infra may delay; 25 lane-hour camera-cap ceiling"
+  },
+  "audit_instrument": {
+    "state": "fixed",
+    "primary": "identity-association",
+    "commit": "77b4571907f6ce49eec11c0685db8f0c7ba05d64",
+    "pull_request": "https://github.com/miilv/controlr/pull/417",
+    "merged_utc": "2026-11-07T07:51:39Z",
+    "first_start": null,
+    "selection_basis": "merged before first re-test row start; selected without outcome reads",
+    "supplementary": "nearest-GT",
+    "recorded_utc": "2026-11-07T07:52:34.851091+00:00",
+    "recorder_sha256": "a8ff712f4259b600df3bc422f710ee5cfeee3f1d7d57205a991bf0d4a3d85e4b",
+    "outcomes_read": false
+  },
+  "audit_instrument_receipt": "/home/robotics/dojo-data/kong-retest-eligible-1107/audit-instrument.json"
+}

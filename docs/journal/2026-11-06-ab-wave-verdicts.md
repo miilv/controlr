@@ -301,3 +301,39 @@ a different lever. It is a candidate for a fresh A/B under the refined gates whe
 
 The KONG scoped re-test (prereg 2026-11-07-kong-scoped-retest) starts after #417 merged, so its registered audit uses
 the fixed instrument.
+
+## waist re-test: `belt_waist_first=on`, fresh salted panel — FAIL / NOT ADOPTED
+
+Exactly the original success-flip rule; newer score-based counts remain
+supplementary. [Full verdict and applicability proof](../experiments/2026-11-06-peg-waist-retest-prereg.md#waist-re-test-camera-verdict-7-november).
+
+| cell | pairs | A pooled | B pooled | Δ | B-only wins | A-only losses | successes A / B |
+|---|---|---|---|---|---|---|---|
+| match_and_pick_from_conveyor (gain) | 20 | 50.0 | 35.0 | −15.0 | 0 | 3 | 10 / 7 |
+| pick_from_conveyor_by_image (guard) | 10 | 0.0 | 0.0 | 0.0 | 0 | 0 | 0 / 0 |
+
+- **Failed gain:** −15 < +5, wins 0 < 2×3, net −3 < +2. Guard passes its
+  registered score/flip bounds. Supplementary >=10-point score wins/losses:
+  gain 0/3, guard 0/0; these do not change the rule.
+- Sample SD A/B: gain 51.30/48.94, guard 0/0. Paired bootstrap 95% CI
+  **[−30.0, 0.0] points** (10,000 paired-layout resamples, seed 0).
+- All **60/60 arms rc 0**; actual Sonnet route verified from every call log
+  and report, frozen configs/RAW hashes match. Zero infra retries, exclusions
+  or time caps. Six included no-JSON parsing errors; recovered HTTP retries
+  remain unobservable. Final arm done at **09:16:08Z**.
+- **Write audit does not apply:** frozen source confines the flag to motion/
+  intercept candidate selection. All read/writer configs match; gain writers
+  are perception/tracked/refine_pick in both arms, guard perception/tracked
+  in both; zero held-pose/relocation writes. Logged write totals A/B 3,247/3,528
+  differ with trajectories, not changed writer code. The linked proof reports
+  all counts and the exemption scope; no harmlessness or physics-audit pass
+  is claimed. Registered nearest/raw instrument and #417 supplementary fixed
+  identity are both N/A, not retroactively substituted.
+- **Spend:** **145 logical Claude calls**; **1,959,279 prompt / 75,055 completion /
+  42,712 reasoning / 1,633,672 cache-read tokens**. Reasoning/cache are subsets,
+  not additions. No new analysis LLM/GPU calls. Camera locks 13,813 s; episode
+  wall 10,395.5 s, excluding admission waits.
+
+No candidate or default changed. This was the once-only fresh-layout re-test;
+no further re-test or adoption is authorized. Peg's registered verdict remains
+unchanged, including the separately reported #417 supplementary re-score.

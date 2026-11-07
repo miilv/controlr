@@ -1,0 +1,31 @@
+{
+  "created_utc": "2026-11-07T09:31:20.652881+00:00",
+  "previous_manifest": {
+    "path": "/home/robotics/dojo-data/pour-cam/manifest.json",
+    "bytes": 643387,
+    "sha256": "710d14faffa1536faf07d2371e556414d95982f7abf2f93d27cc206d97a2a6a5"
+  },
+  "previous_freeze_commit": "c1b4170ab517f2126cdb662e205a3988a3793f79",
+  "reason": "Preflight found historical c6b_imitatesg_tieBr1_100005__retry; parser recognized dotted retry suffixes but not __retry. Aborted before queue snapshot/write.",
+  "change": "Recognize __retry suffix as the same original pair, preserving started mate/retry priority. Expanded mock tests and all historical/current name validation passed.",
+  "original_insert": {
+    "path": "/home/robotics/dojo-data/pour-cam/insert.py",
+    "bytes": 6362,
+    "sha256": "38293627ba1ef081269446a6ca2571cbfc10b8f945056b4ae3ec0e57de0a65cf"
+  },
+  "preserved_original_insert": {
+    "path": "/home/robotics/dojo-data/pour-cam/insert-prefreeze.py",
+    "bytes": 6362,
+    "sha256": "38293627ba1ef081269446a6ca2571cbfc10b8f945056b4ae3ec0e57de0a65cf"
+  },
+  "amended_insert": {
+    "path": "/home/robotics/dojo-data/pour-cam/insert.py",
+    "bytes": 6670,
+    "sha256": "512f9adfb3091e5a09e7a45d0a02530529f6cc0b6a3263783eb66bfc9e595112"
+  },
+  "camera_rows_and_inputs_unchanged": true,
+  "rechecked_unchanged_dependencies_and_inputs": 224,
+  "queue_rows_sha256": "a9dff9ed41421f28edfac6206de42b755fb03ce03c18e15fc265d3ac18b4b8c3",
+  "model_calls": 0,
+  "no_dispatch_or_queue_before_file_at_amendment": true
+}

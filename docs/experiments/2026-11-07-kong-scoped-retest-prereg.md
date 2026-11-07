@@ -238,6 +238,8 @@ has yet been queued, and no camera verdict is made here.
 
 ## Dispatch receipt — 2026-11-07 07:38:49Z
 
+queue position moved later by the lead for POUR; no input/config change
+
 **Appended 60 rows, queue positions 79–138 (one-based at insertion), after all
 78 existing tie rows.** The append held `queue2.txt.lock`; the prior queue
 bytes are an exact unchanged prefix. No existing row was reordered, rewritten
@@ -283,3 +285,97 @@ precommitted merge/start cutoff, never by outcomes; the final applied pin must
 be included with the later verdict. Nearest-GT results remain supplementary
 under the registered conditional instrument rule. No camera outcome was read
 for this dispatch and no verdict/adoption/default change is made.
+
+## Lead protocol correction — eligible rendered ids, before replacement collection
+
+At 10:41Z the lead removed all 60 refused-id rows under the queue lock to
+`compute6:~/dojo-data/pour-cam/held-refused-ids-1041.txt`. None started;
+**no KONG re-test camera outcome exists**. The old 100050–69 preparation and
+receipts above remain historical only and are superseded by this amendment.
+Those ids are Mikhail's D-C10a slice and integ refuses them rendered (rc=2).
+
+Regenerate every cell under a **new salt**, frozen in
+[the eligible design](data/kong-scoped-retest/design-eligible.json):
+`kong-scoped-retest-eligible-20261107-0a5495833a42acc6b37f50426c3c4cae3ce155a466c61f4c897fad0cbba7f4b9`. Literal UTF-8 salt SHA256:
+`8ee55262d8806828ef6678fa99e77ea07898bc5e85d544f3977dcf3d8083ad24`.
+Private replacement root: `compute6:~/dojo-data/kong-retest-eligible-1107/`.
+No refused layout or demo is reused. Freshness is the new salt; the positive
+rendered allowlist is `dojo.simlab.paths.OUR_MEASUREMENT_SLICES` only.
+
+- make_kong: exactly 20 pairs, ids **100000–09 and 100020–29**.
+- imitation parity: the first five ids ascending within **100000–09** passing
+  BOTH unchanged two-pass presettle and standard demo validation at **1.25**.
+- stack strong: first five ascending stable ids in the eligible allowlist.
+
+All failures/attempts remain in the replacement manifest. No tolerance,
+validation, camera policy, sample-size, guard or refined decision-rule change.
+The >30% demo-failure BACKLOG rule remains. A shortage of eligible valid inputs
+blocks launch rather than borrowing from another slice.
+
+**Instrument:** #417 merged at 07:51:39Z, before any re-test start. The primary
+identity-association instrument is now fixed to full merge commit
+`77b4571907f6ce49eec11c0685db8f0c7ba05d64`.
+Nearest-GT remains supplementary; the camera deployment stays the same #410/#411
+`ffb2c151` deployment, with Sonnet explicitly pinned in every arm.
+
+The prep script must refuse any candidate/selected/rendered id outside
+`is_our_measurement_id` before generating or staging it. Recheck the allowlist
+when constructing and appending rows. Append the replacement 60 rows at the
+queue END under `queue2.txt.lock`, preserving all existing bytes and priorities.
+Freeze a new manifest and publish replacement positions, hashes and ETA.
+
+## Replacement preparation freeze — rendered-eligible panel
+
+All 30 selected inputs pass: kong **100000–09 and 100020–29**; imitation and
+stack **100000–100004** each. All five imitation demos pass standard validation
+at **1.25**. No input id was rejected; all standard order attempts, including
+any failed order before a valid demo, are retained. Demo-input failure rate
+**0/5**. No settling tolerances, validation or decision gates changed.
+
+[Replacement manifest](data/kong-scoped-retest/eligible/manifest.json), SHA256
+`8b3a0dc168c8637f8adb1f161b04cdcfe89dbb9e5e851eb8a605fdaf58d1a3fd`. [Shared pins](data/kong-scoped-retest/eligible/shared-freeze.json),
+[all selection attempts](data/kong-scoped-retest/eligible/selection.json),
+[parity snapshots](data/kong-scoped-retest/eligible/parity-proof.json).
+The [prep script](data/kong-scoped-retest/eligible/prep-script.txt) checks the
+positive `is_our_measurement_id` allowlist before every generation batch and
+selected panel. Its direct refusal check accepts the four eligible slice
+boundaries and rejects 100010, 100030, 100050, 100099 and 100100. Staging and
+append independently recheck every id. Every one of the 60 staged rows pins
+Sonnet and the unchanged camera deployment. #417 identity instrument is fixed
+at `77b4571907f6ce49eec11c0685db8f0c7ba05d64`;
+nearest-GT is supplementary. No camera outcome has been read.
+
+## Replacement dispatch receipt — 2026-11-07 11:08:16Z
+
+**60 eligible Sonnet rows re-queued at the END, positions 112–171**, after
+all 111 existing rows, under `queue2.txt.lock`. Existing queue bytes remain
+an exact unchanged prefix; no existing row, order, cap or running job changed.
+All 30 pairs are adjacent. All 60 rows were checked for positive id eligibility,
+explicit Sonnet, unchanged deployment, A/B config and frozen layout/demo.
+This supersedes the held/refused 07:38 dispatch; none of those rows started.
+
+- Eligibility amendment **c8c4eef1** and replacement freeze **ee893949** were
+  on main before insertion. [Full replacement receipt](data/kong-scoped-retest/eligible/dispatch.json).
+- Queue SHA256 before:
+  `c9741a7906dbc0c2ac5271b3d7f0e36deb275fd33f70be1c89ed9f2c9ff7b187`.
+- Queue SHA256 after:
+  `0e8d4a33e8a15f340d45afc015ec957c7ba70e4fe2c34b5cbc6d920c48280657`.
+- Replacement manifest SHA256:
+  `8b3a0dc168c8637f8adb1f161b04cdcfe89dbb9e5e851eb8a605fdaf58d1a3fd`.
+- Appended-row file SHA256:
+  `04688cc81e5acc56a46a9a14e47e91d8803640218be5e3dfbbaebf10b443b8e9`.
+- **Instrument fixed:** identity-association #417, full merge
+  `77b4571907f6ce49eec11c0685db8f0c7ba05d64`, merged **07:51:39Z** before
+  any re-test start. Nearest-GT results are supplementary. Camera code remains
+  `ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e` in both arms.
+- Rough **two-lane ETA 18:06Z first row / 20:28Z final row**, 7 November;
+  queued/active work ~50,147 lane-seconds, new block ~17,065 lane-seconds.
+  This assumes two operating lanes; shared admission, other jobs, time caps,
+  infra retries or a single operating lane can extend it. No lane settings
+  were changed to achieve the estimate.
+
+Evidence and notes: `compute6:~/dojo-data/kong-retest-eligible-1107/`.
+All selected ids pass the same canonical positive allowlist checked by the
+rendered driver. Refusal checks and script source are retained with the freeze;
+the BACKLOG ownership landmine extends POUR's entry. No sealed data or re-test
+camera outcomes were read, and no verdict, adoption or default change is made.

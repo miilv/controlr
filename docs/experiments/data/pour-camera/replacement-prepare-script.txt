@@ -1,0 +1,62 @@
+import datetime,fcntl,hashlib,json,os,subprocess,sys,time
+from pathlib import Path
+H=Path.home();R=H/'dojo-data/pour-cam';P=Path(sys.argv[1]).resolve();sys.path.insert(0,str(P))
+from controlr.keyguard import child_env
+from dojo.simlab.paths import is_our_measurement_id
+D=json.loads((R/'replacement-design.json').read_text())
+def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+def note(s):
+ with (R/'notes.log').open('a') as f:f.write(datetime.datetime.now(datetime.timezone.utc).isoformat()+' '+s+'\n')
+def run(tag,args,env):
+ if (R/(tag+'.done')).exists():return
+ lock=None
+ while lock is None:
+  used=int(subprocess.check_output(['nvidia-smi','--query-gpu=memory.used','--format=csv,noheader,nounits'],text=True).strip())
+  if used<=20480 and os.getloadavg()[0]<=26:
+   for name in ['dojo-gpu-light.lock']+[f'dojo-gpu-light{i}.lock' for i in range(1,9)]:
+    p=H/name
+    if not p.exists() or p.is_symlink():continue
+    f=p.open('r')
+    try:fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    except BlockingIOError:f.close();continue
+    used=int(subprocess.check_output(['nvidia-smi','--query-gpu=memory.used','--format=csv,noheader,nounits'],text=True).strip())
+    if used>20480 or os.getloadavg()[0]>26:f.close();break
+    lock=f;break
+  if lock is None:time.sleep(20)
+ assert int(subprocess.check_output(['df','--output=avail','-B1',str(R)],text=True).splitlines()[-1])>=50*1024**3
+ note(f'PREP START {tag} lock={lock.name} used_MiB={used} load={os.getloadavg()[0]}')
+ cmd=['systemd-run','--user','--scope','-q','-p','MemoryMax=20G','-p','CPUQuota=600%','timeout','-k','60','7200','bash',str(P/'scripts/simlab/rdpy.sh')]+args
+ try:
+  with (R/(tag+'.log')).open('a') as log:
+   p=subprocess.Popen(cmd,cwd=P,env=env,stdout=log,stderr=subprocess.STDOUT)
+   (R/(tag+'.pid')).write_text(str(p.pid)+'\n');rc=p.wait()
+  note(f'PREP END {tag} rc={rc}')
+  if rc:raise RuntimeError(f'{tag} rc={rc}; preserve files and diagnose before retry')
+  (R/(tag+'.done')).touch()
+ finally:lock.close()
+assert (P/'.deployed_commit').read_text().strip()==D['code']
+assert all(is_our_measurement_id(i) for i in range(D['candidate_start'],D['candidate_end']+1)), 'Ineligible replacement pool'
+selection={};attempts={}
+for c in D['cells']:
+ task=c['task'];data=R/c['block'];ld=data/'simlab/layouts'/task
+ env=child_env({'DOJO_DATA':str(data),'SIMLAB_GPU':'0','AGENTIC_MODEL':D['model'],'TMPDIR':str(R/'tmp'),'PYTHONDONTWRITEBYTECODE':'1'})
+ chosen=[];tried=[];cursor=D['candidate_start']
+ while len(chosen)<c['pairs']:
+  n=c['pairs']-len(chosen);assert cursor+n-1<=D['candidate_end'],'Registered ascending pool exhausted'
+  ids=list(range(cursor,cursor+n));assert all(is_our_measurement_id(i) for i in ids), 'Camera preparation requires OUR_MEASUREMENT_SLICES';tag=f'{task}_{cursor}_{ids[-1]}'
+  run('gen_'+tag,['-m','dojo.simlab.gen_layouts','--task',task,'--start',str(cursor),'--n',str(n),'--seed-salt',c['salt']],env)
+  run('raw_'+tag,['-m','dojo.simlab.presettle','--task',task,'--ids',*map(str,ids),'--raw-check'],env)
+  raw=json.loads((ld/'raw_index.json').read_text());valid=[i for i in ids if raw.get(str(i),{}).get('status')=='raw ok']
+  if valid:run('settle_'+tag,['-m','dojo.simlab.presettle','--task',task,'--ids',*map(str,valid)],env)
+  settled=json.loads((ld/'settled_index.json').read_text()) if (ld/'settled_index.json').exists() else {}
+  for lid in ids:
+   ok=lid in valid and settled.get(str(lid),{}).get('status')=='ok'
+   rec={'task':task,'id':lid,'raw_validation':raw.get(str(lid)),'settle_validation':settled.get(str(lid)),'raw_sha256':sha(ld/f'{lid}.json'),'valid':ok}
+   if (ld/f'{lid}.settled.json').exists():rec['settled_sha256']=sha(ld/f'{lid}.settled.json')
+   tried.append(rec)
+   if ok:chosen.append(lid)
+   note('INPUT '+json.dumps(rec,separators=(',',':')))
+  cursor+=n;selection[task]=chosen;attempts[task]=tried
+  (R/'replacement-selection.json').write_text(json.dumps({'selected':selection,'attempts':attempts},indent=2)+'\n')
+ assert chosen==sorted(chosen) and len(chosen)==c['pairs']
+(R/'replacement-prep.done').touch();note('REPLACEMENT PREP COMPLETE 10+1, raw+two-pass, ascending validity only, calls=0')

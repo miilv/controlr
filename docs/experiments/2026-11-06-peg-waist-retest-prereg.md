@@ -220,3 +220,122 @@ The z component is reported separately below as mean absolute z error before →
 Summed replay execution time: 5,420.9 s, excluding startup/admission waits; no LLM calls. Replays used existing physics light slots with bounded scopes and the shared startup/VRAM/disk constraints; camera jobs were not changed. Only verified idle audit launchers were restarted to improve admission polling.
 
 [Audit coverage, per-writer z metrics, fidelity and replay hashes](data/peg-retest/audit-summary.json) are retained with the camera snapshot. Full per-write records, normalized audit inputs, replay jobs and analysis scripts remain in `compute4:~/dojo-data/peg-retest-1107/`. Raw source hashes were rechecked after the audit. Waist outcomes are not part of this report.
+
+## Waist re-test camera verdict (7 November)
+
+**FAIL / NOT ADOPTED.** All 60 waist arms had completed before analysis; the
+last `done rc=0` is **09:16:08Z**. The registered success-flip rule is primary:
+gain **−15 < +5**, wins **0 < 2×3** losses, net **−3 < +2**. The guard meets
+both registered bounds. This was the once-only fresh-layout re-test; it is
+exhausted. No candidate, preset or default changes are made, and no further run
+is authorized by this verdict.
+
+| cell | pairs | A mean ± sample SD | B mean ± sample SD | Δ points | success flips B / A | supplementary score wins / losses (>=10 points) | successes A / B |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| match_and_pick_from_conveyor (gain) | 20 | 50.0 ± 51.30 | 35.0 ± 48.94 | −15.0 | 0 / 3 | 0 / 3 | 10 / 7 |
+| pick_from_conveyor_by_image (guard) | 10 | 0.0 ± 0.00 | 0.0 ± 0.00 | 0.0 | 0 / 0 | 0 / 0 | 0 / 0 |
+
+The gain's paired bootstrap 95% percentile CI is **[−30.0, 0.0] points**:
+10,000 resamples, NumPy default_rng seed 0, resampling the 20 paired salted
+layouts. Scores/SDs use 0–100 points; SD uses n−1. Score wins/losses are
+supplementary and do not replace this preregistration's success-flip gate.
+The guard is camera-gated under its original rule; no later parity-guard
+exemption is applied.
+
+### Actual route, full infrastructure accounting and frozen inputs
+
+Every arm has exactly one START, one terminal episode and one `done rc=0`
+entry across heavy1/heavy2: **60/60**, with complete 20/10 paired panels.
+**Zero waist infrastructure failures, retries, exclusions or time caps**; no
+missing pairs, post-outcome refills or rerun directories. The five old compute3
+startup failures were PEN and contribute no waist episodes/calls.
+
+Actual route is **claude/claude-sonnet-5-5 in all 60 arms**, verified in each
+arm's saved `agentic/**/calls.jsonl` and report `agentic[].model`, not queue
+text or static deployment metadata. All per-row logical-call/token totals
+agree between both sources. All 60 call bundles contain every requested usage
+field. The six surfaced parser errors (two turn-0, three turn-1, one turn-2
+“no JSON object”) are included in spend; they are not episode retries. Recovered
+HTTP transport retries and any unreported usage are not observable in this
+logger, so no zero-transient-retry claim is made.
+
+All actual resolved RuntimeConfigs equal the frozen configs at `86ad1987`;
+each pair differs in **only `belt_waist_first`**, A off / B on. Loaded RAW
+records match the salted manifest's SHA256s; RAW filenames and raw indices
+remain the registered inputs, not substituted settled records. All rows are
+`isaac51` / perception. All 90 RAW/loaded/index references (36 distinct files), 270 evidence-file
+hashes and 1,317 deployment source-file hashes were verified unchanged. Camera lane-lock occupancy sums to
+**13,813 s (3.84 lane-hours)**; episode wall time is **10,395.5 s (2.89 hours)**,
+excluding startup/admission waits.
+
+### Write-audit applicability: motion/intercept-only, not applicable
+
+The prereg requires physics harmful-write audits for perception changes. Under
+the lead's explicit applicability instruction for this verdict, waist-first is
+a **motion/intercept grasp-selection change with no new or changed belief
+writer**, so that audit does not apply. This is supported by the frozen code,
+all resolved configs and the full write logs, rather than inferred from scores:
+
+- At source `86ad1987`, runtime references only declare, validate and forward
+  the flag to Skills (`policy.py:474,680,1014`). Its only execution reads are
+  in `interactive.plan_intercept` (`interactive.py:880,909`): prefer existing
+  mesh-waist grasp candidates before surface/rim candidates, and filter skipped
+  grasp methods. The same waist helper was already the A fallback. This adds
+  neither a perception request nor a belief-write/acceptance predicate. The
+  collision-search helper temporarily projects obstacles and restores them in
+  `finally`; it does not commit a belief relocation.
+- There are **zero flag references in the frozen perception modules**. All
+  read/writer settings match, including `belt_wrist_veto=on`, `track_moving=auto`,
+  `track_read=belt`, `tracker=auto`, `track_expire=off`, `refine=true`,
+  `held_pose=request`, `watch_relocate=false`, and the same held/refine/scan
+  gates and numeric thresholds.
+- The observed writer families are identical by cell: gain `perception`,
+  `tracked`, `refine_pick`; guard `perception`, `tracked`. Both arms have zero
+  `held_pose` and zero `watch_relocate` events. Perception operation types also
+  match by cell. Existing write/read counts vary with trajectories; this proof
+  does **not** claim identical beliefs, identical observations or zero harmful
+  writes from the unchanged baseline writers.
+
+| cell / existing writer | logged writes A | logged writes B |
+|---|---:|---:|
+| gain / perception | 8 | 10 |
+| gain / tracked | 3,127 | 3,413 |
+| gain / refine_pick | 12 | 9 |
+| guard / perception | 9 | 4 |
+| guard / tracked | 91 | 92 |
+| total | 3,247 | 3,528 |
+
+Counts cover explicit write records plus accepted legacy refine events, using
+the frozen extractor and de-duplicating step/label/before/after poses to four
+decimals, as for peg. They are operational write counts, **not harmful-write
+classifications**. Gain `belt_read` operations A/B are 1,431/1,535 and refine
+operations 38/27; guard `belt_read` is 70/70. These differences are disclosed;
+no writer implementation, accepted read type or acceptance threshold changes.
+
+| instrument | role under this registration | waist result |
+|---|---|---|
+| frozen nearest-in-label-group identity, raw no-excess-per-writer gate | primary if a perception audit applies | not applicable to this motion-only change; no GT harmful-write score claimed |
+| #417 fixed persistent identity | supplementary only for this older registration | not applicable; no supplementary GT re-score run |
+
+No later harmful-rate/new-writer gate or fixed-identity result is substituted
+for the preregistered instrument. No physics replay, camera job, model call or
+lane/queue change was needed for this applicability review. Source references,
+function hashes, per-row config proof and per-cell write/read logs are retained
+in [the applicability snapshot](data/waist-retest/audit-applicability.json).
+The camera rejection stands independently of this applicability classification.
+
+### Recorded spend
+
+| arm | logical Claude calls | prompt tokens | completion tokens | reasoning tokens | cache-read tokens |
+|---|---:|---:|---:|---:|---:|
+| A | 73 | 995,315 | 37,052 | 20,831 | 825,615 |
+| B | 72 | 963,964 | 38,003 | 21,881 | 808,057 |
+| total | **145** | **1,959,279** | **75,055** | **42,712** | **1,633,672** |
+
+Reasoning is reported separately within completion accounting, and cache-read
+within prompt accounting; do not add either twice. No new LLM calls were made
+for this verdict. Per-pair scores, per-row actual route proof, attempt ledger,
+source hashes, configs and spend are retained in
+[the camera snapshot](data/waist-retest/verdict-camera.json) and
+`compute4:~/dojo-data/waist-retest-1107/`. No adoption, candidate change, default
+change or additional fresh-layout re-test follows from this report.
