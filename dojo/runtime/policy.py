@@ -546,6 +546,8 @@ class RuntimeConfig:
     # insert_key's turn (``regrasp.turn_held``, ``Skills.key_lean``): off (today: a turn that does not fit the steps left
     # is not started) | on (it runs as far as the steps left allow: the checker passes part-way through the turn)
     key_lean: str = "off"
+    # Empty preserves legacy global switches; otherwise apply only to this instruction-routed vocabulary.
+    key_scope_task: str = ""           # "" | "insert_key"
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -608,6 +610,11 @@ class RuntimeConfig:
 
     def watch_relocate_for(self, scene: str) -> bool:
         return scene == self.watch_relocate_task if self.watch_relocate_task else self.watch_relocate
+
+    def key_params_for(self, scene: str) -> tuple[str, str]:
+        if self.key_scope_task and scene != self.key_scope_task:
+            return "v1", "off"
+        return self.key_handover, self.key_lean
 
     @classmethod
     def from_env(cls) -> "RuntimeConfig":
@@ -708,6 +715,7 @@ class RuntimePolicy:
                 or self.cfg.kong_draw_read not in ("off", "place", "place3") or self.cfg.peg_base_refine not in ("off", "local")
                 or self.cfg.peg_stuck_confirm not in ("off", "on")
                 or self.cfg.peg_held_read not in ("off", "on")
+                or self.cfg.key_scope_task not in ("", "insert_key")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
@@ -1066,8 +1074,7 @@ class RuntimePolicy:
             sk_.peg_base_refine = cfg.peg_base_refine
             sk_.peg_stuck_confirm = cfg.peg_stuck_confirm
             sk_.peg_held_read = cfg.peg_held_read
-            sk_.key_handover = cfg.key_handover
-            sk_.key_lean = cfg.key_lean
+            sk_.key_handover, sk_.key_lean = cfg.key_params_for(scene)
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"

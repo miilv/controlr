@@ -2,6 +2,7 @@
 kinematic env through the proxy_eval policy interface. CPU only (no Isaac, no perception service)."""
 
 import copy
+import json
 import math
 import re
 from pathlib import Path
@@ -4064,3 +4065,102 @@ def test_vocab_explain_ignores_raised_labels_and_can_require_a_close_score(raise
     v, _rec = pol._explain_vocabulary(cands, {"instruction": "x"})
     assert v.name == chosen
     assert RuntimeConfig().vocab_found_needs_score is False
+
+
+@pytest.mark.parametrize("handover", ["v1", "v2"])
+@pytest.mark.parametrize("lean", ["off", "on"])
+def test_key_scope_defaults_validation_env_and_all_routes(handover, lean, monkeypatch):
+    from dojo.runtime.supervisor import VOCABULARIES
+
+    monkeypatch.setenv("DOJO_RUNTIME", '{"key_scope_task":"insert_key"}')
+    assert RuntimeConfig.from_env().key_scope_task == "insert_key"
+    assert RuntimeConfig().key_scope_task == ""
+    legacy = RuntimeConfig(key_handover=handover, key_lean=lean)
+    scoped = RuntimeConfig(key_handover=handover, key_lean=lean, key_scope_task="insert_key")
+    RuntimePolicy(scoped)
+    # Include catalog fallback names, unknown routes and near matches, not just the regex table.
+    import json
+    catalog = json.loads((Path(__file__).resolve().parents[1] / "fixtures/catalog_task_label_categories.json").read_text())
+    for scene in {v.name for v in VOCABULARIES} | set(catalog) | {"", "insert_key_random", "INSERT_KEY"}:
+        assert legacy.key_params_for(scene) == (handover, lean)
+        assert scoped.key_params_for(scene) == ((handover, lean) if scene == "insert_key" else ("v1", "off"))
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(key_scope_task="insert_keey"))
+
+
+@pytest.mark.parametrize("instruction, scene", [
+    ("Insert the key into the keyhole and turn it.", "insert_key"),
+    ("Plug the charger into the power strip.", "plug_in_charger"),
+    (STACK, "stack_blocks"), (KONG, "make_kong"), (IMITATE, "imitate_sorting_sequence"),
+] + [(f"route:{name}", name) for name in json.loads(
+    (Path(__file__).resolve().parents[1] / "fixtures/catalog_task_label_categories.json").read_text()
+)] + [("route:unknown", ""), ("route:near-match", "insert_key_random")])
+def test_key_scope_resolved_skills_and_consumer_paths(instruction, scene, monkeypatch):
+    """Compare serialized Skills params and actual shared consumer line paths, also after a rebuild.
+
+    Synthetic block geometry exercises the existing consumers on CPU; this is route/parameter
+    parity evidence, not a physical insertion or camera outcome claim.
+    """
+    import json
+    import sys
+    from dojo.skills import regrasp
+
+    if instruction.startswith("route:"):
+        # Inject catalog/explain-away resolver output; the five real instructions above test routing itself.
+        from dojo.runtime.supervisor import Vocabulary
+        monkeypatch.setattr("dojo.runtime.policy.perception_vocabulary", lambda text: Vocabulary(scene, ()))
+
+    class Perception:
+        def estimate(self, *args, **kwargs):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}",
+                                         "default_pos": list(p), "default_ori": [1, 0, 0, 0]}
+                                        for i, p in enumerate(POS)]}}
+
+    def capture(cfg):
+        seen = []
+
+        def program(ctx):
+            assert ctx.scene == scene
+            for rebuild in (False, True):
+                if rebuild:
+                    ctx.make_skills(ctx.sk)
+                params = {}
+                for key, value in vars(ctx.sk).items():
+                    if isinstance(value, set):
+                        value = sorted(value)
+                    try:
+                        json.dumps(value)
+                    except (TypeError, ValueError):
+                        continue
+                    params[key] = value
+                path = []
+
+                def trace(frame, event, arg):
+                    if event == "line" and frame.f_code.co_filename == regrasp.__file__:
+                        path.append((frame.f_code.co_name, frame.f_lineno))
+                    return trace
+
+                previous = sys.gettrace()
+                try:
+                    sys.settrace(trace)
+                    target = ctx.sk.refresh().obj("block_0").T.copy()
+                    handover = regrasp.plan_rest_handover(ctx.sk, "block_0", [target], "block_1")
+                    turn = regrasp.turn_held(ctx.sk, "left", "block_0", -np.pi / 3)
+                finally:
+                    sys.settrace(previous)
+                seen.append((json.dumps(params, sort_keys=True).encode(), path, repr(handover), repr(turn)))
+            return {"ok": True}
+
+        pol = RuntimePolicy(cfg, assets=FakeAssets(), perception_client=Perception(), program=program)
+        # FakeEpisode advertises stack_blocks metadata even for insert_key: only instruction may scope.
+        rep = run_episode(pol, FakeEpisode(_env(instruction=instruction)), "perception")
+        assert rep["error"] is None, rep["error"]
+        assert rep["result"]["ok"] and len(seen) == 2
+        return seen
+
+    legacy = RuntimeConfig(mode="perception", verify="off",
+                           key_handover="v2" if scene == "insert_key" else "v1",
+                           key_lean="on" if scene == "insert_key" else "off")
+    scoped = RuntimeConfig(mode="perception", verify="off", key_handover="v2", key_lean="on",
+                           key_scope_task="insert_key")
+    assert capture(scoped) == capture(legacy)
