@@ -37,7 +37,7 @@ def run(tag, args, gpu=False):
     done = ROOT / (tag + ".done")
     if done.exists():
         return
-    env = child_env({"DOJO_DATA": str(DATA), "SIMLAB_GPU": "0", "SIMLAB_MIN_FREE_MB": "0",
+    env = child_env({"DOJO_DATA": str(DATA), "SIMLAB_GPU": "0", "SIMLAB_MIN_FREE_MB": "0", "RD_HOME": str(H / "dojo-robodojo"),
                      "DOJO_CATALOG": os.environ.get("DOJO_CATALOG", "")})
     lock = None
     if gpu:

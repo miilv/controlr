@@ -1080,11 +1080,11 @@
   (persistence unmeasurable offline); G3 17 dev layouts 89.1 (wave config) → 95.0 (+home, kept sides) → 100.0
   (+reach, refind). All default off;
   needs camera slots from the lead.
-- [ ] **dojo imitation: the wave's imitate config lacks the adopted home wait / kept sides.** The 2026-11-06 wave rows
-  run `imitate_wait=origin` without `imitate_keep_sides`; G3 dev 100007 ended at step 776 on RoboDojo's
-  "our arm left its origin while the support arm is away" query under origin (the arm read still before it was home),
-  and camera re-entries after a false fallen read lost the halves (100021, "no free object like"). Lead's call
-  whether the board's next imitate rows set both.
+- [ ] **dojo imitation: home wait / kept sides are camera-untested levers.** `imitate_wait=home` and
+  `imitate_keep_sides` were proposed (journal 2026-10-29-dojo-imitate-wait-home) and never camera-validated; the
+  candidate runs `imitate_wait=origin`. G3 dev 100007 ended at step 776 on RoboDojo's "our arm left its origin while
+  the support arm is away" query under origin, and camera re-entries after a false fallen read lost the halves (100021).
+  They are the C arm of the [IMIT2 camera A/B](experiments/2026-11-07-imit2-camera-prereg.md).
 - [ ] **dojo imitation: far-side localisation is the next binding stage.** With cue pairing, the remaining twin
   errors are frame-0 estimates more than 10 cm off (6 % of pairs) and the plans still fail on order (missed or
   phantom departures) and on camera grasps of far-side objects (air closes in 4 of 10 plan-right rows).

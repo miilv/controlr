@@ -1,57 +1,88 @@
-# 2026-11-07 — IMIT2 camera A/B pre-registration (imitate_sorting_sequence)
+# 2026-11-07 — IMIT2 camera A/B pre-registration (imitate_sorting_sequence), three arms
 
-**Status:** proposed, not run. Camera slots are the lead's allocation; nothing here starts a camera job.
-Evidence that motivates it: [IMIT2 mechanisms report](2026-11-07-imit2-mechanisms.md).
+**Status:** approved by the lead (7 Nov); registered before any queue write. Evidence that motivates it:
+[IMIT2 mechanisms report](2026-11-07-imit2-mechanisms.md).
 
-**Hypothesis:** the IMIT2 bundle (twins by image cues, departure persistence plus elimination of the one unseen
-departure, the home wait with kept sides, reach-aware carries, re-find retries) raises the camera transition score of
-imitate_sorting_sequence over today's candidate configuration.
+**Hypotheses.** (1) The home wait with kept sides raises the camera score over the frozen candidate (C vs A).
+(2) The four IMIT2 switches raise it further (B vs C).
 
-## Arms (one reviewed commit for both; same stack, model, calibration, segmenter, backgrounds, step limit)
+`imitate_wait=home` and `imitate_keep_sides` were proposed fixes (journal 2026-10-29-dojo-imitate-wait-home), never
+camera-validated and never in the candidate; the points table's "adopted" was a mislabel (corrected). They are
+untested levers here.
 
-- **A** — today's wave candidate config for imitate: `imitate_pairing=one_to_one`, `imitate_wait=origin`, everything
-  else as in `scripts/dojo/queues/2026-11-06-wave.txt` (`submit_v3`, grip source v2, v2b segmenter).
-- **B** — A plus `imitate_pairing=cues`, `imitate_order=persist_elim`, `imitate_wait=home`,
-  `imitate_keep_sides=true`, `imitate_carry=reach`, `imitate_retry=refind`.
-- Optional **C** (the lead's call; attribution only, not gated): A plus `imitate_wait=home`, `imitate_keep_sides=true`
-  (the two existing switches the journals call adopted fixes, which the wave config does not set).
+## Arms
 
-Agentic model: whatever the lead assigns to the wave (`cx/gpt-6-luna` or `claude/claude-sonnet-5-5`), identical in
-both arms. The new perception read (`twin_costs`) makes no LLM call.
+One code: merged main `89b194be6a947d2d9c6a56eb3e97cbbfb285d63f` (contains #421), deployed to
+`compute6:~/dojo-integ-c6-89b194be` by the KEY / KONG / POUR / MATCH2 recipe. Same stack, calibration, segmenter,
+backgrounds, step limit for every row.
 
-## Layouts
+- **A** — the frozen candidate `scripts/dojo/queues/2026-11-06-candidate.txt` unchanged (`imitate_pairing=one_to_one`,
+  `imitate_wait=origin`).
+- **C** — A + `imitate_wait=home` + `imitate_keep_sides=true`.
+- **B** — C + `imitate_order=persist_elim`, `imitate_pairing=cues`, `imitate_carry=reach`, `imitate_retry=refind`.
 
-- A **new salt**, frozen in git before any generation, over ids **100000–100009 and 100020–100029** only (our
-  measurement slices). Never ids ≥ 100100, never sealed data, never old salts' records or demos.
+Every row: `--setenv AGENTIC_MODEL=claude/claude-sonnet-5-5` (checked on every row before queuing and on the live
+process), a private salted `DOJO_DATA`, `--renderer isaac51`, 25-minute episode / job caps, existing lane wrapper and
+watchdogs. Save looks frames as in the candidate. All three arms on the guard cells get the identical arm config
+(the IMIT2 fields included), so the guards test that the fields are inert outside imitation.
+
+## Layouts (fresh salt; prepared on compute3)
+
+- Salt `imit2-camera-20261107-7494a61e23c5271cadfdda1d011ecd89` (SHA256 `3d60b1fc…a70028`), frozen in git
+  ([design.json](data/imit2-camera/design.json), [prep.py](data/imit2-camera/prep.py)) before any generation.
+- Ids **100000–100009 and 100020–100029 only** (our slices); never ≥ 100100, never sealed data or old salts.
 - `dojo.simlab.gen_layouts --seed-salt`, default two-pass physics-only presettle; selection by stability only.
-- Demos: `dojo.simlab.demo_gen` (physics-only, compute3 light lock) at the speed the lead used for the last fresh
-  imitation demos; a layout whose demo fails validation is replaced by the next stable id of the same slice, before
-  any camera row runs. Both arms use the identical frozen demo.
+  Imitation demos by `dojo.simlab.demo_gen` at speed 1.25, a demo failing validation once more at 1.5. Every attempt
+  and index is kept. An imitation id with no stable layout or no valid demo is excluded and reported (there are no
+  spare ids in our slices); guard cells take the first 5 stable ids ascending (100000–04, then 100005–09).
+- Prep on compute3 light locks only (≤ 2 jobs, admission GPU used ≤ 24 GiB and disk ≥ 10 GB, 8 G / 600 % scopes),
+  zero model calls. The block is copied to `compute6:~/dojo-data/imit2-cam/` and SHA256-verified file by file.
+  Input freeze: `data/imit2-camera/manifest.json` (layouts, demos, design, queue, deployment), committed before the
+  queue write.
 
-## Panel and rule
+## Panel
 
-- **Gain cell:** 20 pairs (one per fresh layout), A/B order alternating by id parity, sequential under the lane lock.
-- **Guards:** stack_blocks 5 pairs (strong guard); classify_objects 5 pairs as a **parity guard**: every IMIT2 switch
-  acts only inside `copy_demonstration`, and the runtime wires the `twin_costs` reader only for `imitate_pairing=cues`;
-  the parity proof is an identical resolved config apart from the IMIT2 fields, plus zero `twin_costs`,
-  `[imitate]` and `re-find` events on every guard episode, checked from the logs after collection.
-- **Decision:** [EXPERIMENTS.md](../EXPERIMENTS.md) camera A/B default rule as of 7 Nov (score-based): B's pooled
-  score ≥ A's + 5 points; per-pair score wins (≥ 10 points) ≥ 2 × losses and ≥ 2 net wins; strong guard no more than
-  5 points down and no more flip losses than wins.
-- **Write audit:** `scripts/perception/m95_score.py audit` on physics-only replays of both arms. `imitate_retry=refind`
-  proposes start spots through `confirm_pose` (a writer new in B): helpful ≥ 2 × harmful on the gain cell.
-  `twin_costs` writes no belief (an assignment only); it is reported, not gated.
-- Infrastructure failures (rc 4, 0 steps) retried once with identical inputs; budget exhaustion, query endings and
-  wrong orders are outcomes.
+- **Gain:** imitate_sorting_sequence, up to 20 ids × 3 arms (1 repeat per arm).
+- **Strong guard:** stack_blocks 5 ids × 3 arms.
+- **Parity guard:** classify_objects 5 ids × 3 arms.
+- Order: per id, the three arms back to back, the arm order rotated by id ordinal (A C B, C B A, B A C, …), so no
+  arm always runs first. Appended at the **end** of `~/dojo-integ-c6-state/queue2.txt` under
+  `queue2.txt.lock` (after the POUR re-test rows if they are in; never reordering existing rows).
 
-## What is reported per episode (stage split)
+## Decisions (two registered comparisons, each under the current rules)
 
-Departures seen and the departure order against the frozen demo's `aim_label`; twins right (spatial match of the
-frame-0 estimates to the layout, dev scorer only); first-copy step; placed prefix; air closes / slips (`dev_gt_probe`);
-re-entries; steps used; RoboDojo query endings (`reward.queries`); score; agentic calls and tokens.
+Each of **C vs A** and **B vs C** is decided separately by [EXPERIMENTS.md](../EXPERIMENTS.md) as of 7 Nov:
+
+1. **Gain (score-based):** pooled score of the later arm ≥ the earlier + 5 points; per-pair score wins (≥ 10 points)
+   ≥ 2 × losses, with ≥ 2 net wins. Success flips reported alongside.
+2. **Guards:** stack_blocks (strong guard): pooled score no more than 5 points below, no more flip losses than wins.
+   classify_objects (**parity guard**): gated by its parity proof, checked after collection: identical resolved
+   classify config apart from the imitate fields, and zero `[imitate]` log lines, zero `twin_costs` events and zero
+   re-find `confirm_pose` writes on every guard episode; its score is reported, not gated.
+3. **Write audit (refined per-writer rule):** `scripts/perception/m95_score.py audit` (main, with the #417 persistent
+   identity instrument) on physics-only replays of both arms of the comparison. A writer present in both: harmful
+   rate at most 5 pp above. A writer new in the later arm: helpful ≥ 2 × harmful. In B vs C the new writer is
+   `confirm_pose` from `imitate_retry=refind`; `twin_costs` writes no belief (an assignment) and is reported with its
+   identity correctness against the layout, not gated. Missing audit coverage fails the gate.
+
+Infrastructure failures (rc 4, 0 steps) are retried once with identical inputs by the lane; a pair whose retry also
+fails infrastructure is excluded from that comparison and reported. Budget exhaustion, query endings, wrong orders and
+wall caps are outcomes. A safety incident stops the batch and fails both comparisons. No reruns on these ids.
+
+## Reported per episode (stage split)
+
+Departures seen and order against the frozen demo's `aim_label`; twins right (spatial match of the frame-0 estimates
+to the layout; dev scorer only); first-copy step; placed prefix; air closes / slips; re-entries; steps; RoboDojo query
+endings; score; agentic calls and tokens; for B the `twin_costs` margins / ties.
 
 ## Budget
 
-20 + 5 + 5 pairs = **60 camera episodes** (+20 for the optional C arm), ~15 lane-hours at 15 min/job.
-Agentic calls: at most 3 per episode (`agentic_max` 3) → **≤ 180 calls** on the assigned route (≤ 240 with C).
-Physics prep: 20 layouts × presettle + demo generation on compute3 light locks (~1–2 h).
+Up to 90 camera episodes (60 imitation at ~750 s, 15 stack ~160 s, 15 classify ~300 s ≈ 15 lane-hours, ~7.5 h on two
+lanes after the rows ahead). Claude route (`claude/claude-sonnet-5-5`): at most 3 agentic calls per episode
+(`agentic_max` 3) → **≤ 270 calls**; the tie rows averaged about 3 call directories per imitation episode, so expect
+~200–270. `twin_costs` makes no model call. Prep and audit replays: zero calls. Stop at any HTTP 429.
+
+## Reference
+
+REPRO's PyRUA-RSI program on our first five canonical dev layouts ([per_cell.json](data/rsi-yardstick/per_cell.json)):
+imitate 20.0 (n = 5, one success). Different layouts from this panel; reported for context, not a gate.

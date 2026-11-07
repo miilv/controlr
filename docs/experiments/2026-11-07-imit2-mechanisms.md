@@ -107,7 +107,8 @@ them but are not camera-measured).
 
 ## Found along the way → BACKLOG
 
-- The wave's imitate config lacks the adopted `imitate_wait=home` / `imitate_keep_sides`.
+- `imitate_wait=home` / `imitate_keep_sides` were never camera-validated and are not in the candidate (the points
+  table called them adopted; corrected): the C arm of the camera A/B.
 - Demo pickles on compute6 were regenerated after `demo_index.json` (index orders are stale for 100005–09 and 100024+):
   score order against the pickle's `aim_label`, not `demo_order(seed)`.
 - `copy_demonstration` gives up after three failed puts of one object even with half the budget left (100024).
