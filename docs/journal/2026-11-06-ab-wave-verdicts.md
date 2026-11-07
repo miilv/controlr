@@ -162,3 +162,116 @@ Static deployment `code.model` remains stale Luna and is not route evidence.
 Per-pair scores, per-row model proof, raw source hashes and spend are retained
 in [the snapshot](../experiments/data/key-scoped/verdict.json) and
 `compute6:~/dojo-data/key-1107/`. No further run is authorized by this verdict.
+
+## peg re-test: `peg_held_read=on`, fresh salted panel — CAMERA PASS; NOT ADOPTED (write audit fails)
+
+Uses exactly the pre-7-Nov registration's success-flip gate; the later
+score-win refinement is supplementary only. Final arm completed at 06:03:17Z.
+[Full verdict, route/spend evidence and audit](../experiments/2026-11-06-peg-waist-retest-prereg.md#peg-re-test-camera-verdict-7-november).
+
+| cell | pairs | A pooled | B pooled | Δ | B-only wins | A-only losses | successes A / B |
+|---|---|---|---|---|---|---|---|
+| play_stacking_toy (gain) | 20 | 55.5 | 63.5 | +8.0 | 5 | 2 | 3 / 6 |
+| stack_blocks (guard) | 10 | 100.0 | 100.0 | 0.0 | 0 | 0 | 10 / 10 |
+| insert_tubes (guard) | 10 | 82.0 | 82.0 | 0.0 | 0 | 0 | 7 / 7 |
+
+- **Camera gate passed:** +8 >= +5; success flips 5 >= 2×2, net 3 >= 2;
+  both guards pass. Supplementary >=10-point score wins/losses: gain 7/4,
+  guards 0/0 each. These do not change the registered verdict.
+- Sample SD A/B: gain 23.73/28.52, blocks 0/0, tubes 28.98/28.98.
+  Paired bootstrap gain 95% CI **[−6.0, +22.5] points** (10,000 paired-layout
+  resamples, seed 0).
+- **Integrity:** all 80 arms rc 0, complete 20/10/10 pairs, actual Sonnet
+  model verified in every call log and report. No infra exclusions/retries
+  or time caps; 19 included parsing errors, with recovered HTTP retry counts
+  unobservable. Frozen effective configs and loaded-layout hashes match.
+- **Spend:** **331 logical Claude calls**; **5,022,186 prompt / 313,569
+  completion / 188,655 reasoning / 3,989,714 cache-read tokens**. Reasoning
+  and cache are subsets, not additions. No new audit/verdict LLM calls.
+- **No adoption:** the required write audit has excess harmful held-pose
+  writes, A 0 / B 22. Its full coverage and per-writer counts are recorded in the
+  linked verdict. No candidate or default changed. The camera-only candidate
+  delta would be exactly `--config.peg_held_read: off → on`; the failed write
+  gate prevents promoting it. This consumes the once-only fresh-layout re-test.
+
+Waist is excluded from this analysis and remains a separate verdict request.
+
+Peg audit completion: **80/80 trajectories, 1,696/1,696 writes**, zero uncertain/missing frames; 80/80 terminal scores and 532/532 live grasp probes agree. The full per-writer harmful/helpful/neutral counts and separate z metrics are in the linked prereg verdict and [audit snapshot](../experiments/data/peg-retest/audit-summary.json).
+
+## KONG scoped (#410/#411): make_kong-only relocation, candidate Sonnet — DOES NOT PASS
+
+[Preregistration, full write audit and verdict](../experiments/2026-11-07-kong-scoped-relocate-prereg.md).
+The explicitly registered **score-based** gain rule applies (pair score W/L
+≥10 points). Under lead amendment `74d9ed80`, only the 40 `__sonnet` rows are
+primary. Every row verifies `claude/claude-sonnet-5-5` in actual call logs,
+transcript starts and report agentic metadata: zero primary route violations.
+Static deployment `code.model` remains stale Luna and is not route evidence.
+
+| cell | pairs | A pooled | B pooled | Δ | success flips (B / A) | score wins / losses (≥10 pts) | successes A / B |
+|---|---|---|---|---|---|---|---|
+| make_kong (gain) | 10 | 40.0 | 60.0 | **+20.0** | 2 / 0 | 2 / 0 | 4 / 6 |
+| imitate_sorting_sequence (guard) | 5 | 23.0 | 7.0 | **−16.0** | 0 / 1 | 0 / 2 | 1 / 0 |
+| stack_blocks (strong guard) | 5 | 100.0 | 100.0 | 0.0 | 0 / 0 | 0 / 0 | 5 / 5 |
+| Luna supplementary: make_kong | 10 | 40.0 | 50.0 | +10.0 | 1 / 0 | 1 / 0 | 4 / 5 |
+| Luna supplementary: imitate | 5 | 7.0 | 11.0 | +4.0 | 0 / 0 | 1 / 0 | 0 / 0 |
+| Luna supplementary: stack | 5 | 100.0 | 80.0 | −20.0 | 0 / 1 | 0 / 1 | 5 / 4 |
+
+- **What passed:** gain delta +20 ≥+5, score wins 2 ≥2×0 losses and net 2;
+  stack guard. All 40 primary arms rc 0 and complete 10/5/5 pairs, actual
+  route and frozen-input/config checks. Primary paired bootstrap 95% CIs:
+  kong **[0, +50]**, imitate **[−44, 0]**, stack **[0, 0]** points
+  (10,000 paired-layout resamples, seed 0; descriptive).
+- **What failed:** imitate delta −16 <−5 and success losses 1 >0 wins;
+  the full raw write gate also fails. The lever is not adopted. Guard configs,
+  resolved skill parameters and excluded relocation paths match by construction
+  and nine focused tests; both guards have zero relocation writes. Independent
+  stochastic camera outcomes still vary, and the registered guard is retained.
+  B imitation 100001/100003 wall caps count as outcomes. No episode reruns or exclusions.
+- **Sonnet write audit:** **249/249 writes**, 40/40 arms, zero uncertain, 40 stable
+  resets; frozen hashes unchanged. Pooled harmful A/B: perception 31/39, predicted
+  13/13, watch_lay 6/6, watch_relocate 0/2. Relocation B has 16 helpful / 11 neutral / 2
+  harmful (A zero). Same-label diagnostics are supplementary; raw nearest-object gate
+  counts stand.
+- **Primary spend:** **142 logical Claude calls**; **2,182,217 prompt /
+  150,450 completion / 99,674 reasoning / 1,687,743 cache-read tokens**.
+  One surfaced internal-server stream error, 11 no-JSON parser errors,
+  zero logged 429s. Recovered HTTP retries and their usage are unobservable
+  because OmniChat drops attempt/status metadata; zero transport retries is
+  not claimed. Summed lane locks 14,283 s; episode wall 12,080.9 s.
+- **Luna supplementary, never pooled/adopted:** gain misses net wins; stack
+  guard fails. CIs: kong [0, +30], imitate [0, +12], stack [−60, 0]. Its raw
+  audit remains 228/228 writes with harmful excesses. **74 logical Luna calls**;
+  **763,614 prompt / 25,666 completion / 13,342 reasoning / 588,672 cache-read**.
+  Three disconnect failures explicitly exhausted three attempts each (≥6 HTTP
+  retries); recovered retries remain unknown; zero logged 429s.
+
+The final primary arm completed at **06:16:41Z** (lane log). Per-pair scores,
+spread, per-row route proof, raw source hashes and reported spend are in
+[the evidence snapshot](../experiments/data/kong-scoped-relocate/verdict.json).
+No candidate/default field changes, new camera dispatch or adoption.
+
+## Lead, 7 Nov ~07:00Z: two refinements to the adoption gates (prospective only)
+
+These were written after the peg re-test and the KONG scoped verdicts. They apply only to pre-registrations from
+2026-11-07 07:00 UTC; every earlier A/B keeps the rule it registered, and none is re-judged. See EXPERIMENTS.md.
+
+- **Write audit, per writer.**
+  - An existing writer passes when its harmful RATE is no more than 5 percentage points above A's. Raw totals of
+    downstream writers mostly track trajectory length after divergence.
+  - A writer new in B passes when helpful ≥ 2 × harmful. Against A's zero, every new read failed by construction.
+- **Parity guards for scoped levers.** A guard on which the lever is proven inactive (identical resolved config and
+  skill parameters, zero lever actions and writes in every guard episode) is gated by that proof, not by its noisy
+  camera score. One strong guard (≥ 90 % cell) stays camera-gated.
+
+Why:
+- KONG scoped (make_kong only) failed on an imitate guard of −16 at n = 5, with the code path identical by
+  construction and zero relocation writes.
+- Its new relocation writer (16 helpful / 2 harmful) and peg's held_pose writer (11 helpful / 22 harmful) were judged
+  the same way, by "any harmful write against A's zero".
+- The refined gates still reject peg (its new writer fails 2×), so they separate the two cases on mechanism, not on
+  outcome.
+
+make_kong under scoping has been positive in every test so far: +20 at n = 15 historically, +30 global, +10 Luna,
++20 Sonnet. **KONG scoped gets its one fresh-layout re-test under the refined rule**: new layouts, 20 make_kong pairs,
+imitate as a parity guard, stack_blocks as the strong guard. It is queued on compute6 after the tie block. Peg's one
+re-test is used up; a mechanism study (offline, no LLM calls) decides whether a new lever follows.

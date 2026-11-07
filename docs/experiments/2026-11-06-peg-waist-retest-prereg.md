@@ -97,3 +97,126 @@ reloc/key rows. Both arms retain the frozen common perception model; MOVE34
 makes no separate Claude-route calls. Existing decision rules and sample
 requirements remain in force. Compute3 remains under STOP, with its queue
 archived as moved to compute4.
+## Peg re-test camera verdict (7 November)
+
+The final peg arm, `c4b_insert_tubes_pegAr1_pegtubes2_100004`, reported
+`done rc=0` on heavy1 at **06:03:17Z**. This verdict was computed only after that
+barrier. Waist is excluded. This is the once-only fresh-layout re-test, not
+an additional selection round.
+
+**Camera decision: PASS under this registration's success-flip rule.**
+The 7 November score-based refinement does not apply retrospectively.
+Gain +8.0 >= +5; success-flip wins 5 >= 2×2 losses; net wins 3 >= 2.
+Both guards meet B >= A−5 and flip losses <=wins. This is a camera-gate
+result; the separate required write-audit result is below.
+
+| cell | pairs | A mean ± sample SD | B mean ± sample SD | Δ points | success flips B / A | supplementary score wins / losses (>=10 points) | successes A / B |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| play_stacking_toy (gain) | 20 | 55.5 ± 23.73 | 63.5 ± 28.52 | +8.0 | 5 / 2 | 7 / 4 | 3 / 6 |
+| stack_blocks (guard) | 10 | 100.0 ± 0.00 | 100.0 ± 0.00 | 0.0 | 0 / 0 | 0 / 0 | 10 / 10 |
+| insert_tubes (guard) | 10 | 82.0 ± 28.98 | 82.0 ± 28.98 | 0.0 | 0 / 0 | 0 / 0 | 7 / 7 |
+
+Scores and SDs use the 0–100 point scale; SD uses n−1. Paired bootstrap 95%
+percentile CI for the gain is **[−6.0, +22.5] points** (10,000 resamples,
+NumPy default_rng seed 0, sampling 20 paired salted layouts with replacement).
+The CI includes zero; the registered decision is a threshold rule, not a
+claim of a statistically resolved positive population effect. The supplementary
+7/4 score count would not meet the newer ratio; it does not change this rule.
+
+### Integrity, infrastructure and actual route
+
+All 80 registered arms have exactly one terminal episode and exactly one
+`done rc=0` entry, across heavy1/heavy2. **Zero peg infrastructure failures,
+zero arm retries, zero excluded peg attempts, zero time caps.** No missing
+pairs or refill substitutions. The five historical compute3 startup failures
+were PEN, not peg; they contribute no peg episodes or spend. The lead later
+increased compute4 camera caps to two lanes; both arms remain on compute4
+with the same frozen source and inputs.
+
+Each report's full resolved RuntimeConfig equals its frozen config at
+`86ad1987`; all loaded-layout SHA256s match the frozen salted manifest. The
+renderer/mode are Isaac 5.1/perception. Every analysed arm verifies
+`claude/claude-sonnet-5-5` in **both its actual `agentic/**/calls.jsonl` records
+and report `agentic[].model` metadata**, with exact per-row call/token agreement.
+Queue text and static deployment model labels are not the route evidence.
+No route violations or missing route proofs were found.
+
+There are 19 surfaced agentic parsing errors (16 “turn 0: no JSON object”,
+3 “turn 1: no JSON object”); these are included in logical call/token totals,
+not classified as infrastructure episode retries. Recovered HTTP transport
+attempts are unobservable in this logger, so zero infrastructure retries does
+not certify zero transient HTTP retries. Summed camera lane-lock occupancy:
+22,509 s (6.25 lane-hours); episode wall time: 17,866.1 s (4.96 hours), excluding
+startup/admission waits.
+
+### Recorded spend
+
+| arm | logical Claude calls | prompt tokens | completion tokens | reasoning tokens | cache-read tokens |
+|---|---:|---:|---:|---:|---:|
+| A | 164 | 2,477,462 | 152,126 | 92,698 | 1,963,901 |
+| B | 167 | 2,544,724 | 161,443 | 95,957 | 2,025,813 |
+| total | **331** | **5,022,186** | **313,569** | **188,655** | **3,989,714** |
+
+Reasoning is reported separately within completion accounting, and cache reads
+within prompt accounting; do not add them again. The verdict/audit makes no
+new LLM calls. Per-pair scores, route proofs, attempt ledger, source hashes,
+coverage and spend are retained in
+[data/peg-retest/verdict-camera.json](data/peg-retest/verdict-camera.json) and
+`compute4:~/dojo-data/peg-retest-1107/`.
+
+### Required physics write audit: FAIL; overall not adoptable
+
+The camera gate passes, but the independent no-excess-harmful-write gate fails.
+No candidate or default is changed. The sole hypothetical camera-only candidate
+change would be `--config.peg_held_read: off → on`; the failed write gate blocks
+promoting it. The once-only fresh-layout re-test is exhausted; this result
+authorizes no further run.
+
+All **80/80 action trajectories** were replayed physics-only on compute4 from
+the exact frozen settled inputs and recorded actions, using source `86ad1987`.
+Replays cover every logged write step exactly, not a nearest sparse frame.
+`m95_score.py audit --back 0` uses the registered **>2 mm added 3-D body-centre
+error** threshold and nearest pre-write tracked object in the label group.
+No tolerance or harmful-write threshold was changed.
+
+The standard extractor suppresses legacy refine/release events whenever any
+explicit `belief_write` exists. For coverage, separate analysis reports union
+its explicit-write output with its legacy-event output (the latter excludes
+explicit `belief_write` events); duplicates use step, label and before/after
+poses rounded to four decimals. Both original reports and action files remain
+unchanged. These normalized reports are inputs to the unmodified audit scorer.
+This includes held reattachments, perception updates, accepted refines,
+release/post-place updates and predicted writes; rejected read attempts are
+not pose writes.
+
+Coverage: **1,696/1,696 logged writes**, A 757 / B 939; zero missing write-step frames, zero uncertain writes, and zero frame lag. Terminal score fidelity: **80/80**. The live grasp-close GT probe agrees within 2 mm on **532/532** closes (worst reported difference 0.0 mm). These fidelity checks accompany the write gate; they are not a replacement camera result.
+
+| writer | writes A / B | harmful A / B | helpful A / B | neutral A / B | uncertain A / B |
+|---|---:|---:|---:|---:|---:|
+| held_pose | 0 / 147 | 0 / 22 | 0 / 11 | 0 / 114 | 0 / 0 |
+| perception | 252 / 266 | 118 / 125 | 80 / 87 | 54 / 54 | 0 / 0 |
+| post_place | 104 / 116 | 15 / 8 | 22 / 25 | 67 / 83 | 0 / 0 |
+| predicted | 145 / 138 | 70 / 64 | 74 / 72 | 1 / 2 | 0 / 0 |
+| refine_held | 9 / 9 | 2 / 0 | 0 / 0 | 7 / 9 | 0 / 0 |
+| refine_pick | 238 / 250 | 4 / 4 | 21 / 17 | 213 / 229 | 0 / 0 |
+| refine_pick+confirm | 1 / 4 | 0 / 0 | 1 / 4 | 0 / 0 | 0 / 0 |
+| refine_place | 8 / 9 | 0 / 0 | 0 / 0 | 8 / 9 | 0 / 0 |
+
+In particular, **held-pose harmful writes increase from 0 to 22**. This excess is present in explicit held-pose writes and does not depend on the supplemental legacy-event extraction. Helpful writes cannot offset it under the registered gate. This is an aggregate gate audit, not a tuning diagnosis.
+
+The z component is reported separately below as mean absolute z error before → after (mm), using the scorer's reported 0.1-mm z values. The decision above uses the unrounded 3-D error change, not z alone.
+
+| writer | A mean absolute z before → after, mm | B mean absolute z before → after, mm |
+|---|---:|---:|
+| held_pose | — | 13.66 → 25.18 |
+| perception | 3.27 → 11.33 | 3.52 → 11.52 |
+| post_place | 8.14 → 6.89 | 6.48 → 5.80 |
+| predicted | 11.23 → 24.21 | 10.95 → 24.34 |
+| refine_held | 2.27 → 2.14 | 2.87 → 2.78 |
+| refine_pick | 2.74 → 2.62 | 2.53 → 2.56 |
+| refine_pick+confirm | 0.00 → 0.00 | 27.80 → 1.20 |
+| refine_place | 0.00 → 0.00 | 0.00 → 0.00 |
+
+Summed replay execution time: 5,420.9 s, excluding startup/admission waits; no LLM calls. Replays used existing physics light slots with bounded scopes and the shared startup/VRAM/disk constraints; camera jobs were not changed. Only verified idle audit launchers were restarted to improve admission polling.
+
+[Audit coverage, per-writer z metrics, fidelity and replay hashes](data/peg-retest/audit-summary.json) are retained with the camera snapshot. Full per-write records, normalized audit inputs, replay jobs and analysis scripts remain in `compute4:~/dojo-data/peg-retest-1107/`. Raw source hashes were rechecked after the audit. Waist outcomes are not part of this report.
