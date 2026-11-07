@@ -37,3 +37,8 @@ these refusals. Before any further episode, add shallow insertion proposals
 at +6/+12 mm world z, recompute mesh opposition at each new TCP, and retain
 native IK/finger/obstacle checks and original physical hold rejection. This
 changes pad insertion depth, not table tolerance or collision exemptions.
+
+Shallower insertion yields 24/124 reachable right-arm grasps but zero paired
+hang endpoints. Next separate pickup feasibility from placement: test a
+standalone checked band pick, and count exact place-endpoint IK/wrist/scene
+rejections. This is pilot diagnosis, not a reason to disable cradle collision.
