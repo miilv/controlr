@@ -212,3 +212,59 @@ before any action. The heavy standard48 success is feasibility evidence,
 not grounds for a universal bridge strategy. Another original cup diagnostic
 measures closing-axis shift9.0 mm and perpendicular shift13.7 mm after lift;
 a closing-axis recenter alone would not explain that entire failure.
+
+## Numerical development record
+
+These are repeated development records; they do not estimate fresh reliability.
+All use physics-only G3 with original physical-verification thresholds.
+
+| Prototype | Standard48 | Random47 | Random48 | Random49 |
+|---|---:|---:|---:|---:|
+| Frozen centre-stage baseline | 0 | 0 | 0 | 0 |
+| Cup bank + site retries, nominal opening | 0 | 0 | 0 | 0 |
+| Full opening, narrow proposals | 0 | 20 | unrun | unrun |
+| Full opening, all cup-mode proposals + mesh rest | 0 | 20 | 20 | 0 |
+
+Standard48's first right pickup improves14.9→6.6 mm lift drift with full
+opening, then carries to the centre with1.1 mm attachment shift. The old
+opening disturbed the object15.9 mm upward before closure although TCP error
+was0.03 mm/0.004 degrees. This is physical pre-contact clearance, not failed
+IK or evidence that the8 mm verifier should be relaxed. Its later left38 mm
+pick is clean2.3–6.8 mm, but measured place re-planning fails; the nominal
+fallback then loses258 mm. The production `sites` guard refuses that carry.
+
+Mesh-ground staging on random47 lands5.2 mm off in xy,+1.3 mm z and6.3
+degrees tilt. The original bbox release was17.6 mm off,−12.7 mm z and15.3
+degrees. A subsequent18 mm left grasp lifts clean7.6 mm and genuinely hangs
+13 mm from the cradle frame. Its23.6 mm carry shift is compensated by the
+existing measured-place re-plan; it must not be described as a rigid hold.
+Random48 lifts7.3 mm drift directly and earns20 without a staging transfer.
+Random49 still fails: first30 mm pickup loose8.5 mm, then wider holds slip.
+
+The upright-bridge feasibility variant is separate from production:
+standard48 upright rest10.6 mm xy,−1.1 mm z,4.7 degrees; downward bridge
+pick3.3 mm drift and20 points after30 released-support steps. Horizontal
+bridge pick18.1 mm loose, next site186 mm slip. Cross-shape standard45
+fails static rest stability without moving; random49 lifts7.8 mm and carries
+with1.8 mm shift but misses its rest by19.8 mm/9.3 degrees, ending at0.
+Thus one successful upright-bridge mechanism exists, with no reliable
+generic rest/re-grasp policy yet. It is not included in the panel candidate.
+
+Production source **bf6ff63c** implements the registered enclosure/rest
+bundle. Focused CPU tests:31 passed. The full suite and12/cell production
+screen are running. The earlier source d8387f61 passed2101 tests with191
+skips in1093.08 s; that result does not validate the added source by itself.
+
+## Lift-speed probe registered from continuous pilot evidence
+
+Production random45 regresses to0: four loose9.5/12.8/9.2/13.9 mm pickups.
+Its first grip shifts6.4 mm during closure, then5.1 mm during the lift, with
+4.37 degrees rotation. The first lift step moves TCP17.2 mm; object rise11.4
+mm, while the last three lift steps hold their relative pose much better.
+This is actual load-onset motion in the jaws, not just the wrist endpoint.
+Before another source change, test a slower checked lift (`lift_rad=.03`
+instead of the original default) on random45 and standard48 pilots. Keep full
+opening, mesh rest, original8/30 mm drift thresholds and measured-plan refusal.
+No loaded-hold exemption or changed checker. Preserve the current12/cell
+production screen unchanged; these prototype jobs queue behind each lock's
+current episode, with no more than two actual scopes.
