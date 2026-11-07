@@ -347,3 +347,23 @@ screens and report all outcomes, rather than stopping on an early favourable
 count. If this gate fails, diagnose pilots and continue development; do not
 reroll the final panel or alter its future selection rule. These are
 development gates, not a formal estimate of population reliability.
+
+## Remaining curved-cup carry and gravity-bridge cross-check
+
+Production slow random47 stages cleanly (right2.7 mm pickup,5.7 mm carry,
+3.2 mm xy/1.4 degrees rest), rejects12.1/13.2 mm left lifts, then a7.4 mm
+lift loses41.9 mm during carry and misses49.8 degrees. Slower load onset
+does not solve every curved-cup reorientation. Keep this failure in the
+frozen production screen.
+
+In parallel, extend only the already-demonstrated upright/downward-bridge
+feasibility recipe to random45 (asset8) and47 (asset10), pilots only. Keep
+the true static-rest screen,50 mm checked upright release gap, native full
+plans, original physical verifiers, gravity-balanced bridge sites, current-
+orientation carry and30-step rest/released-support proof. Use0.03 rad/step
+for the initial non-upright body pickup (the same load-onset correction),
+then the original bridge lift speed. Source504daaef plus the retained probe
+recipe; no change to the production candidate or its registered screens.
+These jobs queue behind current batches on light2/light8; at most two actual
+physics scopes. Any bridge integration requires separate production evidence
+and registration; do not infer reliability from the single heavy-shape success.
