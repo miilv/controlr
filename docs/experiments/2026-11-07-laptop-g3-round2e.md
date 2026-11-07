@@ -104,3 +104,15 @@ full-mesh table tolerance and hand/scene validators. Missing/invalid geometry
 retains the old target. This is a planned pose, never a forced scene pose.
 Compare full-bank opening alone on standard48 and full-bank opening + mesh rest
 on random47; then cross-check any physical improvement. No verifier relaxation.
+
+## Checked measured-attachment re-plan requirement
+
+Full-opening standard48 eventually lifts a38 mm pinch cleanly (6.8 mm drift),
+but its measured-attachment place re-plan fails. The existing nominal-plan
+fallback then carries and loses258 mm of attachment, missing by202 mm xy.
+For `headset_retry=sites` only, refuse that fallback: put the verified hold
+back down through the existing re-grasp path, record the executed pickup site
+as unusable for this transfer, and try another checked site within the same
+four-attempt/800-step bounds. Legacy retry keeps its existing fallback.
+No failed re-plan may be reclassified as a valid carry. Preserve failed
+put-down/budget/end status rather than pretending the gripper is empty.
