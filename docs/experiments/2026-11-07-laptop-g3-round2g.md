@@ -60,3 +60,39 @@ site-specific steady grip from general drift. These remain unscored diagnosis;
 no admission criterion, source action or fresh-panel gate changes. Two initial
 recipe import errors occurred before runner creation/actions; both are retained
 as infrastructure recipe failures, not policy scores.
+
+## Unsupported challenge measurements and selected prototype
+
+Both native raise/return plans pass. Standard30: measured root rises19.56 mm,
+mesh bottom reaches25.08 mm above the table; throughout the challenge root-
+in-TCP deviates at most0.53 mm/0.40 degrees, ending0.54 mm below its starting
+height. Standard31: root rises19.69 mm, bottom reaches92.39 mm, relative drift
+<=0.62 mm/0.42 degrees; original nominal drift14.1→13.6 mm remains loose.
+The original verifier is unchanged in both diagnostics. These physically
+unsupported, following holds justify a separate **loaded-hold proof**, not a
+larger nominal drift threshold or a claim every loose pickup is sound.
+
+Prototype default-off `headset_hold=loaded` (legacy default): only a headset
+pickup already classified `ok=True,status=loose` by the original verifier may
+try it. Keep original hard slip/lift gates. Hold30 closed stationary steps,
+then pre-plan/check a20 mm vertical raise and return, with8 hold steps at
+each endpoint, unchanged orientation and all native scene/hand/mesh checks.
+Sample actual refreshed object/TCP pose at each physical step (preserve any
+existing step observer). Require full-mesh initial clearance>=3 mm, peak>=20 mm,
+measured object rise>=17 mm, all sampled attachment translations<=3 mm and
+rotations<=3 degrees relative to the settled pre-challenge reading. Re-run
+unchanged original verifier at the end; hard slips still reject. Only after
+this loaded proof may a loose result be recorded as `ok` for a measured-
+attachment re-plan; retain the raw nominal drift in its note. Any invalid
+mesh, missing hold, unstable sample, infeasible leg, budget/end or failed
+measured place re-plan must not become a successful hold/carry. No synthetic
+attachment, scoring change or pose write. Normal pickups/other objects/default
+modes execute exactly their old path. Fresh camera observations would be needed
+to transfer this proof beyond G3; a cached belief cannot establish following.
+
+First prototype on the two diagnosed failed pilot records only. If they hang,
+implement and mock-test the default-off mirrored field, then freeze one common
+profile and screen both full original12 and coverage18 ten/cell again. Admission
+remains>=9/12 original and>=8/10 coverage in each cell. Fresh panel needs a
+separate salt/source registration after that gate; all unused ids remain
+untouched. No change to frozen3866 screen or its null decision.
