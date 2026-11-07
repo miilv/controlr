@@ -1,0 +1,3313 @@
+{
+  "created_utc": "2026-11-07T03:51:57Z",
+  "manifest": {
+    "path": "/home/robotics/dojo-data/key-1107/manifest.json",
+    "sha256": "5bbaa131fc2813bc459537bcf088fcbe79d51fb17026adaabf92047370be2305"
+  },
+  "route_amendment": "74d9ed80",
+  "rows": [
+    {
+      "name": "c6b_insertkeysg_keyAr1b1_100001__sonnet",
+      "task": "insert_key",
+      "arm": "A",
+      "block": "key-scoped-1",
+      "id": 100001,
+      "score": 15.0,
+      "success": false,
+      "category": "budget",
+      "time_capped": false,
+      "steps": 300,
+      "wall_s": 77.7,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 4,
+      "usage": {
+        "prompt": 57897,
+        "completion": 2357,
+        "reasoning": 1356,
+        "cache_read": 51110
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001__sonnet/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "144bf18cdb45c40460518d2e7f6e2c8628f0eceb307154fce66338c04536c149"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001__sonnet/insert_key_perception_verify-bundle_100001_report.json.gz",
+          "sha256": "2f44fdf81277805e19047958a09427f82b273947dd60ab9c1d1e84ea41906432"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001__sonnet/agentic/call_001/calls.jsonl",
+          "sha256": "cadd972dbc45b99b7960400841e68a5114470fd6ae9a610ec30860843eecc613"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001__sonnet/agentic/call_001/20261107-052206-797780-0001/transcript.jsonl",
+          "sha256": "997b18972a8672dfd5bc9a9ef37616f31666a7dfa798deef79a5e75d714d9cca"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001__sonnet/perception_service.log",
+          "sha256": "f3e2c8510b345bfcd0225779768ee1451dd7765d99d6dd157f8ba90527d60e9d"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001__sonnet/integ_eval.log",
+          "sha256": "c8e12dd82301cd575e7dcf87c1f3d4f4f1a99a06391e211f7d90bea17c85e9ed"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001__sonnet.log",
+          "sha256": "fdd7fb3d1caea7611a74da08f2740d40ab12711fb12a81b1c02f0e8697b453ca"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:23:56Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 136
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyBr1b1_100001",
+      "task": "insert_key",
+      "arm": "B",
+      "block": "key-scoped-1",
+      "id": 100001,
+      "score": 15.0,
+      "success": false,
+      "category": "budget",
+      "time_capped": false,
+      "steps": 300,
+      "wall_s": 79.1,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 44326,
+        "completion": 2672,
+        "reasoning": 1843,
+        "cache_read": 36467
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100001/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "7c148bcf65ac6cc9add86f4287ab5ab454b9a107b32c6f5184f19087d9162f47"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100001/insert_key_perception_verify-bundle_100001_report.json.gz",
+          "sha256": "94e7490006d8b123fd2637f0fc3214eabb04abb77dbd0cf78998a848a7c5fe51"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100001/agentic/call_001/calls.jsonl",
+          "sha256": "ead808ffe28ccabcd879b9cfe26cc4d8b9af18c973a80f910d4fc90a70c2df36"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100001/agentic/call_001/20261107-052421-799415-0001/transcript.jsonl",
+          "sha256": "37ab76bd63352e87f7b8c9c45c89ff287028dd4978c8925c000acb3a6f69ee42"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100001/perception_service.log",
+          "sha256": "d1482ce489ffee883df54c38bbbe1579454946835015f6779a691e8be9bf1246"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100001/integ_eval.log",
+          "sha256": "0bf737c4c94fe99a7fcad360932689bc1a75264347d20ec7155fdcdd65a58fab"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100001.log",
+          "sha256": "3f764a06df15cc5e0c30425890721c86e4992573f9a78049f0e800eeebfdadf9"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:26:11Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyBr1b1_100002",
+      "task": "insert_key",
+      "arm": "B",
+      "block": "key-scoped-1",
+      "id": 100002,
+      "score": 15.0,
+      "success": false,
+      "category": "plan",
+      "time_capped": false,
+      "steps": 139,
+      "wall_s": 73.8,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 43183,
+        "completion": 2957,
+        "reasoning": 2016,
+        "cache_read": 36469
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100002/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "009295d24a4908407c30b2e2902503fc12c692825978fc395e7892a392bdbb05"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100002/insert_key_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "75681ced50993221735eeb23524d2f276339e48bbda3e094f2fbef49f48b5eec"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100002/agentic/call_001/calls.jsonl",
+          "sha256": "0ef520a9fe766779dd7cf67b77a7b5395fbfef29363c0aefb6e06dbf77c09a4a"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100002/agentic/call_001/20261107-052636-800859-0001/transcript.jsonl",
+          "sha256": "9b1f1102e933e2842de58a9a4ffc14528e4a3cf5b8c9de5e7edd5a8baa986397"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100002/perception_service.log",
+          "sha256": "80202f1353a0fe990c539d5c1a629348e53a01440895cbe06c3e7098903feb58"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100002/integ_eval.log",
+          "sha256": "a28fbceb10a2db88b2814bb0b462796123c470eb6a788d3581d62e32839e4d89"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100002.log",
+          "sha256": "36bacf3eb651bd363ccee2fcd9972c54d4fb872d8be97d043a292f3e21a49cb0"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:28:27Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 136
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyAr1b1_100002",
+      "task": "insert_key",
+      "arm": "A",
+      "block": "key-scoped-1",
+      "id": 100002,
+      "score": 15.0,
+      "success": false,
+      "category": "plan",
+      "time_capped": false,
+      "steps": 142,
+      "wall_s": 70.2,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 4,
+      "usage": {
+        "prompt": 43157,
+        "completion": 1768,
+        "reasoning": 1017,
+        "cache_read": 39482
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100002/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "7297c58d9b8b05019c3df34d380a9812000e98bcc613a4b4b5f992281bb0edfc"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100002/insert_key_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "ef2434e9dcc55a97c6fa5cd0148f279393951eed9afa3f0f623cb4f6810c9d57"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100002/agentic/call_001/calls.jsonl",
+          "sha256": "d471e74df5156103a96e3a4916882349157c136f103308224b98876aa43d47ee"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100002/agentic/call_001/20261107-052851-802272-0001/transcript.jsonl",
+          "sha256": "92abd47dafc72160d57d375a872ede015b9c80a20e426834f25f7b5f958179de"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100002/perception_service.log",
+          "sha256": "476d325202e75c69977e5c19e8a539712a1912df32d89d2f84c8c9dcb7bc6f5c"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100002/integ_eval.log",
+          "sha256": "2da37784679eb28c579a2912fe76e2013dbdaa70f8a56e79d6a683ff5ba777cb"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100002.log",
+          "sha256": "2521c96e59bf3649ddd23c0d0dda948f2ed1203a11fcecae6493276af57fa54e"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:30:12Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 105
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyAr1b1_100003",
+      "task": "insert_key",
+      "arm": "A",
+      "block": "key-scoped-1",
+      "id": 100003,
+      "score": 15.0,
+      "success": false,
+      "category": "perception_gross",
+      "time_capped": false,
+      "steps": 299,
+      "wall_s": 85.6,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 43384,
+        "completion": 3546,
+        "reasoning": 2615,
+        "cache_read": 36467
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100003/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "7517f8f0da20a96b8bbb098c8a6c63dd4cce9adfd912e981362daea7ade19225"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100003/insert_key_perception_verify-bundle_100003_report.json.gz",
+          "sha256": "f1488592b586cd83da44521d1e094a852f8f25c38d85f3cbc60da3415eb983ce"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100003/agentic/call_001/calls.jsonl",
+          "sha256": "3a40b7c294f36f95219d37e530fd03489c4cf37447dcc0a81e19c991e0387e51"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100003/agentic/call_001/20261107-053037-803707-0001/transcript.jsonl",
+          "sha256": "e6986bf7d381c099fab6cf5499d8b7cfb3b45e56ea67ab818614711cc9b5b602"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100003/perception_service.log",
+          "sha256": "219f15d3462d3bf68257f4734feeb38bc96bab5a1db566dae6e82b452cd45e92"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100003/integ_eval.log",
+          "sha256": "f4af8de821a957b469dc8b78f81b02e2f2b6ccdf506ecb1d191bb4a2b5b8040a"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100003.log",
+          "sha256": "1a2072c8427e2fda406e93a5b4aedfd33aa128d9f7aa910ede088d16c1cce2d1"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:32:27Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyBr1b1_100003",
+      "task": "insert_key",
+      "arm": "B",
+      "block": "key-scoped-1",
+      "id": 100003,
+      "score": 15.0,
+      "success": false,
+      "category": "perception_gross",
+      "time_capped": false,
+      "steps": 291,
+      "wall_s": 82.7,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 43961,
+        "completion": 3063,
+        "reasoning": 2153,
+        "cache_read": 36468
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100003/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "7c21f229ff52922dbefc67105c213848ea8501325e3cf791e9c4f892d1f5cf6f"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100003/insert_key_perception_verify-bundle_100003_report.json.gz",
+          "sha256": "9b48dc1000a8001f7d9f393d7cf0d23cd09c490a4a37839aff260fabed653e16"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100003/agentic/call_001/calls.jsonl",
+          "sha256": "0104ba00995bc5c4950b0a195bb83be2ecface6658118ec3dacecc83430aa3e5"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100003/agentic/call_001/20261107-053252-805137-0001/transcript.jsonl",
+          "sha256": "ffd4ae897b83d87e55da2f684d9eed9150b308403db8b4de7606bfb93927a7f2"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100003/perception_service.log",
+          "sha256": "35055d9a3be6d1de83028b40201242ed1a670ab99d9d5e949461127b70eadf9c"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100003/integ_eval.log",
+          "sha256": "60113e00d6c15c2c68b7dc109a746bb15e925834e1817602d8bc2fc60b415189"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100003.log",
+          "sha256": "370d5b5f0d4fd776828c8a3a6dd434784d0c1ea67a01f49867c9d7f4310e5ff3"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:34:43Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 136
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyBr1b1_100004",
+      "task": "insert_key",
+      "arm": "B",
+      "block": "key-scoped-1",
+      "id": 100004,
+      "score": 15.0,
+      "success": false,
+      "category": "grasp_slip",
+      "time_capped": false,
+      "steps": 277,
+      "wall_s": 85.0,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 28091,
+        "completion": 1239,
+        "reasoning": 772,
+        "cache_read": 24940
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100004/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "add7bdf397aad13445df303a0849b12e43b5a1e1e3c0ff553002e65b680ad49b"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100004/insert_key_perception_verify-bundle_100004_report.json.gz",
+          "sha256": "3353ce29970f921e1dff0cb57e50632e83e509535632ddc2607d107eecdd1a52"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100004/agentic/call_001/calls.jsonl",
+          "sha256": "b1e5c2aacded7711d4cbee7efa946104aef1fcf46e4c8800f78c439035c72d6b"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100004/agentic/call_001/20261107-053508-806670-0001/transcript.jsonl",
+          "sha256": "a7b2e9707cc87f38dffc8cd203b0cdce0465853de2eb3398a51f115410ddc15d"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100004/perception_service.log",
+          "sha256": "38a837958663c4670bddaad41c97bb074613f3abf786478d205bc1f7e022b26a"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100004/integ_eval.log",
+          "sha256": "76f6623178e1e6dd2d4e8777dcf9ea644024591ee054d87257cbf318b22ebbd3"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b1_100004.log",
+          "sha256": "feb54daf8a9e0cd7f78529ae8b72c5435ac32b4cdf4b3099720e0bcd4e59b6f4"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:36:58Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyAr1b1_100004",
+      "task": "insert_key",
+      "arm": "A",
+      "block": "key-scoped-1",
+      "id": 100004,
+      "score": 15.0,
+      "success": false,
+      "category": "perception_gross",
+      "time_capped": false,
+      "steps": 227,
+      "wall_s": 75.3,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 43447,
+        "completion": 2337,
+        "reasoning": 1469,
+        "cache_read": 36483
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100004/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "e9b96cb2a62a05dfd9b79409dca2f89265b6ecf2bb0c813298b85e770ab61306"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100004/insert_key_perception_verify-bundle_100004_report.json.gz",
+          "sha256": "af9aad94049e3027da1eed11eedfa24c0773349cfbc22a7fe7d3949cb88bb1c3"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100004/agentic/call_001/calls.jsonl",
+          "sha256": "d1d2ae042d54b8ec841ec44031d832413b8ad6638c25ac6d5ef1c36235ef0834"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100004/agentic/call_001/20261107-053723-808114-0001/transcript.jsonl",
+          "sha256": "2624337cea484d32b9a426c601733ee8d177c43f76cd00a430544ffb06d6b17e"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100004/perception_service.log",
+          "sha256": "33d6c9f7e7232123a5116ceee083065cb49b240ff1d4c230789c51dead643337"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100004/integ_eval.log",
+          "sha256": "d4eae1ee6cf28abf02f7dec0e06eddb7bae866adaef4d870c6056fe344156be8"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100004.log",
+          "sha256": "11ebdc16e0c8695d5723abfb9bb162210ac10f947b83ca84cef0876aa35bd5ba"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:39:14Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 136
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyAr1b2_100002",
+      "task": "insert_key",
+      "arm": "A",
+      "block": "key-scoped-2",
+      "id": 100002,
+      "score": 15.0,
+      "success": false,
+      "category": "plan",
+      "time_capped": false,
+      "steps": 295,
+      "wall_s": 65.5,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 43321,
+        "completion": 2122,
+        "reasoning": 1201,
+        "cache_read": 36496
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b2_100002/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "ea5d1bba5d46a95d0b6ab775dc3578fe11fb840c1f3d943ef52434ca301fda87"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b2_100002/insert_key_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "a504333d25d0cd9065ee094a8e20a31f345ff0203c0c697b80f3a3d864568a72"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b2_100002/agentic/call_001/calls.jsonl",
+          "sha256": "b570662b088403c21ef9a431cd19ec54247e41aa9dd727c8ea648543a1e873b8"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b2_100002/agentic/call_001/20261107-053938-809593-0001/transcript.jsonl",
+          "sha256": "95561f44380946136065d29c7f765767d34ef47fc60de5b314d4deff1a5a0f5a"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b2_100002/perception_service.log",
+          "sha256": "8b8ada323fa6588446f535acd77e9a8f13fdb6e639c28cbc4db47c07809fe0e5"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b2_100002/integ_eval.log",
+          "sha256": "a5d9193a2ab0791ae4b5643c87c13278a783d8d29c871ab267765fe5216d6676"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b2_100002.log",
+          "sha256": "d88516061c2cf6b1029608022f18279e484337b4f50f5bda4fb2a67820062923"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:40:59Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 105
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyBr1b2_100002",
+      "task": "insert_key",
+      "arm": "B",
+      "block": "key-scoped-2",
+      "id": 100002,
+      "score": 15.0,
+      "success": false,
+      "category": "plan",
+      "time_capped": false,
+      "steps": 280,
+      "wall_s": 77.3,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 28731,
+        "completion": 2765,
+        "reasoning": 2091,
+        "cache_read": 24944
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b2_100002/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "8bd0f902d42cf8eb783123e20894e59c459e1660f27d676fabcb8cf420b43a6d"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b2_100002/insert_key_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "d242ed9f534f9cc16bdc319a7bd51e64e645a0c78a3e0babd96c725243d2b31f"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b2_100002/agentic/call_001/calls.jsonl",
+          "sha256": "3d0bf65f91cde585870e00ddf25e615a8a7194e6ad9ea0ecdfae579a16e07f3d"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b2_100002/agentic/call_001/20261107-054124-810986-0001/transcript.jsonl",
+          "sha256": "021cfa707a28d1c2feff23085fa6775e3b6336a5425a9f91656777b695eec247"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b2_100002/perception_service.log",
+          "sha256": "0387cce2c16c9b10008e63f342340ef1b2a13485fe4c7b67bd4aad5eec1e439b"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b2_100002/integ_eval.log",
+          "sha256": "03767a9bf4d0677bdaa58421af96b84a35969d58be759b405ddef83884c9f8b1"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b2_100002.log",
+          "sha256": "378b641db45f6546bf099345db4389f4774ed3bc7ff2ee528b7280f5cdc6c25f"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:43:14Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyBr1b3_100002",
+      "task": "insert_key",
+      "arm": "B",
+      "block": "key-scoped-refill-1",
+      "id": 100002,
+      "score": 15.0,
+      "success": false,
+      "category": "plan",
+      "time_capped": false,
+      "steps": 296,
+      "wall_s": 72.1,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 43562,
+        "completion": 2152,
+        "reasoning": 1300,
+        "cache_read": 36442
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b3_100002/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "04170aaafb01222ffbd6203a82f85cf9f2577d3dfb2e4c0e75070f7389490443"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b3_100002/insert_key_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "6080c71ac5aa33331ec78d681ddc05dc0f670ea95a1bdcd8291c39e654d7b9c1"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b3_100002/agentic/call_001/calls.jsonl",
+          "sha256": "2169b4e3aa4c473eed5149485b79cc43df1e195a3e61078ba0ed3926b9b78554"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b3_100002/agentic/call_001/20261107-054339-812402-0001/transcript.jsonl",
+          "sha256": "bbff924fd965680a9cf570a0cc0998b923975d0a9cc97f7bac80a70b26c857fa"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b3_100002/perception_service.log",
+          "sha256": "4b3e9604cb9863ed09865298ce828352418b7b65764c5ba3ae8f845a44131ed3"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b3_100002/integ_eval.log",
+          "sha256": "35d591b605b36115e9befb57a5aab5e183a4f0e52ab97d745e9598a5c0d2c8f8"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b3_100002.log",
+          "sha256": "df96a83c29ff5b5ed884b21fbf967a2d3f0d739275be48eb24b3c32a18646072"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:45:30Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 136
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyAr1b3_100002",
+      "task": "insert_key",
+      "arm": "A",
+      "block": "key-scoped-refill-1",
+      "id": 100002,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 265,
+      "wall_s": 66.4,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 28586,
+        "completion": 1371,
+        "reasoning": 776,
+        "cache_read": 24897
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b3_100002/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "c68e868cfc08d25ae563e2ae8506791695c6661d3bc7d9cf85b76a2f54cfcc46"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b3_100002/insert_key_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "93698673efacc9de8ea1ca828e367bbbff36c6e2911f22b39f9218bf1f78afc4"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b3_100002/agentic/call_001/calls.jsonl",
+          "sha256": "9b5c907c33c11a675279c45da170525e7da138ae00adbc68acd9dce9bf4f44db"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b3_100002/agentic/call_001/20261107-054554-813962-0001/transcript.jsonl",
+          "sha256": "234f47df1a8796b9387aeb5e8008f7fa2c10ef1e180573465dedf4a5270df54f"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b3_100002/perception_service.log",
+          "sha256": "9a435ed013449356463b10082cc03e033e94ffa9367420568b68223ec5d81795"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b3_100002/integ_eval.log",
+          "sha256": "3aca107ab81941c8791f849bf2c42569190742e3875c29182747a6bc96077d7a"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b3_100002.log",
+          "sha256": "18d2e20a34433ba0e779130237ce4d71bb94b3c4bb0611aa7ff8f8db38c6fbef"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:47:15Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 105
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyAr1b4_100001",
+      "task": "insert_key",
+      "arm": "A",
+      "block": "key-scoped-refill-2",
+      "id": 100001,
+      "score": 15.0,
+      "success": false,
+      "category": "plan",
+      "time_capped": false,
+      "steps": 289,
+      "wall_s": 61.8,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 43018,
+        "completion": 1905,
+        "reasoning": 981,
+        "cache_read": 36476
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100001/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "c72cd64d1eb1700fae696f045dffcd3a03905ac601af4581fa38fc9159badd6f"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100001/insert_key_perception_verify-bundle_100001_report.json.gz",
+          "sha256": "975cbbd7d35df6afffbdcc81db4b416790a57014a36eb8bdaecec9b567a034d3"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100001/agentic/call_001/calls.jsonl",
+          "sha256": "f89bd7eee1da2501c681f3d60c6253ed69d8ad7633d3854ebab0b76cb8918608"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100001/agentic/call_001/20261107-054740-815321-0001/transcript.jsonl",
+          "sha256": "9874c8d42e775c83d7e0f06da6c9f8d5043e2166c69778269cd3c64cb9a55fcc"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100001/perception_service.log",
+          "sha256": "a9710e0bed934253b6047645624be17d8a8be36fb859684faff09ca4838a735e"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100001/integ_eval.log",
+          "sha256": "3fc2a11b6204a544d4912566635c6f07e471ee73cbc3de326890a934900ee6af"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100001.log",
+          "sha256": "ff658232e4a9c74f9e0c337e8cf70cffb8ba78c5fb0709c837707dac8611020e"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:49:01Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 106
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyBr1b4_100001",
+      "task": "insert_key",
+      "arm": "B",
+      "block": "key-scoped-refill-2",
+      "id": 100001,
+      "score": 15.0,
+      "success": false,
+      "category": "plan",
+      "time_capped": false,
+      "steps": 287,
+      "wall_s": 64.0,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 43049,
+        "completion": 1915,
+        "reasoning": 1039,
+        "cache_read": 36422
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100001/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "fa29f8618022bac8033816b369a7bb81d59f809ec0404f7f3a74f6b12ef7deff"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100001/insert_key_perception_verify-bundle_100001_report.json.gz",
+          "sha256": "67946124659134d8b2ef436072657076d162d6ccf2e3a34c9d293a0cff5348c1"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100001/agentic/call_001/calls.jsonl",
+          "sha256": "6e8cb5780733aad69946fd3eaf1b96aece027db62cb2a6ff39b95cbcb9abf3a8"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100001/agentic/call_001/20261107-054925-816731-0001/transcript.jsonl",
+          "sha256": "638e1be099aea49fa65ec4f5432f2f238fb0a9ca420afa5eb0918e2fcedbc247"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100001/perception_service.log",
+          "sha256": "c2646da149e6e819b3116f3acd74ac0fc6cfdbc76b9f8ae331baee69cefef5d4"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100001/integ_eval.log",
+          "sha256": "98e0a36e0ff2c89ceeb792cfbcd13f168a377186d67aa44f69e45b29ed70e9df"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100001.log",
+          "sha256": "ca2ef8fecbc8e031a381b3ee87ca18ca524bf71031b4a67ef260ffd3da2aae01"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:50:46Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 105
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyBr1b4_100003",
+      "task": "insert_key",
+      "arm": "B",
+      "block": "key-scoped-refill-2",
+      "id": 100003,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 250,
+      "wall_s": 75.1,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 4,
+      "usage": {
+        "prompt": 58704,
+        "completion": 2567,
+        "reasoning": 1774,
+        "cache_read": 51179
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100003/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "bcff12ae1d9d8d52e76f7f4091f1cbd15d29e0f35f87c7ce5cec0741f4b85844"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100003/insert_key_perception_verify-bundle_100003_report.json.gz",
+          "sha256": "322da33411ac097faf3138608835f6618c2f58f409084064ee411b3acb28fcb3"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100003/agentic/call_001/calls.jsonl",
+          "sha256": "cec4e80bd121b59ef285d8e0202ac57bf99c24c1e57e3b0003f8d0b1d968e602"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100003/agentic/call_001/20261107-055111-818115-0001/transcript.jsonl",
+          "sha256": "e10aff6d9aaa527d37c58e1618ebd2129932202990607453140dcbd1646028fb"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100003/perception_service.log",
+          "sha256": "44fec1397e458143632ffe26b7f7a37dd1ccb8ded30ad5105f4be8b623f6b0a8"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100003/integ_eval.log",
+          "sha256": "55b1f9983828d90016fd2fc76df6f5e2804af7eef478253884d53004b716e67e"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100003.log",
+          "sha256": "1ab822c128bbbeac3bcaf672ab146bfe558f3997f0b42eef239291809f9aa7e8"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:53:01Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyAr1b4_100003",
+      "task": "insert_key",
+      "arm": "A",
+      "block": "key-scoped-refill-2",
+      "id": 100003,
+      "score": 15.0,
+      "success": false,
+      "category": "plan",
+      "time_capped": false,
+      "steps": 282,
+      "wall_s": 76.3,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 4,
+      "usage": {
+        "prompt": 58601,
+        "completion": 2810,
+        "reasoning": 1952,
+        "cache_read": 51024
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100003/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "09da7b72f7695b6c29661accca5ea2d3f3f01d9e160835519ddf967878b35be1"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100003/insert_key_perception_verify-bundle_100003_report.json.gz",
+          "sha256": "51494594b9125e749219fca94fed9c09d2c436525e331acbe86e13dfa78791df"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100003/agentic/call_001/calls.jsonl",
+          "sha256": "0fe37f42d45a2c935f36a13993ecd038507d806dd94ab8ee799eb29cdfb7fdd3"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100003/agentic/call_001/20261107-055326-819503-0001/transcript.jsonl",
+          "sha256": "6f41afb91c7750db76ab6bd460f17fcf97420c3a55600491ac73f266f701fa44"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100003/perception_service.log",
+          "sha256": "b4e660039c314c30ed2d70322c43f4f93f7d8da85215ce3a6800d93ad0f5c9d1"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100003/integ_eval.log",
+          "sha256": "92be58ec32f37ab556a317577d90aea6b031758484aa907ee158cd96eb9ef018"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100003.log",
+          "sha256": "cfb37d8f96fa655be914486ebacc970f87346507d6b96ca25179a11966ebddc7"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:55:17Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 136
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyAr1b4_100004",
+      "task": "insert_key",
+      "arm": "A",
+      "block": "key-scoped-refill-2",
+      "id": 100004,
+      "score": 15.0,
+      "success": false,
+      "category": "plan",
+      "time_capped": false,
+      "steps": 146,
+      "wall_s": 57.9,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 4,
+      "usage": {
+        "prompt": 56846,
+        "completion": 1925,
+        "reasoning": 1061,
+        "cache_read": 49943
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100004/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "d40edfde8fc0fff51b78971149cd03ad9a7ef4ad3d438b8c0d68fb26e6f3c607"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100004/insert_key_perception_verify-bundle_100004_report.json.gz",
+          "sha256": "e5c5c96669351e0ce2825dcd4dd6861ec9d3f292b00a8aa7e58a208fa07527b9"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100004/agentic/call_001/calls.jsonl",
+          "sha256": "ece15e7376b2d5b47cd033ac4f384fb84731de025b1daf7997caf9d05e850d4e"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100004/agentic/call_001/20261107-055541-821030-0001/transcript.jsonl",
+          "sha256": "f770b59755449e13ab336b0ad2eea213cb61cfcbbdac3c7ca99fa1e73f3539bb"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100004/perception_service.log",
+          "sha256": "7310432cd482aa05accb1a0cf86ca32ba748049092b83c8cb784fe6f0a873bfd"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100004/integ_eval.log",
+          "sha256": "6e405dfdc88c79c857c846813e5b1f8cf93567dc5ca085f44c69df4cdc18b672"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b4_100004.log",
+          "sha256": "13cfaf09f9c6c699cc0d259f9a9a2505ef2286323d36301764c7fe35c7165064"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:57:02Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 105
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyBr1b4_100004",
+      "task": "insert_key",
+      "arm": "B",
+      "block": "key-scoped-refill-2",
+      "id": 100004,
+      "score": 15.0,
+      "success": false,
+      "category": "perception_gross",
+      "time_capped": false,
+      "steps": 300,
+      "wall_s": 83.5,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 4,
+      "usage": {
+        "prompt": 61168,
+        "completion": 3052,
+        "reasoning": 2192,
+        "cache_read": 51379
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100004/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "ac354096908c2033b4f4b6e6916a710a156df4c939eee5bdde8749832ffc45ea"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100004/insert_key_perception_verify-bundle_100004_report.json.gz",
+          "sha256": "5791ddd23d2039a13087486989d38a698815177df48beff6ddde9c54e851a15b"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100004/agentic/call_001/calls.jsonl",
+          "sha256": "a24bba74f558999cee3d53aa8df8f117bb5c990d9b54dd5b8eeb0134df309bf8"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100004/agentic/call_001/20261107-055727-822359-0001/transcript.jsonl",
+          "sha256": "457f0f2ac42cae941f03ea1ca2106b3110f12ceaa4c18c665055b072d194e48c"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100004/perception_service.log",
+          "sha256": "84bb5eabbff46ffec1a69304673141d6bfbc2acbe0ac3d85eba6725559e16d12"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100004/integ_eval.log",
+          "sha256": "b3da42ba0001a2452119d448bf0410693d1f2d45bfd457cc25cb2f9b4a029c6b"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b4_100004.log",
+          "sha256": "1cecad6f2b613fd162d3f1d2f832216eb661b9fff6da99094993c6157d6bf94b"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T02:59:17Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyBr1b5_100002",
+      "task": "insert_key",
+      "arm": "B",
+      "block": "key-scoped-refill-3",
+      "id": 100002,
+      "score": 15.0,
+      "success": false,
+      "category": "grasp_slip",
+      "time_capped": false,
+      "steps": 188,
+      "wall_s": 70.8,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 28441,
+        "completion": 1542,
+        "reasoning": 876,
+        "cache_read": 24901
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b5_100002/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "be573aa3751e40651ea77bcc192385eeac05dcb10818f2e20f81992a91349b89"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b5_100002/insert_key_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "75db91a576be806b254173aeee67a99a33d180b216d1e2874f9af9a18e307bbc"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b5_100002/agentic/call_001/calls.jsonl",
+          "sha256": "182c5f5aabbb94e42fc320480ce944097daf7a7811e8048a839d051d95e4f812"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b5_100002/agentic/call_001/20261107-055942-823794-0001/transcript.jsonl",
+          "sha256": "002aacf6db9b5a7838a889872d9b47d24a280e3f927701219f012d9acb666d7f"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b5_100002/perception_service.log",
+          "sha256": "e931e6190bde4e9a07326b74893b44cd868d3e04667b0470110eb6e2cb9ec4c1"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b5_100002/integ_eval.log",
+          "sha256": "a14202ce8d3020c4282ab00592a7e5dfc07a1ff91df43a65393761f213f5b3c8"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyBr1b5_100002.log",
+          "sha256": "88f693b7cc9cf49c122e1f3f6cbde03da3e09f3889f794502e16e3b5a843930e"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T03:01:33Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 136
+      }
+    },
+    {
+      "name": "c6b_insertkeysg_keyAr1b5_100002",
+      "task": "insert_key",
+      "arm": "A",
+      "block": "key-scoped-refill-3",
+      "id": 100002,
+      "score": 15.0,
+      "success": false,
+      "category": "perception_gross",
+      "time_capped": false,
+      "steps": 289,
+      "wall_s": 76.5,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 4,
+      "usage": {
+        "prompt": 42962,
+        "completion": 2197,
+        "reasoning": 1365,
+        "cache_read": 39448
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b5_100002/insert_key_perception_verify-bundle_episodes.jsonl",
+          "sha256": "12ea7cf836eabf65f4130f8692271e58f19eb97e7be0d261871e58c8b5b6ba6d"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b5_100002/insert_key_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "8ca8dcd8a6503738a4c70d4a912934ed2f54ba96b077f741ba26816064baf449"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b5_100002/agentic/call_001/calls.jsonl",
+          "sha256": "1b9652b0b04ed5a4c1c478fc3d5fc04da0a23e9425ac7e3046c067277dd1862b"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b5_100002/agentic/call_001/20261107-060157-825222-0001/transcript.jsonl",
+          "sha256": "3f4c54761e71981dd4e88d1d55e9f224f8d9954c3fe99e0418aaee65fd6dc244"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b5_100002/perception_service.log",
+          "sha256": "860e9ee7ae59274ff0d191a0e0199ff960be23a50723f515d7d284024769734d"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b5_100002/integ_eval.log",
+          "sha256": "c5109cbfe34612d1c86967dbac8a388e6b9b2ec5325ce465b7ae4e015e53bf34"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b5_100002.log",
+          "sha256": "1a94815c4414f150453e798cfc86e3a6eb60c061bc75051605ff7e21fc17876a"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "insert_key",
+      "completion": {
+        "time": "2026-11-07T03:03:48Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_pluginchargersg_keyAr1b1_100000",
+      "task": "plug_in_charger",
+      "arm": "A",
+      "block": "key-scoped-1",
+      "id": 100000,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 237,
+      "wall_s": 94.9,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 48479,
+        "completion": 1869,
+        "reasoning": 1053,
+        "cache_read": 38605
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100000/plug_in_charger_perception_verify-bundle_episodes.jsonl",
+          "sha256": "6dd709860815e4bcbdc5102e323d466047b093edf259129d9441d65eed486e9c"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100000/plug_in_charger_perception_verify-bundle_100000_report.json.gz",
+          "sha256": "6a63f35e555b6da248b68dfa7efde830b9deaf0d7423693334be4d6ccc02db65"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100000/agentic/call_001/calls.jsonl",
+          "sha256": "cf786fe2723c13a4b96fb25563b9b210926cd3de8e08d39e437defb672ee5f7a"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100000/agentic/call_001/20261107-060414-826730-0001/transcript.jsonl",
+          "sha256": "9cf75d3747d8c4df9305a2c309c105f96a0a4052b5c27aa8a1ea0ae27ba9ea05"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100000/perception_service.log",
+          "sha256": "b001bf8c7c7958744e28926723355944ae0a6219f04babad368ddcdca59b6200"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100000/integ_eval.log",
+          "sha256": "6dabadeae369fcd42aed874958ef50f98afe39bb5dd881fd23530e02ad3f01c7"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100000.log",
+          "sha256": "3b2921e1726efeeb5113196c4d3238759e72e0f9103b269c4b8ac54eae24e9b6"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "plug_in_charger",
+      "completion": {
+        "time": "2026-11-07T03:06:19Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 151
+      }
+    },
+    {
+      "name": "c6b_pluginchargersg_keyBr1b1_100000",
+      "task": "plug_in_charger",
+      "arm": "B",
+      "block": "key-scoped-1",
+      "id": 100000,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 237,
+      "wall_s": 96.7,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 49691,
+        "completion": 2142,
+        "reasoning": 958,
+        "cache_read": 38621
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100000/plug_in_charger_perception_verify-bundle_episodes.jsonl",
+          "sha256": "fbc717d85a2fb198a8f9597debff866f30068d402dceceeaf56f6f086282d825"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100000/plug_in_charger_perception_verify-bundle_100000_report.json.gz",
+          "sha256": "2639be81f76883b51b88aed0e1963106ddcfad34d4706719cfc31a65731eb7ba"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100000/agentic/call_001/calls.jsonl",
+          "sha256": "5585a8a758618a20d061da1530157dbb70c61c91242d6bf1cdc3c518b0617357"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100000/agentic/call_001/20261107-060645-828147-0001/transcript.jsonl",
+          "sha256": "11b00e12c72cd96b8fc47e8772082f95f517c9f133098a8c0e7826cad31c7785"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100000/perception_service.log",
+          "sha256": "f0f17ef7ff931fdc6cc3859d670b25d58b29d23bd4db01db6953b139dca5a922"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100000/integ_eval.log",
+          "sha256": "204b09277a1c50cabde30b82e6ca0e3d3d183bdd5dd751cf583f61e07546a4e6"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100000.log",
+          "sha256": "b95374081f6c5e1f2f6abc70aebb24d27d3519debbe908d0bb38cd2b25e0f3e7"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "plug_in_charger",
+      "completion": {
+        "time": "2026-11-07T03:08:49Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 150
+      }
+    },
+    {
+      "name": "c6b_pluginchargersg_keyBr1b1_100001",
+      "task": "plug_in_charger",
+      "arm": "B",
+      "block": "key-scoped-1",
+      "id": 100001,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 268,
+      "wall_s": 94.1,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 44132,
+        "completion": 2398,
+        "reasoning": 1522,
+        "cache_read": 36512
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100001/plug_in_charger_perception_verify-bundle_episodes.jsonl",
+          "sha256": "11f0d8f9e6345faedd9ea6344294ffc61eaf4848d0f740b3f84e841950b374fc"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100001/plug_in_charger_perception_verify-bundle_100001_report.json.gz",
+          "sha256": "5b50ab170a1b4a75efad261a3ae7052ed7ae101bf07c11c91f17da5cff75c3b4"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100001/agentic/call_001/calls.jsonl",
+          "sha256": "a60d014bf91537fe8069a0d30ec9683d8c9da4648169acc41bf32bd6ebfb2148"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100001/agentic/call_001/20261107-060913-829579-0001/transcript.jsonl",
+          "sha256": "c546448916e757007602bc371590f9fd3bb72866d56e4e3eeb671187456f40d0"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100001/perception_service.log",
+          "sha256": "01b2458476dbc9d6443040ef36458a6dbcf3ae402766c6f6a31f050080f52624"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100001/integ_eval.log",
+          "sha256": "a6bb7ab364ddf55b0d627642c0319a95d8dd74ef682b9136df07d24f8afcea3e"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100001.log",
+          "sha256": "ccc577405669e059a1ec77f2086a12d0fa4b85afacc68373055ac0b0cf4147d7"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "plug_in_charger",
+      "completion": {
+        "time": "2026-11-07T03:11:19Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 150
+      }
+    },
+    {
+      "name": "c6b_pluginchargersg_keyAr1b1_100001",
+      "task": "plug_in_charger",
+      "arm": "A",
+      "block": "key-scoped-1",
+      "id": 100001,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 268,
+      "wall_s": 85.9,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 28104,
+        "completion": 1579,
+        "reasoning": 939,
+        "cache_read": 23050
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100001/plug_in_charger_perception_verify-bundle_episodes.jsonl",
+          "sha256": "61007b1220014b470ba1b8cd89674bd3e5aaff0e6bca8f922a7686c649f7a300"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100001/plug_in_charger_perception_verify-bundle_100001_report.json.gz",
+          "sha256": "12a7e3a3236c68ac29c629064b2784efd25ea766520abb438a251815c9e59c2d"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100001/agentic/call_001/calls.jsonl",
+          "sha256": "8782ee100538e009c2a2a78bea39d3932502ec83f6154a44f3cf1463162e7205"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100001/agentic/call_001/20261107-061144-831017-0001/transcript.jsonl",
+          "sha256": "6a14588082379135fa29b6881b24f2ba8e2602bf275ca839f355eb614f40dd12"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100001/perception_service.log",
+          "sha256": "20524b39b565c01f134f6dd69248a9a7046f8bbbb6284157ee3ebb192fdeb54b"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100001/integ_eval.log",
+          "sha256": "bae16cc8f50d217da3b6e0d26bb8e896c450bde4232145226b668edf2b0328c0"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100001.log",
+          "sha256": "aa87a437eed97cf44901f81c7ce9ce3103c17fbbe064f84cc7fe59b43cd464bb"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "plug_in_charger",
+      "completion": {
+        "time": "2026-11-07T03:13:35Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_pluginchargersg_keyAr1b1_100002",
+      "task": "plug_in_charger",
+      "arm": "A",
+      "block": "key-scoped-1",
+      "id": 100002,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 279,
+      "wall_s": 108.3,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 4,
+      "usage": {
+        "prompt": 49133,
+        "completion": 2334,
+        "reasoning": 1440,
+        "cache_read": 43545
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100002/plug_in_charger_perception_verify-bundle_episodes.jsonl",
+          "sha256": "50e51ae226b303e1779dd9c94ce766916724a25c23abc4535f2a4e2fd41397e4"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100002/plug_in_charger_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "031f07db541654b3f3ee4930814736602fb31811b86dbb56185e665d77c83fa2"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100002/agentic/call_001/calls.jsonl",
+          "sha256": "dcc58e6116fb955d4854ab6842d4b047dc10842597e56f6b4b8e2283c4374b33"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100002/agentic/call_001/20261107-061401-832426-0001/transcript.jsonl",
+          "sha256": "0de09148dacaebfb8b6acae781a0536820a4ea19c82e0ef0fdd3aa0dc2c8d25a"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100002/perception_service.log",
+          "sha256": "583f7bccbe1b4d82a0502859c27f41364cd388c58ffe6c46c19b2de7756642d1"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100002/integ_eval.log",
+          "sha256": "a97dac09bea2d8c3cc833391ed9ff372e8e7316fab340f95eef4ea42120d0132"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100002.log",
+          "sha256": "233a60940453731f4db9fe3e82080e9fb1b5e283df51ed4aadd6bbd64e6e56a4"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "plug_in_charger",
+      "completion": {
+        "time": "2026-11-07T03:16:05Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 150
+      }
+    },
+    {
+      "name": "c6b_pluginchargersg_keyBr1b1_100002",
+      "task": "plug_in_charger",
+      "arm": "B",
+      "block": "key-scoped-1",
+      "id": 100002,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 278,
+      "wall_s": 85.7,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 31362,
+        "completion": 1229,
+        "reasoning": 583,
+        "cache_read": 23430
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100002/plug_in_charger_perception_verify-bundle_episodes.jsonl",
+          "sha256": "64facea39919c24376d9276beb4d83ae4931d51aed570e01967ecaaf6c3af24a"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100002/plug_in_charger_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "e4ce60fb093af02a238b26aa416605270ed36d667a20ff7c7544db38bf9bbc74"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100002/agentic/call_001/calls.jsonl",
+          "sha256": "0603fa7fee4d482b9e6d76e3cb8d681fd96fb5578f4791f4bef572df968d2014"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100002/agentic/call_001/20261107-061631-833924-0001/transcript.jsonl",
+          "sha256": "86ab49402dd76ef6c6d8373758a58e5369aff5c552cf6ea3ca73b0ea5203d303"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100002/perception_service.log",
+          "sha256": "f3ad193c5efe26798ccce384b72fc8d9dff519061a357fde86e547813289ee94"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100002/integ_eval.log",
+          "sha256": "faa9998d1fed00d89d5d503dc74e58b2816031772d92718ec826f0907486abaf"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100002.log",
+          "sha256": "a4f1c45980d07904f4d4558ab69c9b0482753616c604ea21d47da549cf43dca2"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "plug_in_charger",
+      "completion": {
+        "time": "2026-11-07T03:18:21Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 136
+      }
+    },
+    {
+      "name": "c6b_pluginchargersg_keyBr1b1_100003",
+      "task": "plug_in_charger",
+      "arm": "B",
+      "block": "key-scoped-1",
+      "id": 100003,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 141,
+      "wall_s": 74.2,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 3,
+      "usage": {
+        "prompt": 53049,
+        "completion": 2070,
+        "reasoning": 1139,
+        "cache_read": 38578
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100003/plug_in_charger_perception_verify-bundle_episodes.jsonl",
+          "sha256": "04ccdbb0f09dcd61cda8685d60732929833a4b64e503f650f4f32a9994757203"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100003/plug_in_charger_perception_verify-bundle_100003_report.json.gz",
+          "sha256": "b0d4084c7fedf8a625ce7cf3cebc9fefd55e04a0fe9145cf4cd06c3a6b316f96"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100003/agentic/call_001/calls.jsonl",
+          "sha256": "9fe5b2f2084a41ef37a117bcccd37914e5348234aabd1b3b81e6f9df75b6c942"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100003/agentic/call_001/20261107-061847-835308-0001/transcript.jsonl",
+          "sha256": "3a734c79145f5df9d002d66fc4e6e035f870a15ea14d3d51f920cee0f115cb46"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100003/perception_service.log",
+          "sha256": "9fe4b6b3ec07d3938488cab944e7ea8805806465e539dbe685da43bbb0b2c206"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100003/integ_eval.log",
+          "sha256": "4c2030949be9a2a3c196b8c766033403fa7f155f6c98af198ea1b5ab937cb57a"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100003.log",
+          "sha256": "412ac0911b8df446f46296031659b282ce09fa4a667da34dcc130569aecf1ea7"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "plug_in_charger",
+      "completion": {
+        "time": "2026-11-07T03:20:36Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_pluginchargersg_keyAr1b1_100003",
+      "task": "plug_in_charger",
+      "arm": "A",
+      "block": "key-scoped-1",
+      "id": 100003,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 201,
+      "wall_s": 65.3,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 32468,
+        "completion": 1311,
+        "reasoning": 624,
+        "cache_read": 23430
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100003/plug_in_charger_perception_verify-bundle_episodes.jsonl",
+          "sha256": "27ab0ed8ddd735e082d22015a7d60a561bdf5bbc945af840f55fea44a9cfff81"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100003/plug_in_charger_perception_verify-bundle_100003_report.json.gz",
+          "sha256": "7c19768ad3991af53945770f97089bf17bb89c8c2caf109d7025212bb80a8140"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100003/agentic/call_001/calls.jsonl",
+          "sha256": "92c356a29bea0b26250d4b0a728a2dffbdb73c2dcc5efd182bba0760ac50b386"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100003/agentic/call_001/20261107-062103-836761-0001/transcript.jsonl",
+          "sha256": "3e6366d2f3996a1a8a8df224bdf7679b4a2f4fc2a189d713ed7e6794f4cdf423"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100003/perception_service.log",
+          "sha256": "213a654748b9bdfbf6b735af0e2888cd5ffacffc9a2467b4035d81537f01b368"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100003/integ_eval.log",
+          "sha256": "2a0efabc6d84b9e395d1ffc9f28d31630b3a469cef28fe392b835eaa839507ba"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100003.log",
+          "sha256": "d8d522c1c3d897759b9d8903928c288788b598a759ddeaedcacac5700f179d9d"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "plug_in_charger",
+      "completion": {
+        "time": "2026-11-07T03:22:21Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 105
+      }
+    },
+    {
+      "name": "c6b_pluginchargersg_keyAr1b1_100004",
+      "task": "plug_in_charger",
+      "arm": "A",
+      "block": "key-scoped-1",
+      "id": 100004,
+      "score": 0.0,
+      "success": false,
+      "category": "plan",
+      "time_capped": false,
+      "steps": 350,
+      "wall_s": 115.2,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 27967,
+        "completion": 1420,
+        "reasoning": 839,
+        "cache_read": 23050
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100004/plug_in_charger_perception_verify-bundle_episodes.jsonl",
+          "sha256": "9ab3dca9ababd622dd9de4cafac158bb6ffcc5bd4e9ad56a3cd6474f9a69211c"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100004/plug_in_charger_perception_verify-bundle_100004_report.json.gz",
+          "sha256": "4aae43206cdc7841743b066974446ea05b1176b19856dae5f6c732ba71d77c60"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100004/agentic/call_001/calls.jsonl",
+          "sha256": "5b2a8d316245895feaadd9c928f64372d60c541751fe114dc65e39dce804ccc4"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100004/agentic/call_001/20261107-062246-838106-0001/transcript.jsonl",
+          "sha256": "ebf43d711ba322dcc37fbc8f205bb951406be8e722a4aed570da50c269bb3a33"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100004/perception_service.log",
+          "sha256": "8220055cd988cb4e5b1d29a8145f2167c60d7bfb2d97eafd17592e0eb92af3e7"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100004/integ_eval.log",
+          "sha256": "2596dfb2a2a8748b37c502d5032c468663fbed6515608c51b26095f2eb760080"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyAr1b1_100004.log",
+          "sha256": "ef296c2be372716b72a5c316e22d292e9af56273200d4b0a5a42f0e3c1c75291"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "plug_in_charger",
+      "completion": {
+        "time": "2026-11-07T03:25:07Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 165
+      }
+    },
+    {
+      "name": "c6b_pluginchargersg_keyBr1b1_100004",
+      "task": "plug_in_charger",
+      "arm": "B",
+      "block": "key-scoped-1",
+      "id": 100004,
+      "score": 0.0,
+      "success": false,
+      "category": "plan",
+      "time_capped": false,
+      "steps": 292,
+      "wall_s": 95.8,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 28252,
+        "completion": 1343,
+        "reasoning": 670,
+        "cache_read": 23050
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100004/plug_in_charger_perception_verify-bundle_episodes.jsonl",
+          "sha256": "8740fa91dfc6f46c7634f20bcfcfe1c381c36e0eda3a6d6bce017288ebb93ff4"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100004/plug_in_charger_perception_verify-bundle_100004_report.json.gz",
+          "sha256": "e10600d1c07e689a63063a8acda890bd2984ed9a9f4ef9e1fd0d0b445eb35cf4"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100004/agentic/call_001/calls.jsonl",
+          "sha256": "718fdac2220154e79a414cc845d009c077deb2af9dded08bfc416272849daed8"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100004/agentic/call_001/20261107-062516-839668-0001/transcript.jsonl",
+          "sha256": "3c27e50556c5eb0b32de4a18d62aa22189422ac56b158cc17d0de38a3b265f7e"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100004/perception_service.log",
+          "sha256": "9690d46f1346db5497455a45115cfa7464c998cf90e685d973dce35f25f1af6b"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100004/integ_eval.log",
+          "sha256": "4a6fccce935ff5f1c383af98bb5cf6b136d315244683b9c2b13210b49b92a4be"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_pluginchargersg_keyBr1b1_100004.log",
+          "sha256": "bdd0aae805aa9dbf79e1731fbd001e698fa8a42e6ac8ef4356d65cae28bee4f4"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "plug_in_charger",
+      "completion": {
+        "time": "2026-11-07T03:27:22Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 150
+      }
+    },
+    {
+      "name": "c6b_stackblockssg_keyAr1b2_100000",
+      "task": "stack_blocks",
+      "arm": "A",
+      "block": "key-scoped-2",
+      "id": 100000,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 163,
+      "wall_s": 94.6,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 6,
+      "usage": {
+        "prompt": 99119,
+        "completion": 4068,
+        "reasoning": 2198,
+        "cache_read": 76752
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100000/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "sha256": "1e49be5552f6acba7c8d8829cb890fedaf9b46586caa1a7cbd200e148fcc1e72"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100000/stack_blocks_perception_verify-bundle_100000_report.json.gz",
+          "sha256": "667b6ec723f8a18c073b6a452c426d9ebf64f0d94d372ac68c0d5b21168b2eb6"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100000/agentic/call_001/calls.jsonl",
+          "sha256": "476469fcf06229fbca59e428f52574fbd8180297e8062ba7f96c605c7f48a024"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100000/agentic/call_002/calls.jsonl",
+          "sha256": "c31ebda4ba8e0509ceaf7b88a7961755aaad16846befc7b84c2053a91d9a5b81"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100000/agentic/call_001/20261107-062750-841125-0001/transcript.jsonl",
+          "sha256": "d681a5e792ef956a183d21e166c07f2c6d32aa759d807284c17db1e5f3377575"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100000/agentic/call_002/20261107-062809-841125-0002/transcript.jsonl",
+          "sha256": "458182fb1369ae3a85ec69a34eadc7bf65593437ca85b813073ec7bec89ac046"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100000/perception_service.log",
+          "sha256": "354b68b0990f7e1214ea752fef4107da6140a7bca99e4cb1dbec05bf1bc41daa"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100000/integ_eval.log",
+          "sha256": "542791ce3a03cddb54035d646c238bf93ffed92d605297e83a5a156fd685bde6"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100000.log",
+          "sha256": "4624be59d52c7fa9cc1d1edd4e09d221acd55227514fd64eb56b491cbbeed85c"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "stack_blocks",
+      "completion": {
+        "time": "2026-11-07T03:29:53Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 151
+      }
+    },
+    {
+      "name": "c6b_stackblockssg_keyBr1b2_100000",
+      "task": "stack_blocks",
+      "arm": "B",
+      "block": "key-scoped-2",
+      "id": 100000,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 163,
+      "wall_s": 60.0,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 32988,
+        "completion": 1445,
+        "reasoning": 595,
+        "cache_read": 23430
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100000/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "sha256": "d0923a32bcb973b48ec73a0afd5cad29981d5b94d16e6475c1a86231cb5b5b98"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100000/stack_blocks_perception_verify-bundle_100000_report.json.gz",
+          "sha256": "b44eb5125b073d96d335bbe6653d34315d8f39507bb8ac262fa4bfebd6d16d5e"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100000/agentic/call_001/calls.jsonl",
+          "sha256": "20cba4e36e301011c8332a39a1eacb157e457927d99ba134db86cdd4723f4c2d"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100000/agentic/call_001/20261107-063020-842632-0001/transcript.jsonl",
+          "sha256": "5600af829810c5bb5397fd00d8e36b3ecddc8f58b0ea3b46fd9af1da662d62f0"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100000/perception_service.log",
+          "sha256": "4c33817651b6bdbe2f3312989f5d4c9e7612d5393d5899fdabf7ba1b1e6b9d33"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100000/integ_eval.log",
+          "sha256": "1b9e2faba8dc63404b9362e23b385b1d60afee0ab1ba4caddf06c65c77354ea8"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100000.log",
+          "sha256": "e011380a127d3e5da99da15ade289a28bb47fe57f6a77c5999509540604bcbe5"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "stack_blocks",
+      "completion": {
+        "time": "2026-11-07T03:31:38Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 105
+      }
+    },
+    {
+      "name": "c6b_stackblockssg_keyBr1b2_100001",
+      "task": "stack_blocks",
+      "arm": "B",
+      "block": "key-scoped-2",
+      "id": 100001,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 175,
+      "wall_s": 65.5,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 32657,
+        "completion": 1315,
+        "reasoning": 621,
+        "cache_read": 23430
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100001/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "sha256": "3864e83965398f0e73b808db9dbf7da6bbe1595c20e30b4c69cfd3feaa417250"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100001/stack_blocks_perception_verify-bundle_100001_report.json.gz",
+          "sha256": "3da279ae33bc0ea01e7e2f94b2d9c610dee839dd39c97bc10cd02b6a490a8c11"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100001/agentic/call_001/calls.jsonl",
+          "sha256": "f8b6a75407a5fdf31e841a640c9a6de2529f39bf1bc9fa9f258347012f942ba6"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100001/agentic/call_001/20261107-063205-844016-0001/transcript.jsonl",
+          "sha256": "92383f38bf0b7a17769462d625fa1bb555a91d696a12b46e09b057bf5f89fa8c"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100001/perception_service.log",
+          "sha256": "60813426f6f147cfe9fb0cc3067210e8f6ac8d0961179442c8239a5f721f45c6"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100001/integ_eval.log",
+          "sha256": "084ec183d7ab6bcb4d5739d51fea528092f72a39a4ae15f84aec58f4e9968f33"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100001.log",
+          "sha256": "5ea5dd8b1e4e38a88ef5fde3f8f2287ab1d49fc6e895472b9dd1b62f613690cc"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "stack_blocks",
+      "completion": {
+        "time": "2026-11-07T03:33:23Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 105
+      }
+    },
+    {
+      "name": "c6b_stackblockssg_keyAr1b2_100001",
+      "task": "stack_blocks",
+      "arm": "A",
+      "block": "key-scoped-2",
+      "id": 100001,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 175,
+      "wall_s": 63.8,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 33447,
+        "completion": 1286,
+        "reasoning": 589,
+        "cache_read": 23430
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100001/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "sha256": "b131028b10f024ebab68a51c0553e155b86cadfcf90729f3629a20608d65fb2a"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100001/stack_blocks_perception_verify-bundle_100001_report.json.gz",
+          "sha256": "22c787db7f1bd89ef32437b1cbfb241268bd80637b2c4d3a98c7983935290ec6"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100001/agentic/call_001/calls.jsonl",
+          "sha256": "e9617c450cd1c28113be344fffcf228678ac1eb1887bbe0b5c62fc3a10b71a59"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100001/agentic/call_001/20261107-063351-845410-0001/transcript.jsonl",
+          "sha256": "848baa6e33f59441d45c458f0dd3be5c2344280baf64cc01679874f994124522"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100001/perception_service.log",
+          "sha256": "1ea567917f61ea53f4c85895b08c7485e3751029e66e0ad0271bd34099c002f6"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100001/integ_eval.log",
+          "sha256": "ca7af4fd567dace9b3d3de524ae1ffd8a553e894eba0597f68dd07ddd2c61747"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100001.log",
+          "sha256": "78211a6b7c04afa930266ddca1d3675ce4c7a5aadba2897304747e46397e1184"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "stack_blocks",
+      "completion": {
+        "time": "2026-11-07T03:35:09Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 106
+      }
+    },
+    {
+      "name": "c6b_stackblockssg_keyAr1b2_100002",
+      "task": "stack_blocks",
+      "arm": "A",
+      "block": "key-scoped-2",
+      "id": 100002,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 273,
+      "wall_s": 78.7,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 31126,
+        "completion": 1602,
+        "reasoning": 785,
+        "cache_read": 23430
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100002/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "sha256": "5a69a3e11690f74ee6133961c3876e05fac903dfcee4a619e4f31c016494b546"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100002/stack_blocks_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "a521dbbe66491ea91b32e03ed9b35f05221829dcead9749156e794e49e852159"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100002/agentic/call_001/calls.jsonl",
+          "sha256": "a87057285eab5658f464e84e2c0af5de3cf46c39e48483cee380486afc87a2f8"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100002/agentic/call_001/20261107-063535-846886-0001/transcript.jsonl",
+          "sha256": "060456fe4ec13c96bc3e2fbe0bf35417f88849a419d6e17d26afb1f423767e55"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100002/perception_service.log",
+          "sha256": "72f0d97ce182220e4e7935a2bfad9f0802b1264b79f5280da00185a6d5fc0e31"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100002/integ_eval.log",
+          "sha256": "f41f92d8c1417887c541b32cfb64af30e60e42da66866c84ac169578c9a92202"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100002.log",
+          "sha256": "99bdc94662bb93626ff7afe26ca747588354707ddbd729300798a1fe70be2014"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "stack_blocks",
+      "completion": {
+        "time": "2026-11-07T03:37:24Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_stackblockssg_keyBr1b2_100002",
+      "task": "stack_blocks",
+      "arm": "B",
+      "block": "key-scoped-2",
+      "id": 100002,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 271,
+      "wall_s": 82.0,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 31698,
+        "completion": 1814,
+        "reasoning": 826,
+        "cache_read": 23430
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100002/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "sha256": "1764b2d915ecd137735f18a3a15be510368bff221677bb18c19ef805f57929f6"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100002/stack_blocks_perception_verify-bundle_100002_report.json.gz",
+          "sha256": "347bf25dba87f60c2ceec00276bc84ce76522cddb951db1d0b47be5dd578365d"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100002/agentic/call_001/calls.jsonl",
+          "sha256": "c3bcbef979de9512dcd8e1a41d1584122103f2cf9561a8eecb683376b0455bd7"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100002/agentic/call_001/20261107-063750-848313-0001/transcript.jsonl",
+          "sha256": "2f8f135decc033b439f0b75c05ed83e5a57a5a2de3c6b0fcbc0b5438b9845505"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100002/perception_service.log",
+          "sha256": "e1dd318da50c245a89ed45c42f1088ec0fd17124e1cb531b9c19c2f652b0347c"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100002/integ_eval.log",
+          "sha256": "14d27418e19a3dc1d4ba9408dd23732485147154671a6c25c007e2ac82a4cf6e"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100002.log",
+          "sha256": "f376eb3859fea00464569a38643984633c950baa8733da703176785e41bf4012"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "stack_blocks",
+      "completion": {
+        "time": "2026-11-07T03:39:40Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 136
+      }
+    },
+    {
+      "name": "c6b_stackblockssg_keyBr1b2_100003",
+      "task": "stack_blocks",
+      "arm": "B",
+      "block": "key-scoped-2",
+      "id": 100003,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 242,
+      "wall_s": 86.6,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 4,
+      "usage": {
+        "prompt": 60786,
+        "completion": 2743,
+        "reasoning": 1413,
+        "cache_read": 52081
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100003/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "sha256": "87f6875ed0ddc9d86d8f9f0bdb8cd29f53e2b2d729eb4ad53237a59504028c01"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100003/stack_blocks_perception_verify-bundle_100003_report.json.gz",
+          "sha256": "7155ef09954521a01b910996e19da9e26045185fe47fccf46972f2a280ccc921"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100003/agentic/call_001/calls.jsonl",
+          "sha256": "a6de4af46e5cef42e1087fdf09d21d0cebff29be4fab859fc818d6c759559e75"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100003/agentic/call_001/20261107-064004-849756-0001/transcript.jsonl",
+          "sha256": "0851eee970eb2cc7c09fa035b05a8c76bac40a5f28aa047adcd57d76cb42437a"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100003/perception_service.log",
+          "sha256": "7daccfaa5fc4554146fc1b634b91c2b92b967629054cd6343020273f257250a1"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100003/integ_eval.log",
+          "sha256": "150bebf4d3deb231cc391933e8258d75776bfe2b1d5303744b78bf46a568d754"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100003.log",
+          "sha256": "036cc8fa46b622182b579a9c1053aef00b9b6bc530e86934a0d21fc982b4a020"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "stack_blocks",
+      "completion": {
+        "time": "2026-11-07T03:41:55Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_stackblockssg_keyAr1b2_100003",
+      "task": "stack_blocks",
+      "arm": "A",
+      "block": "key-scoped-2",
+      "id": 100003,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 242,
+      "wall_s": 90.6,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 4,
+      "usage": {
+        "prompt": 63466,
+        "completion": 3178,
+        "reasoning": 1948,
+        "cache_read": 52885
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100003/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "sha256": "b6659cf651bc5d1de326dd9cd030b7b618c175e11c68aca0f4350280378913ba"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100003/stack_blocks_perception_verify-bundle_100003_report.json.gz",
+          "sha256": "b999e73feebea6b34c72c586ec163fddead1c6edffd799dd6623dd2fec595337"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100003/agentic/call_001/calls.jsonl",
+          "sha256": "dd6e4bdadc904e82a42932ea4986972706b76ce021a423c559a4f9d228e45795"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100003/agentic/call_001/20261107-064219-851404-0001/transcript.jsonl",
+          "sha256": "369d0f19c5d40793b461ec84562125e1f5cde8cda3dfd7a9b4ab631f343ea644"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100003/perception_service.log",
+          "sha256": "6e39fcffc89830ab7e5b540b3bb7211dee2f13d542303cd2520d4fb570277925"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100003/integ_eval.log",
+          "sha256": "c813caa05e03f56d7eb15d2de5cb542944aa5a4a90d940639d2b6bc8aac14ae1"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100003.log",
+          "sha256": "a95f6a767daf884dee3a60af5a8723971c217cc457e2942a3adf2f6538f81ead"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "stack_blocks",
+      "completion": {
+        "time": "2026-11-07T03:44:10Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 135
+      }
+    },
+    {
+      "name": "c6b_stackblockssg_keyAr1b2_100004",
+      "task": "stack_blocks",
+      "arm": "A",
+      "block": "key-scoped-2",
+      "id": 100004,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 231,
+      "wall_s": 73.2,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 31879,
+        "completion": 1601,
+        "reasoning": 685,
+        "cache_read": 23430
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100004/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "sha256": "665c5e9db9436e83d26513c05fad589376ddc2ca43d8dc472c3ad1ade916b101"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100004/stack_blocks_perception_verify-bundle_100004_report.json.gz",
+          "sha256": "10d7047390d1c03e0966ab7c8ccea9aa41c7969ad76da4999e91d74389ade40f"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100004/agentic/call_001/calls.jsonl",
+          "sha256": "35791e43a6d06d4aa480fef43b9282468cf85f9ee628740096cb303be7c13318"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100004/agentic/call_001/20261107-064437-853016-0001/transcript.jsonl",
+          "sha256": "4d690cec02ee4b3b1469ee9932b9e19790eed4bd139b18922a84bdb3ba055fd0"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100004/perception_service.log",
+          "sha256": "772ced1574b780e39956b533dce69ce0bfa2cf55f83c234e352c39f66193b938"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100004/integ_eval.log",
+          "sha256": "63a65f6df0810855987acf069bc97e8407da907bc60179597bf00ff8e69e5e24"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyAr1b2_100004.log",
+          "sha256": "05ff09c026b4ef78c3f2813e4928cef8503438c3937da5c1a079e44f8161b1f9"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "stack_blocks",
+      "completion": {
+        "time": "2026-11-07T03:46:26Z",
+        "lane": "heavy2",
+        "rc": 0,
+        "lock_s": 136
+      }
+    },
+    {
+      "name": "c6b_stackblockssg_keyBr1b2_100004",
+      "task": "stack_blocks",
+      "arm": "B",
+      "block": "key-scoped-2",
+      "id": 100004,
+      "score": 100.0,
+      "success": true,
+      "category": null,
+      "time_capped": false,
+      "steps": 230,
+      "wall_s": 72.8,
+      "reported_code_model": "cx/gpt-6-luna",
+      "call_log_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "transcript_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "report_agentic_models": [
+        "claude/claude-sonnet-5-5"
+      ],
+      "logical_calls": 2,
+      "usage": {
+        "prompt": 31738,
+        "completion": 1490,
+        "reasoning": 705,
+        "cache_read": 23430
+      },
+      "reply_errors": [],
+      "transport_log_matches": [],
+      "pins": [
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100004/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "sha256": "da091fb5e2e558fdce1bc4e2823417b6a66330f92474275472d51cea201bb687"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100004/stack_blocks_perception_verify-bundle_100004_report.json.gz",
+          "sha256": "15f1cc6fd939c558c8e94269639e18ff77c78dc4d5570e0e698a4f9c07aaa57d"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100004/agentic/call_001/calls.jsonl",
+          "sha256": "6c421540549b0b02c95851261fbc7f33ee6b8f9a96b330abaf6a5ca8259d19e7"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100004/agentic/call_001/20261107-064652-854687-0001/transcript.jsonl",
+          "sha256": "bb4f7e3fc6596c03f7ed1487d406ca43931fd08453a584b333c6e7c7069ff710"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100004/perception_service.log",
+          "sha256": "1fa1b452b389226d0c94cfc5b821eabfa4aebb4ea45372795f787e34033f3223"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100004/integ_eval.log",
+          "sha256": "0b3521280a50d18c47023e50055c72d7b8ef3a163fda12e2e43556a59f5bd886"
+        },
+        {
+          "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_stackblockssg_keyBr1b2_100004.log",
+          "sha256": "f5fb8604ec1e6826956782a5341a4d029833f5100f0b6b0bdd98e7de0fc906c2"
+        }
+      ],
+      "route_verified": true,
+      "config_matches_frozen": true,
+      "vocabulary": "stack_blocks",
+      "completion": {
+        "time": "2026-11-07T03:48:41Z",
+        "lane": "heavy1",
+        "rc": 0,
+        "lock_s": 135
+      }
+    }
+  ],
+  "excluded_luna_attempt": {
+    "name": "c6b_insertkeysg_keyAr1b1_100001",
+    "task": "insert_key",
+    "arm": "A",
+    "block": "key-scoped-1",
+    "id": 100001,
+    "score": 15.0,
+    "success": false,
+    "category": "plan",
+    "time_capped": false,
+    "steps": 298,
+    "wall_s": 72.4,
+    "reported_code_model": "cx/gpt-6-luna",
+    "call_log_models": [
+      "cx/gpt-6-luna"
+    ],
+    "transcript_models": [
+      "cx/gpt-6-luna"
+    ],
+    "report_agentic_models": [
+      "cx/gpt-6-luna"
+    ],
+    "logical_calls": 2,
+    "usage": {
+      "prompt": 19129,
+      "completion": 298,
+      "reasoning": 49,
+      "cache_read": 17024
+    },
+    "reply_errors": [],
+    "transport_log_matches": [],
+    "pins": [
+      {
+        "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001/insert_key_perception_verify-bundle_episodes.jsonl",
+        "sha256": "41632ffb20747adab08bdbfa5a65d432aad6fe743804df84ce9fd3bd2d161cad"
+      },
+      {
+        "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001/insert_key_perception_verify-bundle_100001_report.json.gz",
+        "sha256": "3c899bc2b17c300b789f51900dfbe450e99a3f807b93451e0f903e896195f464"
+      },
+      {
+        "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001/agentic/call_001/calls.jsonl",
+        "sha256": "2a10d85981b17a0308d02a55bb0c19852fbb817f0f4d38d6d13b989e01485d7b"
+      },
+      {
+        "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001/agentic/call_001/20261107-051348-794191-0001/transcript.jsonl",
+        "sha256": "61aea2b8585cf1342402ce540856841a8108023116e1dd703e726ee876e85640"
+      },
+      {
+        "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001/perception_service.log",
+        "sha256": "51b7af9d7e3a9533ad6375d940b63cdfa007621f72fbe91dd1ed486ffed18f9b"
+      },
+      {
+        "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001/integ_eval.log",
+        "sha256": "b12fe257a3dce0c48cf2866ce3f59a1da204624c50246c8601cba2684cf943da"
+      },
+      {
+        "path": "/home/robotics/dojo-data/integ-c6/runs2/c6b_insertkeysg_keyAr1b1_100001.log",
+        "sha256": "ffc85ff53f6e4237a26c96d6d1af63fdc2adda4d9cf9d987a12ed13f3a261d3c"
+      }
+    ],
+    "route_verified": false,
+    "config_matches_frozen": true,
+    "vocabulary": "insert_key"
+  },
+  "route_violations": [],
+  "cells": [
+    {
+      "task": "insert_key",
+      "pairs": 10,
+      "A": 23.5,
+      "B": 23.5,
+      "delta": 0.0,
+      "score_wins": 1,
+      "score_losses": 1,
+      "score_ties": 8,
+      "success_flip_wins": 1,
+      "success_flip_losses": 1,
+      "success_A": 1,
+      "success_B": 1,
+      "sd_A": 26.879360111431225,
+      "sd_B": 26.879360111431225,
+      "sd_delta": 40.069384267237695,
+      "range_A": [
+        15.0,
+        100.0
+      ],
+      "range_B": [
+        15.0,
+        100.0
+      ],
+      "bootstrap95": [
+        -25.5,
+        25.5
+      ],
+      "checks": {
+        "n_at_least_10": true,
+        "delta_at_least_5": false,
+        "wins_at_least_twice_losses": false,
+        "at_least_two_net_wins": false
+      },
+      "passes": false
+    },
+    {
+      "task": "plug_in_charger",
+      "pairs": 5,
+      "A": 80.0,
+      "B": 80.0,
+      "delta": 0.0,
+      "score_wins": 0,
+      "score_losses": 0,
+      "score_ties": 5,
+      "success_flip_wins": 0,
+      "success_flip_losses": 0,
+      "success_A": 4,
+      "success_B": 4,
+      "sd_A": 44.721359549995796,
+      "sd_B": 44.721359549995796,
+      "sd_delta": 0.0,
+      "range_A": [
+        0.0,
+        100.0
+      ],
+      "range_B": [
+        0.0,
+        100.0
+      ],
+      "checks": {
+        "n_5": true,
+        "delta_at_least_minus5": true,
+        "success_flip_losses_le_wins": true
+      },
+      "passes": true
+    },
+    {
+      "task": "stack_blocks",
+      "pairs": 5,
+      "A": 100.0,
+      "B": 100.0,
+      "delta": 0.0,
+      "score_wins": 0,
+      "score_losses": 0,
+      "score_ties": 5,
+      "success_flip_wins": 0,
+      "success_flip_losses": 0,
+      "success_A": 5,
+      "success_B": 5,
+      "sd_A": 0.0,
+      "sd_B": 0.0,
+      "sd_delta": 0.0,
+      "range_A": [
+        100.0,
+        100.0
+      ],
+      "range_B": [
+        100.0,
+        100.0
+      ],
+      "checks": {
+        "n_5": true,
+        "delta_at_least_minus5": true,
+        "success_flip_losses_le_wins": true
+      },
+      "passes": true
+    }
+  ],
+  "pairs": [
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100001,
+      "A": "c6b_insertkeysg_keyAr1b1_100001__sonnet",
+      "B": "c6b_insertkeysg_keyBr1b1_100001",
+      "score_A": 15.0,
+      "score_B": 15.0,
+      "delta": 0.0,
+      "success_A": false,
+      "success_B": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100002,
+      "A": "c6b_insertkeysg_keyAr1b1_100002",
+      "B": "c6b_insertkeysg_keyBr1b1_100002",
+      "score_A": 15.0,
+      "score_B": 15.0,
+      "delta": 0.0,
+      "success_A": false,
+      "success_B": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100003,
+      "A": "c6b_insertkeysg_keyAr1b1_100003",
+      "B": "c6b_insertkeysg_keyBr1b1_100003",
+      "score_A": 15.0,
+      "score_B": 15.0,
+      "delta": 0.0,
+      "success_A": false,
+      "success_B": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100004,
+      "A": "c6b_insertkeysg_keyAr1b1_100004",
+      "B": "c6b_insertkeysg_keyBr1b1_100004",
+      "score_A": 15.0,
+      "score_B": 15.0,
+      "delta": 0.0,
+      "success_A": false,
+      "success_B": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-2",
+      "id": 100002,
+      "A": "c6b_insertkeysg_keyAr1b2_100002",
+      "B": "c6b_insertkeysg_keyBr1b2_100002",
+      "score_A": 15.0,
+      "score_B": 15.0,
+      "delta": 0.0,
+      "success_A": false,
+      "success_B": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-1",
+      "id": 100002,
+      "A": "c6b_insertkeysg_keyAr1b3_100002",
+      "B": "c6b_insertkeysg_keyBr1b3_100002",
+      "score_A": 100.0,
+      "score_B": 15.0,
+      "delta": -85.0,
+      "success_A": true,
+      "success_B": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-2",
+      "id": 100001,
+      "A": "c6b_insertkeysg_keyAr1b4_100001",
+      "B": "c6b_insertkeysg_keyBr1b4_100001",
+      "score_A": 15.0,
+      "score_B": 15.0,
+      "delta": 0.0,
+      "success_A": false,
+      "success_B": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-2",
+      "id": 100003,
+      "A": "c6b_insertkeysg_keyAr1b4_100003",
+      "B": "c6b_insertkeysg_keyBr1b4_100003",
+      "score_A": 15.0,
+      "score_B": 100.0,
+      "delta": 85.0,
+      "success_A": false,
+      "success_B": true
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-2",
+      "id": 100004,
+      "A": "c6b_insertkeysg_keyAr1b4_100004",
+      "B": "c6b_insertkeysg_keyBr1b4_100004",
+      "score_A": 15.0,
+      "score_B": 15.0,
+      "delta": 0.0,
+      "success_A": false,
+      "success_B": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-3",
+      "id": 100002,
+      "A": "c6b_insertkeysg_keyAr1b5_100002",
+      "B": "c6b_insertkeysg_keyBr1b5_100002",
+      "score_A": 15.0,
+      "score_B": 15.0,
+      "delta": 0.0,
+      "success_A": false,
+      "success_B": false
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100000,
+      "A": "c6b_pluginchargersg_keyAr1b1_100000",
+      "B": "c6b_pluginchargersg_keyBr1b1_100000",
+      "score_A": 100.0,
+      "score_B": 100.0,
+      "delta": 0.0,
+      "success_A": true,
+      "success_B": true
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100001,
+      "A": "c6b_pluginchargersg_keyAr1b1_100001",
+      "B": "c6b_pluginchargersg_keyBr1b1_100001",
+      "score_A": 100.0,
+      "score_B": 100.0,
+      "delta": 0.0,
+      "success_A": true,
+      "success_B": true
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100002,
+      "A": "c6b_pluginchargersg_keyAr1b1_100002",
+      "B": "c6b_pluginchargersg_keyBr1b1_100002",
+      "score_A": 100.0,
+      "score_B": 100.0,
+      "delta": 0.0,
+      "success_A": true,
+      "success_B": true
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100003,
+      "A": "c6b_pluginchargersg_keyAr1b1_100003",
+      "B": "c6b_pluginchargersg_keyBr1b1_100003",
+      "score_A": 100.0,
+      "score_B": 100.0,
+      "delta": 0.0,
+      "success_A": true,
+      "success_B": true
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100004,
+      "A": "c6b_pluginchargersg_keyAr1b1_100004",
+      "B": "c6b_pluginchargersg_keyBr1b1_100004",
+      "score_A": 0.0,
+      "score_B": 0.0,
+      "delta": 0.0,
+      "success_A": false,
+      "success_B": false
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100000,
+      "A": "c6b_stackblockssg_keyAr1b2_100000",
+      "B": "c6b_stackblockssg_keyBr1b2_100000",
+      "score_A": 100.0,
+      "score_B": 100.0,
+      "delta": 0.0,
+      "success_A": true,
+      "success_B": true
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100001,
+      "A": "c6b_stackblockssg_keyAr1b2_100001",
+      "B": "c6b_stackblockssg_keyBr1b2_100001",
+      "score_A": 100.0,
+      "score_B": 100.0,
+      "delta": 0.0,
+      "success_A": true,
+      "success_B": true
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100002,
+      "A": "c6b_stackblockssg_keyAr1b2_100002",
+      "B": "c6b_stackblockssg_keyBr1b2_100002",
+      "score_A": 100.0,
+      "score_B": 100.0,
+      "delta": 0.0,
+      "success_A": true,
+      "success_B": true
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100003,
+      "A": "c6b_stackblockssg_keyAr1b2_100003",
+      "B": "c6b_stackblockssg_keyBr1b2_100003",
+      "score_A": 100.0,
+      "score_B": 100.0,
+      "delta": 0.0,
+      "success_A": true,
+      "success_B": true
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100004,
+      "A": "c6b_stackblockssg_keyAr1b2_100004",
+      "B": "c6b_stackblockssg_keyBr1b2_100004",
+      "score_A": 100.0,
+      "score_B": 100.0,
+      "delta": 0.0,
+      "success_A": true,
+      "success_B": true
+    }
+  ],
+  "spend": {
+    "logical_calls": 121,
+    "usage": {
+      "prompt": 1725976,
+      "completion": 84499,
+      "reasoning": 49981,
+      "cache_read": 1419036
+    },
+    "surfaced_transport_errors": [],
+    "transport_retry_observability": "OmniChat drops LLMResult.attempts/http_status and the run transcript stores no attempt counters; recovered transport retries cannot be counted from these artifacts.",
+    "summed_lock_s": 5234,
+    "summed_episode_wall_s": 3160.5,
+    "surfaced_429_count": 0,
+    "actual_transport_retries": null,
+    "surfaced_transport_failure_count": 0
+  },
+  "rule_passes": false,
+  "bootstrap": {
+    "draws": 10000,
+    "seed": 0,
+    "method": "percentile, resample paired salted layout identities within gain cell"
+  },
+  "write_audit": "Motion-search/budget lever; no new or modified perception read/belief writer/schema or acceptance rule; prereg applicability unchanged. No physics write-audit pass claimed.",
+  "unexpected_attempts": [],
+  "checks": {
+    "analysed_arms": 40,
+    "sonnet_route_verified": 40,
+    "rc0": 40,
+    "frozen_config_matches": 40,
+    "routed_vocabulary_matches": 40,
+    "all_selected_input_hashes_match": true,
+    "no_time_caps": true
+  },
+  "observability_source_pins": [
+    {
+      "path": "/home/robotics/dojo-integ-c6-key-6d1a4abb/dojo/perception/agentic/llm.py",
+      "sha256": "ede015c5fd694bb86265262463bb721fee371f4f961ecf0346638f6bf70c8817"
+    },
+    {
+      "path": "/home/robotics/dojo-integ-c6-key-6d1a4abb/dojo/perception/agentic/runner.py",
+      "sha256": "5f7a7c19571c28caa6f9140ae3265e4d4b5318b652a25870977b0d356e05acc9"
+    },
+    {
+      "path": "/home/robotics/dojo-integ-c6-key-6d1a4abb/controlr/llm/client.py",
+      "sha256": "fb97c9047713ab310d30b724ac6fea8334b19cefcafb7e7891171d4ddf378945"
+    }
+  ]
+}

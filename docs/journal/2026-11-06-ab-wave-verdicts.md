@@ -123,3 +123,42 @@ seg rows already used it.
   are no other GPU users, and the 32 GB card fits two Isaac jobs. The VRAM and
   boot gates are unchanged, and heavy2 was started on the same 416a2a03
   deployment. This roughly halves the peg / waist re-test tail.
+
+## KEY scoped (#412): insert_key-only handover/lean, candidate Sonnet — DOES NOT PASS
+
+[Preregistration and full verdict](../experiments/2026-11-07-key-scoped-prereg.md).
+This uses the current **score-based** rule (pair win/loss >=10 points), not
+success flips for the gain gate. The lead's route amendment `74d9ed80` is
+applied: excluded Luna `c6b_insertkeysg_keyAr1b1_100001` is replaced by its
+`__sonnet` A arm. Every analysed arm verifies Sonnet in its actual call logs,
+transcript start and report agentic metadata; no further route violations.
+Static deployment `code.model` remains stale Luna and is not route evidence.
+
+| cell | pairs | A pooled | B pooled | Δ | success flips (B / A) | score wins / losses (>=10 pts) | successes A / B |
+|---|---|---|---|---|---|---|---|
+| insert_key (gain) | 10 | 23.5 | 23.5 | 0.0 | 1 / 1 | 1 / 1 | 1 / 1 |
+| plug_in_charger (guard) | 5 | 80.0 | 80.0 | 0.0 | 0 / 0 | 0 / 0 | 4 / 4 |
+| stack_blocks (strong guard) | 5 | 100.0 | 100.0 | 0.0 | 0 / 0 | 0 / 0 | 5 / 5 |
+
+- **What passed:** all 40 analysed arms rc 0, complete 10/5/5 paired panel,
+  actual Sonnet route and frozen config/input checks; both guards meet delta
+  >=−5 and success-flip losses <=wins. No time caps or missing outcomes.
+- **What failed:** gain delta 0 < +5, score wins 1 < 2×1 losses, and net
+  score wins 0 < 2. Paired bootstrap 95% CI **[−25.5, +25.5] points**
+  (10,000 paired-layout resamples, seed 0). The scoped lever is not adopted;
+  no candidate or default change. The earlier global verdict stands.
+- **Spend:** **121 logical Claude calls**; **1,725,976 prompt / 84,499
+  completion / 49,981 reasoning / 1,419,036 cache-read tokens**. Reasoning /
+  cache are reported separately without double counting. Excludes Luna.
+  **Actual recovered transport retries are unobservable:** OmniChat drops
+  attempt counters/status. **Zero surfaced transport failures or logged
+  429s**, not a certified zero transient-retry count. Summed lane locks:
+  5,234 s; analysed episode wall: 3,160.5 s, excluding admission waits.
+- **Write audit:** not triggered under the preregistration: these are existing
+  motion-search/waypoint-budget switches, with no changed perception read,
+  belief writer or acceptance predicate. Downstream observations/writes may
+  differ with motion; no physics-audit pass is claimed.
+
+Per-pair scores, per-row model proof, raw source hashes and spend are retained
+in [the snapshot](../experiments/data/key-scoped/verdict.json) and
+`compute6:~/dojo-data/key-1107/`. No further run is authorized by this verdict.

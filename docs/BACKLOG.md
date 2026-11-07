@@ -6,6 +6,19 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Preserve agentic transport retry telemetry.** `OmniChat` drops
+  `LLMResult.attempts` / `http_status` when building `ChatReply`, so logical
+  call logs cannot certify actual recovered retries or transient 429 counts.
+  Propagate per-attempt status/timing without credentials and distinguish
+  logical calls from HTTP attempts
+  ([KEY verdict](experiments/2026-11-07-key-scoped-prereg.md)).
+
+- [ ] **Distinguish static deployment labels from executed camera routes.**
+  Copied deployment provenance can retain an old `model` / `stream` label
+  after a lead-authorized route correction. Record the resolved per-run
+  perceiver route; use call logs/transcript models to audit existing data
+  ([KEY route evidence](experiments/2026-11-07-key-scoped-prereg.md)).
+
 - [ ] **Account for insert_key's high second-pass presettle rejection rate.**
   Raw records can pass the initial settle yet fail after settled poses are written
   back and reloaded. Track failure rates by task/block and budget prospective
