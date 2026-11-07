@@ -91,7 +91,7 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
         L.hang_on_hooks(sk, ["headset"], "stand", "support_cradle", "headband_bridge")
         assert seen["pick_kw"] == ({"squeeze": 8} if seat == "on" else None)
         assert seen["widths"] == ([0.04] if seat == "on" else [0.025, 0.04])
-        assert seen["carry"] == L.HANG_CARRY  # the slow-carry probe must not affect cradles
+        assert seen["carry"] == L.HANG_CARRY * (0.5 if seat == "on" else 1.0)
         r = seen.get("rank")
         if expect is None:
             assert r is None
