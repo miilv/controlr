@@ -27,3 +27,5 @@ Our variants (new directories, changes marked in the file):
                                                unchanged apart from attribution; opt-in sparse/via profiles
   skills/pour_bottle_v5                         same 6769a6c5; underlying skill used by original strict RGB wrapper;
                                                opt-in checked profile, original staged roll and checked return
+  skills/pour_in_order_v5                       same 6769a6c5; checked composite's adaptive budget, retries,
+                                               refusal handling and held-bottle put-down; pairs are our language handles

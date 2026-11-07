@@ -110,6 +110,12 @@ def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
     """Pour each [bottle, bowl] in ``pairs`` in order through the ported ``pour_bottle``; stop at the first pour that
     did not run its whole procedure (a later pour must never come before an earlier one)."""
     from dojo.skills.ported import ported
+    if getattr(sk, "ported_pour_profile", "off") == "checked":
+        from dojo.skills.planner import POUR_AIM
+        aim = POUR_AIM.get(getattr(sk, "ported_pour_aim", "v1"))
+        return ported(sk, "pour_in_order_v5", {
+            "pairs": [[f"@{b}", f"@{w}"] for b, w in pairs],
+            "pour_args": {} if aim is None else {"spout_back": aim}}, reserve=reserve)
     done = []
     held = None                     # overlap: the bottle the other arm grasped and lifted during the previous pour
     plan_arms = None

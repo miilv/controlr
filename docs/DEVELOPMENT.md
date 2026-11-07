@@ -736,3 +736,8 @@ profiles are dev feasibility switches; they do not select a camera candidate.
 `scripts/skills/pour_g3_job.sh` serializes the POUR stream on compute3's light7
 lock, checks <=24 GiB used VRAM and >=10 GB free disk before each scoped job,
 and uses an 8G/600% physics-only process with a bounded KILL tail.
+
+For ordered pours, `checked` runs the original v5 composite (adaptive drain,
+pre-flow-only retry, stop on an unsuccessful pair, checked held-bottle return).
+A still-held bottle suppresses generic finish, which otherwise opens both hands.
+Single-cup checked pours use the v5 bottle skill directly.

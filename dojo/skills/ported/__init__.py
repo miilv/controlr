@@ -28,6 +28,7 @@ TIER_A = {
     "swap_poses": (RESERVE, {}),
     "pour": (RESERVE, {}),
     "pour_bottle": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),     # D-C14
+    "pour_in_order_v5": (RESERVE, {}),
     "pour_bottle_v5": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),
     "pour_bottle_v2": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),
     "pour_bottle_lean": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),  # H: pour_bottle paced lean, same D-C14 args
@@ -116,6 +117,8 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
     # second time (his runs call it once per episode); a skill that could not start (grounding, an error) is not ok
     out = {"ok": bool(rep.get("ok")), "status": status, "skill": f"ported:{skill}", "steps": steps,
            "verified": verified, "error": note, "source": f"robot-harness {SOURCE_COMMIT[:7]} skills/{skill}"}
+    if rep.get("holding") is not None:
+        out["holding"] = rep["holding"]
     if rep.get("companion") is not None:          # pour_bottle_lean's overlap: the next bottle the other arm now holds
         out["companion"] = rep["companion"]
     d = rep.get("details") if isinstance(rep.get("details"), dict) else {}

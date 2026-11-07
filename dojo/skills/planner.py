@@ -729,6 +729,10 @@ def solve(sk) -> dict:
     # finish either way: most checkers want both arms home and the grippers open, and a skill's own
     # check can be stricter than the task's (twin, plug_in_charger: the charger went in 13-17 mm deeper
     # than modelled, the skill called it a miss, the arms stayed out and the episode failed on "home")
+    if getattr(sk, "ported_pour_profile", "off") == "checked" and res.get("holding"):
+        # The opt-in checked original owns its put-down and free-arm home. A
+        # generic finish opens both hands, defeating its checked-return rule.
+        return {**res, "stage": "holding", "finish": "suppressed: checked pour still holds bottle"}
     f = sk.finish()
     if not res.get("ok"):
         return {**res, "finish": f.status}

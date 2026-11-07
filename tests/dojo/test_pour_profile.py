@@ -39,8 +39,7 @@ def test_diagnostic_boxes_follow_rotated_checker_frame():
                     [1, 2, 0], q, vertices, .001).tolist() == [True, False, False]
 
 
-@pytest.mark.parametrize("profile,skill", [("sparse", "pour_bottle_v2"), ("via", "pour_bottle_v2"),
-                                           ("checked", "pour_bottle_v5")])
+@pytest.mark.parametrize("profile,skill", [("sparse", "pour_bottle_v2"), ("via", "pour_bottle_v2")])
 def test_ordered_route_forwards_profile_and_only_final_pour_homes(monkeypatch, profile, skill):
     import dojo.skills.ported as adapter
     from dojo.skills.pour_order import pour_in_order
@@ -67,3 +66,31 @@ def test_ordered_route_forwards_profile_and_only_final_pour_homes(monkeypatch, p
     assert [args.get("home", True) for _, args in calls] == [False, False, True]
     assert [args["container"] for _, args in calls] == ["@a", "@b", "@c"]
     assert all(args["spout_back"] == .01 for _, args in calls)
+
+
+def test_checked_order_uses_original_budget_and_refusal_composite(monkeypatch):
+    import dojo.skills.ported as adapter
+    from dojo.skills.pour_order import pour_in_order
+    calls = []
+    monkeypatch.setattr(adapter, "ported", lambda sk, name, args, reserve=None:
+                        calls.append((name, args)) or {"ok": True, "verified": True})
+    class Sk:
+        ported_pour_profile, ported_pour_aim = "checked", "b10"
+    assert pour_in_order(Sk(), [["a", "x"], ["b", "y"], ["c", "z"]])["verified"]
+    assert calls == [("pour_in_order_v5", {"pairs": [["@a", "@x"], ["@b", "@y"], ["@c", "@z"]],
+                                          "pour_args": {"spout_back": .01}})]
+
+
+@pytest.mark.parametrize("profile,homes", [("off", True), ("checked", False)])
+def test_checked_held_return_suppresses_generic_open_without_changing_default(monkeypatch, profile, homes):
+    from types import SimpleNamespace
+    from dojo.skills import planner
+    monkeypatch.setattr(planner, "plan", lambda *a, **kw: SimpleNamespace(skill="pour_in_order", args={}, why="test"))
+    monkeypatch.setattr(planner.L, "skill_fn", lambda name: lambda sk: {"ok": True, "holding": {"arm": "left"}})
+    finished = []
+    sk = SimpleNamespace(ported_pour_profile=profile, refresh=lambda: SimpleNamespace(instruction="pour", notes={}),
+                         log=lambda m: None, finish=lambda: finished.append(True) or SimpleNamespace(status="ok"))
+    result = planner.solve(sk)
+    assert bool(finished) is homes
+    if not homes:
+        assert result["stage"] == "holding"
