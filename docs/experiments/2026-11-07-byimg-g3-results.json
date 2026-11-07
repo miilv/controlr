@@ -1,0 +1,8195 @@
+{
+ "registration_commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce",
+ "arms": {
+  "A": [
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100030,
+    "load_s": 5.02,
+    "stable": true,
+    "layout_file": "100030.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 195,
+    "step_lim": 700,
+    "wall_s": 23.9,
+    "sim_s": 12.8,
+    "plan_s": 11.1,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 195,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 28,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.0578,
+      -0.0938,
+      0.8728,
+      0.8157,
+      -0.0001,
+      -0.0032,
+      0.5784
+     ],
+     "target": [
+      -0.1149,
+      0.0626,
+      0.8222,
+      0.96,
+      0.0038,
+      0.005,
+      0.2801
+     ],
+     "object1": [
+      -0.0539,
+      0.0423,
+      0.7861,
+      -0.6976,
+      0.0069,
+      -0.0252,
+      0.716
+     ],
+     "object2": [
+      0.1665,
+      0.1127,
+      0.8177,
+      0.9124,
+      0.0052,
+      0.0023,
+      -0.4094
+     ],
+     "object3": [
+      -0.4337,
+      0.019,
+      0.7809,
+      0.973,
+      -0.0029,
+      -0.0026,
+      0.2306
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "off"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, -0.0] mm/step; the picture shows Rigid/glue/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 3, approach 14",
+     "[belt] dragged basket by [-512.0, -125.0, 0.0] mm: now [-0.024, -0.11, 0.89]",
+     "[belt] basket stopped at [-0.024, -0.11, 0.89]",
+     "[skill] belt_stop right ok steps=28 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100031,
+    "load_s": 6.69,
+    "stable": true,
+    "layout_file": "100031.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 131,
+    "step_lim": 700,
+    "wall_s": 18.9,
+    "sim_s": 9.0,
+    "plan_s": 9.9,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 131,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 30,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.087,
+      -0.1025,
+      0.874,
+      0.8862,
+      -0.0097,
+      0.0033,
+      0.4631
+     ],
+     "target": [
+      -0.0624,
+      0.0379,
+      0.7621,
+      1.0,
+      0.0009,
+      0.0006,
+      -0.0012
+     ],
+     "object1": [
+      -0.3866,
+      0.0439,
+      0.7861,
+      0.7068,
+      -0.018,
+      0.7072,
+      -0.0001
+     ],
+     "object2": [
+      0.0159,
+      0.0557,
+      0.7848,
+      0.999,
+      -0.0,
+      -0.0041,
+      -0.0438
+     ],
+     "object3": [
+      -0.1674,
+      -0.006,
+      0.7738,
+      0.9676,
+      -0.0015,
+      -0.0068,
+      0.2524
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "off"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, -0.0] mm/step; the picture shows Rigid/cup/00007: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 1, approach 16",
+     "[belt] dragged basket by [-233.0, -140.0, 0.0] mm: now [0.004, -0.125, 0.896]",
+     "[belt] basket stopped at [0.004, -0.125, 0.896]",
+     "[skill] belt_stop right ok steps=30 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100032,
+    "load_s": 4.94,
+    "stable": true,
+    "layout_file": "100032.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 106,
+    "step_lim": 700,
+    "wall_s": 8.7,
+    "sim_s": 5.3,
+    "plan_s": 3.5,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 106,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 31,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.017,
+      -0.0988,
+      0.8717,
+      0.7569,
+      0.0,
+      -0.0,
+      0.6535
+     ],
+     "target": [
+      -0.1467,
+      0.0257,
+      0.7848,
+      0.9738,
+      -0.0008,
+      -0.0041,
+      -0.2274
+     ],
+     "object1": [
+      -0.7901,
+      -0.0028,
+      0.7693,
+      0.9961,
+      -0.0073,
+      -0.0116,
+      0.087
+     ],
+     "object2": [
+      -0.646,
+      0.0187,
+      0.8176,
+      0.9981,
+      0.0035,
+      0.0044,
+      0.0615
+     ],
+     "object3": [
+      -0.4017,
+      0.1268,
+      0.7616,
+      0.9903,
+      -0.0026,
+      -0.0008,
+      -0.1389
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "off"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/donut/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 0, approach 17",
+     "[belt] dragged basket by [-147.0, -86.0, 0.0] mm: now [-0.054, -0.102, 0.875]",
+     "[belt] basket stopped at [-0.054, -0.102, 0.875]",
+     "[skill] belt_stop right ok steps=31 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100033,
+    "load_s": 3.82,
+    "stable": true,
+    "layout_file": "100033.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 173,
+    "step_lim": 700,
+    "wall_s": 18.1,
+    "sim_s": 10.4,
+    "plan_s": 7.7,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 173,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 27,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.0401,
+      -0.0883,
+      0.8717,
+      0.7849,
+      0.0,
+      -0.0,
+      0.6196
+     ],
+     "target": [
+      -0.1725,
+      0.042,
+      0.7626,
+      0.9993,
+      -0.0006,
+      -0.0022,
+      -0.0363
+     ],
+     "object1": [
+      -0.3113,
+      0.0482,
+      0.7739,
+      0.9931,
+      -0.0042,
+      -0.0059,
+      -0.1174
+     ],
+     "object2": [
+      -0.4544,
+      0.111,
+      0.7616,
+      0.9769,
+      -0.0024,
+      -0.0007,
+      0.2138
+     ],
+     "object3": [
+      -0.0856,
+      0.0456,
+      0.7848,
+      0.8977,
+      -0.0017,
+      -0.0038,
+      -0.4405
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "off"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/noodles/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 4, approach 13",
+     "[belt] dragged basket by [-422.0, -115.0, 0.0] mm: now [-0.041, -0.105, 0.889]",
+     "[belt] basket stopped at [-0.041, -0.105, 0.889]",
+     "[skill] belt_stop right ok steps=27 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100034,
+    "load_s": 6.13,
+    "stable": true,
+    "layout_file": "100034.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 251,
+    "step_lim": 700,
+    "wall_s": 16.0,
+    "sim_s": 14.1,
+    "plan_s": 2.0,
+    "result": {
+     "ok": false,
+     "stage": "lift",
+     "note": "no lift by the handle ((0.12, 0.1, 0.09))",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 251,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 29,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "belt_pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 41,
+      "arm": "left",
+      "note": "target rose 145 mm"
+     },
+     {
+      "skill": "drop",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": "left",
+      "note": "target let go over basket"
+     },
+     {
+      "skill": "still_grasp",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": "left",
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 17,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.3714,
+      -0.1099,
+      0.8717,
+      0.9449,
+      0.0,
+      -0.0,
+      0.3273
+     ],
+     "target": [
+      0.1612,
+      0.0206,
+      0.7738,
+      -0.1541,
+      0.0066,
+      -0.0022,
+      0.988
+     ],
+     "object1": [
+      -0.0995,
+      0.1167,
+      0.7848,
+      0.974,
+      -0.0008,
+      -0.0041,
+      -0.2266
+     ],
+     "object2": [
+      -0.1185,
+      0.0257,
+      0.7621,
+      0.9716,
+      0.0007,
+      0.0008,
+      0.2368
+     ],
+     "object3": [
+      0.4252,
+      0.114,
+      0.7945,
+      0.9976,
+      -0.0019,
+      -0.0002,
+      -0.0694
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "off"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/car/00010: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 2, approach 15",
+     "[belt] dragged basket by [-245.0, -123.0, 0.0] mm: now [-0.044, -0.104, 0.876]",
+     "[belt] basket stopped at [-0.044, -0.104, 0.876]",
+     "[skill] belt_stop right ok steps=29 basket stopped",
+     "[belt] target: left intercept at +25 steps (axis 1 tilt 25), wait 1, approach 16",
+     "[skill] belt_pick left ok steps=41 target rose 145 mm",
+     "[belt] target let go over basket at [-0.104, -0.088, 0.953]",
+     "[skill] drop left ok steps=0 target let go over basket",
+     "[belt] target not in basket after the drop",
+     "[belt] left took basket (band 11 x 146 mm tilt 55)",
+     "[skill] still_grasp left ok steps=0 ",
+     "[skill] finish  ok steps=17 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100035,
+    "load_s": 4.72,
+    "stable": true,
+    "layout_file": "100035.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 309,
+    "step_lim": 700,
+    "wall_s": 27.0,
+    "sim_s": 25.0,
+    "plan_s": 2.0,
+    "result": {
+     "ok": false,
+     "stage": "lift",
+     "note": "no lift by the handle ((0.12, 0.1, 0.09))",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 309,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 28,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "belt_pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 41,
+      "arm": "left",
+      "note": "target rose 150 mm"
+     },
+     {
+      "skill": "drop",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": "left",
+      "note": "target let go over basket"
+     },
+     {
+      "skill": "still_grasp",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": "left",
+      "note": ""
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 17,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.0758,
+      -0.1089,
+      0.8957,
+      0.768,
+      0.0564,
+      -0.0661,
+      0.6345
+     ],
+     "target": [
+      0.0587,
+      -0.1738,
+      0.8085,
+      0.0944,
+      -0.1412,
+      0.7042,
+      -0.6894
+     ],
+     "object1": [
+      0.5168,
+      0.1099,
+      0.8176,
+      0.0789,
+      -0.0038,
+      0.0041,
+      0.9969
+     ],
+     "object2": [
+      0.0572,
+      -0.0137,
+      0.7815,
+      -0.6187,
+      -0.2172,
+      0.6835,
+      0.3207
+     ],
+     "object3": [
+      0.2907,
+      0.0737,
+      0.7739,
+      0.982,
+      -0.0023,
+      -0.0068,
+      0.1889
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "off"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/figurine/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 3, approach 14",
+     "[belt] dragged basket by [-536.0, -133.0, 0.0] mm: now [-0.032, -0.107, 0.893]",
+     "[belt] basket stopped at [-0.032, -0.107, 0.893]",
+     "[skill] belt_stop right ok steps=28 basket stopped",
+     "[belt] target: left intercept at +25 steps (axis 0 tilt 25), wait 1, approach 16",
+     "[skill] belt_pick left ok steps=41 target rose 150 mm",
+     "[belt] target let go over basket at [-0.118, -0.102, 1.017]",
+     "[skill] drop left ok steps=0 target let go over basket",
+     "[belt] target in basket after the drop",
+     "[belt] left took basket (band 11 x 146 mm tilt 40)",
+     "[skill] still_grasp left ok steps=0 ",
+     "[skill] finish  ok steps=17 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100036,
+    "load_s": 5.72,
+    "stable": true,
+    "layout_file": "100036.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 152,
+    "step_lim": 700,
+    "wall_s": 16.0,
+    "sim_s": 9.6,
+    "plan_s": 6.4,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 152,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 27,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.007,
+      -0.0918,
+      0.8813,
+      0.7573,
+      -0.006,
+      -0.0303,
+      0.6524
+     ],
+     "target": [
+      -0.1451,
+      0.0436,
+      0.7809,
+      0.9733,
+      -0.0038,
+      -0.0011,
+      -0.2293
+     ],
+     "object1": [
+      -0.4433,
+      0.0094,
+      0.7945,
+      0.968,
+      -0.0016,
+      0.0004,
+      -0.2508
+     ],
+     "object2": [
+      0.0389,
+      0.0207,
+      0.7704,
+      0.9802,
+      0.0401,
+      -0.0158,
+      -0.1934
+     ],
+     "object3": [
+      -0.2925,
+      0.0027,
+      0.7616,
+      0.9868,
+      -0.0021,
+      -0.0022,
+      0.1618
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "off"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, -0.0] mm/step; the picture shows Rigid/car/00009: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 4, approach 13",
+     "[belt] dragged basket by [-344.0, -86.0, 0.0] mm: now [-0.059, -0.101, 0.888]",
+     "[belt] basket stopped at [-0.059, -0.101, 0.888]",
+     "[skill] belt_stop right ok steps=27 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100037,
+    "load_s": 4.78,
+    "stable": true,
+    "layout_file": "100037.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 200,
+    "step_lim": 700,
+    "wall_s": 16.9,
+    "sim_s": 12.8,
+    "plan_s": 4.1,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 200,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 29,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.0082,
+      -0.0946,
+      0.8838,
+      0.7062,
+      -0.0128,
+      -0.0413,
+      0.7067
+     ],
+     "target": [
+      -0.189,
+      0.0788,
+      0.7871,
+      0.6897,
+      -0.2207,
+      0.6749,
+      -0.142
+     ],
+     "object1": [
+      0.1109,
+      0.0793,
+      0.7809,
+      0.9769,
+      -0.003,
+      -0.0026,
+      0.2138
+     ],
+     "object2": [
+      -0.3762,
+      -0.0253,
+      0.7621,
+      0.9702,
+      0.0007,
+      0.0008,
+      0.2421
+     ],
+     "object3": [
+      0.1485,
+      0.0362,
+      0.7617,
+      0.8112,
+      0.0079,
+      0.0154,
+      -0.5846
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "off"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/can/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 2, approach 15",
+     "[belt] dragged basket by [-520.0, -172.0, 0.0] mm: now [-0.058, -0.101, 0.888]",
+     "[belt] basket stopped at [-0.058, -0.101, 0.888]",
+     "[skill] belt_stop right ok steps=29 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100038,
+    "load_s": 5.08,
+    "stable": true,
+    "layout_file": "100038.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 284,
+    "step_lim": 700,
+    "wall_s": 24.3,
+    "sim_s": 19.0,
+    "plan_s": 5.3,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "target rose 0 mm",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 284,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 27,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "belt_pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 42,
+      "arm": "left",
+      "note": "target rose -5 mm"
+     },
+     {
+      "skill": "home",
+      "ok": true,
+      "status": "ok",
+      "steps": 13,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "belt_pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 47,
+      "arm": "left",
+      "note": "target rose 0 mm"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 19,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.0284,
+      -0.0859,
+      0.8717,
+      0.7357,
+      0.0,
+      0.0,
+      0.6773
+     ],
+     "target": [
+      -0.1278,
+      0.1381,
+      0.7963,
+      -0.1514,
+      -0.2023,
+      0.7687,
+      0.5875
+     ],
+     "object1": [
+      0.1739,
+      0.0724,
+      0.7651,
+      0.9754,
+      -0.0105,
+      -0.2104,
+      -0.0647
+     ],
+     "object2": [
+      0.4018,
+      0.0509,
+      0.7739,
+      0.9939,
+      -0.0027,
+      -0.0066,
+      0.1102
+     ],
+     "object3": [
+      0.6172,
+      0.1335,
+      0.7862,
+      -0.4137,
+      0.4214,
+      -0.5665,
+      0.5747
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "off"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/toy/00001: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 4, approach 13",
+     "[belt] dragged basket by [-375.0, -91.0, 0.0] mm: now [-0.048, -0.103, 0.89]",
+     "[belt] basket stopped at [-0.048, -0.103, 0.89]",
+     "[skill] belt_stop right ok steps=27 basket stopped",
+     "[belt] target: left intercept at +25 steps (waist h 0.60 head 122 pitch 0), wait 0, approach 17",
+     "[skill] belt_pick left grasp_slip steps=42 target rose -5 mm",
+     "[skill] home  ok steps=13 ",
+     "[belt] target: left intercept at +43 steps (w 32mm), wait 13, approach 22",
+     "[belt] re-read: shifted the track by [-1.5, 7.4, 0.0] mm",
+     "[skill] belt_pick left grasp_slip steps=47 target rose 0 mm",
+     "[skill] finish  ok steps=19 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100039,
+    "load_s": 3.74,
+    "stable": true,
+    "layout_file": "100039.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 102,
+    "step_lim": 700,
+    "wall_s": 17.4,
+    "sim_s": 5.8,
+    "plan_s": 11.6,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 102,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 31,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 20,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.0362,
+      -0.0876,
+      0.8717,
+      0.709,
+      0.0,
+      -0.0,
+      0.7052
+     ],
+     "target": [
+      -0.1256,
+      0.0733,
+      0.7883,
+      0.7576,
+      -0.6254,
+      -0.1772,
+      0.0587
+     ],
+     "object1": [
+      -0.5603,
+      0.0188,
+      0.772,
+      0.7071,
+      -0.7071,
+      -0.0001,
+      -0.0001
+     ],
+     "object2": [
+      -0.4409,
+      0.1113,
+      0.7626,
+      0.9746,
+      -0.0038,
+      -0.0025,
+      0.2237
+     ],
+     "object3": [
+      -0.7503,
+      0.0719,
+      0.8222,
+      0.9931,
+      0.0005,
+      -0.0004,
+      -0.1176
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "off"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, -0.0] mm/step; the picture shows Rigid/figurine/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 25), wait 0, approach 17",
+     "[belt] dragged basket by [-58.0, -120.0, 0.0] mm: now [-0.061, -0.1, 0.884]",
+     "[belt] basket stopped at [-0.061, -0.1, 0.884]",
+     "[skill] belt_stop right ok steps=31 basket stopped",
+     "[skill] finish  ok steps=20 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   }
+  ],
+  "B": [
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100030,
+    "load_s": 3.34,
+    "stable": true,
+    "layout_file": "100030.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 195,
+    "step_lim": 700,
+    "wall_s": 24.6,
+    "sim_s": 13.7,
+    "plan_s": 10.9,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 195,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 28,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.0578,
+      -0.0938,
+      0.8728,
+      0.8157,
+      -0.0001,
+      -0.0032,
+      0.5784
+     ],
+     "target": [
+      -0.1149,
+      0.0626,
+      0.8222,
+      0.96,
+      0.0038,
+      0.005,
+      0.2801
+     ],
+     "object1": [
+      -0.0539,
+      0.0423,
+      0.7861,
+      -0.6976,
+      0.0069,
+      -0.0252,
+      0.716
+     ],
+     "object2": [
+      0.1665,
+      0.1127,
+      0.8177,
+      0.9124,
+      0.0052,
+      0.0023,
+      -0.4094
+     ],
+     "object3": [
+      -0.4337,
+      0.019,
+      0.7809,
+      0.973,
+      -0.0029,
+      -0.0026,
+      0.2306
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "braced_hook"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, -0.0] mm/step; the picture shows Rigid/glue/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 3, approach 14",
+     "[belt] dragged basket by [-512.0, -125.0, 0.0] mm: now [-0.024, -0.11, 0.89]",
+     "[belt] basket stopped at [-0.024, -0.11, 0.89]",
+     "[skill] belt_stop right ok steps=28 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100031,
+    "load_s": 3.8,
+    "stable": true,
+    "layout_file": "100031.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 131,
+    "step_lim": 700,
+    "wall_s": 16.8,
+    "sim_s": 7.6,
+    "plan_s": 9.2,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 131,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 30,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.087,
+      -0.1025,
+      0.874,
+      0.8862,
+      -0.0097,
+      0.0033,
+      0.4631
+     ],
+     "target": [
+      -0.0624,
+      0.0379,
+      0.7621,
+      1.0,
+      0.0009,
+      0.0006,
+      -0.0012
+     ],
+     "object1": [
+      -0.3866,
+      0.0439,
+      0.7861,
+      0.7068,
+      -0.018,
+      0.7072,
+      -0.0001
+     ],
+     "object2": [
+      0.0159,
+      0.0557,
+      0.7848,
+      0.999,
+      -0.0,
+      -0.0041,
+      -0.0438
+     ],
+     "object3": [
+      -0.1674,
+      -0.006,
+      0.7738,
+      0.9676,
+      -0.0015,
+      -0.0068,
+      0.2524
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "braced_hook"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, -0.0] mm/step; the picture shows Rigid/cup/00007: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 1, approach 16",
+     "[belt] dragged basket by [-233.0, -140.0, 0.0] mm: now [0.004, -0.125, 0.896]",
+     "[belt] basket stopped at [0.004, -0.125, 0.896]",
+     "[skill] belt_stop right ok steps=30 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100032,
+    "load_s": 5.01,
+    "stable": true,
+    "layout_file": "100032.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 106,
+    "step_lim": 700,
+    "wall_s": 9.3,
+    "sim_s": 5.9,
+    "plan_s": 3.4,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 106,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 31,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.017,
+      -0.0988,
+      0.8717,
+      0.7569,
+      0.0,
+      -0.0,
+      0.6535
+     ],
+     "target": [
+      -0.1467,
+      0.0257,
+      0.7848,
+      0.9738,
+      -0.0008,
+      -0.0041,
+      -0.2274
+     ],
+     "object1": [
+      -0.7901,
+      -0.0028,
+      0.7693,
+      0.9961,
+      -0.0073,
+      -0.0116,
+      0.087
+     ],
+     "object2": [
+      -0.646,
+      0.0187,
+      0.8176,
+      0.9981,
+      0.0035,
+      0.0044,
+      0.0615
+     ],
+     "object3": [
+      -0.4017,
+      0.1268,
+      0.7616,
+      0.9903,
+      -0.0026,
+      -0.0008,
+      -0.1389
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "braced_hook"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/donut/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 0, approach 17",
+     "[belt] dragged basket by [-147.0, -86.0, 0.0] mm: now [-0.054, -0.102, 0.875]",
+     "[belt] basket stopped at [-0.054, -0.102, 0.875]",
+     "[skill] belt_stop right ok steps=31 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100033,
+    "load_s": 4.19,
+    "stable": true,
+    "layout_file": "100033.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 173,
+    "step_lim": 700,
+    "wall_s": 19.3,
+    "sim_s": 11.8,
+    "plan_s": 7.5,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 173,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 27,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.0401,
+      -0.0883,
+      0.8717,
+      0.7849,
+      0.0,
+      -0.0,
+      0.6196
+     ],
+     "target": [
+      -0.1725,
+      0.042,
+      0.7626,
+      0.9993,
+      -0.0006,
+      -0.0022,
+      -0.0363
+     ],
+     "object1": [
+      -0.3113,
+      0.0482,
+      0.7739,
+      0.9931,
+      -0.0042,
+      -0.0059,
+      -0.1174
+     ],
+     "object2": [
+      -0.4544,
+      0.111,
+      0.7616,
+      0.9769,
+      -0.0024,
+      -0.0007,
+      0.2138
+     ],
+     "object3": [
+      -0.0856,
+      0.0456,
+      0.7848,
+      0.8977,
+      -0.0017,
+      -0.0038,
+      -0.4405
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "braced_hook"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/noodles/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 4, approach 13",
+     "[belt] dragged basket by [-422.0, -115.0, 0.0] mm: now [-0.041, -0.105, 0.889]",
+     "[belt] basket stopped at [-0.041, -0.105, 0.889]",
+     "[skill] belt_stop right ok steps=27 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100034,
+    "load_s": 4.1,
+    "stable": true,
+    "layout_file": "100034.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 272,
+    "step_lim": 700,
+    "wall_s": 21.8,
+    "sim_s": 20.5,
+    "plan_s": 1.2,
+    "result": {
+     "ok": false,
+     "stage": "lift",
+     "note": "bottom rose 5.2 mm",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 272,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 29,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "belt_pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 41,
+      "arm": "left",
+      "note": "target rose 145 mm"
+     },
+     {
+      "skill": "drop",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": "left",
+      "note": "target let go over basket"
+     },
+     {
+      "skill": "braced_hook",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 0,
+      "arm": "left",
+      "note": "bottom rose 5.2 mm"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 29,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.2825,
+      -0.0945,
+      0.8859,
+      0.7122,
+      0.0517,
+      0.0219,
+      0.6997
+     ],
+     "target": [
+      0.2431,
+      0.018,
+      0.7738,
+      -0.2038,
+      0.007,
+      -0.0017,
+      0.979
+     ],
+     "object1": [
+      -0.0155,
+      0.1167,
+      0.7848,
+      0.974,
+      -0.0008,
+      -0.0041,
+      -0.2266
+     ],
+     "object2": [
+      -0.0344,
+      0.0255,
+      0.7621,
+      0.9714,
+      0.0007,
+      0.0008,
+      0.2373
+     ],
+     "object3": [
+      0.5092,
+      0.114,
+      0.7945,
+      0.9976,
+      -0.002,
+      -0.0006,
+      -0.0693
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "braced_hook"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/car/00010: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 2, approach 15",
+     "[belt] dragged basket by [-245.0, -123.0, 0.0] mm: now [-0.044, -0.104, 0.876]",
+     "[belt] basket stopped at [-0.044, -0.104, 0.876]",
+     "[skill] belt_stop right ok steps=29 basket stopped",
+     "[belt] target: left intercept at +25 steps (axis 1 tilt 25), wait 1, approach 16",
+     "[skill] belt_pick left ok steps=41 target rose 145 mm",
+     "[belt] target let go over basket at [-0.104, -0.088, 0.953]",
+     "[skill] drop left ok steps=0 target let go over basket",
+     "[belt] target not in basket after the drop",
+     "[basket] braced hook bottom rise 5.2 mm",
+     "[skill] braced_hook left grasp_slip steps=0 bottom rose 5.2 mm",
+     "[skill] finish  ok steps=29 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100035,
+    "load_s": 6.67,
+    "stable": true,
+    "layout_file": "100035.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 328,
+    "step_lim": 700,
+    "wall_s": 21.3,
+    "sim_s": 20.0,
+    "plan_s": 1.3,
+    "result": {
+     "ok": false,
+     "stage": "lift",
+     "note": "bottom rose 0.7 mm",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 328,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 28,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "belt_pick",
+      "ok": true,
+      "status": "ok",
+      "steps": 41,
+      "arm": "left",
+      "note": "target rose 150 mm"
+     },
+     {
+      "skill": "drop",
+      "ok": true,
+      "status": "ok",
+      "steps": 0,
+      "arm": "left",
+      "note": "target let go over basket"
+     },
+     {
+      "skill": "braced_hook",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 0,
+      "arm": "left",
+      "note": "bottom rose 0.7 mm"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 21,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.2653,
+      -0.0712,
+      0.8941,
+      0.7938,
+      0.0529,
+      -0.0575,
+      0.6032
+     ],
+     "target": [
+      0.2848,
+      -0.205,
+      0.8293,
+      -0.1286,
+      -0.3893,
+      0.8833,
+      0.2271
+     ],
+     "object1": [
+      0.5927,
+      0.1099,
+      0.8177,
+      0.0789,
+      -0.0039,
+      0.0042,
+      0.9969
+     ],
+     "object2": [
+      0.2514,
+      0.0219,
+      0.78,
+      -0.6256,
+      -0.1873,
+      0.6805,
+      0.3325
+     ],
+     "object3": [
+      0.3669,
+      0.0727,
+      0.7739,
+      0.9822,
+      -0.0023,
+      -0.0068,
+      0.1878
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "braced_hook"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/figurine/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 3, approach 14",
+     "[belt] dragged basket by [-536.0, -133.0, 0.0] mm: now [-0.032, -0.107, 0.893]",
+     "[belt] basket stopped at [-0.032, -0.107, 0.893]",
+     "[skill] belt_stop right ok steps=28 basket stopped",
+     "[belt] target: left intercept at +25 steps (axis 0 tilt 25), wait 1, approach 16",
+     "[skill] belt_pick left ok steps=41 target rose 150 mm",
+     "[belt] target let go over basket at [-0.118, -0.102, 1.017]",
+     "[skill] drop left ok steps=0 target let go over basket",
+     "[belt] target in basket after the drop",
+     "[basket] braced hook bottom rise 0.7 mm",
+     "[skill] braced_hook left grasp_slip steps=0 bottom rose 0.7 mm",
+     "[skill] finish  ok steps=21 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100036,
+    "load_s": 4.11,
+    "stable": true,
+    "layout_file": "100036.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 152,
+    "step_lim": 700,
+    "wall_s": 15.8,
+    "sim_s": 9.5,
+    "plan_s": 6.3,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 152,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 27,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.007,
+      -0.0918,
+      0.8813,
+      0.7573,
+      -0.006,
+      -0.0303,
+      0.6524
+     ],
+     "target": [
+      -0.1451,
+      0.0436,
+      0.7809,
+      0.9733,
+      -0.0038,
+      -0.0011,
+      -0.2293
+     ],
+     "object1": [
+      -0.4433,
+      0.0094,
+      0.7945,
+      0.968,
+      -0.0016,
+      0.0004,
+      -0.2508
+     ],
+     "object2": [
+      0.0389,
+      0.0207,
+      0.7704,
+      0.9802,
+      0.0401,
+      -0.0158,
+      -0.1934
+     ],
+     "object3": [
+      -0.2925,
+      0.0027,
+      0.7616,
+      0.9868,
+      -0.0021,
+      -0.0022,
+      0.1618
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "braced_hook"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, -0.0] mm/step; the picture shows Rigid/car/00009: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 4, approach 13",
+     "[belt] dragged basket by [-344.0, -86.0, 0.0] mm: now [-0.059, -0.101, 0.888]",
+     "[belt] basket stopped at [-0.059, -0.101, 0.888]",
+     "[skill] belt_stop right ok steps=27 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100037,
+    "load_s": 4.29,
+    "stable": true,
+    "layout_file": "100037.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 200,
+    "step_lim": 700,
+    "wall_s": 15.7,
+    "sim_s": 11.9,
+    "plan_s": 3.9,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 200,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 29,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 15,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.0082,
+      -0.0946,
+      0.8838,
+      0.7062,
+      -0.0128,
+      -0.0413,
+      0.7067
+     ],
+     "target": [
+      -0.189,
+      0.0788,
+      0.7871,
+      0.6897,
+      -0.2207,
+      0.6749,
+      -0.142
+     ],
+     "object1": [
+      0.1109,
+      0.0793,
+      0.7809,
+      0.9769,
+      -0.003,
+      -0.0026,
+      0.2138
+     ],
+     "object2": [
+      -0.3762,
+      -0.0253,
+      0.7621,
+      0.9702,
+      0.0007,
+      0.0008,
+      0.2421
+     ],
+     "object3": [
+      0.1485,
+      0.0362,
+      0.7617,
+      0.8112,
+      0.0079,
+      0.0154,
+      -0.5846
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "braced_hook"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/can/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 2, approach 15",
+     "[belt] dragged basket by [-520.0, -172.0, 0.0] mm: now [-0.058, -0.101, 0.888]",
+     "[belt] basket stopped at [-0.058, -0.101, 0.888]",
+     "[skill] belt_stop right ok steps=29 basket stopped",
+     "[skill] finish  ok steps=15 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100038,
+    "load_s": 5.12,
+    "stable": true,
+    "layout_file": "100038.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 284,
+    "step_lim": 700,
+    "wall_s": 22.7,
+    "sim_s": 17.5,
+    "plan_s": 5.2,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "target rose 0 mm",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 284,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 27,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "belt_pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 42,
+      "arm": "left",
+      "note": "target rose -5 mm"
+     },
+     {
+      "skill": "home",
+      "ok": true,
+      "status": "ok",
+      "steps": 13,
+      "arm": null,
+      "note": ""
+     },
+     {
+      "skill": "belt_pick",
+      "ok": false,
+      "status": "grasp_slip",
+      "steps": 47,
+      "arm": "left",
+      "note": "target rose 0 mm"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 19,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.0284,
+      -0.0859,
+      0.8717,
+      0.7357,
+      0.0,
+      0.0,
+      0.6773
+     ],
+     "target": [
+      -0.1278,
+      0.1381,
+      0.7963,
+      -0.1514,
+      -0.2023,
+      0.7687,
+      0.5875
+     ],
+     "object1": [
+      0.1739,
+      0.0724,
+      0.7651,
+      0.9754,
+      -0.0105,
+      -0.2104,
+      -0.0647
+     ],
+     "object2": [
+      0.4018,
+      0.0509,
+      0.7739,
+      0.9939,
+      -0.0027,
+      -0.0066,
+      0.1102
+     ],
+     "object3": [
+      0.6172,
+      0.1335,
+      0.7862,
+      -0.4137,
+      0.4214,
+      -0.5665,
+      0.5747
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "grasp_slip",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "braced_hook"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, 0.0] mm/step; the picture shows Rigid/toy/00001: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 4, approach 13",
+     "[belt] dragged basket by [-375.0, -91.0, 0.0] mm: now [-0.048, -0.103, 0.89]",
+     "[belt] basket stopped at [-0.048, -0.103, 0.89]",
+     "[skill] belt_stop right ok steps=27 basket stopped",
+     "[belt] target: left intercept at +25 steps (waist h 0.60 head 122 pitch 0), wait 0, approach 17",
+     "[skill] belt_pick left grasp_slip steps=42 target rose -5 mm",
+     "[skill] home  ok steps=13 ",
+     "[belt] target: left intercept at +43 steps (w 32mm), wait 13, approach 22",
+     "[belt] re-read: shifted the track by [-1.5, 7.4, 0.0] mm",
+     "[skill] belt_pick left grasp_slip steps=47 target rose 0 mm",
+     "[skill] finish  ok steps=19 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   },
+   {
+    "task": "pick_from_conveyor_by_image",
+    "seed": 100039,
+    "load_s": 4.62,
+    "stable": true,
+    "layout_file": "100039.settled.json",
+    "success": false,
+    "score": 0.0,
+    "steps": 102,
+    "step_lim": 700,
+    "wall_s": 15.9,
+    "sim_s": 5.3,
+    "plan_s": 10.6,
+    "result": {
+     "ok": false,
+     "stage": "pick target",
+     "note": "no intercept for target",
+     "finish": "ok"
+    },
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 102,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "skills": [
+     {
+      "skill": "belt_stop",
+      "ok": true,
+      "status": "ok",
+      "steps": 31,
+      "arm": "right",
+      "note": "basket stopped"
+     },
+     {
+      "skill": "finish",
+      "ok": true,
+      "status": "ok",
+      "steps": 20,
+      "arm": null,
+      "note": ""
+     }
+    ],
+    "final_objects": {
+     "basket": [
+      0.0362,
+      -0.0876,
+      0.8717,
+      0.709,
+      0.0,
+      -0.0,
+      0.7052
+     ],
+     "target": [
+      -0.1256,
+      0.0733,
+      0.7883,
+      0.7576,
+      -0.6254,
+      -0.1772,
+      0.0587
+     ],
+     "object1": [
+      -0.5603,
+      0.0188,
+      0.772,
+      0.7071,
+      -0.7071,
+      -0.0001,
+      -0.0001
+     ],
+     "object2": [
+      -0.4409,
+      0.1113,
+      0.7626,
+      0.9746,
+      -0.0038,
+      -0.0025,
+      0.2237
+     ],
+     "object3": [
+      -0.7503,
+      0.0719,
+      0.8222,
+      0.9931,
+      0.0005,
+      -0.0004,
+      -0.1176
+     ],
+     "conveyor": [
+      -2.08,
+      0.175,
+      0.05,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+     ],
+     "camera_stand": [
+      0.0,
+      -0.47,
+      0.765,
+      -0.7071,
+      0.7071,
+      0.0,
+      0.0
+     ],
+     "photo": [
+      0.0,
+      -0.375,
+      1.0244,
+      0.9243,
+      -0.3818,
+      0.0,
+      0.0
+     ]
+    },
+    "world_plans": [],
+    "category": "not_home",
+    "missing_meshes": [],
+    "skill_attrs": {
+     "belt_container": "on",
+     "belt_deposit": "on",
+     "belt_lift": "braced_hook"
+    },
+    "routes": [
+     "basket_image"
+    ],
+    "log": [
+     "[planner] pick_into_held {'objects': ['target', 'object1', 'object2', 'object3'], 'container': 'basket', 'picture': 'photo', 'conveyor': 'conveyor'} (pictured object into basket)",
+     "[belt] v [4.0, -0.0] mm/step; the picture shows Rigid/figurine/00000: ['target']",
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 25), wait 0, approach 17",
+     "[belt] dragged basket by [-58.0, -120.0, 0.0] mm: now [-0.061, -0.1, 0.884]",
+     "[belt] basket stopped at [-0.061, -0.1, 0.884]",
+     "[skill] belt_stop right ok steps=31 basket stopped",
+     "[skill] finish  ok steps=20 "
+    ],
+    "code": {
+     "dir": "/home/physicalai/controlr-byimg",
+     "commit": "e68dd0942088f2400eae4aca89e48ff10b22e7ce"
+    },
+    "usd_sync_links": true,
+    "grip_obs": "robodojo"
+   }
+  ]
+ },
+ "layouts": {
+  "100030.settled.json": {
+   "sha256": "e7d23beb6f817405ba4bccbdb56c93aae5e3d56c1bd0c55fb9f7fb145b14498d",
+   "record": {
+    "Dynamic": {
+     "conveyor": [
+      {
+       "category": "conveyor",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        -2.08,
+        -2.08
+       ],
+       "ylim": [
+        0.175,
+        0.175
+       ],
+       "zlim": [
+        0.0,
+        0.0
+       ],
+       "qpos": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": true,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "conveyor",
+       "default_pos": [
+        -2.0799999237060547,
+        0.17499999701976776,
+        0.05000000074505806
+       ],
+       "default_ori": [
+        6.123234262925839e-17,
+        0.0,
+        0.0,
+        1.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "size": [
+         3.6012,
+         1.1764,
+         0.924
+        ],
+        "mass": 0.0,
+        "friction": 0.0,
+        "type": "dynamic"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Geometry": {
+     "camera_stand": [
+      {
+       "category": "camera_stand",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.0
+       ],
+       "ylim": [
+        -0.47,
+        -0.47
+       ],
+       "zlim": [
+        0.715,
+        0.715
+       ],
+       "qpos": [
+        0.707,
+        -0.707,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "camera_stand",
+       "default_pos": [
+        0.0,
+        -0.47,
+        0.765
+       ],
+       "default_ori": [
+        0.7071067811865476,
+        -0.7071067811865476,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ],
+     "photo": [
+      {
+       "category": "photo",
+       "category_idx": 8,
+       "group": null,
+       "xlim": [
+        2.08,
+        2.08
+       ],
+       "ylim": [
+        -0.55,
+        -0.55
+       ],
+       "zlim": [
+        0.05,
+        0.05
+       ],
+       "qpos": [
+        0.92,
+        -0.38,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "photo",
+       "default_pos": [
+        0.0,
+        -0.37500000000000006,
+        1.0244
+       ],
+       "default_ori": [
+        0.924261426490025,
+        -0.38176015441979294,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.5,
+        "friction": 0.4,
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Rigid": {
+     "basket_grasp": [
+      {
+       "category": "basket_grasp",
+       "category_idx": 2,
+       "group": null,
+       "xlim": [
+        1.5,
+        2.0
+       ],
+       "ylim": [
+        -0.2,
+        -0.1
+       ],
+       "zlim": [
+        -0.1,
+        -0.1
+       ],
+       "qpos": [
+        0.707,
+        0,
+        0,
+        0.707
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "basket",
+       "default_pos": [
+        0.08698762953281403,
+        0.0228155218064785,
+        0.8716950416564941
+       ],
+       "default_ori": [
+        0.7070849354563283,
+        2.195034119212917e-05,
+        -1.847598420992533e-05,
+        0.7071286256598162
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.2,
+        "friction": 0.42,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "glue": [
+      {
+       "category": "glue",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "target",
+       "default_pos": [
+        -1.0798428058624268,
+        0.05299462005496025,
+        0.8222051858901978
+       ],
+       "default_ori": [
+        0.98543269006348,
+        0.0006225988653744124,
+        -0.0001936957716855711,
+        0.17006465890023803
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.025,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "donut": [
+      {
+       "category": "donut",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object1",
+       "default_pos": [
+        -0.7707154750823975,
+        0.0018054135143756866,
+        0.7848455905914307
+       ],
+       "default_ori": [
+        0.9936204324485985,
+        0.0006540387253033417,
+        -0.004024924617968849,
+        0.11270230004673985
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.06,
+        "friction": 0.25,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "toy": [
+      {
+       "category": "toy",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object2",
+       "default_pos": [
+        -0.8115283846855164,
+        0.11067910492420197,
+        0.8176623582839966
+       ],
+       "default_ori": [
+        0.979164216925937,
+        0.0043288384354119485,
+        0.0034807840375703954,
+        -0.20299404324290088
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.25,
+        "friction": 0.65,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "car": [
+      {
+       "category": "car",
+       "category_idx": 9,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object3",
+       "default_pos": [
+        -1.4205074310302734,
+        0.019686046987771988,
+        0.7809121012687683
+       ],
+       "default_ori": [
+        0.9739772720483469,
+        -0.0028267996510673225,
+        -0.0026238381512985348,
+        0.22661288182790695
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.45,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Room": {
+     "default": "Simple_Room",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "default_rot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    "Ground": {
+     "geometry": "cube",
+     "thickness": 0.1,
+     "axis": "Z",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "materials": {
+      "type": "mdl",
+      "default": "material_0564",
+      "random": false
+     },
+     "physics_material": {
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "restitution": 0.0,
+      "friction_combine_mode": "multiply",
+      "restitution_combine_mode": "multiply",
+      "compliant_contact_stiffness": 0.0,
+      "compliant_contact_damping": 0.0
+     }
+    },
+    "Background": {
+     "intensity": 1000,
+     "category_name": "brown_photostudio_02_4k.hdr"
+    },
+    "_simlab": {
+     "task": "pick_from_conveyor_by_image",
+     "id": 100030,
+     "seed": 1236963282,
+     "attempt": 0,
+     "generator": "simlab/v15",
+     "n_clutter": 0,
+     "clutter_wanted": 0,
+     "robot_keepout": true,
+     "variant": 7,
+     "seed_salt": "sha256:fbd4df0744051b45",
+     "presettle": "belt-relative-v1"
+    }
+   }
+  },
+  "100031.settled.json": {
+   "sha256": "f20b23876ff00810005a518e41e06f123f263a728d5427806705c12fdb5aaaef",
+   "record": {
+    "Dynamic": {
+     "conveyor": [
+      {
+       "category": "conveyor",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        -2.08,
+        -2.08
+       ],
+       "ylim": [
+        0.175,
+        0.175
+       ],
+       "zlim": [
+        0.0,
+        0.0
+       ],
+       "qpos": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": true,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "conveyor",
+       "default_pos": [
+        -2.0799999237060547,
+        0.17499999701976776,
+        0.05000000074505806
+       ],
+       "default_ori": [
+        6.123234262925839e-17,
+        0.0,
+        0.0,
+        1.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "size": [
+         3.6012,
+         1.1764,
+         0.924
+        ],
+        "mass": 0.0,
+        "friction": 0.0,
+        "type": "dynamic"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Geometry": {
+     "camera_stand": [
+      {
+       "category": "camera_stand",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.0
+       ],
+       "ylim": [
+        -0.47,
+        -0.47
+       ],
+       "zlim": [
+        0.715,
+        0.715
+       ],
+       "qpos": [
+        0.707,
+        -0.707,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "camera_stand",
+       "default_pos": [
+        0.0,
+        -0.47,
+        0.765
+       ],
+       "default_ori": [
+        0.7071067811865476,
+        -0.7071067811865476,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ],
+     "photo": [
+      {
+       "category": "photo",
+       "category_idx": 5,
+       "group": null,
+       "xlim": [
+        2.08,
+        2.08
+       ],
+       "ylim": [
+        -0.55,
+        -0.55
+       ],
+       "zlim": [
+        0.05,
+        0.05
+       ],
+       "qpos": [
+        0.92,
+        -0.38,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "photo",
+       "default_pos": [
+        0.0,
+        -0.37500000000000006,
+        1.0244
+       ],
+       "default_ori": [
+        0.924261426490025,
+        -0.38176015441979294,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.5,
+        "friction": 0.4,
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Rigid": {
+     "basket_grasp": [
+      {
+       "category": "basket_grasp",
+       "category_idx": 2,
+       "group": null,
+       "xlim": [
+        1.5,
+        2.0
+       ],
+       "ylim": [
+        -0.2,
+        -0.1
+       ],
+       "zlim": [
+        -0.1,
+        -0.1
+       ],
+       "qpos": [
+        0.707,
+        0,
+        0,
+        0.707
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "basket",
+       "default_pos": [
+        -0.19410140067338943,
+        0.037182316184043884,
+        0.8716950416564941
+       ],
+       "default_ori": [
+        0.7071011184358829,
+        2.171710402600443e-05,
+        -1.8415216197962052e-05,
+        0.707112443318579
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.2,
+        "friction": 0.42,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "cup": [
+      {
+       "category": "cup",
+       "category_idx": 7,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "target",
+       "default_pos": [
+        -0.7737247347831726,
+        0.03062927909195423,
+        0.7621446251869202
+       ],
+       "default_ori": [
+        0.9632697492184961,
+        0.0009620343125972053,
+        0.0002612103651340758,
+        -0.2685337902381417
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.35,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "can": [
+      {
+       "category": "can",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object1",
+       "default_pos": [
+        -1.1177613735198975,
+        0.04279481992125511,
+        0.7860637307167053
+       ],
+       "default_ori": [
+        0.7068330342767785,
+        -0.025620035027446447,
+        0.7068767244832114,
+        0.007481433295906356
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.32,
+        "friction": 0.25,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "donut": [
+      {
+       "category": "donut",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object2",
+       "default_pos": [
+        -0.6780885457992554,
+        0.0481707900762558,
+        0.7848445177078247
+       ],
+       "default_ori": [
+        0.9633730491489759,
+        0.0012688926445225406,
+        -0.003916011127492871,
+        0.26813321864646117
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.06,
+        "friction": 0.25,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "car": [
+      {
+       "category": "car",
+       "category_idx": 10,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object3",
+       "default_pos": [
+        -0.8963861465454102,
+        -0.004760456271469593,
+        0.7738410234451294
+       ],
+       "default_ori": [
+        0.9692493037063816,
+        -0.0014254144560987534,
+        -0.006959980787757987,
+        0.2459782797845305
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.45,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Room": {
+     "default": "Simple_Room",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "default_rot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    "Ground": {
+     "geometry": "cube",
+     "thickness": 0.1,
+     "axis": "Z",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "materials": {
+      "type": "mdl",
+      "default": "material_0564",
+      "random": false
+     },
+     "physics_material": {
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "restitution": 0.0,
+      "friction_combine_mode": "multiply",
+      "restitution_combine_mode": "multiply",
+      "compliant_contact_stiffness": 0.0,
+      "compliant_contact_damping": 0.0
+     }
+    },
+    "Background": {
+     "intensity": 1000,
+     "category_name": "brown_photostudio_02_4k.hdr"
+    },
+    "_simlab": {
+     "task": "pick_from_conveyor_by_image",
+     "id": 100031,
+     "seed": 384304884,
+     "attempt": 0,
+     "generator": "simlab/v15",
+     "n_clutter": 0,
+     "clutter_wanted": 0,
+     "robot_keepout": true,
+     "variant": 7,
+     "seed_salt": "sha256:fbd4df0744051b45",
+     "presettle": "belt-relative-v1"
+    }
+   }
+  },
+  "100032.settled.json": {
+   "sha256": "bef9e60d72f0ae2d0b4edbfb35ccc0d545dd4b4675ffcf083a8ac173bb5d6398",
+   "record": {
+    "Dynamic": {
+     "conveyor": [
+      {
+       "category": "conveyor",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        -2.08,
+        -2.08
+       ],
+       "ylim": [
+        0.175,
+        0.175
+       ],
+       "zlim": [
+        0.0,
+        0.0
+       ],
+       "qpos": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": true,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "conveyor",
+       "default_pos": [
+        -2.0799999237060547,
+        0.17499999701976776,
+        0.05000000074505806
+       ],
+       "default_ori": [
+        6.123234262925839e-17,
+        0.0,
+        0.0,
+        1.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "size": [
+         3.6012,
+         1.1764,
+         0.924
+        ],
+        "mass": 0.0,
+        "friction": 0.0,
+        "type": "dynamic"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Geometry": {
+     "camera_stand": [
+      {
+       "category": "camera_stand",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.0
+       ],
+       "ylim": [
+        -0.47,
+        -0.47
+       ],
+       "zlim": [
+        0.715,
+        0.715
+       ],
+       "qpos": [
+        0.707,
+        -0.707,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "camera_stand",
+       "default_pos": [
+        0.0,
+        -0.47,
+        0.765
+       ],
+       "default_ori": [
+        0.7071067811865476,
+        -0.7071067811865476,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ],
+     "photo": [
+      {
+       "category": "photo",
+       "category_idx": 6,
+       "group": null,
+       "xlim": [
+        2.08,
+        2.08
+       ],
+       "ylim": [
+        -0.55,
+        -0.55
+       ],
+       "zlim": [
+        0.05,
+        0.05
+       ],
+       "qpos": [
+        0.92,
+        -0.38,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "photo",
+       "default_pos": [
+        0.0,
+        -0.37500000000000006,
+        1.0244
+       ],
+       "default_ori": [
+        0.924261426490025,
+        -0.38176015441979294,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.5,
+        "friction": 0.4,
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Rigid": {
+     "basket_grasp": [
+      {
+       "category": "basket_grasp",
+       "category_idx": 2,
+       "group": null,
+       "xlim": [
+        1.5,
+        2.0
+       ],
+       "ylim": [
+        -0.2,
+        -0.1
+       ],
+       "zlim": [
+        -0.1,
+        -0.1
+       ],
+       "qpos": [
+        0.707,
+        0,
+        0,
+        0.707
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "basket",
+       "default_pos": [
+        -0.28112494945526123,
+        -0.01673939637839794,
+        0.8716949820518494
+       ],
+       "default_ori": [
+        0.707076322271269,
+        2.1505342713859185e-05,
+        -1.85631927908062e-05,
+        0.7071372382191909
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.2,
+        "friction": 0.42,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "donut": [
+      {
+       "category": "donut",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "target",
+       "default_pos": [
+        -0.7777656316757202,
+        0.025675512850284576,
+        0.7848456501960754
+       ],
+       "default_ori": [
+        0.9737503426848516,
+        -0.0007352845200807906,
+        -0.004014085005004124,
+        -0.22758210957670036
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.06,
+        "friction": 0.25,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "peeler": [
+      {
+       "category": "peeler",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object1",
+       "default_pos": [
+        -1.4212253093719482,
+        -0.0028185290284454823,
+        0.7692786455154419
+       ],
+       "default_ori": [
+        0.9960704670101813,
+        -0.007297581226024145,
+        -0.01156096000176545,
+        0.0875026528866777
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.05,
+        "friction": 0.3,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "toy": [
+      {
+       "category": "toy",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object2",
+       "default_pos": [
+        -1.2774969339370728,
+        0.01881943829357624,
+        0.8176663517951965
+       ],
+       "default_ori": [
+        0.9981634694552982,
+        0.0035558583026020474,
+        0.004410848987165712,
+        0.06031242432456317
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.25,
+        "friction": 0.65,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "remote": [
+      {
+       "category": "remote",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object3",
+       "default_pos": [
+        -1.0332141518592834,
+        0.1267874836921692,
+        0.7616367340087891
+       ],
+       "default_ori": [
+        0.990282495811226,
+        -0.002515391729933906,
+        0.0003478963405290709,
+        -0.13904722313829376
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.08,
+        "friction": 0.32,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Room": {
+     "default": "Simple_Room",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "default_rot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    "Ground": {
+     "geometry": "cube",
+     "thickness": 0.1,
+     "axis": "Z",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "materials": {
+      "type": "mdl",
+      "default": "material_0564",
+      "random": false
+     },
+     "physics_material": {
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "restitution": 0.0,
+      "friction_combine_mode": "multiply",
+      "restitution_combine_mode": "multiply",
+      "compliant_contact_stiffness": 0.0,
+      "compliant_contact_damping": 0.0
+     }
+    },
+    "Background": {
+     "intensity": 1000,
+     "category_name": "brown_photostudio_02_4k.hdr"
+    },
+    "_simlab": {
+     "task": "pick_from_conveyor_by_image",
+     "id": 100032,
+     "seed": 1710124258,
+     "attempt": 0,
+     "generator": "simlab/v15",
+     "n_clutter": 0,
+     "clutter_wanted": 0,
+     "robot_keepout": true,
+     "variant": 7,
+     "seed_salt": "sha256:fbd4df0744051b45",
+     "presettle": "belt-relative-v1"
+    }
+   }
+  },
+  "100033.settled.json": {
+   "sha256": "5745d6f44c9e4a9e9ed8a13737eb04c2bb04cada827350aa3e0aebadcb63f1c9",
+   "record": {
+    "Dynamic": {
+     "conveyor": [
+      {
+       "category": "conveyor",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        -2.08,
+        -2.08
+       ],
+       "ylim": [
+        0.175,
+        0.175
+       ],
+       "zlim": [
+        0.0,
+        0.0
+       ],
+       "qpos": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": true,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "conveyor",
+       "default_pos": [
+        -2.0799999237060547,
+        0.17499999701976776,
+        0.05000000074505806
+       ],
+       "default_ori": [
+        6.123234262925839e-17,
+        0.0,
+        0.0,
+        1.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "size": [
+         3.6012,
+         1.1764,
+         0.924
+        ],
+        "mass": 0.0,
+        "friction": 0.0,
+        "type": "dynamic"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Geometry": {
+     "camera_stand": [
+      {
+       "category": "camera_stand",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.0
+       ],
+       "ylim": [
+        -0.47,
+        -0.47
+       ],
+       "zlim": [
+        0.715,
+        0.715
+       ],
+       "qpos": [
+        0.707,
+        -0.707,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "camera_stand",
+       "default_pos": [
+        0.0,
+        -0.47,
+        0.765
+       ],
+       "default_ori": [
+        0.7071067811865476,
+        -0.7071067811865476,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ],
+     "photo": [
+      {
+       "category": "photo",
+       "category_idx": 9,
+       "group": null,
+       "xlim": [
+        2.08,
+        2.08
+       ],
+       "ylim": [
+        -0.55,
+        -0.55
+       ],
+       "zlim": [
+        0.05,
+        0.05
+       ],
+       "qpos": [
+        0.92,
+        -0.38,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "photo",
+       "default_pos": [
+        0.0,
+        -0.37500000000000006,
+        1.0244
+       ],
+       "default_ori": [
+        0.924261426490025,
+        -0.38176015441979294,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.5,
+        "friction": 0.4,
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Rigid": {
+     "basket_grasp": [
+      {
+       "category": "basket_grasp",
+       "category_idx": 2,
+       "group": null,
+       "xlim": [
+        1.5,
+        2.0
+       ],
+       "ylim": [
+        -0.2,
+        -0.1
+       ],
+       "zlim": [
+        -0.1,
+        -0.1
+       ],
+       "qpos": [
+        0.707,
+        0,
+        0,
+        0.707
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "basket",
+       "default_pos": [
+        -0.003155440092086792,
+        0.012879883870482445,
+        0.8716950416564941
+       ],
+       "default_ori": [
+        0.7071032344099879,
+        2.214295034737635e-05,
+        -1.8272140995170912e-05,
+        0.7071103273625357
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.2,
+        "friction": 0.42,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "noodles": [
+      {
+       "category": "noodles",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "target",
+       "default_pos": [
+        -1.0689932107925415,
+        0.04188950639218092,
+        0.7626280784606934
+       ],
+       "default_ori": [
+        0.99905716929852,
+        -0.0043362988898085365,
+        -0.0013773168841765642,
+        -0.0431748999230727
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.06,
+        "friction": 0.25,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "car": [
+      {
+       "category": "car",
+       "category_idx": 10,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object1",
+       "default_pos": [
+        -1.210130751132965,
+        0.057824607007205486,
+        0.7738533616065979
+       ],
+       "default_ori": [
+        0.9847024516791093,
+        -0.004164652830226009,
+        -0.005488859399040234,
+        -0.17410804044171196
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.45,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "remote": [
+      {
+       "category": "remote",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object2",
+       "default_pos": [
+        -1.353780448436737,
+        0.11097382288426161,
+        0.7616370320320129
+       ],
+       "default_ori": [
+        0.9767950710180536,
+        -0.002440011811523263,
+        -0.0006924007858154129,
+        0.21416105191735227
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.08,
+        "friction": 0.32,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "donut": [
+      {
+       "category": "donut",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object3",
+       "default_pos": [
+        -0.8855658769607544,
+        0.0480243070051074,
+        0.7848445177078247
+       ],
+       "default_ori": [
+        0.9586485560330195,
+        -0.0010039650302427828,
+        -0.003992132350234732,
+        -0.28456282425735624
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.06,
+        "friction": 0.25,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Room": {
+     "default": "Simple_Room",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "default_rot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    "Ground": {
+     "geometry": "cube",
+     "thickness": 0.1,
+     "axis": "Z",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "materials": {
+      "type": "mdl",
+      "default": "material_0564",
+      "random": false
+     },
+     "physics_material": {
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "restitution": 0.0,
+      "friction_combine_mode": "multiply",
+      "restitution_combine_mode": "multiply",
+      "compliant_contact_stiffness": 0.0,
+      "compliant_contact_damping": 0.0
+     }
+    },
+    "Background": {
+     "intensity": 1000,
+     "category_name": "brown_photostudio_02_4k.hdr"
+    },
+    "_simlab": {
+     "task": "pick_from_conveyor_by_image",
+     "id": 100033,
+     "seed": 93264971,
+     "attempt": 0,
+     "generator": "simlab/v15",
+     "n_clutter": 0,
+     "clutter_wanted": 0,
+     "robot_keepout": true,
+     "variant": 7,
+     "seed_salt": "sha256:fbd4df0744051b45",
+     "presettle": "belt-relative-v1"
+    }
+   }
+  },
+  "100034.settled.json": {
+   "sha256": "40d4694e433a135aa032481b448aa521ef086e53286ca7c80dbcc326ef5dc840",
+   "record": {
+    "Dynamic": {
+     "conveyor": [
+      {
+       "category": "conveyor",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        -2.08,
+        -2.08
+       ],
+       "ylim": [
+        0.175,
+        0.175
+       ],
+       "zlim": [
+        0.0,
+        0.0
+       ],
+       "qpos": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": true,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "conveyor",
+       "default_pos": [
+        -2.0799999237060547,
+        0.17499999701976776,
+        0.05000000074505806
+       ],
+       "default_ori": [
+        6.123234262925839e-17,
+        0.0,
+        0.0,
+        1.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "size": [
+         3.6012,
+         1.1764,
+         0.924
+        ],
+        "mass": 0.0,
+        "friction": 0.0,
+        "type": "dynamic"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Geometry": {
+     "camera_stand": [
+      {
+       "category": "camera_stand",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.0
+       ],
+       "ylim": [
+        -0.47,
+        -0.47
+       ],
+       "zlim": [
+        0.715,
+        0.715
+       ],
+       "qpos": [
+        0.707,
+        -0.707,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "camera_stand",
+       "default_pos": [
+        0.0,
+        -0.47,
+        0.765
+       ],
+       "default_ori": [
+        0.7071067811865476,
+        -0.7071067811865476,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ],
+     "photo": [
+      {
+       "category": "photo",
+       "category_idx": 3,
+       "group": null,
+       "xlim": [
+        2.08,
+        2.08
+       ],
+       "ylim": [
+        -0.55,
+        -0.55
+       ],
+       "zlim": [
+        0.05,
+        0.05
+       ],
+       "qpos": [
+        0.92,
+        -0.38,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "photo",
+       "default_pos": [
+        0.0,
+        -0.37500000000000006,
+        1.0244
+       ],
+       "default_ori": [
+        0.924261426490025,
+        -0.38176015441979294,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.5,
+        "friction": 0.4,
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Rigid": {
+     "basket_grasp": [
+      {
+       "category": "basket_grasp",
+       "category_idx": 2,
+       "group": null,
+       "xlim": [
+        1.5,
+        2.0
+       ],
+       "ylim": [
+        -0.2,
+        -0.1
+       ],
+       "zlim": [
+        -0.1,
+        -0.1
+       ],
+       "qpos": [
+        0.707,
+        0,
+        0,
+        0.707
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "basket",
+       "default_pos": [
+        -0.18193445354700089,
+        0.020244939252734184,
+        0.8716951608657837
+       ],
+       "default_ori": [
+        0.7070892867109544,
+        2.180185345655441e-05,
+        -1.9053215019443187e-05,
+        0.7071242746365364
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.2,
+        "friction": 0.42,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "car": [
+      {
+       "category": "car",
+       "category_idx": 10,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "target",
+       "default_pos": [
+        -1.195118010044098,
+        0.009239517152309418,
+        0.7738527059555054
+       ],
+       "default_ori": [
+        0.9523536452824213,
+        -0.00489086372711746,
+        -0.004909900425983817,
+        -0.30491721277601497
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.45,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "donut": [
+      {
+       "category": "donut",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object1",
+       "default_pos": [
+        -1.3105325102806091,
+        0.11657902225852013,
+        0.7848445773124695
+       ],
+       "default_ori": [
+        0.9739564146761402,
+        -0.0007621100006548171,
+        -0.004044670181505407,
+        -0.22669795354759606
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.06,
+        "friction": 0.25,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "cup": [
+      {
+       "category": "cup",
+       "category_idx": 7,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object2",
+       "default_pos": [
+        -1.3319639563560486,
+        0.02748212218284607,
+        0.7621439695358276
+       ],
+       "default_ori": [
+        0.9727699678287034,
+        0.0007272512244169827,
+        0.00068491696759851,
+        0.23177055827897472
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.35,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "yogurt": [
+      {
+       "category": "yogurt",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object3",
+       "default_pos": [
+        -0.7862821221351624,
+        0.1139237992465496,
+        0.7944615483283997
+       ],
+       "default_ori": [
+        0.9974554608719307,
+        -0.001991610474782637,
+        -0.00024182689549913424,
+        -0.07126414655514787
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.12,
+        "friction": 0.3,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Room": {
+     "default": "Simple_Room",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "default_rot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    "Ground": {
+     "geometry": "cube",
+     "thickness": 0.1,
+     "axis": "Z",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "materials": {
+      "type": "mdl",
+      "default": "material_0564",
+      "random": false
+     },
+     "physics_material": {
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "restitution": 0.0,
+      "friction_combine_mode": "multiply",
+      "restitution_combine_mode": "multiply",
+      "compliant_contact_stiffness": 0.0,
+      "compliant_contact_damping": 0.0
+     }
+    },
+    "Background": {
+     "intensity": 1000,
+     "category_name": "brown_photostudio_02_4k.hdr"
+    },
+    "_simlab": {
+     "task": "pick_from_conveyor_by_image",
+     "id": 100034,
+     "seed": 1341178276,
+     "attempt": 0,
+     "generator": "simlab/v15",
+     "n_clutter": 0,
+     "clutter_wanted": 0,
+     "robot_keepout": true,
+     "variant": 7,
+     "seed_salt": "sha256:fbd4df0744051b45",
+     "presettle": "belt-relative-v1"
+    }
+   }
+  },
+  "100035.settled.json": {
+   "sha256": "7e959b0a43206671ba893814d6d4015462210d871695cbf57c7594f5a2a4d5f0",
+   "record": {
+    "Dynamic": {
+     "conveyor": [
+      {
+       "category": "conveyor",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        -2.08,
+        -2.08
+       ],
+       "ylim": [
+        0.175,
+        0.175
+       ],
+       "zlim": [
+        0.0,
+        0.0
+       ],
+       "qpos": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": true,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "conveyor",
+       "default_pos": [
+        -2.0799999237060547,
+        0.17499999701976776,
+        0.05000000074505806
+       ],
+       "default_ori": [
+        6.123234262925839e-17,
+        0.0,
+        0.0,
+        1.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "size": [
+         3.6012,
+         1.1764,
+         0.924
+        ],
+        "mass": 0.0,
+        "friction": 0.0,
+        "type": "dynamic"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Geometry": {
+     "camera_stand": [
+      {
+       "category": "camera_stand",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.0
+       ],
+       "ylim": [
+        -0.47,
+        -0.47
+       ],
+       "zlim": [
+        0.715,
+        0.715
+       ],
+       "qpos": [
+        0.707,
+        -0.707,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "camera_stand",
+       "default_pos": [
+        0.0,
+        -0.47,
+        0.765
+       ],
+       "default_ori": [
+        0.7071067811865476,
+        -0.7071067811865476,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ],
+     "photo": [
+      {
+       "category": "photo",
+       "category_idx": 7,
+       "group": null,
+       "xlim": [
+        2.08,
+        2.08
+       ],
+       "ylim": [
+        -0.55,
+        -0.55
+       ],
+       "zlim": [
+        0.05,
+        0.05
+       ],
+       "qpos": [
+        0.92,
+        -0.38,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "photo",
+       "default_pos": [
+        0.0,
+        -0.37500000000000006,
+        1.0244
+       ],
+       "default_ori": [
+        0.924261426490025,
+        -0.38176015441979294,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.5,
+        "friction": 0.4,
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Rigid": {
+     "basket_grasp": [
+      {
+       "category": "basket_grasp",
+       "category_idx": 2,
+       "group": null,
+       "xlim": [
+        1.5,
+        2.0
+       ],
+       "ylim": [
+        -0.2,
+        -0.1
+       ],
+       "zlim": [
+        -0.1,
+        -0.1
+       ],
+       "qpos": [
+        0.707,
+        0,
+        0,
+        0.707
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "basket",
+       "default_pos": [
+        0.11148643493652344,
+        0.03025936149060726,
+        0.8716950416564941
+       ],
+       "default_ori": [
+        0.7070947406565821,
+        2.2128455750977995e-05,
+        -1.8105011194771513e-05,
+        0.7071188209334701
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.2,
+        "friction": 0.42,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "figurine": [
+      {
+       "category": "figurine",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "target",
+       "default_pos": [
+        -1.3774569630622864,
+        0.05555161461234093,
+        0.8221862316131592
+       ],
+       "default_ori": [
+        0.994972470407957,
+        -0.005786202865319443,
+        -0.00042895748757945873,
+        -0.0999805930276586
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.08,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "toy": [
+      {
+       "category": "toy",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object1",
+       "default_pos": [
+        -0.7632218599319458,
+        0.08564954996109009,
+        0.8176506757736206
+       ],
+       "default_ori": [
+        0.9631327810494683,
+        0.004913670386621546,
+        0.0030123840000653304,
+        -0.2689647327325366
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.25,
+        "friction": 0.65,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "glue": [
+      {
+       "category": "glue",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object2",
+       "default_pos": [
+        -0.8926060795783997,
+        0.0003695526684168726,
+        0.8222052454948425
+       ],
+       "default_ori": [
+        0.9800950514206062,
+        0.0006282989778717143,
+        -0.00017513789173722187,
+        0.1985277430183311
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.025,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "car": [
+      {
+       "category": "car",
+       "category_idx": 10,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object3",
+       "default_pos": [
+        -1.1557891964912415,
+        0.09148389101028442,
+        0.7738527059555054
+       ],
+       "default_ori": [
+        0.9666853077833348,
+        -0.0013384288352432958,
+        -0.0069060866695404895,
+        0.2558711204708437
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.45,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Room": {
+     "default": "Simple_Room",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "default_rot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    "Ground": {
+     "geometry": "cube",
+     "thickness": 0.1,
+     "axis": "Z",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "materials": {
+      "type": "mdl",
+      "default": "material_0564",
+      "random": false
+     },
+     "physics_material": {
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "restitution": 0.0,
+      "friction_combine_mode": "multiply",
+      "restitution_combine_mode": "multiply",
+      "compliant_contact_stiffness": 0.0,
+      "compliant_contact_damping": 0.0
+     }
+    },
+    "Background": {
+     "intensity": 1000,
+     "category_name": "brown_photostudio_02_4k.hdr"
+    },
+    "_simlab": {
+     "task": "pick_from_conveyor_by_image",
+     "id": 100035,
+     "seed": 1633671467,
+     "attempt": 0,
+     "generator": "simlab/v15",
+     "n_clutter": 0,
+     "clutter_wanted": 0,
+     "robot_keepout": true,
+     "variant": 7,
+     "seed_salt": "sha256:fbd4df0744051b45",
+     "presettle": "belt-relative-v1"
+    }
+   }
+  },
+  "100036.settled.json": {
+   "sha256": "4980452f9508f2356ba8c82484dec8cf3dd494237ac7b4154fbe45e6995f9f26",
+   "record": {
+    "Dynamic": {
+     "conveyor": [
+      {
+       "category": "conveyor",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        -2.08,
+        -2.08
+       ],
+       "ylim": [
+        0.175,
+        0.175
+       ],
+       "zlim": [
+        0.0,
+        0.0
+       ],
+       "qpos": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": true,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "conveyor",
+       "default_pos": [
+        -2.0799999237060547,
+        0.17499999701976776,
+        0.05000000074505806
+       ],
+       "default_ori": [
+        6.123234262925839e-17,
+        0.0,
+        0.0,
+        1.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "size": [
+         3.6012,
+         1.1764,
+         0.924
+        ],
+        "mass": 0.0,
+        "friction": 0.0,
+        "type": "dynamic"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Geometry": {
+     "camera_stand": [
+      {
+       "category": "camera_stand",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.0
+       ],
+       "ylim": [
+        -0.47,
+        -0.47
+       ],
+       "zlim": [
+        0.715,
+        0.715
+       ],
+       "qpos": [
+        0.707,
+        -0.707,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "camera_stand",
+       "default_pos": [
+        0.0,
+        -0.47,
+        0.765
+       ],
+       "default_ori": [
+        0.7071067811865476,
+        -0.7071067811865476,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ],
+     "photo": [
+      {
+       "category": "photo",
+       "category_idx": 2,
+       "group": null,
+       "xlim": [
+        2.08,
+        2.08
+       ],
+       "ylim": [
+        -0.55,
+        -0.55
+       ],
+       "zlim": [
+        0.05,
+        0.05
+       ],
+       "qpos": [
+        0.92,
+        -0.38,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "photo",
+       "default_pos": [
+        0.0,
+        -0.37500000000000006,
+        1.0244
+       ],
+       "default_ori": [
+        0.924261426490025,
+        -0.38176015441979294,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.5,
+        "friction": 0.4,
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Rigid": {
+     "basket_grasp": [
+      {
+       "category": "basket_grasp",
+       "category_idx": 2,
+       "group": null,
+       "xlim": [
+        1.5,
+        2.0
+       ],
+       "ylim": [
+        -0.2,
+        -0.1
+       ],
+       "zlim": [
+        -0.1,
+        -0.1
+       ],
+       "qpos": [
+        0.707,
+        0,
+        0,
+        0.707
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "basket",
+       "default_pos": [
+        -0.08465170860290527,
+        -0.016246464103460312,
+        0.8716951012611389
+       ],
+       "default_ori": [
+        0.7071019529058369,
+        2.196989990172011e-05,
+        -1.8212282460887116e-05,
+        0.7071116088584516
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.2,
+        "friction": 0.42,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "car": [
+      {
+       "category": "car",
+       "category_idx": 9,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "target",
+       "default_pos": [
+        -0.9593938235193491,
+        0.04520427994430065,
+        0.7809118032455444
+       ],
+       "default_ori": [
+        0.972651837127916,
+        -0.0036729879131261554,
+        -0.0011089718876354257,
+        -0.23223626562798672
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.45,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "yogurt": [
+      {
+       "category": "yogurt",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object1",
+       "default_pos": [
+        -1.25866618193686,
+        0.009359277784824371,
+        0.7944751977920532
+       ],
+       "default_ori": [
+        0.9672583883658317,
+        -0.001927028282965846,
+        -0.00020930747151898412,
+        -0.2537862346312601
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.12,
+        "friction": 0.3,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "peeler": [
+      {
+       "category": "peeler",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object2",
+       "default_pos": [
+        -0.7781213764101267,
+        0.02242383547127247,
+        0.7692788243293762
+       ],
+       "default_ori": [
+        0.9844350851929615,
+        -0.010013916567464552,
+        -0.009253274684263735,
+        -0.17521889573822857
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.05,
+        "friction": 0.3,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "remote": [
+      {
+       "category": "remote",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object3",
+       "default_pos": [
+        -1.1079412940889597,
+        0.002651231363415718,
+        0.7616368532180786
+       ],
+       "default_ori": [
+        0.9867615912277529,
+        -0.002498700570110552,
+        -0.0004449095672817515,
+        0.16215770295798793
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.08,
+        "friction": 0.32,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Room": {
+     "default": "Simple_Room",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "default_rot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    "Ground": {
+     "geometry": "cube",
+     "thickness": 0.1,
+     "axis": "Z",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "materials": {
+      "type": "mdl",
+      "default": "material_0564",
+      "random": false
+     },
+     "physics_material": {
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "restitution": 0.0,
+      "friction_combine_mode": "multiply",
+      "restitution_combine_mode": "multiply",
+      "compliant_contact_stiffness": 0.0,
+      "compliant_contact_damping": 0.0
+     }
+    },
+    "Background": {
+     "intensity": 1000,
+     "category_name": "brown_photostudio_02_4k.hdr"
+    },
+    "_simlab": {
+     "task": "pick_from_conveyor_by_image",
+     "id": 100036,
+     "seed": 216019262,
+     "attempt": 0,
+     "generator": "simlab/v15",
+     "n_clutter": 0,
+     "clutter_wanted": 0,
+     "robot_keepout": true,
+     "variant": 7,
+     "seed_salt": "sha256:fbd4df0744051b45",
+     "presettle": "belt-relative-v1"
+    }
+   }
+  },
+  "100037.settled.json": {
+   "sha256": "aca4ee5719577d563ad550ec85adf52939340245415b631b5d4ce68db9ca96a8",
+   "record": {
+    "Dynamic": {
+     "conveyor": [
+      {
+       "category": "conveyor",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        -2.08,
+        -2.08
+       ],
+       "ylim": [
+        0.175,
+        0.175
+       ],
+       "zlim": [
+        0.0,
+        0.0
+       ],
+       "qpos": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": true,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "conveyor",
+       "default_pos": [
+        -2.0799999237060547,
+        0.17499999701976776,
+        0.05000000074505806
+       ],
+       "default_ori": [
+        6.123234262925839e-17,
+        0.0,
+        0.0,
+        1.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "size": [
+         3.6012,
+         1.1764,
+         0.924
+        ],
+        "mass": 0.0,
+        "friction": 0.0,
+        "type": "dynamic"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Geometry": {
+     "camera_stand": [
+      {
+       "category": "camera_stand",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.0
+       ],
+       "ylim": [
+        -0.47,
+        -0.47
+       ],
+       "zlim": [
+        0.715,
+        0.715
+       ],
+       "qpos": [
+        0.707,
+        -0.707,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "camera_stand",
+       "default_pos": [
+        0.0,
+        -0.47,
+        0.765
+       ],
+       "default_ori": [
+        0.7071067811865476,
+        -0.7071067811865476,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ],
+     "photo": [
+      {
+       "category": "photo",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        2.08,
+        2.08
+       ],
+       "ylim": [
+        -0.55,
+        -0.55
+       ],
+       "zlim": [
+        0.05,
+        0.05
+       ],
+       "qpos": [
+        0.92,
+        -0.38,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "photo",
+       "default_pos": [
+        0.0,
+        -0.37500000000000006,
+        1.0244
+       ],
+       "default_ori": [
+        0.924261426490025,
+        -0.38176015441979294,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.5,
+        "friction": 0.4,
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Rigid": {
+     "basket_grasp": [
+      {
+       "category": "basket_grasp",
+       "category_idx": 2,
+       "group": null,
+       "xlim": [
+        1.5,
+        2.0
+       ],
+       "ylim": [
+        -0.2,
+        -0.1
+       ],
+       "zlim": [
+        -0.1,
+        -0.1
+       ],
+       "qpos": [
+        0.707,
+        0,
+        0,
+        0.707
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "basket",
+       "default_pos": [
+        0.09663708508014679,
+        0.06928713247179985,
+        0.8716950416564941
+       ],
+       "default_ori": [
+        0.7070935783446327,
+        2.186337895562756e-05,
+        -1.851366639906265e-05,
+        0.7071199832015919
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.2,
+        "friction": 0.42,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "can": [
+      {
+       "category": "can",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "target",
+       "default_pos": [
+        -1.1959975957870483,
+        0.08149408921599388,
+        0.7871431708335876
+       ],
+       "default_ori": [
+        0.6851153949079674,
+        -0.2006249868772967,
+        0.6811420300899467,
+        -0.16251783023880997
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.32,
+        "friction": 0.25,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "car": [
+      {
+       "category": "car",
+       "category_idx": 9,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object1",
+       "default_pos": [
+        -0.8872588276863098,
+        0.07408353313803673,
+        0.7809131145477295
+       ],
+       "default_ori": [
+        0.9764316894798676,
+        -0.0028226422772542068,
+        -0.002597729500306387,
+        0.21579258622925257
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.45,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "cup": [
+      {
+       "category": "cup",
+       "category_idx": 7,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object2",
+       "default_pos": [
+        -1.3852951526641846,
+        -0.023751774802803993,
+        0.7621440291404724
+       ],
+       "default_ori": [
+        0.9711557978733826,
+        0.0007226989073683373,
+        0.0006901155983839489,
+        0.23844374117108585
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.35,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "remote": [
+      {
+       "category": "remote",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object3",
+       "default_pos": [
+        -0.7034298181533813,
+        0.055404361337423325,
+        0.7616367936134338
+       ],
+       "default_ori": [
+        0.9748518154038566,
+        -0.002476533713967044,
+        -0.0005632905103886647,
+        0.22283960035947306
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.08,
+        "friction": 0.32,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Room": {
+     "default": "Simple_Room",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "default_rot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    "Ground": {
+     "geometry": "cube",
+     "thickness": 0.1,
+     "axis": "Z",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "materials": {
+      "type": "mdl",
+      "default": "material_0564",
+      "random": false
+     },
+     "physics_material": {
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "restitution": 0.0,
+      "friction_combine_mode": "multiply",
+      "restitution_combine_mode": "multiply",
+      "compliant_contact_stiffness": 0.0,
+      "compliant_contact_damping": 0.0
+     }
+    },
+    "Background": {
+     "intensity": 1000,
+     "category_name": "brown_photostudio_02_4k.hdr"
+    },
+    "_simlab": {
+     "task": "pick_from_conveyor_by_image",
+     "id": 100037,
+     "seed": 1620787082,
+     "attempt": 0,
+     "generator": "simlab/v15",
+     "n_clutter": 0,
+     "clutter_wanted": 0,
+     "robot_keepout": true,
+     "variant": 7,
+     "seed_salt": "sha256:fbd4df0744051b45",
+     "presettle": "belt-relative-v1"
+    }
+   }
+  },
+  "100038.settled.json": {
+   "sha256": "0d4bd8d465ac469b64b9140ef650a2c676955409626053cdefde0184e3a5a9be",
+   "record": {
+    "Dynamic": {
+     "conveyor": [
+      {
+       "category": "conveyor",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        -2.08,
+        -2.08
+       ],
+       "ylim": [
+        0.175,
+        0.175
+       ],
+       "zlim": [
+        0.0,
+        0.0
+       ],
+       "qpos": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": true,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "conveyor",
+       "default_pos": [
+        -2.0799999237060547,
+        0.17499999701976776,
+        0.05000000074505806
+       ],
+       "default_ori": [
+        6.123234262925839e-17,
+        0.0,
+        0.0,
+        1.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "size": [
+         3.6012,
+         1.1764,
+         0.924
+        ],
+        "mass": 0.0,
+        "friction": 0.0,
+        "type": "dynamic"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Geometry": {
+     "camera_stand": [
+      {
+       "category": "camera_stand",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.0
+       ],
+       "ylim": [
+        -0.47,
+        -0.47
+       ],
+       "zlim": [
+        0.715,
+        0.715
+       ],
+       "qpos": [
+        0.707,
+        -0.707,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "camera_stand",
+       "default_pos": [
+        0.0,
+        -0.47,
+        0.765
+       ],
+       "default_ori": [
+        0.7071067811865476,
+        -0.7071067811865476,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ],
+     "photo": [
+      {
+       "category": "photo",
+       "category_idx": 15,
+       "group": null,
+       "xlim": [
+        2.08,
+        2.08
+       ],
+       "ylim": [
+        -0.55,
+        -0.55
+       ],
+       "zlim": [
+        0.05,
+        0.05
+       ],
+       "qpos": [
+        0.92,
+        -0.38,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "photo",
+       "default_pos": [
+        0.0,
+        -0.37500000000000006,
+        1.0244
+       ],
+       "default_ori": [
+        0.924261426490025,
+        -0.38176015441979294,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.5,
+        "friction": 0.4,
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Rigid": {
+     "basket_grasp": [
+      {
+       "category": "basket_grasp",
+       "category_idx": 2,
+       "group": null,
+       "xlim": [
+        1.5,
+        2.0
+       ],
+       "ylim": [
+        -0.2,
+        -0.1
+       ],
+       "zlim": [
+        -0.1,
+        -0.1
+       ],
+       "qpos": [
+        0.707,
+        0,
+        0,
+        0.707
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "basket",
+       "default_pos": [
+        -0.048016395419836044,
+        -0.011568838730454445,
+        0.8716950416564941
+       ],
+       "default_ori": [
+        0.7071009992278087,
+        2.1385087522653847e-05,
+        -1.8634891913945056e-05,
+        0.7071125625290879
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.2,
+        "friction": 0.42,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "toy": [
+      {
+       "category": "toy",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "target",
+       "default_pos": [
+        -1.4015044569969177,
+        0.07834429293870926,
+        0.8176580667495728
+       ],
+       "default_ori": [
+        0.9656206819227816,
+        0.0047674783714908775,
+        0.0033134575431479256,
+        -0.2598903437838152
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.25,
+        "friction": 0.65,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "remote": [
+      {
+       "category": "remote",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object1",
+       "default_pos": [
+        -1.16966313123703,
+        0.07229410111904144,
+        0.7616367340087891
+       ],
+       "default_ori": [
+        0.9980254518666353,
+        -0.00253377988158742,
+        0.0001751941846687749,
+        -0.06275943509073201
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.08,
+        "friction": 0.32,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "car": [
+      {
+       "category": "car",
+       "category_idx": 10,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object2",
+       "default_pos": [
+        -0.9426267147064209,
+        0.06635742634534836,
+        0.7738534808158875
+       ],
+       "default_ori": [
+        0.9994545301863633,
+        -0.00326693444768624,
+        -0.006036804355952107,
+        -0.032303656487126534
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.45,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "can": [
+      {
+       "category": "can",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object3",
+       "default_pos": [
+        -0.70498126745224,
+        0.08213566243648529,
+        0.7871426939964294
+       ],
+       "default_ori": [
+        0.6850802985192297,
+        -0.20029963806689471,
+        0.6812378850451088,
+        -0.16266524997780307
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.32,
+        "friction": 0.25,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Room": {
+     "default": "Simple_Room",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "default_rot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    "Ground": {
+     "geometry": "cube",
+     "thickness": 0.1,
+     "axis": "Z",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "materials": {
+      "type": "mdl",
+      "default": "material_0564",
+      "random": false
+     },
+     "physics_material": {
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "restitution": 0.0,
+      "friction_combine_mode": "multiply",
+      "restitution_combine_mode": "multiply",
+      "compliant_contact_stiffness": 0.0,
+      "compliant_contact_damping": 0.0
+     }
+    },
+    "Background": {
+     "intensity": 1000,
+     "category_name": "brown_photostudio_02_4k.hdr"
+    },
+    "_simlab": {
+     "task": "pick_from_conveyor_by_image",
+     "id": 100038,
+     "seed": 163528013,
+     "attempt": 0,
+     "generator": "simlab/v15",
+     "n_clutter": 0,
+     "clutter_wanted": 0,
+     "robot_keepout": true,
+     "variant": 7,
+     "seed_salt": "sha256:fbd4df0744051b45",
+     "presettle": "belt-relative-v1"
+    }
+   }
+  },
+  "100039.settled.json": {
+   "sha256": "297868bf5555f49ac23e75a6dd34906ad4898db4adde1bbae441d6bb5b25d93b",
+   "record": {
+    "Dynamic": {
+     "conveyor": [
+      {
+       "category": "conveyor",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        -2.08,
+        -2.08
+       ],
+       "ylim": [
+        0.175,
+        0.175
+       ],
+       "zlim": [
+        0.0,
+        0.0
+       ],
+       "qpos": [
+        0,
+        0,
+        0,
+        1
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": true,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "conveyor",
+       "default_pos": [
+        -2.0799999237060547,
+        0.17499999701976776,
+        0.05000000074505806
+       ],
+       "default_ori": [
+        6.123234262925839e-17,
+        0.0,
+        0.0,
+        1.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "size": [
+         3.6012,
+         1.1764,
+         0.924
+        ],
+        "mass": 0.0,
+        "friction": 0.0,
+        "type": "dynamic"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Geometry": {
+     "camera_stand": [
+      {
+       "category": "camera_stand",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.0
+       ],
+       "ylim": [
+        -0.47,
+        -0.47
+       ],
+       "zlim": [
+        0.715,
+        0.715
+       ],
+       "qpos": [
+        0.707,
+        -0.707,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "Ground",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "camera_stand",
+       "default_pos": [
+        0.0,
+        -0.47,
+        0.765
+       ],
+       "default_ori": [
+        0.7071067811865476,
+        -0.7071067811865476,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ],
+     "photo": [
+      {
+       "category": "photo",
+       "category_idx": 7,
+       "group": null,
+       "xlim": [
+        2.08,
+        2.08
+       ],
+       "ylim": [
+        -0.55,
+        -0.55
+       ],
+       "zlim": [
+        0.05,
+        0.05
+       ],
+       "qpos": [
+        0.92,
+        -0.38,
+        0.0,
+        0.0
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "photo",
+       "default_pos": [
+        0.0,
+        -0.37500000000000006,
+        1.0244
+       ],
+       "default_ori": [
+        0.924261426490025,
+        -0.38176015441979294,
+        0.0,
+        0.0
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.5,
+        "friction": 0.4,
+        "type": "geometry"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Rigid": {
+     "basket_grasp": [
+      {
+       "category": "basket_grasp",
+       "category_idx": 2,
+       "group": null,
+       "xlim": [
+        1.5,
+        2.0
+       ],
+       "ylim": [
+        -0.2,
+        -0.1
+       ],
+       "zlim": [
+        -0.1,
+        -0.1
+       ],
+       "qpos": [
+        0.707,
+        0,
+        0,
+        0.707
+       ],
+       "rotate_deg": 0,
+       "rotate_rand": false,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "basket",
+       "default_pos": [
+        -0.3571719527244568,
+        0.01586334966123104,
+        0.8716950416564941
+       ],
+       "default_ori": [
+        0.7070906576548378,
+        2.1711107716666532e-05,
+        -1.8821264773622388e-05,
+        0.7071229037668323
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.2,
+        "friction": 0.42,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "figurine": [
+      {
+       "category": "figurine",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "target",
+       "default_pos": [
+        -0.7137899398803711,
+        0.01063645537942648,
+        0.8221863508224487
+       ],
+       "default_ori": [
+        0.9877569235203293,
+        -0.005452262789330782,
+        -0.001963205666514331,
+        0.15589316435187722
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.08,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "remote": [
+      {
+       "category": "remote",
+       "category_idx": 1,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object1",
+       "default_pos": [
+        -1.175349235534668,
+        0.018766503781080246,
+        0.772016167640686
+       ],
+       "default_ori": [
+        0.7071174267913058,
+        -0.7070953730730984,
+        -0.0007844280789346501,
+        0.0006802788009818391
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.06,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "noodles": [
+      {
+       "category": "noodles",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object2",
+       "default_pos": [
+        -1.0560150146484375,
+        0.1113615557551384,
+        0.7626277208328247
+       ],
+       "default_ori": [
+        0.9750357679851873,
+        -0.0036066264621473646,
+        -0.00245915325313007,
+        0.22200494580161076
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.06,
+        "friction": 0.25,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ],
+     "glue": [
+      {
+       "category": "glue",
+       "category_idx": 0,
+       "group": null,
+       "xlim": [
+        0.0,
+        0.8
+       ],
+       "ylim": [
+        -0.2,
+        -0.05
+       ],
+       "zlim": null,
+       "qpos": [
+        1,
+        0,
+        0,
+        0
+       ],
+       "rotate_deg": 35,
+       "rotate_rand": true,
+       "relative_plane": "conveyor",
+       "place_tag": null,
+       "margin": 0.01,
+       "check_mode": "bbox",
+       "need_check_stable": true,
+       "label": "object3",
+       "default_pos": [
+        -1.365699052810669,
+        0.07176578789949417,
+        0.8222056031227112
+       ],
+       "default_ori": [
+        0.9918417476190463,
+        0.0005394573749708502,
+        -0.0003469235138682162,
+        -0.1274736690842943
+       ],
+       "scale": [
+        1.0,
+        1.0,
+        1.0
+       ],
+       "physics": {
+        "mass": 0.025,
+        "friction": 0.45,
+        "type": "rigid"
+       },
+       "visual": {}
+      }
+     ]
+    },
+    "Room": {
+     "default": "Simple_Room",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "default_rot": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "scale": [
+      0.5,
+      0.5,
+      0.5
+     ]
+    },
+    "Ground": {
+     "geometry": "cube",
+     "thickness": 0.1,
+     "axis": "Z",
+     "default_pos": [
+      0.0,
+      0.0,
+      0.0
+     ],
+     "materials": {
+      "type": "mdl",
+      "default": "material_0564",
+      "random": false
+     },
+     "physics_material": {
+      "static_friction": 1.0,
+      "dynamic_friction": 1.0,
+      "restitution": 0.0,
+      "friction_combine_mode": "multiply",
+      "restitution_combine_mode": "multiply",
+      "compliant_contact_stiffness": 0.0,
+      "compliant_contact_damping": 0.0
+     }
+    },
+    "Background": {
+     "intensity": 1000,
+     "category_name": "brown_photostudio_02_4k.hdr"
+    },
+    "_simlab": {
+     "task": "pick_from_conveyor_by_image",
+     "id": 100039,
+     "seed": 116036166,
+     "attempt": 0,
+     "generator": "simlab/v15",
+     "n_clutter": 0,
+     "clutter_wanted": 0,
+     "robot_keepout": true,
+     "variant": 7,
+     "seed_salt": "sha256:fbd4df0744051b45",
+     "presettle": "belt-relative-v1"
+    }
+   }
+  }
+ }
+}

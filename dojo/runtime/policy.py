@@ -492,6 +492,9 @@ class RuntimeConfig:
     # the depicted object dropped into it from whatever hand pose reaches)
     belt_container: str = "off"
     belt_deposit: str = "off"
+    belt_lift: str = "off"
+    belt_first: str = "off"
+    belt_target: str = "off"
     # match_and_pick (``interactive._match_round``, ``Skills.belt_confirm_zone``): off (today) | on (a match counts only
     # once it has ridden 10 cm past the downstream arm's home hand, where the head view reads riders whole; that arm
     # picks it) | uncertain (only a match whose tracker identity share is under 0.9 waits for that). G3 v15: on 13 / 20
@@ -720,6 +723,9 @@ class RuntimePolicy:
                 or self.cfg.key_scope_task not in ("", "insert_key")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
+                or self.cfg.belt_lift not in ("off", "braced_hook")
+                or self.cfg.belt_first not in ("off", "on")
+                or self.cfg.belt_target not in ("off", "match")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
                 or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
@@ -1071,6 +1077,8 @@ class RuntimePolicy:
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.belt_waist_first = cfg.belt_waist_first
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
+            sk_.belt_lift = cfg.belt_lift
+            sk_.belt_first, sk_.belt_target = cfg.belt_first, cfg.belt_target
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
             sk_.disc_handover_read = cfg.disc_handover_read
             sk_.kong_draw_read = cfg.kong_draw_read

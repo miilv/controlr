@@ -270,6 +270,9 @@ class Skills:
         at the hover (kind "pick": label = the object to grasp; kind "place": label = the support /
         reference object or None) before the descent is planned; it only observes (no env steps); the
         skill then calls ``refresh()`` and re-plans the descent. None (GT mode) = no refine."""
+        self.belt_lift = "off"
+        self.belt_first = "off"
+        self.belt_target = "off"
         self.env = env
         self.provider = provider
         self.kin = kin or X5Kin()

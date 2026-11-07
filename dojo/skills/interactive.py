@@ -1066,12 +1066,13 @@ def wrist_look_absent(lr: dict) -> bool:
 
 
 def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, ignore=(), arms=None,
-                   pull: float = 0.0, skip_methods=(), min_rise: float | None = None) -> SkillResult:
+                   pull: float = 0.0, skip_methods=(), min_rise: float | None = None, planned_intercept=None) -> SkillResult:
     """Pick an object off the moving belt: plan an intercept, wait so the approach ends just before the descent,
     approach, then the tracked descent / close / lift (one IK target per env step). Checked by the object's height."""
     w = sk.refresh()
     z0 = float(w.obj(label).pos[2])
-    plan = plan_intercept(sk, label, v, lift=lift, ignore=ignore, arms=arms, pull=pull, skip_methods=skip_methods)
+    plan = (planned_intercept if planned_intercept is not None else
+            plan_intercept(sk, label, v, lift=lift, ignore=ignore, arms=arms, pull=pull, skip_methods=skip_methods))
     if plan is None:
         return SkillResult(False, "belt_pick", "ik_fail", 0, None, note=f"no intercept for {label}")
     a, t, app, track, g, samples, go = plan
@@ -1679,6 +1680,11 @@ def _handle_lift(sk: Skills, container: str, arm: str, holder: str, ign) -> Skil
     return SkillResult(False, "handle_lift", "ik_fail", 0, arm, note=f"no lift by the handle ({HANDLE_LIFTS})")
 
 
+def target_lift(sk: Skills) -> float:
+    """Opt-in matchbelt lift; legacy image-basket calls remain 150 mm."""
+    return 0.125 if getattr(sk, "belt_target", "off") == "match" else 0.15
+
+
 def _deposit_then_lift(sk: Skills, container: str, target: str, v: np.ndarray, ign) -> dict:
     """``belt_deposit``: stop the container on the belt by its downstream wall (the downstream arm), pick the pictured
     object off the belt with the other arm and let it fall into the still container, then that arm takes the upstream
@@ -1690,12 +1696,12 @@ def _deposit_then_lift(sk: Skills, container: str, target: str, v: np.ndarray, i
     r = _stop_on_belt(sk, container, v, sarm, ign)
     if not r.ok:
         return {"ok": False, "stage": f"stop {container}", "note": r.note}
-    r2 = pick_from_belt(sk, target, v, lift=0.15, ignore=ign, arms=[parm])
+    r2 = pick_from_belt(sk, target, v, lift=target_lift(sk), ignore=ign, arms=[parm])
     if not r2.ok and r2.status == "grasp_slip":
         # it slipped and rides on: once more with another grasp family
         m = getattr(sk, "notes_belt_method", None)
         sk.home(arms=[parm], gripper=OPEN)
-        r2 = pick_from_belt(sk, target, v, lift=0.15, ignore=ign, arms=[parm], skip_methods=(m,) if m else ())
+        r2 = pick_from_belt(sk, target, v, lift=target_lift(sk), ignore=ign, arms=[parm], skip_methods=(m,) if m else ())
     if not r2.ok:
         return {"ok": False, "stage": f"pick {target}", "note": r2.note}
     rd = drop_into_held(sk, parm, target, container, ignore=ign)
@@ -1704,7 +1710,11 @@ def _deposit_then_lift(sk: Skills, container: str, target: str, v: np.ndarray, i
     w = sk.refresh()
     inside = inside_xy(w.obj(target), w.obj(container))
     sk.log(f"[belt] {target} {'in' if inside else 'not in'} {container} after the drop")
-    rl = _handle_lift(sk, container, parm, sarm, ign + (target,))
+    if getattr(sk, "belt_lift", "off") == "braced_hook":
+        from dojo.skills.basket import braced_hook
+        rl = braced_hook(sk, container, parm, sarm, ign + (target,))
+    else:
+        rl = _handle_lift(sk, container, parm, sarm, ign + (target,))
     w = sk.refresh()
     ok = rl.ok and inside_xy(w.obj(target), w.obj(container))
     return {"ok": ok, "stage": "lifted" if rl.ok else "lift", "note": rl.note}
@@ -1730,6 +1740,9 @@ def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str 
     u = v / np.linalg.norm(v)
     target = max(cands, key=lambda l: float(w.obj(l).pos[:2] @ u))
     ign = (conveyor,) if conveyor else ()
+    if getattr(sk, "belt_first", "off") == "on":
+        from dojo.skills.basket_first import lift_first
+        return lift_first(sk, container, target, v, ign)
     if getattr(sk, "belt_deposit", "off") == "on":
         return _deposit_then_lift(sk, container, target, v, ign)
     # 1. the container off the belt (whichever arm intercepts it first), held up
@@ -1767,7 +1780,7 @@ def pick_into_held(sk: Skills, objects: list[str], container: str, picture: str 
         hr = hold_up(sk, carm, container, hold_xy, float(c.bottom_z))
     sk.log(f"[belt] {container} held by {carm} ({hr.status}) at {np.round(sk.refresh().obj(container).center_w, 3).tolist()}")
     # 2. the target off the belt with the other arm, dropped into the container
-    r2 = pick_from_belt(sk, target, v, lift=0.15, ignore=ign + (container,), arms=[oarm])
+    r2 = pick_from_belt(sk, target, v, lift=target_lift(sk), ignore=ign + (container,), arms=[oarm])
     if not r2.ok:
         return {"ok": False, "stage": f"pick {target}", "note": r2.note}
     w = sk.refresh()
