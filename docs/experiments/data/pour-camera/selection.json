@@ -1,0 +1,2025 @@
+{
+  "selected": {
+    "pour_by_language": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004,
+      100005,
+      100006,
+      100007,
+      100008,
+      100009,
+      100010,
+      100011,
+      100012,
+      100013,
+      100014,
+      100015,
+      100016,
+      100017,
+      100018,
+      100019
+    ],
+    "pour_liquid_into_cup": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004,
+      100005,
+      100007,
+      100008,
+      100009,
+      100010
+    ],
+    "play_Xylophone": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004,
+      100005,
+      100006,
+      100007,
+      100008,
+      100009
+    ]
+  },
+  "attempts": {
+    "pour_by_language": [
+      {
+        "task": "pour_by_language",
+        "id": 100000,
+        "raw_validation": {
+          "from": "100000.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 28.6
+        },
+        "settle_validation": {
+          "from": "100000.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_1",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_0",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.01,
+          "pass2_drift_deg": 0.009,
+          "passes": 2,
+          "status": "ok",
+          "s": 34.7
+        },
+        "raw_sha256": "6384969f9b2201b98358bdce62e4127e4c8c67c5b1bb0e802f60cbadde37fc03",
+        "valid": true,
+        "settled_sha256": "c053d87ff749880d96aa69d69436f6b42daa003f74687a195548e6d3593bcd98"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100001,
+        "raw_validation": {
+          "from": "100001.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 20.7
+        },
+        "settle_validation": {
+          "from": "100001.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.009,
+          "pass2_drift_deg": 0.008,
+          "passes": 2,
+          "status": "ok",
+          "s": 35.0
+        },
+        "raw_sha256": "75a35e4d06d8648d3f83dc8c35048f1555dccb9d60bf6218d6f6a78c804dc1f4",
+        "valid": true,
+        "settled_sha256": "2ff352741a1ed1ac4527f9fb1ded1c4282932cf572cedd9e074f313ec46b8440"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100002,
+        "raw_validation": {
+          "from": "100002.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 21.1
+        },
+        "settle_validation": {
+          "from": "100002.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.01,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.015,
+          "pass2_drift_deg": 0.014,
+          "passes": 2,
+          "status": "ok",
+          "s": 39.9
+        },
+        "raw_sha256": "41920db285a31e146a6826b1033d4518687d6523939e1cd355e489d22dd57212",
+        "valid": true,
+        "settled_sha256": "b984046fd6003b1d2b8baa87897dad61f8661947dbd1782e41d3e1a16f4b1f9b"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100003,
+        "raw_validation": {
+          "from": "100003.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 18.6
+        },
+        "settle_validation": {
+          "from": "100003.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.007,
+          "pass2_drift_deg": 0.007,
+          "passes": 2,
+          "status": "ok",
+          "s": 41.9
+        },
+        "raw_sha256": "e93181412b654bf53642860eb7e20c91c2bc4719baaf8798e754b56e93a7bb27",
+        "valid": true,
+        "settled_sha256": "6bd318acda4d97b3032f7d5ec36c5cae838ebf59ae7470a99c8af374a419f372"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100004,
+        "raw_validation": {
+          "from": "100004.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 18.7
+        },
+        "settle_validation": {
+          "from": "100004.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.005,
+          "pass2_drift_deg": 0.004,
+          "passes": 2,
+          "status": "ok",
+          "s": 43.4
+        },
+        "raw_sha256": "a2660fc6f47269a080aa9f09099a78d3917f6226b34410758ed77465dbb2aeca",
+        "valid": true,
+        "settled_sha256": "4ebf348c780ae25557ecd5a168c20ae65445de65bf7bb8ffd257f1a170d71df0"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100005,
+        "raw_validation": {
+          "from": "100005.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 19.0
+        },
+        "settle_validation": {
+          "from": "100005.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.014,
+          "pass2_drift_deg": 0.013,
+          "passes": 2,
+          "status": "ok",
+          "s": 38.1
+        },
+        "raw_sha256": "d4b3f75fe98ce8dbe345cbb9870680dc809aa5a41589b2c305300d3b2f666d79",
+        "valid": true,
+        "settled_sha256": "cd074a0b37a4a4d19c5a3beb5cbb7cc8a7fe4646bc744b1be9a7eb9d771cddbd"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100006,
+        "raw_validation": {
+          "from": "100006.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 19.1
+        },
+        "settle_validation": {
+          "from": "100006.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.005,
+          "pass2_drift_deg": 0.004,
+          "passes": 2,
+          "status": "ok",
+          "s": 33.9
+        },
+        "raw_sha256": "4c40b96d881312c9ec2490dce7f8a4c915b5859269c49e7f99e1f6975bab55c5",
+        "valid": true,
+        "settled_sha256": "bfe6ae1a00fb54ef06a36bcbdf671dc122dea245803c447987246f47f6db3ac5"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100007,
+        "raw_validation": {
+          "from": "100007.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 19.1
+        },
+        "settle_validation": {
+          "from": "100007.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.013,
+          "pass2_drift_deg": 0.013,
+          "passes": 2,
+          "status": "ok",
+          "s": 39.0
+        },
+        "raw_sha256": "9811a9ddba2ed34b74f08be4e82ae03331e3961fe9cca0e4b361895de9aa37eb",
+        "valid": true,
+        "settled_sha256": "ab0d2e4f0b377d3596f9306367d287f025627f93d969a8c0e66c60b01620cbad"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100008,
+        "raw_validation": {
+          "from": "100008.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 19.4
+        },
+        "settle_validation": {
+          "from": "100008.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_2",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_0",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.008,
+          "pass2_drift_deg": 0.007,
+          "passes": 2,
+          "status": "ok",
+          "s": 39.7
+        },
+        "raw_sha256": "d6d7977ca4207d4bb7ddf3b0ccabb48989c32ef17ff752ea371a20204e2721d2",
+        "valid": true,
+        "settled_sha256": "99d43d1493d0deddce7c5fa108ed7833863331a57b7f92535b49c9511011c8e9"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100009,
+        "raw_validation": {
+          "from": "100009.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 19.7
+        },
+        "settle_validation": {
+          "from": "100009.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.008,
+          "pass2_drift_deg": 0.007,
+          "passes": 2,
+          "status": "ok",
+          "s": 35.0
+        },
+        "raw_sha256": "40b370f10000e35c76b571f59dff0edab995c6edca5d212d9882b3b184a1492c",
+        "valid": true,
+        "settled_sha256": "c1d6af8572173454188d4998f4e9e42d6615834da5206b004411aff6a6b70187"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100010,
+        "raw_validation": {
+          "from": "100010.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 21.4
+        },
+        "settle_validation": {
+          "from": "100010.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.006,
+          "passes": 2,
+          "status": "ok",
+          "s": 37.5
+        },
+        "raw_sha256": "8c93a3cf36515ec8e2878d40daf43438628906e842d08d064f9879a0cacaae66",
+        "valid": true,
+        "settled_sha256": "a152ba41844f5449b488fd8f94ccc1459a957b9193e094264eefe91819865bef"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100011,
+        "raw_validation": {
+          "from": "100011.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 18.4
+        },
+        "settle_validation": {
+          "from": "100011.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.009,
+          "pass2_drift_deg": 0.009,
+          "passes": 2,
+          "status": "ok",
+          "s": 40.3
+        },
+        "raw_sha256": "3723e22ca6519b64a40ed77fafe18cf4b17ad4712a7bd4016a317b09cbbe70ab",
+        "valid": true,
+        "settled_sha256": "d2540a4b7cb8fdd7f29222229dc7520a32b941a787913cee30e67566489b4c8a"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100012,
+        "raw_validation": {
+          "from": "100012.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 18.9
+        },
+        "settle_validation": {
+          "from": "100012.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_2",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_0",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.005,
+          "pass2_drift_deg": 0.007,
+          "passes": 2,
+          "status": "ok",
+          "s": 35.3
+        },
+        "raw_sha256": "08d29b634a483a6b5af4f45e81650b92eaf35542dfed89ba37a833112713b844",
+        "valid": true,
+        "settled_sha256": "9203ce52cca826773f6c302d3d0901a29de2a3764c6d4d72e9d733be88666410"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100013,
+        "raw_validation": {
+          "from": "100013.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 19.0
+        },
+        "settle_validation": {
+          "from": "100013.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_1",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_0",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.006,
+          "pass2_drift_deg": 0.007,
+          "passes": 2,
+          "status": "ok",
+          "s": 36.8
+        },
+        "raw_sha256": "3564f702bb4d8c020b727fdddaa57cb9f6aab3a667cf8ae62635a3202c82cca1",
+        "valid": true,
+        "settled_sha256": "03551dd7cab0d6ab9ee6fdaaf4e9662daa9d44cacd227fe40afdf8b27cb682a9"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100014,
+        "raw_validation": {
+          "from": "100014.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 20.3
+        },
+        "settle_validation": {
+          "from": "100014.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.006,
+          "pass2_drift_deg": 0.005,
+          "passes": 2,
+          "status": "ok",
+          "s": 37.3
+        },
+        "raw_sha256": "17d15488440e924e9710287c521295ed1e887dcf09bd9e124db82388dd137de9",
+        "valid": true,
+        "settled_sha256": "af438246b0a6419141740f07e3f5f7d93563f7e48309a7b9b6ad2367421dc504"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100015,
+        "raw_validation": {
+          "from": "100015.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 23.7
+        },
+        "settle_validation": {
+          "from": "100015.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.007,
+          "pass2_drift_deg": 0.007,
+          "passes": 2,
+          "status": "ok",
+          "s": 34.1
+        },
+        "raw_sha256": "716a2e69661e7fc7994474cfd123e405e24632eb480651800d3048a18d4cbe6a",
+        "valid": true,
+        "settled_sha256": "ca5080cd1b2e57420d22ba9bee19d43fc4af334c0e5d06d928b4b0b352c34dd4"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100016,
+        "raw_validation": {
+          "from": "100016.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 23.3
+        },
+        "settle_validation": {
+          "from": "100016.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.008,
+          "pass2_drift_deg": 0.007,
+          "passes": 2,
+          "status": "ok",
+          "s": 38.7
+        },
+        "raw_sha256": "ce8085992a3fa66036e4f70944793537906656f3cd54aae19f3b8f563c695914",
+        "valid": true,
+        "settled_sha256": "a6ce7b6e8a2f8d73f55f15b3ef3d48df0b01d1e8af35951f785e9b5269233048"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100017,
+        "raw_validation": {
+          "from": "100017.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 23.7
+        },
+        "settle_validation": {
+          "from": "100017.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 39.5
+        },
+        "raw_sha256": "c39882dcb53a23c6731c3fd2572d5fd10114669b685554883e3221e9d5d455e0",
+        "valid": true,
+        "settled_sha256": "750b419bdfd2c21606d63b4bc71fb76ed74c4f73daa3d890318c803c7ee03c3e"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100018,
+        "raw_validation": {
+          "from": "100018.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 23.2
+        },
+        "settle_validation": {
+          "from": "100018.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_0",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_1",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.01,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.009,
+          "pass2_drift_deg": 0.009,
+          "passes": 2,
+          "status": "ok",
+          "s": 35.7
+        },
+        "raw_sha256": "f6b70bb7fde03c001abea8bf14f458eb6d1a9a3e5a1e053e96623821224a3763",
+        "valid": true,
+        "settled_sha256": "3dbe7207cbf59f108769186cea680cd9a149e28192b13363faa5e682b00f2950"
+      },
+      {
+        "task": "pour_by_language",
+        "id": 100019,
+        "raw_validation": {
+          "from": "100019.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 19.7
+        },
+        "settle_validation": {
+          "from": "100019.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.42,
+          "pass1_drift_deg": 0.03,
+          "pass2_top": [
+            [
+              "bottle_1",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "bottle_0",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "bottle_2",
+              0.0,
+              "Rigid"
+            ]
+          ],
+          "objects_written": 6,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.01,
+          "pass2_drift_deg": 0.01,
+          "passes": 2,
+          "status": "ok",
+          "s": 37.3
+        },
+        "raw_sha256": "b7a47b879d5097aa3b5cdc7c164d69d102281183933af269105fbb88e08ad3f9",
+        "valid": true,
+        "settled_sha256": "7fa3d7dd3932622b06630ccac1bc15c0c38ccf9cb1d5e74c2e56ef2837cb3d62"
+      }
+    ],
+    "pour_liquid_into_cup": [
+      {
+        "task": "pour_liquid_into_cup",
+        "id": 100000,
+        "raw_validation": {
+          "from": "100000.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 13.3
+        },
+        "settle_validation": {
+          "from": "100000.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.81,
+          "pass1_drift_deg": 0.47,
+          "pass2_top": [
+            [
+              "bottle",
+              0.79,
+              "Rigid"
+            ],
+            [
+              "cup",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.785,
+          "pass2_drift_deg": 0.556,
+          "passes": 2,
+          "status": "ok",
+          "s": 17.6
+        },
+        "raw_sha256": "c3b3ba152a0b1941bfe4df4197fab3cff00c05ccb384995edc446f8126801ba7",
+        "valid": true,
+        "settled_sha256": "201be267f347e2f9c470f0fc86fa2d53f52b7aa291a41b7551a6c8c4afd62f99"
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "id": 100001,
+        "raw_validation": {
+          "from": "100001.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 13.0
+        },
+        "settle_validation": {
+          "from": "100001.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.44,
+          "pass1_drift_deg": 0.34,
+          "pass2_top": [
+            [
+              "bottle",
+              4.73,
+              "Rigid"
+            ],
+            [
+              "cup",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 4.734,
+          "pass2_drift_deg": 5.598,
+          "passes": 2,
+          "status": "ok",
+          "s": 18.1
+        },
+        "raw_sha256": "58e23686aa1170d0e41a6c30403dccfe492dcdbc442e0351af6384c7f3bee2b5",
+        "valid": true,
+        "settled_sha256": "00eb8814547df051e4dd81d00862a16e89a90690c116d501275453d37c35c32c"
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "id": 100002,
+        "raw_validation": {
+          "from": "100002.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 11.7
+        },
+        "settle_validation": {
+          "from": "100002.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.83,
+          "pass1_drift_deg": 0.62,
+          "pass2_top": [
+            [
+              "bottle",
+              1.4,
+              "Rigid"
+            ],
+            [
+              "cup",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 1.396,
+          "pass2_drift_deg": 0.218,
+          "passes": 2,
+          "status": "ok",
+          "s": 17.9
+        },
+        "raw_sha256": "11ef7b0a66d2ed5a92d2df0b31c58f1cd2f252b5e2c709a2faab901f6e182649",
+        "valid": true,
+        "settled_sha256": "f1e16bc0f8db813e91e7d850a0fea567d7980826fec07c3cdd87e8c23e2e6d87"
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "id": 100003,
+        "raw_validation": {
+          "from": "100003.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 9.6
+        },
+        "settle_validation": {
+          "from": "100003.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 1.52,
+          "pass1_drift_deg": 2.62,
+          "pass2_top": [
+            [
+              "bottle",
+              3.14,
+              "Rigid"
+            ],
+            [
+              "cup",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 3.141,
+          "pass2_drift_deg": 2.008,
+          "passes": 2,
+          "status": "ok",
+          "s": 18.6
+        },
+        "raw_sha256": "d7468ca9944044e722491760686248455f94dca8d83b438f752959df7e8fcc2d",
+        "valid": true,
+        "settled_sha256": "ca5c3847926890a98ea051f610b20dc54efefe548e6628b174ed04ce44135596"
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "id": 100004,
+        "raw_validation": {
+          "from": "100004.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 9.9
+        },
+        "settle_validation": {
+          "from": "100004.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 3.1,
+          "pass1_drift_deg": 1.21,
+          "pass2_top": [
+            [
+              "bottle",
+              0.37,
+              "Rigid"
+            ],
+            [
+              "cup",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.372,
+          "pass2_drift_deg": 0.45,
+          "passes": 2,
+          "status": "ok",
+          "s": 18.1
+        },
+        "raw_sha256": "a0a5b410f491f0aec5ebebd5ac190695818dc02e9ca34e90cdea4a1485f45dc1",
+        "valid": true,
+        "settled_sha256": "d263592ecdc4652b637bcef398dd832df6fa52e0ab11be44d7399e4074131c69"
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "id": 100005,
+        "raw_validation": {
+          "from": "100005.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 10.3
+        },
+        "settle_validation": {
+          "from": "100005.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.81,
+          "pass1_drift_deg": 2.04,
+          "pass2_top": [
+            [
+              "bottle",
+              3.1,
+              "Rigid"
+            ],
+            [
+              "cup",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 3.102,
+          "pass2_drift_deg": 1.692,
+          "passes": 2,
+          "status": "ok",
+          "s": 20.0
+        },
+        "raw_sha256": "b3ec6dabc6dc52905ffbac6e74abc2edc61909133f8fe2c3c325acba248ca86e",
+        "valid": true,
+        "settled_sha256": "4228b53bdf6be36d5922d97a8367836736fd9779738d6d990ff148a6dc68d211"
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "id": 100006,
+        "raw_validation": {
+          "from": "100006.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 10.6
+        },
+        "settle_validation": {
+          "from": "100006.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.57,
+          "pass1_drift_deg": 1.34,
+          "pass2_top": [
+            [
+              "bottle",
+              5.98,
+              "Rigid"
+            ],
+            [
+              "cup",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 5.979,
+          "pass2_drift_deg": 2.826,
+          "passes": 2,
+          "status": "dropped: settled record not stable",
+          "s": 18.4
+        },
+        "raw_sha256": "6564b78c0611b4e407c333c1a47ccabbb304d37d89686b1316f1d80cad347115",
+        "valid": false
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "id": 100007,
+        "raw_validation": {
+          "from": "100007.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 9.7
+        },
+        "settle_validation": {
+          "from": "100007.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.46,
+          "pass1_drift_deg": 0.58,
+          "pass2_top": [
+            [
+              "bottle",
+              3.19,
+              "Rigid"
+            ],
+            [
+              "cup",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 3.192,
+          "pass2_drift_deg": 3.226,
+          "passes": 2,
+          "status": "ok",
+          "s": 18.4
+        },
+        "raw_sha256": "cebc67ffd9dc73816726406c1c7f1750d5b924b93f5d5b6e61eaad4db1693f71",
+        "valid": true,
+        "settled_sha256": "53bf5eab77d4aa61c590fd64484f7c7a450f011618e16f54ee892118c1ba93b8"
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "id": 100008,
+        "raw_validation": {
+          "from": "100008.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 10.0
+        },
+        "settle_validation": {
+          "from": "100008.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.77,
+          "pass1_drift_deg": 0.32,
+          "pass2_top": [
+            [
+              "bottle",
+              2.23,
+              "Rigid"
+            ],
+            [
+              "cup",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 2.229,
+          "pass2_drift_deg": 1.639,
+          "passes": 2,
+          "status": "ok",
+          "s": 23.2
+        },
+        "raw_sha256": "7c2d46a01d249dd5a3abf7ab4380403110e9d5c36ddaa8f11d6a77b037ac443f",
+        "valid": true,
+        "settled_sha256": "0730a54c301e3de50ab526c99b6065b1051b5706a90131749200e957f52b5281"
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "id": 100009,
+        "raw_validation": {
+          "from": "100009.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 9.4
+        },
+        "settle_validation": {
+          "from": "100009.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.69,
+          "pass1_drift_deg": 0.45,
+          "pass2_top": [
+            [
+              "bottle",
+              4.75,
+              "Rigid"
+            ],
+            [
+              "cup",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 4.747,
+          "pass2_drift_deg": 2.081,
+          "passes": 2,
+          "status": "ok",
+          "s": 22.4
+        },
+        "raw_sha256": "8205b11d30ad0828688f1b411e6838bc58feb29205bae30c6fb52097a2a93233",
+        "valid": true,
+        "settled_sha256": "60b419699444cf9c25368d142b9077b1a09b8f734164c7dfc9d9c598503ee49e"
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "id": 100010,
+        "raw_validation": {
+          "from": "100010.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 13.0
+        },
+        "settle_validation": {
+          "from": "100010.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 3.8,
+          "pass1_drift_deg": 5.3,
+          "pass2_top": [
+            [
+              "bottle",
+              0.39,
+              "Rigid"
+            ],
+            [
+              "cup",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.386,
+          "pass2_drift_deg": 0.078,
+          "passes": 2,
+          "status": "ok",
+          "s": 22.8
+        },
+        "raw_sha256": "b81ef77cd4eccd9719e8ea6faaa3859cd613724b0b89d0663c82899a8419f551",
+        "valid": true,
+        "settled_sha256": "950ac11b267296fea3733f345b8c8c2913273fcd84434c75e3aede71bfb2f335"
+      }
+    ],
+    "play_Xylophone": [
+      {
+        "task": "play_Xylophone",
+        "id": 100000,
+        "raw_validation": {
+          "from": "100000.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 8.0
+        },
+        "settle_validation": {
+          "from": "100000.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 4.64,
+          "pass1_drift_deg": 6.22,
+          "pass2_top": [
+            [
+              "mallet_stand",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "mallet",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.005,
+          "passes": 2,
+          "status": "ok",
+          "s": 8.7
+        },
+        "raw_sha256": "04f4a46c67e95910a4a6866692d5ae33b2885e9a8564d76a6c2a696891df7547",
+        "valid": true,
+        "settled_sha256": "50e6954436f1b016cf5df270afa69e864e08cda213d3653ad7eac8da94ceb3bc"
+      },
+      {
+        "task": "play_Xylophone",
+        "id": 100001,
+        "raw_validation": {
+          "from": "100001.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 6.0
+        },
+        "settle_validation": {
+          "from": "100001.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 8.37,
+          "pass1_drift_deg": 9.06,
+          "pass2_top": [
+            [
+              "mallet_stand",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "mallet",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.006,
+          "passes": 2,
+          "status": "ok",
+          "s": 9.0
+        },
+        "raw_sha256": "0b18bc651ce60ca09b057719bdb941e9cef36c67609ac43e2caed0593b584edb",
+        "valid": true,
+        "settled_sha256": "514cfe5617e5ff6e6ac54c8fce7746bbb92a1b0cd934449eb77ed9f8c015034f"
+      },
+      {
+        "task": "play_Xylophone",
+        "id": 100002,
+        "raw_validation": {
+          "from": "100002.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 5.1
+        },
+        "settle_validation": {
+          "from": "100002.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 2.72,
+          "pass1_drift_deg": 6.42,
+          "pass2_top": [
+            [
+              "mallet_stand",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "mallet",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.005,
+          "passes": 2,
+          "status": "ok",
+          "s": 8.9
+        },
+        "raw_sha256": "b3ccea16f3f775cc6b846f98f8d3272f6d1c2691ee4cb9842110a929c4d26efc",
+        "valid": true,
+        "settled_sha256": "8d5080f8911c24df1e691d203b38f8026723c1b08dd5ce8565dc05148441b15a"
+      },
+      {
+        "task": "play_Xylophone",
+        "id": 100003,
+        "raw_validation": {
+          "from": "100003.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 5.1
+        },
+        "settle_validation": {
+          "from": "100003.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 8.53,
+          "pass1_drift_deg": 8.84,
+          "pass2_top": [
+            [
+              "mallet",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "mallet_stand",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.011,
+          "pass2_drift_deg": 0.008,
+          "passes": 2,
+          "status": "ok",
+          "s": 8.7
+        },
+        "raw_sha256": "4c98262d94ba660cd31e96585b9731cf12d5a0d93a6872a97bf406c2abc09ee6",
+        "valid": true,
+        "settled_sha256": "a2fc326a0e194c0550dd115511587cafe08f69743201ce0d48c1b347ba00639c"
+      },
+      {
+        "task": "play_Xylophone",
+        "id": 100004,
+        "raw_validation": {
+          "from": "100004.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 5.4
+        },
+        "settle_validation": {
+          "from": "100004.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 8.81,
+          "pass1_drift_deg": 9.23,
+          "pass2_top": [
+            [
+              "mallet_stand",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "mallet",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.003,
+          "passes": 2,
+          "status": "ok",
+          "s": 9.4
+        },
+        "raw_sha256": "af0240a58af660a1492a8eaa7bb3ae48468ba0fa0b40b458f281b7ee71290e91",
+        "valid": true,
+        "settled_sha256": "6989b59f87191acbe3622ad1dd1a5588e21eb45205f46c2f9c6d87709262b5cd"
+      },
+      {
+        "task": "play_Xylophone",
+        "id": 100005,
+        "raw_validation": {
+          "from": "100005.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 5.1
+        },
+        "settle_validation": {
+          "from": "100005.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 2.34,
+          "pass1_drift_deg": 6.56,
+          "pass2_top": [
+            [
+              "mallet",
+              0.01,
+              "Rigid"
+            ],
+            [
+              "mallet_stand",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.005,
+          "pass2_drift_deg": 0.006,
+          "passes": 2,
+          "status": "ok",
+          "s": 12.3
+        },
+        "raw_sha256": "4e205bffb8aa09397aadf8619cc77a4a6f1d841fad7a0988634e1b6d66cb2246",
+        "valid": true,
+        "settled_sha256": "95ecd3e9eab57a478728782630444e6e3eff01ede73c77cd3d783978a9eac0af"
+      },
+      {
+        "task": "play_Xylophone",
+        "id": 100006,
+        "raw_validation": {
+          "from": "100006.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 5.3
+        },
+        "settle_validation": {
+          "from": "100006.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 9.16,
+          "pass1_drift_deg": 8.98,
+          "pass2_top": [
+            [
+              "mallet_stand",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "mallet",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.005,
+          "pass2_drift_deg": 0.021,
+          "passes": 2,
+          "status": "ok",
+          "s": 12.3
+        },
+        "raw_sha256": "f9ecfe8e9ac032ecda0e447094207a1c896d970df6e1c74dd9eab82aad45b9ae",
+        "valid": true,
+        "settled_sha256": "53e4853d5fd3bee07ef3625329bc986cc5ad9419caad2bb0db59e9106831d5bf"
+      },
+      {
+        "task": "play_Xylophone",
+        "id": 100007,
+        "raw_validation": {
+          "from": "100007.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 5.2
+        },
+        "settle_validation": {
+          "from": "100007.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 8.85,
+          "pass1_drift_deg": 9.44,
+          "pass2_top": [
+            [
+              "mallet_stand",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "mallet",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.004,
+          "pass2_drift_deg": 0.007,
+          "passes": 2,
+          "status": "ok",
+          "s": 12.1
+        },
+        "raw_sha256": "2f6272d532af38c91f45dfdd1b21f9875af7d0bb8a0d7dc867a576b2b4f4d6f4",
+        "valid": true,
+        "settled_sha256": "8c3b354832b9e0026c62640e6aab869837168e4eb72a697e93bf6bff5c42f5b5"
+      },
+      {
+        "task": "play_Xylophone",
+        "id": 100008,
+        "raw_validation": {
+          "from": "100008.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 5.4
+        },
+        "settle_validation": {
+          "from": "100008.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 9.17,
+          "pass1_drift_deg": 8.98,
+          "pass2_top": [
+            [
+              "mallet_stand",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "mallet",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.008,
+          "passes": 2,
+          "status": "ok",
+          "s": 12.7
+        },
+        "raw_sha256": "3efa25cb912f039d459c6c1159c91184093246e903d38a9158a3a75926b1f228",
+        "valid": true,
+        "settled_sha256": "4b3937fea76c374ae1c6ab5cd52dd36bc1d81d6916674992af33792e8dad5bc2"
+      },
+      {
+        "task": "play_Xylophone",
+        "id": 100009,
+        "raw_validation": {
+          "from": "100009.json",
+          "check": "simlab/raw-check v1",
+          "extra_steps": 250,
+          "rest_window": 100,
+          "robodojo_stable": true,
+          "belt_mm_per_window": 0.0,
+          "why": [],
+          "status": "raw ok",
+          "s": 5.2
+        },
+        "settle_validation": {
+          "from": "100009.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 4.86,
+          "pass1_drift_deg": 6.24,
+          "pass2_top": [
+            [
+              "mallet_stand",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "mallet",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 2,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.006,
+          "passes": 2,
+          "status": "ok",
+          "s": 12.2
+        },
+        "raw_sha256": "74d2ffc93cfbcb13af7053d2a2a72e4456eb7872328c80cb98fd21cb659fbd6a",
+        "valid": true,
+        "settled_sha256": "b819835decd314ef2b29c1481a978d2e5ac9bc43df1b2a5530172b6dfd0e9aec"
+      }
+    ]
+  }
+}

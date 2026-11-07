@@ -164,3 +164,46 @@ before/after, new-row and manifest hashes, insertion UTC and ETA in the receipt.
 **Receipt:** pending frozen preparation. No POUR camera row is queued by this
 registration commit. The complete manifest and effective configs must be on
 main before insertion; the operational receipt is committed immediately after.
+
+## Preparation freeze before queue insertion
+
+The design/preregistration/index reached main in **4ee384aa** before generation
+and before any POUR camera row was queued. Preparation completed with **40
+selected pairs from 41 attempted layouts**, with zero model calls. All 41 raw
+checks passed; one single-cup settle (100006) failed its unchanged reload test:
+5.979 mm bottle drift against the 5 mm bound. It is retained with both-pass
+validation details. The ascending missing-count refill selected 100010; no
+threshold, salt or pool change was made.
+
+- Language: 100000–100019 (20 pairs).
+- Single-cup: 100000–100005, 100007–100010 (10 pairs).
+- Xylophone: 100000–100009 (10 pairs).
+
+The [manifest](data/pour-camera/manifest.json), including all selected and failed
+input hashes, validations and 80 expanded camera rows, has SHA256
+`710d14faffa1536faf07d2371e556414d95982f7abf2f93d27cc206d97a2a6a5`. The [selection ledger](data/pour-camera/selection.json),
+[pre-generation freeze](data/pour-camera/pre-generation-freeze.json),
+[candidate equivalence](data/pour-camera/resolved-config-parity.json),
+[package parity](data/pour-camera/parity.json),
+[package freeze](data/pour-camera/packages-new.json) and
+[scope proof](data/pour-camera/scope-proof.json) are committed with it.
+A equals the resolved candidate; B differs only in `ported_pour_pace`.
+All 197 existing candidate fields match the earlier compute6 deployment;
+six additional fields retain inactive defaults. Package diff is empty.
+
+The [supplemental integrity check](data/pour-camera/supplemental-integrity.json)
+rechecked 138 pre-generation dependency hashes
+and native startup logs before dispatch. It records simulation Python 3.11.18,
+msgpack 1.2.4, Isaac Sim 5.1.0.0 and RoboDojo
+`f57e1633ffed59761bc8e568cfe7530c4b33381c`, matching KEY's prior freeze. This is an
+explicit later integrity check, not a backdated pre-generation version record.
+Native logs show the RTX 5090 active with no CUDA/cooking failure markers.
+Existing nested rigid-body/material-reference warnings remain in the logs;
+validation was not relaxed. Calibration, backgrounds and weights are unchanged.
+
+Inputs, scripts, complete logs and operational metadata remain under
+`compute6:~/dojo-data/pour-cam/`; the isolated deployment is
+`~/dojo-integ-c6-066e9c8f`. All 80 staged rows have exactly one explicit Sonnet
+route pin and the frozen settled input. Actual per-row call/process route checks
+run during collection and are required before qualification. The monitor makes
+no model calls. This complete freeze is committed to main before insertion.
