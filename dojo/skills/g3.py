@@ -509,6 +509,10 @@ def cmd_run(a) -> None:
         for spec in a.belief_offset or []:
             lab, vals = spec.split(":")
             offs[lab] = [float(x) for x in vals.split(",")]
+        if a.belief_offset_file:
+            # dev: per-layout offsets {seed: {label: [dx, dy, dyaw_deg]}} (a panel's pre-registered belief errors)
+            per = json.loads(Path(a.belief_offset_file).read_text()).get(str(seed)) or {}
+            offs.update({lab: [float(x) for x in v] for lab, v in per.items()})
         rec = run_episode(run, a.task, lay, assets, out, log=lambda m: logs.append(m), trace=a.trace,
                           verify_k=a.verify, belief_offsets=offs, mode_b=a.mode_b, held_pose=a.held_pose,
                           held_belief=a.held_belief, held_looks=not a.no_held_looks,
@@ -890,6 +894,8 @@ def main(argv=None) -> None:
     r.add_argument("--belief-offset", action="append", default=[],
                    help="LABEL:dx,dy[,dyaw_deg] (m, deg): the object's pose is believed this far off (the yaw about "
                         "the vertical through its bbox centre) until it is held (dev)")
+    r.add_argument("--belief-offset-file", default=None,
+                   help="JSON {seed: {label: [dx, dy, dyaw_deg]}}: per-layout belief offsets, added to --belief-offset (dev)")
     r.add_argument("--mode-b", action="store_true", help="no in-hand re-measure, a refine hook that sees nothing (dev)")
     r.add_argument("--look-read", choices=("top_feature", "axis"), default=None,
                    help="mode B: a wrist look reads the object as perception's keyhole read (residual 0.4 mm / 0.8 deg; "

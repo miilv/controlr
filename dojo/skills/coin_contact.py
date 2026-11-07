@@ -79,6 +79,37 @@ RESERVE_SAME = 80             # env steps a same-arm pick needs left (pick + car
 RESERVE_CROSS = 150           # ... a pick that needs an in-air handover
 
 
+SWITCHES = {"disc_align": "walls", "disc_snap": "on", "disc_lift": "shallow", "disc_seat": "table",
+            "disc_release": "staged", "disc_reserve": "on"}
+# what a chooser's ``insert_into(..., disc_contact="on")`` enables for that call (fixed before the fresh panel)
+PROFILE = {"disc_align": "walls", "disc_snap": "on", "disc_lift": "shallow", "disc_seat": "table",
+           "disc_release": "staged"}
+
+
+class scoped:
+    """``with scoped(sk, mode)``: None leaves the Skills switches as configured; "on" sets ``PROFILE`` (others off),
+    "off" sets every switch off; restored on exit, also on exceptions."""
+
+    def __init__(self, sk, mode: str | None):
+        if mode not in (None, "on", "off"):
+            raise ValueError(f"disc_contact={mode!r}: None, 'on' or 'off'")
+        self.sk, self.mode, self.saved = sk, mode, None
+
+    def __enter__(self):
+        if self.mode is None:
+            return self
+        self.saved = {k: getattr(self.sk, k, "off") for k in SWITCHES}
+        for k in SWITCHES:
+            setattr(self.sk, k, PROFILE.get(k, "off") if self.mode == "on" else "off")
+        return self
+
+    def __exit__(self, *exc):
+        if self.saved is not None:
+            for k, v in self.saved.items():
+                setattr(self.sk, k, v)
+        return False
+
+
 def on(sk, name: str, value: str) -> bool:
     return getattr(sk, name, "off") == value
 
@@ -344,4 +375,4 @@ def reserve_ok(sk, cross: bool) -> tuple[bool, int]:
     return left >= need, left
 
 
-__all__ = ["wall_fit", "wall_probe", "pick_kw", "place_kw", "edge_floor", "seat_post_lift", "reserve_ok"]
+__all__ = ["scoped", "wall_fit", "wall_probe", "pick_kw", "place_kw", "edge_floor", "seat_post_lift", "reserve_ok"]

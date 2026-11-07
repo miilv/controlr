@@ -134,3 +134,28 @@ def test_offset_belief_provider_keeps_a_written_pose():
     o2 = prov.refresh({}).obj("cube")
     assert np.allclose(o2.pos[:2], pos[:2], atol=1e-6) and np.allclose(o2.R, R, atol=1e-6)
     assert prov.writes[-1]["writer"] == "wall_probe"
+
+
+def test_disc_contact_argument_scopes_the_profile_to_one_call_and_restores():
+    sk = SimpleNamespace(disc_seat="off", disc_snap="on")
+    with CC.scoped(sk, "on"):
+        assert all(getattr(sk, k) == CC.PROFILE.get(k, "off") for k in CC.SWITCHES)
+    assert sk.disc_seat == "off" and sk.disc_snap == "on" and sk.disc_align == "off"
+    with pytest.raises(RuntimeError):
+        with CC.scoped(sk, "off"):
+            assert sk.disc_snap == "off"
+            raise RuntimeError("x")
+    assert sk.disc_snap == "on"
+    with CC.scoped(sk, None):
+        assert sk.disc_snap == "on"
+    with pytest.raises(ValueError):
+        CC.scoped(sk, "maybe")
+
+
+def test_insert_into_takes_disc_contact_and_no_task_name_reaches_the_switches():
+    import inspect
+
+    from dojo.skills import library
+    assert inspect.signature(library.insert_into).parameters["disc_contact"].default is None
+    src = inspect.getsource(CC)
+    assert "deposit_coin" not in src.split('"""', 2)[2]          # no task-name key below the module docstring
