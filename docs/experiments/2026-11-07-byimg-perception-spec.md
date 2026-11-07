@@ -4,7 +4,8 @@ This is an execution specification, not authorization to dispatch camera jobs.
 Wait until compute6's camera lanes drain and the lead schedules this work. No
 camera run, model call, board change or perception change was made for this spec.
 The current rendered frame-0 record has no useful detections: B1 and agentic
-miss all six labels. The old audit found only proxy backgrounds for
+miss all six required labels (`target`, `object1`–`object3`, `basket`,
+`photo`); the conveyor is additional scene context. The old audit found only proxy backgrounds for
 `Dynamic/conveyor/00001`; an unrelated lane inventory lists a directory of the
 same name. A directory name is not evidence of usable native calibration.
 Verify its provenance and pixels rather than overwriting or assuming it fixes
@@ -87,7 +88,8 @@ stages only after manifests and required imagery have been archived.
    cam_head_clean,cam_head_clean_unseen}.png` and `provenance.json`. Inspect
    median images and unseen mask; the belt must be background and riders must
    leave no stationary silhouettes. Confirm `segment.with_scene` actually
-   selects this fixture key in the intended runtime configuration. Hash the
+   selects this fixture key with `DOJO_BG_FOLDS="$OUT/bg51"` and
+   `DOJO_CALIB_SET=frozen_d0_100040_49` in the intended runtime. Hash the
    entire private frozen set. Do not build leave-one-out measurement folds.
 
 4. **Offline measurement, same pixels A/B.** Capture the ten measurement

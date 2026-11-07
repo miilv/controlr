@@ -37,8 +37,18 @@ def pick_target(sk, target, container, velocity, picker, ignore):
     # The held hollow basket's contact volume is excluded, as during loading.
     # Native physics remains active; all other obstacles and joint bounds remain.
     ignored = tuple(ignore) + (container,)
+    obj = sk.refresh().obj(target)
+    # Thin riders need time for the actual arm to reach its approach pose.
+    timing = {"approach_settle": 24} if obj.top_z - obj.bottom_z < 0.030 else {}
+    before = sk.ex.steps_used
     result = I.pick_from_belt(sk, target, velocity, lift=I.target_lift(sk),
-                              arms=[picker], ignore=ignored)
+                              arms=[picker], ignore=ignored, **timing)
+    if result.status == "ik_fail" and sk.ex.steps_used == before:
+        # Only a planning-only miss permits a new pull trajectory from this state.
+        result = I.pick_from_belt(
+            sk, target, velocity, lift=I.target_lift(sk), pull=0.10,
+            arms=[picker], ignore=ignored, **timing,
+        )
     if result.ok or result.status != "grasp_slip":
         return result
     failed = getattr(sk, "notes_belt_method", None)
@@ -49,7 +59,7 @@ def pick_target(sk, target, container, velocity, picker, ignore):
         sk.belt_waist_first = "on"
         return I.pick_from_belt(
             sk, target, velocity, lift=I.target_lift(sk), arms=[picker],
-            ignore=ignored, skip_methods=(failed,) if failed else (),
+            ignore=ignored, skip_methods=(failed,) if failed else (), **timing,
         )
     finally:
         if previous is None:

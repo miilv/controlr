@@ -205,7 +205,9 @@ def test_retry_keeps_basket_arm_closed_and_restores_absent_flag_on_error(monkeyp
     from dojo.skills import basket_transfer as T
 
     calls = []
-    sk = NS(notes_belt_method="waist", home=lambda **kwargs: calls.append(kwargs))
+    sk = NS(notes_belt_method="waist", home=lambda **kwargs: calls.append(kwargs),
+            refresh=lambda: NS(obj=lambda _: NS(top_z=0.1, bottom_z=0.0)),
+            ex=NS(steps_used=0))
     def pick(*args, **kwargs):
         if "skip_methods" in kwargs:
             assert sk.belt_waist_first == "on"
@@ -311,3 +313,61 @@ def test_end_wall_selection_preserves_default_and_can_mirror(monkeypatch):
     obj = NS(center_w=np.zeros(3))
     assert B.end_grasps(sk, obj, "right", np.array([1., 0., 0.])) == [grasps[1]]
     assert B.end_grasps(sk, obj, "left", np.array([1., 0., 0.]), side=-1) == [grasps[0]]
+
+
+@pytest.mark.parametrize("lead", [0, 3])
+def test_approach_settle_preserves_contact_phase_and_default_schedule(lead):
+    from dojo.skills.executor import EpisodeEnded
+
+    events = []
+    steps = [0]
+    def hold(n):
+        events.append(("hold", n))
+        steps[0] += n
+        ex.steps_used = steps[0]
+    def run_lists(plans, name):
+        events.append((name, len(plans["left"])))
+        if name == "belt pick object":
+            raise EpisodeEnded("stop before contact")
+        steps[0] += len(plans["left"])
+        ex.steps_used = steps[0]
+    ex = NS(steps_used=0, hold=hold, run_lists=run_lists)
+    # Zero belt speed isolates scheduling from tracking correction.
+    obj = NS(pos=np.zeros(3))
+    sk = NS(refresh=lambda: NS(obj=lambda _: obj), ex=ex, log=lambda _: None)
+    g = NS(method="top", note="mock")
+    plan = ("left", 20, [(np.zeros(6), 1.0)] * 5, [], g, [], 1.0)
+    result = I.pick_from_belt(sk, "object", np.zeros(2), planned_intercept=plan,
+                              approach_settle=lead)
+    assert result.status == "ended"
+    assert ex.steps_used == 12  # Contact minus the unchanged eight-step descent.
+    assert events == ([("hold", 7), ("belt approach", 5), ("belt pick object", 0)]
+                      if lead == 0 else
+                      [("hold", 4), ("belt approach", 5), ("hold", 3),
+                       ("belt pick object", 0)])
+
+
+@pytest.mark.parametrize("height,expected", [(0.024, 24), (0.05, 0)])
+def test_recovery_limits_timing_to_thin_riders_and_pull_to_unexecuted_misses(monkeypatch, height, expected):
+    from dojo.skills import basket_transfer as T
+
+    calls = []
+    sk = NS(refresh=lambda: NS(obj=lambda _: NS(top_z=height, bottom_z=0.0)),
+            ex=NS(steps_used=0))
+    def pick(*args, **kw):
+        calls.append(kw)
+        return NS(ok=False, status="ik_fail")
+    monkeypatch.setattr(I, "pick_from_belt", pick)
+    monkeypatch.setattr(I, "target_lift", lambda _: 0.125)
+    T.pick_target(sk, "object", "box", np.zeros(2), "left", ())
+    assert len(calls) == 2
+    assert calls[0].get("approach_settle", 0) == expected
+    assert calls[1]["pull"] == 0.10
+    calls.clear()
+    def executed(*args, **kw):
+        calls.append(kw)
+        sk.ex.steps_used += 1
+        return NS(ok=False, status="ik_fail")
+    monkeypatch.setattr(I, "pick_from_belt", executed)
+    T.pick_target(sk, "object", "box", np.zeros(2), "left", ())
+    assert len(calls) == 1
