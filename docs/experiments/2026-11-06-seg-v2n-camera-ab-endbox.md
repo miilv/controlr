@@ -1,5 +1,9 @@
 # Additive v2n camera A/B: end-of-box snapshot
 
+> **Final verdict (lead, 2026-11-07): DOES NOT PASS.** The complete 70/70 panel and its reading are in
+> [journal 2026-11-06-ab-wave-verdicts](../journal/2026-11-06-ab-wave-verdicts.md) (seg v2n section). The snapshot
+> below is kept as recorded at the 21:51Z cutoff.
+
 **Verdict: pending.** At 2026-11-06 21:51:16 UTC, the runner had 57 paired
 results from the 70 registered pairs. Toast had not started; mugs had seven
 pairs. One pour result uses an automatic retry after an unscored unstable

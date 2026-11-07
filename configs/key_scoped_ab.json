@@ -1,0 +1,75 @@
+{
+  "baseline_candidate": "scripts/dojo/queues/2026-11-06-candidate.txt",
+  "baseline_candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "A_overrides": {
+    "key_handover": "v1",
+    "key_lean": "off",
+    "key_scope_task": "insert_key"
+  },
+  "B_overrides": {
+    "key_handover": "v2",
+    "key_lean": "on",
+    "key_scope_task": "insert_key"
+  },
+  "blocks": [
+    {
+      "name": "key-scoped-1",
+      "salt": "queue-key-scoped-20261107-86c805b148db08ccca4ba1ed4596477b5482dc8f20f40462",
+      "salt_sha256": "2ef447a1430b9fc52e593f87e5fcec8a0fa5a00e944e2303a3bdb7940a9ed81f"
+    },
+    {
+      "name": "key-scoped-2",
+      "salt": "queue-key-scoped-20261107-d91efde09e6cc502f93f22ec9f4985a19bfb06bc63ecc00a",
+      "salt_sha256": "58097fa155c44b3249114e9044e2317f66f8536ea5af5176f432ec259404e021"
+    },
+    {
+      "name": "key-scoped-refill-1",
+      "salt": "queue-key-scoped-20261107-073a191d2e45a8d5723c8cf9ebda4fa7809bdecd68ca7bf3",
+      "salt_sha256": "d74d14bb8c8caa4af2aa29bb7ddba6532980553129113a7cfca5ea5cf417e12c"
+    },
+    {
+      "name": "key-scoped-refill-2",
+      "salt": "queue-key-scoped-20261107-c3a432ca69c5de7eef2df453fc32c98e5666c781790762a2",
+      "salt_sha256": "f9dead5abb69d06d78512063c2f4cf5d43f3fcc32bd2088e00adf7c365004acd"
+    }
+  ],
+  "cells": [
+    {
+      "task": "insert_key",
+      "role": "gain",
+      "blocks": [
+        "key-scoped-1",
+        "key-scoped-2"
+      ],
+      "refill_blocks": [
+        "key-scoped-refill-1",
+        "key-scoped-refill-2"
+      ],
+      "pairs": 10
+    },
+    {
+      "task": "plug_in_charger",
+      "role": "guard",
+      "blocks": [
+        "key-scoped-1"
+      ],
+      "pairs": 5
+    },
+    {
+      "task": "stack_blocks",
+      "role": "strong_guard",
+      "blocks": [
+        "key-scoped-2"
+      ],
+      "pairs": 5
+    }
+  ],
+  "ids": [
+    100000,
+    100001,
+    100002,
+    100003,
+    100004
+  ],
+  "repeats_per_arm": 1
+}

@@ -1,0 +1,3135 @@
+{
+  "attempts": [
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100000,
+      "raw_validation": {
+        "from": "100000.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.3
+      },
+      "settle_validation": {
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            7.5,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 7.5,
+        "pass2_drift_deg": 4.681,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 6.2
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100000.json",
+        "bytes": 3916,
+        "sha256": "410f17c39f402868440bb5915855243fcdd0d40b9178564dd71a023b7dfdae10"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100001,
+      "raw_validation": {
+        "from": "100001.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.0
+      },
+      "settle_validation": {
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.27,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.266,
+        "pass2_drift_deg": 0.091,
+        "passes": 2,
+        "status": "ok",
+        "s": 6.4
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100001.json",
+        "bytes": 3915,
+        "sha256": "e15d11a2b79b0d60babfd692200ead418f8dda9c7247279498af8894097c4c69"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100001.settled.json",
+        "bytes": 4194,
+        "sha256": "212ff073408fb7578f9e5b7e71735dc938a17f79c61097caabe1ffdebe8f351b"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 3.4
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.86,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.863,
+        "pass2_drift_deg": 0.519,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.4
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100002.json",
+        "bytes": 3917,
+        "sha256": "2d9215d9d6f698dd71ea07a2955dcb83ead9e07680dd7f550320bafc1ed01633"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100002.settled.json",
+        "bytes": 4198,
+        "sha256": "e98438b70cf8d890df925f4c5b80705863cf532d67ac6d8592fafddc1ac17fc5"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100003,
+      "raw_validation": {
+        "from": "100003.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 3.5
+      },
+      "settle_validation": {
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.08,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.076,
+        "pass2_drift_deg": 0.077,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.9
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100003.json",
+        "bytes": 3919,
+        "sha256": "c4bb87f354cd780cd4345ff9bccaa12d9a29f668014e5a8d88a9307769221042"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100003.settled.json",
+        "bytes": 4198,
+        "sha256": "ceeaa3c5b402369650fa4a420e39cf96869dc80cc082ad58fbf8ae01901bfcce"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 3.5
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            3.53,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 3.532,
+        "pass2_drift_deg": 2.274,
+        "passes": 2,
+        "status": "ok",
+        "s": 9.5
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100004.json",
+        "bytes": 3914,
+        "sha256": "db82af83bc98dae512f05f593ff7cb5c2db45f31975eb0348acbf1225df1b968"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100004.settled.json",
+        "bytes": 4197,
+        "sha256": "424c7677d8ae798681646d008251248d5cf0c8fe661eb27e710dd3c96e8577c5"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-2",
+      "id": 100000,
+      "raw_validation": {
+        "from": "100000.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.5
+      },
+      "settle_validation": {
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            29.82,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 29.823,
+        "pass2_drift_deg": 24.238,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 9.7
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/insert_key/100000.json",
+        "bytes": 3915,
+        "sha256": "1b51f81ced383e9082b630db29c25a91353d3078f52b5e5d504a366e6db49828"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-2",
+      "id": 100001,
+      "raw_validation": {
+        "from": "100001.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.8
+      },
+      "settle_validation": {
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            23.47,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 23.472,
+        "pass2_drift_deg": 18.443,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 9.4
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/insert_key/100001.json",
+        "bytes": 3915,
+        "sha256": "d5d6496ac15ecf620fab17d0d69f38f647cc8439688472d753c1082a0ed59c00"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-2",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.5
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.04,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.04,
+        "pass2_drift_deg": 0.034,
+        "passes": 2,
+        "status": "ok",
+        "s": 9.8
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/insert_key/100002.json",
+        "bytes": 3912,
+        "sha256": "8c74db2671cb1d2cc8822327ed780e75c588c5f006c8cbc5aff7f7842219d317"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/insert_key/100002.settled.json",
+        "bytes": 4194,
+        "sha256": "c05b4251b6dacc7702d5b5d05dd55864ca5a5b6fbc1dd6f383820fc86532034a"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-2",
+      "id": 100003,
+      "raw_validation": {
+        "from": "100003.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.9
+      },
+      "settle_validation": {
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            35.96,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": false,
+        "pass2_drift_mm": NaN,
+        "pass2_drift_deg": NaN,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 8.8
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/insert_key/100003.json",
+        "bytes": 3919,
+        "sha256": "070b07d524c8f8d3e7c5e308dd5481b78c1c3caa9a2f579432cf17925e8e056f"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-2",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.2
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            19.49,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 19.488,
+        "pass2_drift_deg": 16.3,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 8.8
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/insert_key/100004.json",
+        "bytes": 3913,
+        "sha256": "9075f8ab96c71536d6a410069dfe065cfe7767231fce22fc4c5dce4368ee5ca4"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-1",
+      "id": 100000,
+      "raw_validation": {
+        "from": "100000.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.9
+      },
+      "settle_validation": {
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            15.94,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 15.942,
+        "pass2_drift_deg": 12.865,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 8.0
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-1/simlab/layouts/insert_key/100000.json",
+        "bytes": 3917,
+        "sha256": "8917d91a8a1df59eb1623c7ac3e9abc6a177c552f06d23b526ca31d2538654fe"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-1",
+      "id": 100001,
+      "raw_validation": {
+        "from": "100001.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            12.57,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 12.572,
+        "pass2_drift_deg": 8.382,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 8.3
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-1/simlab/layouts/insert_key/100001.json",
+        "bytes": 3914,
+        "sha256": "4bf22b5a3045a76866240ecfc96dbd281edad10fae73fdba234bc1dd4124294e"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-1",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.6
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.04,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.043,
+        "pass2_drift_deg": 0.047,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.1
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-1/simlab/layouts/insert_key/100002.json",
+        "bytes": 3918,
+        "sha256": "ad593d6301c57bc3f8c5cdde80fc34bfb531bea1916639b835ddac3e6bc3c519"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-1/simlab/layouts/insert_key/100002.settled.json",
+        "bytes": 4199,
+        "sha256": "af20c6c0c274cdd4c6f9bd5aec3e6f0d9856c9d1b03b5270da686d036b33a370"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-1",
+      "id": 100003,
+      "raw_validation": {
+        "from": "100003.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.3
+      },
+      "settle_validation": {
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            7.25,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 7.253,
+        "pass2_drift_deg": 6.233,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 7.1
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-1/simlab/layouts/insert_key/100003.json",
+        "bytes": 3918,
+        "sha256": "128d3460af6d1674fc9a24822429437ec98c99f685853c632d2a7daf3406208d"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-1",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            40.23,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": false,
+        "pass2_drift_mm": NaN,
+        "pass2_drift_deg": NaN,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 6.6
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-1/simlab/layouts/insert_key/100004.json",
+        "bytes": 3919,
+        "sha256": "b54d0ea5c81c47376ade747cb2773c20ce601056dd0ca1530c9387bea7a766ea"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-2",
+      "id": 100000,
+      "raw_validation": {
+        "from": "100000.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 3.7
+      },
+      "settle_validation": {
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            7.63,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 7.635,
+        "pass2_drift_deg": 7.183,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 8.2
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100000.json",
+        "bytes": 3914,
+        "sha256": "1716be94e4885e0d1a425ad97f7f434f66effe50b66c57f26b3d9be01c8b12fb"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-2",
+      "id": 100001,
+      "raw_validation": {
+        "from": "100001.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            4.25,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 4.248,
+        "pass2_drift_deg": 3.917,
+        "passes": 2,
+        "status": "ok",
+        "s": 9.9
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100001.json",
+        "bytes": 3918,
+        "sha256": "a287ccd00d0f4500c6041975bb08193e5d8145e2c7b49149ab6f35dfe2681829"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100001.settled.json",
+        "bytes": 4197,
+        "sha256": "b645b56d59ab60a6c3d349873227c331f2b38d733204360bc2c1cbc9c2546dd0"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-2",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.2
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            11.07,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 11.073,
+        "pass2_drift_deg": 8.185,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 8.7
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100002.json",
+        "bytes": 3915,
+        "sha256": "da03aa8a909396a8b656646d0a36ade0bd9ddd8a2eb798e4287df7d1a4346c38"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-2",
+      "id": 100003,
+      "raw_validation": {
+        "from": "100003.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.0
+      },
+      "settle_validation": {
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.2,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.197,
+        "pass2_drift_deg": 0.201,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.4
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100003.json",
+        "bytes": 3915,
+        "sha256": "a60265cbee9b4b3ca208851b14b3c6bb0a647b278accc16df0fbcff2cbfe884a"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100003.settled.json",
+        "bytes": 4194,
+        "sha256": "4d672a725ca2efce2dd5912a3958ebf51db60d5fecee0699aaa62fc3b5b0da06"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-2",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.7
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.26,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.26,
+        "pass2_drift_deg": 0.192,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.5
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100004.json",
+        "bytes": 3920,
+        "sha256": "e830ea0d000538e6d7d432d9ed132d7d0f3f123801e1b8f98ac1a0b0f14b8246"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100004.settled.json",
+        "bytes": 4200,
+        "sha256": "8e192abeee8daf03c6607b8aa39a813e9338ec3785c4bb955b7e8bac6a3bf59c"
+      }
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100000,
+      "raw_validation": {
+        "from": "100000.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.07,
+        "pass1_drift_deg": 0.25,
+        "pass2_top": [
+          [
+            "charger",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "socket",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 2,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.003,
+        "pass2_drift_deg": 0.01,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.7
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100000.json",
+        "bytes": 3958,
+        "sha256": "b8f0ef56dec0aa0be5d2061b3e7c2fa674a64806ed89feb1852588a518d58ce3"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100000.settled.json",
+        "bytes": 4286,
+        "sha256": "d6db26ba020c6012c2c1f8d23ce8a4b80ec2b17ef456bb9c131fd5330c475840"
+      }
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100001,
+      "raw_validation": {
+        "from": "100001.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.35,
+        "pass1_drift_deg": 0.25,
+        "pass2_top": [
+          [
+            "charger",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "socket",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 2,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.0,
+        "pass2_drift_deg": 0.037,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.9
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100001.json",
+        "bytes": 3955,
+        "sha256": "3e6be24a30a7b8759c76f6f6eb2f98dc4bedb0460fbe6595a46e198bacdeee25"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100001.settled.json",
+        "bytes": 4285,
+        "sha256": "d46acf67eab6ece00672c4b641febf9e13fa72c864aa2e3ec584cdbbdeff8329"
+      }
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.2
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.07,
+        "pass1_drift_deg": 0.25,
+        "pass2_top": [
+          [
+            "charger",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "socket",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 2,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.0,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.0
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100002.json",
+        "bytes": 3958,
+        "sha256": "43051f1a05873610c78e5b516e3e0282753381f52ebdb3f6b15a76121003a028"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100002.settled.json",
+        "bytes": 4288,
+        "sha256": "1579873c49ebb66f598e17907898e7f2e68564a001e8fe69a89f6c034446b9a6"
+      }
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100003,
+      "raw_validation": {
+        "from": "100003.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.3
+      },
+      "settle_validation": {
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.14,
+        "pass1_drift_deg": 0.25,
+        "pass2_top": [
+          [
+            "socket",
+            0.11,
+            "Rigid"
+          ],
+          [
+            "charger",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 2,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.109,
+        "pass2_drift_deg": 0.079,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.1
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100003.json",
+        "bytes": 3961,
+        "sha256": "0467c6a29e8b30be447478003e6881bec42a9606297080f5e3cbbc02c99a473e"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100003.settled.json",
+        "bytes": 4293,
+        "sha256": "813fc24be7f66c4120d01fe2ca05c104847c380a349923790961e3e6aca9ea5f"
+      }
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.2
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.28,
+        "pass1_drift_deg": 0.25,
+        "pass2_top": [
+          [
+            "socket",
+            0.36,
+            "Rigid"
+          ],
+          [
+            "charger",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 2,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.357,
+        "pass2_drift_deg": 0.218,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.1
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100004.json",
+        "bytes": 3957,
+        "sha256": "c11c11a89b9a79b968cc9ae2ab7a73d661a0da077cb905df05ee87b9ac1a321e"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100004.settled.json",
+        "bytes": 4292,
+        "sha256": "cfafe4f9391fc22d73549650827a56a3b05e7925e72a6d45d863cc23edf07011"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100000,
+      "raw_validation": {
+        "from": "100000.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.8
+      },
+      "settle_validation": {
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.14,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.5
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100000.json",
+        "bytes": 4464,
+        "sha256": "89c2649801eb14365b3ca81a179c94171bad9f859c02b1c204fc1949f755dd27"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100000.settled.json",
+        "bytes": 4801,
+        "sha256": "9ef3949f18bf3f3c73f934a1323941b81518227f3491a1560b3b2a9681479400"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100001,
+      "raw_validation": {
+        "from": "100001.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.14,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.6
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100001.json",
+        "bytes": 4459,
+        "sha256": "e9d70d7130ea92140544bf96441a7b31dd34ce498ca17737be9f723e79a662d9"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100001.settled.json",
+        "bytes": 4795,
+        "sha256": "44e3f2f8aaa3d35fd4a6f9ee17f9f1e4d05f286648e57e5673683a8fa6f19118"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.4
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.21,
+        "pass1_drift_deg": 0.49,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.0,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.1
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100002.json",
+        "bytes": 4465,
+        "sha256": "f00ab5c4bd3f092d95143d391f01f306aea6bad4d7ec2fb72942b643a3593a3d"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100002.settled.json",
+        "bytes": 4805,
+        "sha256": "9641abb422a067301a514435b6c24db47021b69e8e4e985462d82aa1e36e13f4"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100003,
+      "raw_validation": {
+        "from": "100003.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.2
+      },
+      "settle_validation": {
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.15,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.001,
+        "pass2_drift_deg": 0.004,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.6
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100003.json",
+        "bytes": 4476,
+        "sha256": "90e7508055ca76a97c06d867b6bb47c9edf1929d113b1413bac9c9a9615f575e"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100003.settled.json",
+        "bytes": 4806,
+        "sha256": "ff423148d5760fefc6e4631fbc879c592159771a8f86ea856aeeb46d007195ba"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 4.79,
+        "pass1_drift_deg": 0.49,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.001,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.3
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100004.json",
+        "bytes": 4449,
+        "sha256": "a711d387b7df2023316736316dcc253bea0b6de50559d143ee0aa5c968f851c8"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100004.settled.json",
+        "bytes": 4804,
+        "sha256": "7d4693099a494edf4dad5b00de8774a310667e98736d9aeadcd7b0eecabcc87d"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-3",
+      "id": 100000,
+      "raw_validation": {
+        "from": "100000.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.3
+      },
+      "settle_validation": {
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            16.02,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 16.017,
+        "pass2_drift_deg": 13.057,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 10.1
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-3/simlab/layouts/insert_key/100000.json",
+        "bytes": 3917,
+        "sha256": "170cc8375f4149187a8d88b557b92fae34b2b7ab2261548fa636faada14ead2f"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-3",
+      "id": 100001,
+      "raw_validation": {
+        "from": "100001.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.1
+      },
+      "settle_validation": {
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            9.77,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 9.773,
+        "pass2_drift_deg": 6.866,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 10.2
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-3/simlab/layouts/insert_key/100001.json",
+        "bytes": 3910,
+        "sha256": "2025fdb6407cd9a2d38789f5fafd398102482cdbc8a1031ce576ccded474e259"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-3",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.6
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.37,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.37,
+        "pass2_drift_deg": 0.256,
+        "passes": 2,
+        "status": "ok",
+        "s": 9.7
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-3/simlab/layouts/insert_key/100002.json",
+        "bytes": 3921,
+        "sha256": "04009fa629d61f3c7297bb95a4f34751554d745dc9b66fb3c3c84acb1cd7ccea"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-3/simlab/layouts/insert_key/100002.settled.json",
+        "bytes": 4200,
+        "sha256": "4c06eb90815f93aa3273bc2b7b28791ded1720242aa7c942d5e2fb11681fd2eb"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-3",
+      "id": 100003,
+      "raw_validation": {
+        "from": "100003.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.4
+      },
+      "settle_validation": {
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            18.66,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 18.659,
+        "pass2_drift_deg": 15.97,
+        "passes": 2,
+        "status": "dropped: settled record not stable",
+        "s": 9.8
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-3/simlab/layouts/insert_key/100003.json",
+        "bytes": 3920,
+        "sha256": "c0065fb77a525501973f9cea598119bce3f891a558af1822517f3281125ec479"
+      },
+      "valid": false
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-3",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.2
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.07,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.074,
+        "pass2_drift_deg": 0.075,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.5
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-3/simlab/layouts/insert_key/100004.json",
+        "bytes": 3917,
+        "sha256": "7fe3ac99ee336448b41e1080213a293d630a10702aed36d3d5499abf22130590"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-3/simlab/layouts/insert_key/100004.settled.json",
+        "bytes": 4196,
+        "sha256": "4529e32b25dc7843a95517e1234176ff4cd8750d1867880558e86ba06d48847f"
+      }
+    }
+  ],
+  "gain": [
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100001,
+      "raw_validation": {
+        "from": "100001.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.0
+      },
+      "settle_validation": {
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.27,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.266,
+        "pass2_drift_deg": 0.091,
+        "passes": 2,
+        "status": "ok",
+        "s": 6.4
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100001.json",
+        "bytes": 3915,
+        "sha256": "e15d11a2b79b0d60babfd692200ead418f8dda9c7247279498af8894097c4c69"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100001.settled.json",
+        "bytes": 4194,
+        "sha256": "212ff073408fb7578f9e5b7e71735dc938a17f79c61097caabe1ffdebe8f351b"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 3.4
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.86,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.863,
+        "pass2_drift_deg": 0.519,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.4
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100002.json",
+        "bytes": 3917,
+        "sha256": "2d9215d9d6f698dd71ea07a2955dcb83ead9e07680dd7f550320bafc1ed01633"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100002.settled.json",
+        "bytes": 4198,
+        "sha256": "e98438b70cf8d890df925f4c5b80705863cf532d67ac6d8592fafddc1ac17fc5"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100003,
+      "raw_validation": {
+        "from": "100003.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 3.5
+      },
+      "settle_validation": {
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.08,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.076,
+        "pass2_drift_deg": 0.077,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.9
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100003.json",
+        "bytes": 3919,
+        "sha256": "c4bb87f354cd780cd4345ff9bccaa12d9a29f668014e5a8d88a9307769221042"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100003.settled.json",
+        "bytes": 4198,
+        "sha256": "ceeaa3c5b402369650fa4a420e39cf96869dc80cc082ad58fbf8ae01901bfcce"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-1",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 3.5
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            3.53,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 3.532,
+        "pass2_drift_deg": 2.274,
+        "passes": 2,
+        "status": "ok",
+        "s": 9.5
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100004.json",
+        "bytes": 3914,
+        "sha256": "db82af83bc98dae512f05f593ff7cb5c2db45f31975eb0348acbf1225df1b968"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/insert_key/100004.settled.json",
+        "bytes": 4197,
+        "sha256": "424c7677d8ae798681646d008251248d5cf0c8fe661eb27e710dd3c96e8577c5"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-2",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.5
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.04,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.04,
+        "pass2_drift_deg": 0.034,
+        "passes": 2,
+        "status": "ok",
+        "s": 9.8
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/insert_key/100002.json",
+        "bytes": 3912,
+        "sha256": "8c74db2671cb1d2cc8822327ed780e75c588c5f006c8cbc5aff7f7842219d317"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/insert_key/100002.settled.json",
+        "bytes": 4194,
+        "sha256": "c05b4251b6dacc7702d5b5d05dd55864ca5a5b6fbc1dd6f383820fc86532034a"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-1",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.6
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.04,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.043,
+        "pass2_drift_deg": 0.047,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.1
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-1/simlab/layouts/insert_key/100002.json",
+        "bytes": 3918,
+        "sha256": "ad593d6301c57bc3f8c5cdde80fc34bfb531bea1916639b835ddac3e6bc3c519"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-1/simlab/layouts/insert_key/100002.settled.json",
+        "bytes": 4199,
+        "sha256": "af20c6c0c274cdd4c6f9bd5aec3e6f0d9856c9d1b03b5270da686d036b33a370"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-2",
+      "id": 100001,
+      "raw_validation": {
+        "from": "100001.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            4.25,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 4.248,
+        "pass2_drift_deg": 3.917,
+        "passes": 2,
+        "status": "ok",
+        "s": 9.9
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100001.json",
+        "bytes": 3918,
+        "sha256": "a287ccd00d0f4500c6041975bb08193e5d8145e2c7b49149ab6f35dfe2681829"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100001.settled.json",
+        "bytes": 4197,
+        "sha256": "b645b56d59ab60a6c3d349873227c331f2b38d733204360bc2c1cbc9c2546dd0"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-2",
+      "id": 100003,
+      "raw_validation": {
+        "from": "100003.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.0
+      },
+      "settle_validation": {
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.2,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.197,
+        "pass2_drift_deg": 0.201,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.4
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100003.json",
+        "bytes": 3915,
+        "sha256": "a60265cbee9b4b3ca208851b14b3c6bb0a647b278accc16df0fbcff2cbfe884a"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100003.settled.json",
+        "bytes": 4194,
+        "sha256": "4d672a725ca2efce2dd5912a3958ebf51db60d5fecee0699aaa62fc3b5b0da06"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-2",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.7
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.26,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.26,
+        "pass2_drift_deg": 0.192,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.5
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100004.json",
+        "bytes": 3920,
+        "sha256": "e830ea0d000538e6d7d432d9ed132d7d0f3f123801e1b8f98ac1a0b0f14b8246"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-2/simlab/layouts/insert_key/100004.settled.json",
+        "bytes": 4200,
+        "sha256": "8e192abeee8daf03c6607b8aa39a813e9338ec3785c4bb955b7e8bac6a3bf59c"
+      }
+    },
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-3",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.6
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.37,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.37,
+        "pass2_drift_deg": 0.256,
+        "passes": 2,
+        "status": "ok",
+        "s": 9.7
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-3/simlab/layouts/insert_key/100002.json",
+        "bytes": 3921,
+        "sha256": "04009fa629d61f3c7297bb95a4f34751554d745dc9b66fb3c3c84acb1cd7ccea"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-3/simlab/layouts/insert_key/100002.settled.json",
+        "bytes": 4200,
+        "sha256": "4c06eb90815f93aa3273bc2b7b28791ded1720242aa7c942d5e2fb11681fd2eb"
+      }
+    }
+  ],
+  "unused_valid_gain": [
+    {
+      "task": "insert_key",
+      "block": "key-scoped-refill-3",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 5.2
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.03,
+        "pass1_drift_deg": 0.26,
+        "pass2_top": [
+          [
+            "key",
+            0.07,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ],
+          [
+            "slot",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 1,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.074,
+        "pass2_drift_deg": 0.075,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.5
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-3/simlab/layouts/insert_key/100004.json",
+        "bytes": 3917,
+        "sha256": "7fe3ac99ee336448b41e1080213a293d630a10702aed36d3d5499abf22130590"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-refill-3/simlab/layouts/insert_key/100004.settled.json",
+        "bytes": 4196,
+        "sha256": "4529e32b25dc7843a95517e1234176ff4cd8750d1867880558e86ba06d48847f"
+      }
+    }
+  ],
+  "guards": [
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100000,
+      "raw_validation": {
+        "from": "100000.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.07,
+        "pass1_drift_deg": 0.25,
+        "pass2_top": [
+          [
+            "charger",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "socket",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 2,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.003,
+        "pass2_drift_deg": 0.01,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.7
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100000.json",
+        "bytes": 3958,
+        "sha256": "b8f0ef56dec0aa0be5d2061b3e7c2fa674a64806ed89feb1852588a518d58ce3"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100000.settled.json",
+        "bytes": 4286,
+        "sha256": "d6db26ba020c6012c2c1f8d23ce8a4b80ec2b17ef456bb9c131fd5330c475840"
+      }
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100001,
+      "raw_validation": {
+        "from": "100001.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.35,
+        "pass1_drift_deg": 0.25,
+        "pass2_top": [
+          [
+            "charger",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "socket",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 2,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.0,
+        "pass2_drift_deg": 0.037,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.9
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100001.json",
+        "bytes": 3955,
+        "sha256": "3e6be24a30a7b8759c76f6f6eb2f98dc4bedb0460fbe6595a46e198bacdeee25"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100001.settled.json",
+        "bytes": 4285,
+        "sha256": "d46acf67eab6ece00672c4b641febf9e13fa72c864aa2e3ec584cdbbdeff8329"
+      }
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.2
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.07,
+        "pass1_drift_deg": 0.25,
+        "pass2_top": [
+          [
+            "charger",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "socket",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 2,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.0,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.0
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100002.json",
+        "bytes": 3958,
+        "sha256": "43051f1a05873610c78e5b516e3e0282753381f52ebdb3f6b15a76121003a028"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100002.settled.json",
+        "bytes": 4288,
+        "sha256": "1579873c49ebb66f598e17907898e7f2e68564a001e8fe69a89f6c034446b9a6"
+      }
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100003,
+      "raw_validation": {
+        "from": "100003.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.3
+      },
+      "settle_validation": {
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.14,
+        "pass1_drift_deg": 0.25,
+        "pass2_top": [
+          [
+            "socket",
+            0.11,
+            "Rigid"
+          ],
+          [
+            "charger",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 2,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.109,
+        "pass2_drift_deg": 0.079,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.1
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100003.json",
+        "bytes": 3961,
+        "sha256": "0467c6a29e8b30be447478003e6881bec42a9606297080f5e3cbbc02c99a473e"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100003.settled.json",
+        "bytes": 4293,
+        "sha256": "813fc24be7f66c4120d01fe2ca05c104847c380a349923790961e3e6aca9ea5f"
+      }
+    },
+    {
+      "task": "plug_in_charger",
+      "block": "key-scoped-1",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.2
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.28,
+        "pass1_drift_deg": 0.25,
+        "pass2_top": [
+          [
+            "socket",
+            0.36,
+            "Rigid"
+          ],
+          [
+            "charger",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "camera_stand",
+            0.0,
+            "Geometry"
+          ]
+        ],
+        "objects_written": 2,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.357,
+        "pass2_drift_deg": 0.218,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.1
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100004.json",
+        "bytes": 3957,
+        "sha256": "c11c11a89b9a79b968cc9ae2ab7a73d661a0da077cb905df05ee87b9ac1a321e"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-1/simlab/layouts/plug_in_charger/100004.settled.json",
+        "bytes": 4292,
+        "sha256": "cfafe4f9391fc22d73549650827a56a3b05e7925e72a6d45d863cc23edf07011"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100000,
+      "raw_validation": {
+        "from": "100000.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.8
+      },
+      "settle_validation": {
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.14,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.5
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100000.json",
+        "bytes": 4464,
+        "sha256": "89c2649801eb14365b3ca81a179c94171bad9f859c02b1c204fc1949f755dd27"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100000.settled.json",
+        "bytes": 4801,
+        "sha256": "9ef3949f18bf3f3c73f934a1323941b81518227f3491a1560b3b2a9681479400"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100001,
+      "raw_validation": {
+        "from": "100001.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.14,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.6
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100001.json",
+        "bytes": 4459,
+        "sha256": "e9d70d7130ea92140544bf96441a7b31dd34ce498ca17737be9f723e79a662d9"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100001.settled.json",
+        "bytes": 4795,
+        "sha256": "44e3f2f8aaa3d35fd4a6f9ee17f9f1e4d05f286648e57e5673683a8fa6f19118"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100002,
+      "raw_validation": {
+        "from": "100002.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.4
+      },
+      "settle_validation": {
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.21,
+        "pass1_drift_deg": 0.49,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.0,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.1
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100002.json",
+        "bytes": 4465,
+        "sha256": "f00ab5c4bd3f092d95143d391f01f306aea6bad4d7ec2fb72942b643a3593a3d"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100002.settled.json",
+        "bytes": 4805,
+        "sha256": "9641abb422a067301a514435b6c24db47021b69e8e4e985462d82aa1e36e13f4"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100003,
+      "raw_validation": {
+        "from": "100003.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.2
+      },
+      "settle_validation": {
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.15,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.001,
+        "pass2_drift_deg": 0.004,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.6
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100003.json",
+        "bytes": 4476,
+        "sha256": "90e7508055ca76a97c06d867b6bb47c9edf1929d113b1413bac9c9a9615f575e"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100003.settled.json",
+        "bytes": 4806,
+        "sha256": "ff423148d5760fefc6e4631fbc879c592159771a8f86ea856aeeb46d007195ba"
+      }
+    },
+    {
+      "task": "stack_blocks",
+      "block": "key-scoped-2",
+      "id": 100004,
+      "raw_validation": {
+        "from": "100004.json",
+        "check": "simlab/raw-check v1",
+        "extra_steps": 250,
+        "rest_window": 100,
+        "robodojo_stable": true,
+        "belt_mm_per_window": 0.0,
+        "why": [],
+        "status": "raw ok",
+        "s": 4.1
+      },
+      "settle_validation": {
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 4.79,
+        "pass1_drift_deg": 0.49,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.001,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.3
+      },
+      "raw": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100004.json",
+        "bytes": 4449,
+        "sha256": "a711d387b7df2023316736316dcc253bea0b6de50559d143ee0aa5c968f851c8"
+      },
+      "valid": true,
+      "settled": {
+        "path": "/home/robotics/dojo-data/key-1107/key-scoped-2/simlab/layouts/stack_blocks/100004.settled.json",
+        "bytes": 4804,
+        "sha256": "7d4693099a494edf4dad5b00de8774a310667e98736d9aeadcd7b0eecabcc87d"
+      }
+    }
+  ],
+  "gain_pairs": 10,
+  "guard_valid_pairs": 10,
+  "lead_amendment": "One extra block, lowest valid id only; if zero valid, explicit n=9 dispatch authorized; no further generation"
+}

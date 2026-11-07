@@ -583,3 +583,40 @@ asset extents, never layout identifiers. Other scenes follow the baseline path.
 The four scoped switches restore on return or exception; G3 records the decision
 and its geometric measurements. This is a development heuristic, not a stability
 guarantee.
+
+The default-off `egg_reach=search` fill-holes profile expands round grasp
+orientations and axial-spin drop candidates. Before normal collision/path planning,
+it screens grasp, pre-grasp, lift, release and hover endpoints for native IK and
+0.60 m planar reach. The drop operation temporarily intersects the current joint
+bounds with measured j5 bounds, |j4| <= 1.6 and |j6| <= 3.0; bounds and the IK cache
+are restored/invalidated even on exceptions. Both arms retain their ordinary
+nearest-first ordering. Endpoint clearance does not certify a carry path. JSON
+`[egg-reach]` logs retain bounded-search failures, distances and per-joint margins.
+
+### Arrange approach experiments
+
+The runtime and G3 expose independent switches `push_approach=tilted` and
+`arrange_hover=low`, both default `off`. Tilted face pushes append 65/50-degree
+approaches with fingertip-position compensation after the original poses.
+The low arrange hover uses 5 mm pre-height and 3 mm support clearance.
+Both retain the existing collision-checked motion and placement tail.
+
+`arrange_route=lateral` (default `off`) separately adds four checked lateral
+waypoints after a placement transit's legacy collision failure. Unreachable
+endpoints are refused directly, and both legs must plan before execution.
+
+### Task-scoped actor relocation
+
+`RuntimeConfig.watch_relocate_task` defaults to the empty string, preserving the
+legacy `watch_relocate` boolean. Setting it to `make_kong` replaces that boolean
+with an exact match against the instruction-routed perception vocabulary; other
+values are rejected. The generic watcher remains installed on all perception
+scenes with `watch=true`. Only its relocation branch is scoped: other scenes keep
+the existing watch/lay-face-up behavior and skill parameters. No launcher task
+metadata, layout identity or checker state is consumed. The relocation search,
+convergence limits and writes retain their existing behavior.
+Actor lay-face-up events (`watch_lay`) and accepted relocation events retain full-precision copied `before7` and
+`after7` poses for offline write auditing. Rejected reads carry no pose pair.
+The audit includes these exact writes alongside the coarse version log,
+replacing a matching coarse endpoint record to avoid counting a relocation twice;
+subthreshold relocation writes remain visible. These fields do not feed policy decisions.

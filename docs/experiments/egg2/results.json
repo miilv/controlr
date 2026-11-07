@@ -1,0 +1,3398 @@
+{
+  "controller": "8be287c3",
+  "layout_sha256": {
+    "100000.settled.json": "16fab329d32fd420401d65a6ad7e8d613453e145de7e1afa3a7e103388260272",
+    "100001.settled.json": "b0682eaae0b9dcb39be6c09de2c56ce0b082f80d25354d8e875ad02d94ec523a",
+    "100010.settled.json": "4cc172cafe99950e0b8b9fb375f99706ab7125ef635ae2b401339f6ad57f9d19",
+    "100012.settled.json": "5a912142f4b689f35d7d858e63b12363079b6723c80c7c59085e6236ab9ba870",
+    "100015.settled.json": "1ad8c255f156c43a295459ffcec44a62de1250866bba733cb6d1c26057b1ae66",
+    "100016.settled.json": "b176df730cf97fb2e3e264d7503fa22fd7bfbd2f753a896ce6390ca1a284abd9",
+    "100019.settled.json": "cb1865ce0239f1224ab1d9306fd6d7c8bd582ee01b3fc7bdc351fa392b4a023b",
+    "100053.settled.json": "147a9b28fd7c28dab42a2dd35671d13614118618fe8434e7cdd6938934565ce3",
+    "100054.settled.json": "538ab880a596d16dba92b2e2b8ce2a4470c4c5a4afd5f119f097ee16ab32aefd",
+    "100055.settled.json": "ae5085e49da46fe913bacc2e92141a4a725bd76fe9bd293d3de5c50919bcb47d"
+  },
+  "episodes": [
+    {
+      "seed": 100000,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 209,
+      "step_lim": 700,
+      "wall_s": 32.0,
+      "plan_s": 13.2,
+      "category": "place_miss",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target1', 'target0'], failed: ['target3', 'target2']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 31,
+          "arm": "left",
+          "note": "round roll 12 tilt 0, in-hand drift 0.3 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": false,
+          "status": "place_miss",
+          "steps": 27,
+          "arm": "left",
+          "note": "target0 8 mm off the wall (left, lean 0, +14 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 30,
+          "arm": "left",
+          "note": "round roll 12 tilt 0, in-hand drift 1.6 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 18,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": null
+      },
+      "mode": "on",
+      "run": "paired-100000-on",
+      "all_ik": {
+        "queries": 1306,
+        "failed": 441
+      },
+      "screen_ik": {
+        "queries": 1209,
+        "failed": 409
+      },
+      "screen_phases": [
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 32,
+          "kept": 30
+        },
+        {
+          "phase": "drop:target1",
+          "arm": "left",
+          "total": 336,
+          "kept": 152
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "left",
+          "total": 14,
+          "kept": 12
+        },
+        {
+          "phase": "drop:target0",
+          "arm": "left",
+          "total": 336,
+          "kept": 131
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "left",
+          "total": 30,
+          "kept": 14
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 30,
+          "kept": 0
+        }
+      ],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target1: left picks (round roll 12 tilt 0, pre 98 mm)",
+        "[holes] target1 dropped over the hole at [-0.018, -0.22] (offset 12 mm, yaw 0, side -1; ok): in a hole, pos [-0.02, -0.217, 0.794] tilt 154",
+        "[holes] target3: no nudge (left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; )",
+        "[holes] target3: no pick",
+        "[holes] target0: left picks (round roll 12 tilt 0, pre 95 mm)",
+        "[holes] target0 dropped over the hole at [0.036, -0.219] (offset 12 mm, yaw 240, side +1; ok): in a hole, pos [0.034, -0.217, 0.793] tilt 51",
+        "[holes] target2: left: no pick (left: 0 feasible of 14 (ik 0, collision 14))",
+        "[holes] target2: no nudge (left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; )",
+        "[holes] target2: no pick"
+      ],
+      "planner_ik": {
+        "queries": 97,
+        "failed": 32
+      }
+    },
+    {
+      "seed": 100001,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 209,
+      "step_lim": 700,
+      "wall_s": 42.1,
+      "plan_s": 21.7,
+      "category": "not_home",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target0', 'target2'], failed: ['target3', 'target1']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 29,
+          "arm": "right",
+          "note": "target0 76 mm off the wall (right, lean 0, +0 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "loose",
+          "steps": 28,
+          "arm": "right",
+          "note": "round roll -12 tilt 0, in-hand drift 12.9 mm (loose)"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "loose",
+          "steps": 31,
+          "arm": "right",
+          "note": "round roll 25 tilt 0, in-hand drift 10.1 mm (loose)"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 29,
+          "arm": "right",
+          "note": "round roll -12 tilt -20, in-hand drift 5.9 mm"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 12,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": null
+      },
+      "mode": "off",
+      "run": "paired-100001-off",
+      "all_ik": {
+        "queries": 1418,
+        "failed": 446
+      },
+      "screen_ik": {
+        "queries": 0,
+        "failed": 0
+      },
+      "screen_phases": [],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target0: right picks (round roll -12 tilt 0, pre 96 mm)",
+        "[holes] target0 dropped over the hole at [-0.012, -0.175] (offset 12 mm, yaw 120, side +1; ok): in a hole, pos [-0.01, -0.176, 0.798] tilt 14",
+        "[holes] target3: no nudge (right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; )",
+        "[holes] target3: no pick",
+        "[holes] target2: right picks (round roll 25 tilt 0, pre 102 mm)",
+        "[holes] target2 dropped over the hole at [0.042, -0.174] (offset 12 mm, yaw 0, side +1; ok): in a hole, pos [0.042, -0.173, 0.796] tilt 34",
+        "[holes] target1: right picks (round roll -12 tilt -20, pre 96 mm)",
+        "[holes] target1: no drop plan (approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged))"
+      ],
+      "planner_ik": {
+        "queries": 1418,
+        "failed": 446
+      }
+    },
+    {
+      "seed": 100010,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 425,
+      "step_lim": 700,
+      "wall_s": 78.6,
+      "plan_s": 35.3,
+      "category": "grasp_slip",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target3', 'target0'], failed: ['target2', 'target1']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 31,
+          "arm": "left",
+          "note": "target3 13 mm off the wall (left, lean 0, +14 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "loose",
+          "steps": 26,
+          "arm": "left",
+          "note": "round roll -12 tilt 20, in-hand drift 10.6 mm (loose)"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": false,
+          "status": "grasp_slip",
+          "steps": 31,
+          "arm": "left",
+          "note": "object rose 1 mm (planned 104), in-hand drift 101 mm [round roll -12 tilt -20]"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 31,
+          "arm": "left",
+          "note": "round roll 12 tilt -20, in-hand drift 1.8 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "loose",
+          "steps": 33,
+          "arm": "left",
+          "note": "round roll 25 tilt 0, in-hand drift 13.0 mm (loose)"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 16,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "off",
+      "run": "paired-100010-off",
+      "all_ik": {
+        "queries": 1223,
+        "failed": 686
+      },
+      "screen_ik": {
+        "queries": 0,
+        "failed": 0
+      },
+      "screen_phases": [],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target2: no nudge (left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; )",
+        "[holes] target2: no pick",
+        "[holes] target3: left picks (round roll -12 tilt 20, pre 93 mm)",
+        "[holes] target3: slid along its axis (left, 24 steps)",
+        "[holes] target3 dropped over the hole at [-0.039, -0.15] (offset 12 mm, yaw 30, side -1; ok): in a hole, pos [-0.042, -0.148, 0.793] tilt 147",
+        "[holes] target0: left picks (round roll -12 tilt -20, pre 118 mm)",
+        "[holes] target0: left picks (round roll 12 tilt -20, pre 122 mm)",
+        "[holes] target0: slid along its axis (right, 35 steps)",
+        "[holes] target0 lay across the hole (centre +4 mm over the plate): pressed its middle (right, 21 steps)",
+        "[holes] target0 lay across the hole (centre +3 mm over the plate): pressed its high end (right, 18 steps)",
+        "[holes] target0 dropped over the hole at [0.015, -0.149] (offset 12 mm, yaw 210, side +1; ok): in a hole, pos [0.014, -0.149, 0.788] tilt 81",
+        "[holes] target1: left picks (round roll 25 tilt 0, pre 104 mm)",
+        "[holes] target1: no drop plan (approach: joint move at t=0.24: hits egg_basket; via failed: collision: waypoint 2/7: hits egg_holder; approach: joint move at t=0.40: hits egg_basket; via failed: via-pose z=1.008 unreachable; approa)"
+      ],
+      "planner_ik": {
+        "queries": 1223,
+        "failed": 686
+      }
+    },
+    {
+      "seed": 100010,
+      "success": false,
+      "score": 0.1,
+      "stable": true,
+      "steps": 311,
+      "step_lim": 700,
+      "wall_s": 43.4,
+      "plan_s": 17.7,
+      "category": "grasp_slip",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target0'], failed: ['target2', 'target3', 'target1']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 31,
+          "arm": "left",
+          "note": "target3 13 mm off the wall (left, lean 0, +14 mm over its middle)"
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 29,
+          "arm": "left",
+          "note": "target0 43 mm off the wall (left, lean 0, +0 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 29,
+          "arm": "left",
+          "note": "round roll 12 tilt 0, in-hand drift 7.2 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": false,
+          "status": "grasp_slip",
+          "steps": 36,
+          "arm": "left",
+          "note": "object rose 0 mm (planned 105), in-hand drift 125 mm [round roll 40 tilt 0]"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 27,
+          "arm": "left",
+          "note": "target1 61 mm off the wall (left, lean 0, +0 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": false,
+          "status": "grasp_slip",
+          "steps": 26,
+          "arm": "left",
+          "note": "object rose 3 mm (planned 105), in-hand drift 114 mm [round roll 0 tilt 0]"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 27,
+          "arm": "left",
+          "note": "round roll -12 tilt 0, in-hand drift 6.6 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 13,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "on",
+      "run": "paired-100010-on",
+      "all_ik": {
+        "queries": 1420,
+        "failed": 550
+      },
+      "screen_ik": {
+        "queries": 1267,
+        "failed": 469
+      },
+      "screen_phases": [
+        {
+          "phase": "pick:target2",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "left",
+          "total": 2,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 2,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "left",
+          "total": 16,
+          "kept": 2
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 16,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "left",
+          "total": 18,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 18,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "left",
+          "total": 32,
+          "kept": 22
+        },
+        {
+          "phase": "drop:target0",
+          "arm": "left",
+          "total": 336,
+          "kept": 134
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 2,
+          "kept": 2
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 32,
+          "kept": 16
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 20,
+          "kept": 20
+        },
+        {
+          "phase": "drop:target1",
+          "arm": "left",
+          "total": 336,
+          "kept": 129
+        }
+      ],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target2: no nudge (left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; )",
+        "[holes] target2: no pick",
+        "[holes] target3: left: no pick (left: 0 feasible of 2 (ik 2, collision 0))",
+        "[holes] target3: no pick",
+        "[holes] target0: left picks (round roll 12 tilt 0, pre 98 mm)",
+        "[holes] target0 dropped over the hole at [-0.039, -0.15] (offset 12 mm, yaw 270, side +1; ok): in a hole, pos [-0.043, -0.15, 0.795] tilt 29",
+        "[holes] target1: left picks (round roll 40 tilt 0, pre 121 mm)",
+        "[holes] target1: left picks (round roll 0 tilt 0, pre 99 mm)",
+        "[holes] target1: left picks (round roll -12 tilt 0, pre 94 mm)",
+        "[holes] target1 dropped over the hole at [0.015, -0.149] (offset 12 mm, yaw 30, side +1; place_miss): NOT in a hole, pos [0.422, -0.141, 0.783] tilt 81"
+      ],
+      "planner_ik": {
+        "queries": 153,
+        "failed": 81
+      }
+    },
+    {
+      "seed": 100012,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 272,
+      "step_lim": 700,
+      "wall_s": 31.8,
+      "plan_s": 6.5,
+      "category": "grasp_slip",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target3', 'target1'], failed: ['target0', 'target2']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 34,
+          "arm": "right",
+          "note": "round roll -12 tilt -20, in-hand drift 3.0 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 40,
+          "arm": "right",
+          "note": "round roll -12 tilt 0, in-hand drift 5.2 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 47,
+          "arm": "right",
+          "note": "target0 89 mm off the wall (right, lean 0, +0 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": false,
+          "status": "grasp_slip",
+          "steps": 23,
+          "arm": "right",
+          "note": "object rose -1 mm (planned 103), in-hand drift 108 mm [round roll 25 tilt 0]"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 34,
+          "arm": "right",
+          "note": "target2 58 mm off the wall (right, lean 0, +0 mm over its middle)"
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 13,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "off",
+      "run": "paired-100012-off",
+      "all_ik": {
+        "queries": 92,
+        "failed": 34
+      },
+      "screen_ik": {
+        "queries": 0,
+        "failed": 0
+      },
+      "screen_phases": [],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target3: right picks (round roll -12 tilt -20, pre 96 mm)",
+        "[holes] target3 dropped over the hole at [-0.065, -0.204] (offset 12 mm, yaw 0, side +1; ok): in a hole, pos [-0.063, -0.203, 0.792] tilt 53",
+        "[holes] target1: right picks (round roll -12 tilt 0, pre 95 mm)",
+        "[holes] target1 dropped over the hole at [-0.011, -0.203] (offset 12 mm, yaw 0, side +1; ok): in a hole, pos [-0.013, -0.208, 0.792] tilt 56",
+        "[holes] target0: right: no pick (right: 0 feasible of 4 (ik 0, collision 4))",
+        "[holes] target0: left: no pick (left: 0 feasible of 4 (ik 4, collision 0))",
+        "[holes] target0: right picks (round roll 25 tilt 0, pre 105 mm)",
+        "[holes] target0: no pick",
+        "[holes] target2: right: no pick (right: 0 feasible of 6 (ik 2, collision 4))",
+        "[holes] target2: left: no pick (left: 0 feasible of 6 (ik 6, collision 0))",
+        "[holes] target2: no pick"
+      ],
+      "planner_ik": {
+        "queries": 92,
+        "failed": 34
+      }
+    },
+    {
+      "seed": 100012,
+      "success": false,
+      "score": 0.1,
+      "stable": true,
+      "steps": 356,
+      "step_lim": 700,
+      "wall_s": 88.7,
+      "plan_s": 50.8,
+      "category": "place_miss",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target3'], failed: ['target1', 'target0', 'target2']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 34,
+          "arm": "right",
+          "note": "round roll -12 tilt -20, in-hand drift 3.0 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 38,
+          "arm": "right",
+          "note": "round roll -12 tilt 0, in-hand drift 5.2 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": false,
+          "status": "place_miss",
+          "steps": 28,
+          "arm": "right",
+          "note": "target0 4 mm off the wall (right, lean 0, +0 mm over its middle)"
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 21,
+          "arm": "right",
+          "note": "target2 53 mm off the wall (right, lean 0, +10 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "loose",
+          "steps": 34,
+          "arm": "right",
+          "note": "round roll 12 tilt 20, in-hand drift 11.5 mm (loose)"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 12,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "on",
+      "run": "paired-100012-on",
+      "all_ik": {
+        "queries": 5298,
+        "failed": 1391
+      },
+      "screen_ik": {
+        "queries": 2510,
+        "failed": 938
+      },
+      "screen_phases": [
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 14,
+          "kept": 10
+        },
+        {
+          "phase": "drop:target3",
+          "arm": "right",
+          "total": 336,
+          "kept": 147
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 28,
+          "kept": 28
+        },
+        {
+          "phase": "drop:target1",
+          "arm": "right",
+          "total": 336,
+          "kept": 140
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 82,
+          "kept": 39
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 82,
+          "kept": 40
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 2,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "left",
+          "total": 2,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 10,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "left",
+          "total": 10,
+          "kept": 1
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 24,
+          "kept": 3
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 137
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 115
+        }
+      ],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target3: right picks (round roll -12 tilt -20, pre 96 mm)",
+        "[holes] target3 dropped over the hole at [-0.065, -0.204] (offset 12 mm, yaw 0, side +1; ok): in a hole, pos [-0.063, -0.203, 0.792] tilt 53",
+        "[holes] target1: right picks (round roll -12 tilt 0, pre 95 mm)",
+        "[holes] target1: slid along its axis (right, 40 steps)",
+        "[holes] target1 lay across the hole (centre +4 mm over the plate): pressed its middle (left, 31 steps)",
+        "[holes] target1 lay across the hole (centre +4 mm over the plate): pressed its high end (left, 17 steps)",
+        "[holes] target1 dropped over the hole at [-0.011, -0.203] (offset 12 mm, yaw 0, side +1; ok): NOT in a hole, pos [-0.016, -0.201, 0.818] tilt 65",
+        "[holes] target1: left: no pick (left: 0 feasible of 39 (ik 0, collision 39))",
+        "[holes] target1: right: no pick (right: 0 feasible of 40 (ik 0, collision 40))",
+        "[holes] target1: no pick",
+        "[holes] target0: left: no pick (left: 0 feasible of 1 (ik 0, collision 1))",
+        "[holes] target0: no pick",
+        "[holes] target2: right picks (round roll 12 tilt 20, pre 93 mm)",
+        "[holes] target2: no drop plan (approach: target unreachable (no seed converged); approach: joint move at t=0.46: hits egg_basket; via failed: lift: ik_fail: line waypoint 4/6 unreachable (err 9.8 mm / 2.4 deg); approach: joint move)"
+      ],
+      "planner_ik": {
+        "queries": 2788,
+        "failed": 453
+      }
+    },
+    {
+      "seed": 100015,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 330,
+      "step_lim": 700,
+      "wall_s": 57.0,
+      "plan_s": 27.3,
+      "category": "not_home",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target2', 'target0'], failed: ['target1', 'target3']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 33,
+          "arm": "right",
+          "note": "round roll 12 tilt 0, in-hand drift 1.6 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "loose",
+          "steps": 45,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 13.2 mm (loose)"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 32,
+          "arm": "left",
+          "note": "round roll 0 tilt 0, in-hand drift 1.0 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 34,
+          "arm": "right",
+          "note": "target3 26 mm off the wall (right, lean 15, +0 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 27,
+          "arm": "right",
+          "note": "round roll 25 tilt 0, in-hand drift 2.9 mm"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 16,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "off",
+      "run": "paired-100015-off",
+      "all_ik": {
+        "queries": 1174,
+        "failed": 558
+      },
+      "screen_ik": {
+        "queries": 0,
+        "failed": 0
+      },
+      "screen_phases": [],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target1: no nudge (right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; )",
+        "[holes] target1: no pick",
+        "[holes] target2: right picks (round roll 12 tilt 0, pre 94 mm)",
+        "[holes] target2 dropped over the hole at [-0.025, -0.157] (offset 12 mm, yaw 0, side -1; ok): in a hole, pos [-0.027, -0.156, 0.793] tilt 147",
+        "[holes] target0: right picks (round roll 0 tilt 0, pre 93 mm)",
+        "[holes] target0 dropped over the hole at [0.029, -0.156] (offset 12 mm, yaw 0, side +1; place_miss): NOT in a hole, pos [-0.166, -0.151, 0.784] tilt 71",
+        "[holes] target0: left picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target0 dropped over the hole at [0.029, -0.156] (offset 12 mm, yaw 60, side +1; ok): in a hole, pos [0.026, -0.153, 0.792] tilt 53",
+        "[holes] target3: right picks (round roll 25 tilt 0, pre 103 mm)",
+        "[holes] target3: no drop plan (approach: joint move at t=0.11: hits egg_basket; via failed: across: ik_fail: line waypoint 6/14 unreachable (err 0.0 mm / 1.6 deg); approach: joint move at t=0.11: hits egg_basket; via failed: collis)"
+      ],
+      "planner_ik": {
+        "queries": 1174,
+        "failed": 558
+      }
+    },
+    {
+      "seed": 100015,
+      "success": false,
+      "score": 0.1,
+      "stable": true,
+      "steps": 129,
+      "step_lim": 700,
+      "wall_s": 24.0,
+      "plan_s": 10.8,
+      "category": "not_home",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target2'], failed: ['target1', 'target0', 'target3']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 33,
+          "arm": "right",
+          "note": "round roll 12 tilt 0, in-hand drift 1.6 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 15,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "on",
+      "run": "paired-100015-on",
+      "all_ik": {
+        "queries": 1399,
+        "failed": 310
+      },
+      "screen_ik": {
+        "queries": 573,
+        "failed": 206
+      },
+      "screen_phases": [
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 6,
+          "kept": 6
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 136
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 18,
+          "kept": 12
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "left",
+          "total": 18,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 6,
+          "kept": 6
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "left",
+          "total": 6,
+          "kept": 0
+        }
+      ],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target1: no nudge (right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; )",
+        "[holes] target1: no pick",
+        "[holes] target2: right picks (round roll 12 tilt 0, pre 94 mm)",
+        "[holes] target2: slid along its axis (right, 37 steps)",
+        "[holes] target2 dropped over the hole at [-0.025, -0.157] (offset 12 mm, yaw 30, side -1; ok): in a hole, pos [-0.025, -0.159, 0.794] tilt 152",
+        "[holes] target0: right: no pick (right: 0 feasible of 12 (ik 0, collision 12))",
+        "[holes] target0: no nudge (right lean 0: approach joint move at t=0.11: hits egg_holder; v; right lean 15: approach joint move at t=0.12: hits egg_holder; v; left lean 0: approach target unreachable (out of reach); left lean 15)",
+        "[holes] target0: no pick",
+        "[holes] target3: right: no pick (right: 0 feasible of 6 (ik 0, collision 6))",
+        "[holes] target3: no nudge (right lean 0 +0mm: wall; right lean 15: approach joint move at t=0.09: hits egg_holder; v; left lean 0 +0mm: wall; left lean 15: approach target unreachable (out of reach); right lean 0 +6mm: wall; ri)",
+        "[holes] target3: no pick"
+      ],
+      "planner_ik": {
+        "queries": 826,
+        "failed": 104
+      }
+    },
+    {
+      "seed": 100016,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 201,
+      "step_lim": 700,
+      "wall_s": 53.4,
+      "plan_s": 34.3,
+      "category": "not_home",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target0', 'target3'], failed: ['target1', 'target2']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 33,
+          "arm": "right",
+          "note": "round roll -12 tilt 0, in-hand drift 6.5 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 29,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 4.7 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 28,
+          "arm": "right",
+          "note": "round roll -25 tilt -20, in-hand drift 6.1 mm"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 19,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "off",
+      "run": "paired-100016-off",
+      "all_ik": {
+        "queries": 1630,
+        "failed": 749
+      },
+      "screen_ik": {
+        "queries": 0,
+        "failed": 0
+      },
+      "screen_phases": [],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target0: right picks (round roll -12 tilt 0, pre 95 mm)",
+        "[holes] target0 dropped over the hole at [-0.067, -0.167] (offset 12 mm, yaw 180, side -1; ok): in a hole, pos [-0.072, -0.164, 0.794] tilt 150",
+        "[holes] target1: no nudge (right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; )",
+        "[holes] target1: no pick",
+        "[holes] target3: right picks (round roll 0 tilt 0, pre 93 mm)",
+        "[holes] target3 dropped over the hole at [-0.013, -0.166] (offset 12 mm, yaw 0, side +1; ok): in a hole, pos [-0.013, -0.167, 0.793] tilt 52",
+        "[holes] target2: right picks (round roll -25 tilt -20, pre 106 mm)",
+        "[holes] target2: no drop plan (approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: joint move at t=0.17: hits egg_basket; via failed: lift: ik_fail: line waypoint 4/6 unreac)"
+      ],
+      "planner_ik": {
+        "queries": 1630,
+        "failed": 749
+      }
+    },
+    {
+      "seed": 100016,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 282,
+      "step_lim": 700,
+      "wall_s": 84.9,
+      "plan_s": 56.8,
+      "category": "grasp_slip",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target0', 'target3'], failed: ['target1', 'target2']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 33,
+          "arm": "right",
+          "note": "round roll -12 tilt 0, in-hand drift 6.5 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 43,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 5.4 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 34,
+          "arm": "right",
+          "note": "target2 37 mm off the wall (right, lean 15, +0 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": false,
+          "status": "grasp_slip",
+          "steps": 33,
+          "arm": "right",
+          "note": "object rose -0 mm (planned 104), in-hand drift 112 mm [round roll -12 tilt 0]"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 25,
+          "arm": "right",
+          "note": "round roll -12 tilt 20, in-hand drift 6.1 mm"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 11,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "on",
+      "run": "paired-100016-on",
+      "all_ik": {
+        "queries": 4803,
+        "failed": 1521
+      },
+      "screen_ik": {
+        "queries": 2187,
+        "failed": 880
+      },
+      "screen_phases": [
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 14,
+          "kept": 10
+        },
+        {
+          "phase": "drop:target0",
+          "arm": "right",
+          "total": 336,
+          "kept": 118
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 28,
+          "kept": 28
+        },
+        {
+          "phase": "drop:target3",
+          "arm": "right",
+          "total": 336,
+          "kept": 158
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 30,
+          "kept": 6
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 24,
+          "kept": 8
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 134
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 98
+        }
+      ],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target0: right picks (round roll -12 tilt 0, pre 95 mm)",
+        "[holes] target0 dropped over the hole at [-0.067, -0.167] (offset 12 mm, yaw 210, side -1; ok): in a hole, pos [-0.072, -0.168, 0.794] tilt 147",
+        "[holes] target1: no nudge (right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; )",
+        "[holes] target1: no pick",
+        "[holes] target3: right picks (round roll 0 tilt 0, pre 93 mm)",
+        "[holes] target3 dropped over the hole at [-0.013, -0.166] (offset 12 mm, yaw 60, side +1; ok): in a hole, pos [-0.014, -0.169, 0.797] tilt 25",
+        "[holes] target2: right picks (round roll -12 tilt 0, pre 101 mm)",
+        "[holes] target2: right picks (round roll -12 tilt 20, pre 93 mm)",
+        "[holes] target2: no drop plan (approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged))"
+      ],
+      "planner_ik": {
+        "queries": 2616,
+        "failed": 641
+      }
+    },
+    {
+      "seed": 100019,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 393,
+      "step_lim": 700,
+      "wall_s": 93.7,
+      "plan_s": 57.6,
+      "category": "not_home",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target3', 'target0'], failed: ['target1', 'target2']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 27,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 6.2 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 34,
+          "arm": "left",
+          "note": "round roll 0 tilt 0, in-hand drift 0.1 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 32,
+          "arm": "left",
+          "note": "round roll 25 tilt 0, in-hand drift 4.2 mm"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 11,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 30,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 1.7 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "loose",
+          "steps": 46,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 15.8 mm (loose)"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 16,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "off",
+      "run": "paired-100019-off",
+      "all_ik": {
+        "queries": 3191,
+        "failed": 1902
+      },
+      "screen_ik": {
+        "queries": 0,
+        "failed": 0
+      },
+      "screen_phases": [],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target3: right picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target3 dropped over the hole at [0.014, -0.189] (offset 12 mm, yaw 0, side +1; ok): in a hole, pos [0.014, -0.183, 0.799] tilt 8",
+        "[holes] target0: left picks (round roll 0 tilt 0, pre 94 mm)",
+        "[holes] target0 dropped over the hole at [0.068, -0.188] (offset 12 mm, yaw 30, side -1; ok): in a hole, pos [0.068, -0.19, 0.795] tilt 149",
+        "[holes] target1: left picks (round roll 25 tilt 0, pre 103 mm)",
+        "[holes] target1: no drop plan (approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged))",
+        "[holes] target2: right picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target2 dropped over the hole at [0.014, -0.134] (stood up; place_miss): NOT in a hole, pos [0.002, -0.393, 0.785] tilt 113",
+        "[holes] target2: right picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target2: no drop plan (approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged))"
+      ],
+      "planner_ik": {
+        "queries": 3191,
+        "failed": 1902
+      }
+    },
+    {
+      "seed": 100019,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 402,
+      "step_lim": 700,
+      "wall_s": 186.8,
+      "plan_s": 153.6,
+      "category": "grasp_slip",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target3', 'target0'], failed: ['target1', 'target2']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 27,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 6.2 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 34,
+          "arm": "left",
+          "note": "round roll 0 tilt 0, in-hand drift 0.1 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 41,
+          "arm": "left",
+          "note": "round roll 25 tilt 0, in-hand drift 3.4 mm"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 11,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 30,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 1.7 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": false,
+          "status": "grasp_slip",
+          "steps": 45,
+          "arm": "right",
+          "note": "object rose 0 mm (planned 60), in-hand drift 59 mm [round roll 0 tilt 0]"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 22,
+          "arm": "right",
+          "note": "round roll 0 tilt -40, in-hand drift 0.3 mm"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 14,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "on",
+      "run": "paired-100019-on",
+      "all_ik": {
+        "queries": 11863,
+        "failed": 4342
+      },
+      "screen_ik": {
+        "queries": 4887,
+        "failed": 1718
+      },
+      "screen_phases": [
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 88,
+          "kept": 47
+        },
+        {
+          "phase": "drop:target3",
+          "arm": "right",
+          "total": 336,
+          "kept": 141
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "left",
+          "total": 30,
+          "kept": 10
+        },
+        {
+          "phase": "drop:target0",
+          "arm": "left",
+          "total": 336,
+          "kept": 139
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 8,
+          "kept": 8
+        },
+        {
+          "phase": "drop:target1",
+          "arm": "left",
+          "total": 336,
+          "kept": 119
+        },
+        {
+          "phase": "drop:target1",
+          "arm": "left",
+          "total": 336,
+          "kept": 152
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 82,
+          "kept": 45
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 143
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 131
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 88,
+          "kept": 54
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 84,
+          "kept": 47
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 163
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 151
+        }
+      ],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target3: right picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target3 dropped over the hole at [0.014, -0.189] (offset 12 mm, yaw 120, side +1; ok): in a hole, pos [0.014, -0.186, 0.796] tilt 32",
+        "[holes] target0: left picks (round roll 0 tilt 0, pre 94 mm)",
+        "[holes] target0 dropped over the hole at [0.068, -0.188] (offset 12 mm, yaw 0, side +1; ok): in a hole, pos [0.07, -0.189, 0.797] tilt 28",
+        "[holes] target1: left picks (round roll 25 tilt 0, pre 103 mm)",
+        "[holes] target1: no drop plan (approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged))",
+        "[holes] target2: right picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target2 dropped over the hole at [0.014, -0.134] (stood up; place_miss): NOT in a hole, pos [0.013, -0.399, 0.783] tilt 82",
+        "[holes] target2: right picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target2: right picks (round roll 0 tilt -40, pre 70 mm)",
+        "[holes] target2: no drop plan (approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged))"
+      ],
+      "planner_ik": {
+        "queries": 6976,
+        "failed": 2624
+      }
+    },
+    {
+      "seed": 100053,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 420,
+      "step_lim": 700,
+      "wall_s": 78.5,
+      "plan_s": 43.4,
+      "category": "not_home",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target2', 'target0'], failed: ['target3', 'target1']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 31,
+          "arm": "right",
+          "note": "round roll 12 tilt 0, in-hand drift 5.4 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 41,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 5.4 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 27,
+          "arm": "left",
+          "note": "round roll 0 tilt 0, in-hand drift 1.0 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "loose",
+          "steps": 37,
+          "arm": "right",
+          "note": "round roll -25 tilt 0, in-hand drift 14.1 mm (loose)"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 13,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 37,
+          "arm": "right",
+          "note": "target1 41 mm off the wall (right, lean 0, +6 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 36,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 1.9 mm"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 11,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "off",
+      "run": "paired-100053-off",
+      "all_ik": {
+        "queries": 2477,
+        "failed": 1238
+      },
+      "screen_ik": {
+        "queries": 0,
+        "failed": 0
+      },
+      "screen_phases": [],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target2: right picks (round roll 12 tilt 0, pre 95 mm)",
+        "[holes] target2 dropped over the hole at [-0.015, -0.184] (offset 12 mm, yaw 60, side +1; ok): in a hole, pos [-0.013, -0.183, 0.796] tilt 25",
+        "[holes] target0: right picks (round roll 0 tilt 0, pre 94 mm)",
+        "[holes] target0 dropped over the hole at [0.039, -0.183] (offset 12 mm, yaw 90, side -1; place_miss): NOT in a hole, pos [-0.015, -0.295, 0.783] tilt 81",
+        "[holes] target0: left picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target0: slid along its axis (left, 44 steps)",
+        "[holes] target0 dropped over the hole at [0.039, -0.183] (offset 12 mm, yaw 30, side -1; ok): in a hole, pos [0.042, -0.179, 0.789] tilt 111",
+        "[holes] target3: right picks (round roll -25 tilt 0, pre 106 mm)",
+        "[holes] target3: no drop plan (approach: target unreachable (no seed converged); approach: joint move at t=0.25: hits egg_basket; via failed: lift: ik_fail: line waypoint 4/5 unreachable (err 18.5 mm / 4.8 deg); approach: joint mov)",
+        "[holes] target1: right picks (round roll 0 tilt 0, pre 92 mm)",
+        "[holes] target1: no drop plan (approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged))"
+      ],
+      "planner_ik": {
+        "queries": 2477,
+        "failed": 1238
+      }
+    },
+    {
+      "seed": 100053,
+      "success": false,
+      "score": 0.1,
+      "stable": true,
+      "steps": 276,
+      "step_lim": 700,
+      "wall_s": 88.4,
+      "plan_s": 60.7,
+      "category": "not_home",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target2'], failed: ['target0', 'target3', 'target1']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 31,
+          "arm": "right",
+          "note": "round roll 12 tilt 0, in-hand drift 5.4 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 34,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 0.2 mm"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 12,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "loose",
+          "steps": 34,
+          "arm": "right",
+          "note": "round roll -25 tilt 0, in-hand drift 15.6 mm (loose)"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 15,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "on",
+      "run": "paired-100053-on",
+      "all_ik": {
+        "queries": 8258,
+        "failed": 1809
+      },
+      "screen_ik": {
+        "queries": 2993,
+        "failed": 1141
+      },
+      "screen_phases": [
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 14,
+          "kept": 14
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 130
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 32,
+          "kept": 14
+        },
+        {
+          "phase": "drop:target0",
+          "arm": "right",
+          "total": 336,
+          "kept": 139
+        },
+        {
+          "phase": "drop:target0",
+          "arm": "right",
+          "total": 336,
+          "kept": 133
+        },
+        {
+          "phase": "drop:target0",
+          "arm": "right",
+          "total": 336,
+          "kept": 125
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 18,
+          "kept": 16
+        },
+        {
+          "phase": "drop:target3",
+          "arm": "right",
+          "total": 336,
+          "kept": 130
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "left",
+          "total": 88,
+          "kept": 39
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 88,
+          "kept": 41
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 2,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 2,
+          "kept": 0
+        }
+      ],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target2: right picks (round roll 12 tilt 0, pre 95 mm)",
+        "[holes] target2 dropped over the hole at [-0.015, -0.184] (offset 12 mm, yaw 60, side +1; ok): in a hole, pos [-0.013, -0.185, 0.796] tilt 30",
+        "[holes] target0: right picks (round roll 0 tilt 0, pre 94 mm)",
+        "[holes] target0: no drop plan (approach: joint move at t=0.37: hits egg_basket; via failed: lift: ik_fail: line waypoint 1/5 unreachable (err 7.7 mm / 1.9 deg); approach: joint move at t=0.21: hits egg_basket; via failed: lift: ik_)",
+        "[holes] target3: right picks (round roll -25 tilt 0, pre 107 mm)",
+        "[holes] target3: slid along its axis (right, 27 steps)",
+        "[holes] target3 lay across the hole (centre +12 mm over the plate): pressed its middle (left, 30 steps)",
+        "[holes] target3 lay across the hole (centre +12 mm over the plate): pressed its high end (right, 16 steps)",
+        "[holes] target3 dropped over the hole at [0.039, -0.183] (offset 12 mm, yaw 30, side +1; ok): NOT in a hole, pos [-0.011, -0.156, 0.826] tilt 100",
+        "[holes] target3: left: no pick (left: 0 feasible of 39 (ik 0, collision 39))",
+        "[holes] target3: right: no pick (right: 0 feasible of 41 (ik 0, collision 41))",
+        "[holes] target3: no pick",
+        "[holes] target1: no nudge (right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0: approach joint move at t=0.03: hits egg_holder; v; right lean 15: approach joint move )",
+        "[holes] target1: no pick"
+      ],
+      "planner_ik": {
+        "queries": 5265,
+        "failed": 668
+      }
+    },
+    {
+      "seed": 100054,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 215,
+      "step_lim": 700,
+      "wall_s": 34.9,
+      "plan_s": 22.8,
+      "category": "not_home",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target0', 'target3'], failed: ['target2', 'target1']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 29,
+          "arm": "right",
+          "note": "round roll -25 tilt 0, in-hand drift 3.1 mm"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 13,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 37,
+          "arm": "right",
+          "note": "round roll 12 tilt 0, in-hand drift 5.9 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 36,
+          "arm": "right",
+          "note": "round roll 12 tilt 0, in-hand drift 0.3 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 14,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "off",
+      "run": "paired-100054-off",
+      "all_ik": {
+        "queries": 3412,
+        "failed": 2435
+      },
+      "screen_ik": {
+        "queries": 0,
+        "failed": 0
+      },
+      "screen_phases": [],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target2: no nudge (right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; )",
+        "[holes] target2: no pick",
+        "[holes] target1: right picks (round roll -25 tilt 0, pre 104 mm)",
+        "[holes] target1: no drop plan (approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged))",
+        "[holes] target0: right picks (round roll 12 tilt 0, pre 95 mm)",
+        "[holes] target0 dropped over the hole at [0.058, -0.208] (offset 12 mm, yaw 0, side +1; place_miss): in a hole, pos [0.002, -0.206, 0.793] tilt 148",
+        "[holes] target3: right picks (round roll 12 tilt 0, pre 102 mm)",
+        "[holes] target3 dropped over the hole at [0.058, -0.208] (offset 12 mm, yaw 0, side +1; ok): in a hole, pos [0.056, -0.206, 0.798] tilt 18"
+      ],
+      "planner_ik": {
+        "queries": 3412,
+        "failed": 2435
+      }
+    },
+    {
+      "seed": 100054,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 239,
+      "step_lim": 700,
+      "wall_s": 64.9,
+      "plan_s": 50.7,
+      "category": "not_home",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target1', 'target0'], failed: ['target2', 'target3']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 29,
+          "arm": "right",
+          "note": "target1 50 mm off the wall (right, lean 0, +0 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "loose",
+          "steps": 24,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 9.3 mm (loose)"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 39,
+          "arm": "right",
+          "note": "round roll 25 tilt 0, in-hand drift 4.4 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 30,
+          "arm": "right",
+          "note": "round roll 12 tilt 0, in-hand drift 6.5 mm"
+        },
+        {
+          "skill": "home",
+          "ok": true,
+          "status": "ok",
+          "steps": 12,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "on",
+      "run": "paired-100054-on",
+      "all_ik": {
+        "queries": 4899,
+        "failed": 1576
+      },
+      "screen_ik": {
+        "queries": 2184,
+        "failed": 727
+      },
+      "screen_phases": [
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 6,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 6,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 32,
+          "kept": 24
+        },
+        {
+          "phase": "drop:target1",
+          "arm": "right",
+          "total": 336,
+          "kept": 183
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 6,
+          "kept": 6
+        },
+        {
+          "phase": "drop:target0",
+          "arm": "right",
+          "total": 336,
+          "kept": 162
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 6,
+          "kept": 6
+        },
+        {
+          "phase": "drop:target3",
+          "arm": "right",
+          "total": 336,
+          "kept": 151
+        },
+        {
+          "phase": "drop:target3",
+          "arm": "right",
+          "total": 336,
+          "kept": 135
+        }
+      ],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target2: no nudge (right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; )",
+        "[holes] target2: no pick",
+        "[holes] target1: right picks (round roll 0 tilt 0, pre 91 mm)",
+        "[holes] target1 dropped over the hole at [0.004, -0.209] (offset 12 mm, yaw 300, side +1; ok): in a hole, pos [0.002, -0.206, 0.796] tilt 25",
+        "[holes] target0: right picks (round roll 25 tilt 0, pre 104 mm)",
+        "[holes] target0 dropped over the hole at [0.058, -0.208] (offset 12 mm, yaw 0, side +1; ok): in a hole, pos [0.06, -0.208, 0.797] tilt 25",
+        "[holes] target3: right picks (round roll 12 tilt 0, pre 102 mm)",
+        "[holes] target3: no drop plan (approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged); approach: target unreachable (no seed converged))"
+      ],
+      "planner_ik": {
+        "queries": 2715,
+        "failed": 849
+      }
+    },
+    {
+      "seed": 100055,
+      "success": false,
+      "score": 0.1,
+      "stable": true,
+      "steps": 373,
+      "step_lim": 700,
+      "wall_s": 27.1,
+      "plan_s": 5.1,
+      "category": "grasp_slip",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target2'], failed: ['target1', 'target3', 'target0']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 32,
+          "arm": "right",
+          "note": "round roll -12 tilt -20, in-hand drift 7.5 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 26,
+          "arm": "left",
+          "note": "round roll 0 tilt 0, in-hand drift 0.6 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 34,
+          "arm": "right",
+          "note": "round roll -12 tilt 0, in-hand drift 0.7 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": false,
+          "status": "grasp_slip",
+          "steps": 46,
+          "arm": "left",
+          "note": "object rose -589 mm (planned 60), in-hand drift 1041 mm [top axis 0 tilt 0]"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 27,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 5.3 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 27,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "off",
+      "run": "paired-100055-off",
+      "all_ik": {
+        "queries": 243,
+        "failed": 115
+      },
+      "screen_ik": {
+        "queries": 0,
+        "failed": 0
+      },
+      "screen_phases": [],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target2: right picks (round roll -12 tilt -20, pre 96 mm)",
+        "[holes] target2 dropped over the hole at [-0.06, -0.158] (offset 12 mm, yaw 60, side +1; place_miss): NOT in a hole, pos [-0.215, -0.303, 0.783] tilt 99",
+        "[holes] target2: left picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target2 dropped over the hole at [-0.06, -0.158] (offset 12 mm, yaw 30, side +1; ok): in a hole, pos [-0.058, -0.157, 0.796] tilt 30",
+        "[holes] target1: right picks (round roll -12 tilt 0, pre 97 mm)",
+        "[holes] target1 dropped over the hole at [-0.006, -0.157] (offset 12 mm, yaw 90, side +1; place_miss): NOT in a hole, pos [-0.184, -0.736, 0.656] tilt 15",
+        "[holes] target1: left picks (top axis 0 tilt 0, pre 70 mm)",
+        "[holes] target1: left: no pick (left: 0 feasible of 26 (ik 26, collision 0))",
+        "[holes] target1: right: no pick (right: 0 feasible of 26 (ik 26, collision 0))",
+        "[holes] target1: no pick",
+        "[holes] target3: no nudge (right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; )",
+        "[holes] target3: no pick",
+        "[holes] target0: right picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target0 dropped over the hole at [-0.006, -0.157] (offset 12 mm, yaw 0, side +1; place_miss): NOT in a hole, pos [0.582, 0.075, 0.783] tilt 81",
+        "[holes] target0: right: no pick (right: 0 feasible of 26 (ik 22, collision 4))",
+        "[holes] target0: left: no pick (left: 0 feasible of 26 (ik 26, collision 0))",
+        "[holes] target0: no pick"
+      ],
+      "planner_ik": {
+        "queries": 243,
+        "failed": 115
+      }
+    },
+    {
+      "seed": 100055,
+      "success": false,
+      "score": 0.1,
+      "stable": true,
+      "steps": 333,
+      "step_lim": 700,
+      "wall_s": 47.1,
+      "plan_s": 24.6,
+      "category": "not_home",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target2'], failed: ['target1', 'target3', 'target0']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 32,
+          "arm": "right",
+          "note": "round roll -12 tilt -20, in-hand drift 7.5 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 26,
+          "arm": "left",
+          "note": "round roll 0 tilt 0, in-hand drift 0.6 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 34,
+          "arm": "right",
+          "note": "target1 34 mm off the wall (right, lean 0, +0 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 30,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 5.3 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 27,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 1.1 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 13,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": "8be287c3"
+      },
+      "mode": "on",
+      "run": "paired-100055-on",
+      "all_ik": {
+        "queries": 3109,
+        "failed": 1035
+      },
+      "screen_ik": {
+        "queries": 2891,
+        "failed": 1005
+      },
+      "screen_phases": [
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 12,
+          "kept": 12
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 127
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "left",
+          "total": 88,
+          "kept": 58
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "left",
+          "total": 336,
+          "kept": 146
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 18,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 18,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 28,
+          "kept": 24
+        },
+        {
+          "phase": "drop:target1",
+          "arm": "right",
+          "total": 336,
+          "kept": 129
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 92,
+          "kept": 42
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 92,
+          "kept": 36
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 88,
+          "kept": 50
+        },
+        {
+          "phase": "drop:target0",
+          "arm": "right",
+          "total": 336,
+          "kept": 133
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "left",
+          "total": 68,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 68,
+          "kept": 0
+        }
+      ],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target2: right picks (round roll -12 tilt -20, pre 96 mm)",
+        "[holes] target2 dropped over the hole at [-0.06, -0.158] (offset 12 mm, yaw 60, side +1; place_miss): NOT in a hole, pos [-0.215, -0.303, 0.783] tilt 99",
+        "[holes] target2: left picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target2 dropped over the hole at [-0.06, -0.158] (offset 12 mm, yaw 30, side +1; ok): in a hole, pos [-0.058, -0.157, 0.796] tilt 30",
+        "[holes] target1: right picks (round roll 0 tilt 0, pre 97 mm)",
+        "[holes] target1: slid along its axis (no slide plan)",
+        "[holes] target1 lay across the hole (centre +2 mm over the plate): pressed its middle (no press plan)",
+        "[holes] target1 lay across the hole (centre +2 mm over the plate): pressed its high end (no press plan)",
+        "[holes] target1 dropped over the hole at [-0.006, -0.157] (offset 12 mm, yaw 60, side -1; place_miss): NOT in a hole, pos [-0.06, -0.101, 0.816] tilt 92",
+        "[holes] target1: left: no pick (left: 0 feasible of 42 (ik 0, collision 42))",
+        "[holes] target1: right: no pick (right: 0 feasible of 36 (ik 0, collision 36))",
+        "[holes] target1: no pick",
+        "[holes] target3: no nudge (right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; )",
+        "[holes] target3: no pick",
+        "[holes] target0: right picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target0 dropped over the hole at [-0.006, -0.157] (offset 12 mm, yaw 0, side +1; place_miss): NOT in a hole, pos [-0.832, 0.201, 0.524] tilt 139",
+        "[holes] target0: no pick"
+      ],
+      "planner_ik": {
+        "queries": 218,
+        "failed": 30
+      }
+    },
+    {
+      "seed": 100000,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 324,
+      "step_lim": 700,
+      "wall_s": 28.5,
+      "plan_s": 4.3,
+      "category": "place_miss",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target1', 'target0'], failed: ['target3', 'target2']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 31,
+          "arm": "left",
+          "note": "round roll 12 tilt 0, in-hand drift 0.3 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": false,
+          "status": "place_miss",
+          "steps": 27,
+          "arm": "left",
+          "note": "target0 8 mm off the wall (left, lean 0, +14 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 30,
+          "arm": "left",
+          "note": "round roll 12 tilt 0, in-hand drift 1.6 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 28,
+          "arm": "right",
+          "note": "round roll 0 tilt 0, in-hand drift 5.9 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 36,
+          "arm": "left",
+          "note": "target2 27 mm off the wall (left, lean 0, +10 mm over its middle)"
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 14,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": null
+      },
+      "mode": "off",
+      "run": "pilot-off",
+      "all_ik": {
+        "queries": 57,
+        "failed": 0
+      },
+      "screen_ik": {
+        "queries": 0,
+        "failed": 0
+      },
+      "screen_phases": [],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target1: left picks (round roll 12 tilt 0, pre 98 mm)",
+        "[holes] target1 dropped over the hole at [-0.018, -0.22] (offset 12 mm, yaw 0, side -1; ok): in a hole, pos [-0.02, -0.217, 0.794] tilt 154",
+        "[holes] target3: no nudge (left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; )",
+        "[holes] target3: no pick",
+        "[holes] target0: left picks (round roll 12 tilt 0, pre 95 mm)",
+        "[holes] target0 dropped over the hole at [0.036, -0.219] (offset 12 mm, yaw 0, side +1; place_miss): NOT in a hole, pos [0.369, -0.18, 0.783] tilt 81",
+        "[holes] target0: right picks (round roll 0 tilt 0, pre 70 mm)",
+        "[holes] target0 dropped over the hole at [0.036, -0.219] (offset 12 mm, yaw 0, side +1; ok): in a hole, pos [0.032, -0.217, 0.799] tilt 9",
+        "[holes] target2: no pick"
+      ],
+      "planner_ik": {
+        "queries": 57,
+        "failed": 0
+      }
+    },
+    {
+      "seed": 100001,
+      "success": false,
+      "score": 0.25,
+      "stable": true,
+      "steps": 335,
+      "step_lim": 700,
+      "wall_s": 53.8,
+      "plan_s": 30.3,
+      "category": "grasp_slip",
+      "result": {
+        "ok": false,
+        "stage": "holes",
+        "note": "in: ['target0', 'target2'], failed: ['target3', 'target1']",
+        "finish": "ok"
+      },
+      "skills": [
+        {
+          "skill": "pick",
+          "ok": false,
+          "status": "grasp_slip",
+          "steps": 38,
+          "arm": "right",
+          "note": "object rose 0 mm (planned 105), in-hand drift 121 mm [round roll 40 tilt 0]"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 25,
+          "arm": "right",
+          "note": "target0 74 mm off the wall (right, lean 0, +0 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "ok",
+          "steps": 26,
+          "arm": "right",
+          "note": "round roll -12 tilt 20, in-hand drift 2.0 mm"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "pick",
+          "ok": true,
+          "status": "loose",
+          "steps": 30,
+          "arm": "right",
+          "note": "round roll 25 tilt 0, in-hand drift 8.9 mm (loose)"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 0,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "nudge",
+          "ok": true,
+          "status": "ok",
+          "steps": 36,
+          "arm": "right",
+          "note": "target1 92 mm off the wall (right, lean 0, +0 mm over its middle)"
+        },
+        {
+          "skill": "pick",
+          "ok": false,
+          "status": "grasp_slip",
+          "steps": 40,
+          "arm": "right",
+          "note": "object rose 0 mm (planned 104), in-hand drift 103 mm [round roll 40 tilt 0]"
+        },
+        {
+          "skill": "bank",
+          "ok": true,
+          "status": "ok",
+          "steps": 2,
+          "arm": null,
+          "note": ""
+        },
+        {
+          "skill": "finish",
+          "ok": true,
+          "status": "ok",
+          "steps": 11,
+          "arm": null,
+          "note": ""
+        }
+      ],
+      "code": {
+        "dir": "/home/robotics/controlr-egg2",
+        "commit": null
+      },
+      "mode": "on",
+      "run": "pilot-on",
+      "all_ik": {
+        "queries": 3391,
+        "failed": 601
+      },
+      "screen_ik": {
+        "queries": 1636,
+        "failed": 600
+      },
+      "screen_phases": [
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 2,
+          "kept": 2
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target0",
+          "arm": "right",
+          "total": 26,
+          "kept": 9
+        },
+        {
+          "phase": "drop:target0",
+          "arm": "right",
+          "total": 336,
+          "kept": 140
+        },
+        {
+          "phase": "drop:target0",
+          "arm": "right",
+          "total": 336,
+          "kept": 149
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target3",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target2",
+          "arm": "right",
+          "total": 8,
+          "kept": 8
+        },
+        {
+          "phase": "drop:target2",
+          "arm": "right",
+          "total": 336,
+          "kept": 141
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 2,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 2,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 4,
+          "kept": 1
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "right",
+          "total": 0,
+          "kept": 0
+        },
+        {
+          "phase": "pick:target1",
+          "arm": "left",
+          "total": 0,
+          "kept": 0
+        }
+      ],
+      "holes_log": [
+        "[holes] egg_holder: 4 holes r [25, 24, 25, 25] mm, top 0.814 floor 0.768; lid RevoluteJoint_4compartmenteggcartons_up; mode drop",
+        "[holes] target0: right picks (round roll 40 tilt 0, pre 123 mm)",
+        "[holes] target0: right picks (round roll -12 tilt 20, pre 92 mm)",
+        "[holes] target0 dropped over the hole at [0.042, -0.174] (offset 12 mm, yaw 30, side +1; ok): in a hole, pos [0.04, -0.172, 0.798] tilt 22",
+        "[holes] target3: no nudge (right lean 0 +0mm: wall; right lean 15 +0mm: wall; left lean 0 +0mm: wall; left lean 15 +0mm: wall; right lean 0 +6mm: wall; right lean 15 +6mm: wall; left lean 0 +6mm: wall; left lean 15 +6mm: wall; )",
+        "[holes] target3: no pick",
+        "[holes] target2: right picks (round roll 25 tilt 0, pre 102 mm)",
+        "[holes] target2 dropped over the hole at [-0.012, -0.175] (offset 12 mm, yaw 0, side +1; place_miss): in a hole, pos [0.04, -0.118, 0.795] tilt 155",
+        "[holes] target1: right picks (round roll 40 tilt 0, pre 119 mm)",
+        "[holes] target1: no pick"
+      ],
+      "planner_ik": {
+        "queries": 1755,
+        "failed": 1
+      }
+    }
+  ]
+}

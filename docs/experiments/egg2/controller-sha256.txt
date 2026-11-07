@@ -1,0 +1,5 @@
+54292ba4ece74285237e6efa86f27408ba7677eae0b9969dbd98f01155bff25b  dojo/skills/egg_reach.py
+e1df4f3dd4dacc66af7a70555a29791050658ea2a4962c81b5e29226c8e9c96a  dojo/skills/holders.py
+ae969c03dcb9688710aa7aa23f2d384a5a8cc96964170a5c12f3bc48670edeff  dojo/skills/skills.py
+f0139f26bae31673bb8bfdbbf96415505463c2a426984cc4fdd51a9657da9131  dojo/skills/g3.py
+4776b9b979c161ebe6830107ff850cac5115a3b8ffd9c48193cecbc63546c125  dojo/runtime/policy.py

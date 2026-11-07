@@ -1,0 +1,32 @@
+{
+  "time": "2026-11-07T02:08:02.349892+00:00",
+  "prereg_commit": "6e3a397c",
+  "files": [
+    {
+      "path": "/home/robotics/dojo-data/key-1107/design-amended.json",
+      "bytes": 2513,
+      "sha256": "394182b69677114ad0c12fbcbf72f9bf63197447d0c8140ad361cd2908b90ceb"
+    },
+    {
+      "path": "/home/robotics/dojo-data/key-1107/amendment_prepare.py",
+      "bytes": 5055,
+      "sha256": "555e9e0908ecbd59f54a7fd8922e53fa54d99de5c67a100eb850932835aff4ef"
+    },
+    {
+      "path": "/home/robotics/dojo-data/key-1107/prereg-amended.md",
+      "bytes": 11483,
+      "sha256": "f127b5fc947210b224b946ab05dac0c5438dbaae0325ea52b19bd9147c659180"
+    },
+    {
+      "path": "/home/robotics/dojo-data/key-1107/pre-generation-freeze.json",
+      "bytes": 28638,
+      "sha256": "24ff1aaccef9320051cc71553a528b8c227308b5cef81ca50e4f3fc377343c58"
+    }
+  ],
+  "extra_block": {
+    "name": "key-scoped-refill-3",
+    "salt": "queue-key-scoped-lead-refill-20261107-07e01a85c97bbaa056e7225cfac8ad4714ee9c2c2befdaaa",
+    "salt_sha256": "ad5e8a3ee750a1f81638fd5b4613b2da708863570d44affbcb8154cb6055899e"
+  },
+  "new_generation_started": false
+}

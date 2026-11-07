@@ -427,6 +427,11 @@
     so `push_to`'s 12 mm tolerance is too loose. Rotated much past 27 deg it can't cover the rect at all, and more
     strokes turn it further.
   Next: a yaw-correcting stroke before the translation. Off-centre strokes were tried before (longh) without a gain.
+  ORG ([study](experiments/2026-11-06-org-skill-ceiling.md)): ten variant-3 pairs,
+  low hover + tilted face pushes 42.5 -> 47.5, 3 score wins / 1 loss, no successes;
+  median steps 279 -> 539. Defaults off; camera registration parked. Lateral
+  approach pilot resolves a no-plan figurine pick, then loses it during carry
+  (169 mm attachment shift). Hold stability and keyboard convergence remain open.
 - [ ] **dojo skills: tic-tac-toe "wait opponent (timeout)" on layout 100003.** The opponent's move is never counted, the
   wait times out, and the episode ends not_home with the board unfinished:
   - c4b_ttt_gcoff_100003 (8dae375, 949/1100, own 4 / opp 3);
@@ -1031,7 +1036,7 @@
 - [ ] **dojo skills: planning time with mesh-box obstacles.** `hang_on_hooks` plans 200-450 s per episode: rack and hung mugs
   as `Collision.parts`, two handle frames x two lift heights per hook, and the relay search. The batched parts check
   (3 ms) made it about 10x faster; most of the time left is IK screening.
-- [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range.
+- [ ] **dojo skills: the X5's practical limits are tighter than the IK's.** Places 0.66 m out, and places with the wrist at j6's stop, stalled in the twin. `PLACE_REACH` 0.60 m and `wrist_safe` (j4 <= 1.6, abs(j6) <= 3.0) filter places only. Picks and handovers still use the full IK range. The default-off `egg_reach=search` scopes fill-holes drops/picks to a practical envelope; see [EGG2 evidence](experiments/2026-11-06-egg2-reach-g3.md). Other picks and handovers remain open.
 - [ ] **RoboDojo: the envelope knows neither the objects nor the other arm**; the legacy shim's cuRobo plans each arm against the table and itself only. Arm-arm collisions are possible (sim only; never on hardware like this).
   The optional Skills object-world proposer does not change this envelope or add other-arm avoidance
   ([PLAN journal](journal/2026-11-06-dojo-plan-world.md)).
@@ -1123,3 +1128,7 @@
   hook consumed for later mugs. Release verified empty reservations before
   diagnosing the remaining hooks as unreachable; evaluate as a separate
   default-off lever. See journal `2026-11-06-dojo-hang-ceiling`.
+
+- ~~**Relocation write audit coverage:** `RuntimePolicy._relocate_laid` emits resulting pos only; `m95_score.py audit` does not ingest it. Add explicit pre/post write coverage before collecting the [scoped KONG camera A/B](experiments/2026-11-07-kong-scoped-relocate-prereg.md); an audit omitting these writes cannot qualify the lever.~~ Instrumentation completed in #411; paired replay outcomes remain required by the preregistration.
+
+- **Actor-relocation audit identity association:** the nearest-pre-write/group rule can select a standing neighbour after the tracked tile has fallen. In the [scoped KONG audit](experiments/2026-11-07-kong-scoped-relocate-prereg.md), two `mahjong7_0` writes are judged against GT `mahjong8_0` (44.3→66.2 mm), while a same-label diagnostic improves 46.31→1.64 mm. Preserve registered flags; review a general identity-aware audit before interpreting these as actual relocation harm. No controller change or retrospective threshold tuning.

@@ -199,7 +199,8 @@ class FrozenGarmentProvider:
 
 
 # ``--skill-attr NAME=VALUE``: Skills switches a G3 run may set (each mirrors a ``RuntimeConfig`` field; first = default)
-SKILL_ATTRS = {"plan_profile": ("legacy", "recover"), "plan_capture": ("off", "requests"), "plan_solver": ("routes", "curobo"), "plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
+SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "low"), "push_approach": ("off", "tilted"),
+               "plan_profile": ("legacy", "recover"), "plan_capture": ("off", "requests"), "plan_solver": ("routes", "curobo"), "plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
                "arrange_order": ("near", "big_first", "push_big_first"), "push_stroke": ("face", "press"),
                "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"),
                "hang_half_turn": ("off", "on"),
@@ -228,7 +229,7 @@ SKILL_ATTRS = {"plan_profile": ("legacy", "recover"), "plan_capture": ("off", "r
                "fill_insert": ("off", "safe"), "fill_holder": ("off", "stay"), "fill_drop": ("off", "center", "inset"),
                "egg_grasp_height": ("off", "raised"), "egg_grasp_angles": ("off", "wide"),
                "egg_drop_approach": ("off", "low"), "egg_wall_model": ("off", "shell"),
-               "egg_drop_spin": ("off", "axis"),
+               "egg_drop_spin": ("off", "axis"), "egg_reach": ("off", "search"),
                "fill_joint_limits": ("inherit", "measured"), "rehover_siblings": ("follow", "keep"),
                "slip_shift": ("off", "across"), "sibling_order": ("given", "far"),
                "press_repeat": ("off", "cross"), "ported_pour_untilt": ("direct", "staged", "capped"),

@@ -232,6 +232,9 @@ class RuntimeConfig:
     # locations agree within WATCH_RELOCATE_AGREE_MM (make_kong: the discard lies 48 mm off its slot in 25 of 25 dev
     # renders, and the read cropped at the slot saw a standing neighbour's back). False: it stays where it stood
     watch_relocate: bool = False
+    # Optional task-scoped replacement for watch_relocate. Nonempty takes precedence over the global bool;
+    # matched against the instruction-routed vocabulary, never launcher task metadata. Still requires watch.
+    watch_relocate_task: str = ""       # "" = legacy bool; "make_kong" = only that routed task
     # mode perception: perception R&D's agentic perceiver (LLM calls via omniroute, in the perception service).
     # "budget": the first estimate is agentic; then, while fewer than agentic_max estimates ran, perception's
     # needs_agent(record) decides once after the looks / search and at each re-estimate after a confirmed divergence
@@ -355,6 +358,7 @@ class RuntimeConfig:
     egg_drop_approach: str = "off"
     egg_wall_model: str = "off"
     egg_drop_spin: str = "off"
+    egg_reach: str = "off"
     # ``Skills._refine_hover`` (stream H; ``Skills.rehover_siblings``): follow (today) | keep (an object with an identical
     # sibling within 5 cm keeps its pose instead of following a refine's "seen elsewhere" hint)
     rehover_siblings: str = "follow"
@@ -378,6 +382,10 @@ class RuntimeConfig:
     # ``library.arrange``'s place order (``Skills.arrange_order``): near (today: nearest the arms first) | big_first (the
     # largest object first, while the table is emptiest) | push_big_first (the pushes first, then big_first)
     arrange_order: str = "near"
+    # Additional face-contact approach tilts, with fingertip position preserved.
+    push_approach: str = "off"
+    arrange_hover: str = "off"
+    arrange_route: str = "off"
     # ``library.push_to``'s strokes (``Skills.push_stroke``): face (today) | press (when no face stroke plans on either
     # axis, a drag with the closed fingertips pressed on the object's top)
     push_stroke: str = "face"
@@ -538,6 +546,8 @@ class RuntimeConfig:
     # insert_key's turn (``regrasp.turn_held``, ``Skills.key_lean``): off (today: a turn that does not fit the steps left
     # is not started) | on (it runs as far as the steps left allow: the checker passes part-way through the turn)
     key_lean: str = "off"
+    # Empty preserves legacy global switches; otherwise apply only to this instruction-routed vocabulary.
+    key_scope_task: str = ""           # "" | "insert_key"
     # stream P: the planner's routes to Mikhail's measured skills (``dojo.skills.ported``: his robot-harness skill files,
     # unchanged, through ``HarnessRobot`` over our Skills and belief), tried only where no route of ours fits
     # (``planner.ported_plan``: cover / uncover, swap two poses, pour balls / a liquid, pick up by N cm, push onto a pad)
@@ -598,6 +608,14 @@ class RuntimeConfig:
     extra: dict = field(default_factory=dict)
     preset: str | None = None           # name of the preset these fields came from (dojo/runtime/presets.py), if any
 
+    def watch_relocate_for(self, scene: str) -> bool:
+        return scene == self.watch_relocate_task if self.watch_relocate_task else self.watch_relocate
+
+    def key_params_for(self, scene: str) -> tuple[str, str]:
+        if self.key_scope_task and scene != self.key_scope_task:
+            return "v1", "off"
+        return self.key_handover, self.key_lean
+
     @classmethod
     def from_env(cls) -> "RuntimeConfig":
         return cls(**json.loads(os.environ.get("DOJO_RUNTIME", "{}") or "{}"))
@@ -645,6 +663,7 @@ class RuntimePolicy:
         still steps, error handling, report) is the same."""
         self.cfg = cfg or RuntimeConfig.from_env()
         if (self.cfg.mode not in ("gt", "perception") or self.cfg.verify not in ("off", "bundle")
+                or self.cfg.watch_relocate_task not in ("", "make_kong")
                 or self.cfg.verify_select not in ("all", "risky") or self.cfg.agentic not in ("off", "budget")
                 or self.cfg.tracker not in ("off", "auto", "on") or self.cfg.held_look not in ("off", "b1", "b1_then_agent")
                 or self.cfg.scan not in ("off", "trigger", "always") or self.cfg.track_moving not in ("off", "auto", "on") or self.cfg.track_read not in ("belt", "b1") or self.cfg.held_pose not in ("off", "auto", "request") or self.cfg.grip_check not in ("off", "on") or self.cfg.grip_official_key not in ("official_key", "ee_joint_state")
@@ -668,6 +687,7 @@ class RuntimePolicy:
                 or self.cfg.egg_drop_approach not in ("off", "low")
                 or self.cfg.egg_wall_model not in ("off", "shell")
                 or self.cfg.egg_drop_spin not in ("off", "axis")
+                or self.cfg.egg_reach not in ("off", "search")
                 or self.cfg.rehover_siblings not in ("follow", "keep")
                 or self.cfg.slip_shift not in ("off", "across")
                 or self.cfg.sibling_order not in ("given", "far")
@@ -676,6 +696,9 @@ class RuntimePolicy:
                 or self.cfg.slot_hover not in ("off", "low")
                 or self.cfg.slot_place not in ("off", "servo")
                 or self.cfg.slot_carry_read not in ("off", "on")
+                or self.cfg.arrange_route not in ("off", "lateral")
+                or self.cfg.arrange_hover not in ("off", "low")
+                or self.cfg.push_approach not in ("off", "tilted")
                 or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
                 or self.cfg.hang_cradle not in ("strict", "straddle") or self.cfg.artic_geom not in ("authored", "measured")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
@@ -692,6 +715,7 @@ class RuntimePolicy:
                 or self.cfg.kong_draw_read not in ("off", "place", "place3") or self.cfg.peg_base_refine not in ("off", "local")
                 or self.cfg.peg_stuck_confirm not in ("off", "on")
                 or self.cfg.peg_held_read not in ("off", "on")
+                or self.cfg.key_scope_task not in ("", "insert_key")
                 or self.cfg.key_handover not in ("v1", "v2") or self.cfg.key_lean not in ("off", "on")
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
@@ -1005,6 +1029,7 @@ class RuntimePolicy:
             sk_.egg_drop_approach = cfg.egg_drop_approach
             sk_.egg_wall_model = cfg.egg_wall_model
             sk_.egg_drop_spin = cfg.egg_drop_spin
+            sk_.egg_reach = cfg.egg_reach
             sk_.rehover_siblings = cfg.rehover_siblings
             sk_.slip_shift = cfg.slip_shift
             sk_.sibling_order = cfg.sibling_order
@@ -1014,6 +1039,9 @@ class RuntimePolicy:
             sk_.slot_place = cfg.slot_place
             sk_.slot_carry_read = cfg.slot_carry_read
             sk_.arrange_order = cfg.arrange_order
+            sk_.push_approach = cfg.push_approach
+            sk_.arrange_hover = cfg.arrange_hover
+            sk_.arrange_route = cfg.arrange_route
             sk_.push_stroke = cfg.push_stroke
             sk_.hang_cradle = cfg.hang_cradle
             sk_.hang_wide = bool(cfg.hang_wide)
@@ -1046,8 +1074,7 @@ class RuntimePolicy:
             sk_.peg_base_refine = cfg.peg_base_refine
             sk_.peg_stuck_confirm = cfg.peg_stuck_confirm
             sk_.peg_held_read = cfg.peg_held_read
-            sk_.key_handover = cfg.key_handover
-            sk_.key_lean = cfg.key_lean
+            sk_.key_handover, sk_.key_lean = cfg.key_params_for(scene)
             sk_.stack_reach = cfg.stack_reach
             sk_.nest_height = cfg.nest_height
             sk_.ported_routes = "on" if cfg.ported_routes else "off"
@@ -2059,6 +2086,7 @@ class RuntimePolicy:
         """The provider's watcher: perception's ``watch`` (frame 0 vs now) until it reports a change twice in a row
         (or says the vocabulary has no watch read); a knocked-over object is laid face up in the belief."""
         b, events, st = self.bridge, self.report["events"], {"on": True, "last": None, "prev": None}
+        relocate = self.cfg.watch_relocate_for(scene)
 
         def watch(obs: dict) -> None:
             if not st["on"] or (st["last"] is not None and b.steps_used - st["last"] < self.cfg.watch_every):
@@ -2075,11 +2103,19 @@ class RuntimePolicy:
                 return
             k = tuple(w.get("knocked") or ())
             if k and k == st["prev"]:
+                before_lay = {lab: [float(v) for v in np.r_[prov.belief.objects[lab].pos,
+                                                         prov.belief.objects[lab].quat]] for lab in k
+                              if prov.belief is not None and lab in prov.belief.objects}
                 laid = [lab for lab in k if self._lay_face_up(prov, lab)]
+                for lab in laid:
+                    events.append({"kind": "watch_lay", "label": lab, "step": b.steps_used,
+                                   "before7": before_lay[lab],
+                                   "after7": [float(v) for v in np.r_[prov.belief.objects[lab].pos,
+                                                                    prov.belief.objects[lab].quat]]})
                 events.append({"kind": "watch", "knocked": list(k), "laid": laid, "step": b.steps_used,
                                "detail": w.get("detail")})
                 st["on"] = False
-                if self.cfg.watch_relocate and laid:
+                if relocate and laid:
                     st["relocate"] = {lab: {"base": np.r_[prov.belief.objects[lab].pos, prov.belief.objects[lab].quat],
                                             "last": None, "tries": 0} for lab in laid}
                     self._relocate_laid(prov, obs0, obs, st)
@@ -2115,12 +2151,14 @@ class RuntimePolicy:
             ev = {"kind": "watch_relocate", "label": lab, "step": self.bridge.steps_used, "ok": bool(res.get("ok")),
                   "iou": res.get("iou"), "shift_mm": res.get("shift_mm"), "why": res.get("why")}
             if res.get("ok"):
+                before7 = [float(v) for v in np.r_[o.pos, o.quat]]
                 pos = np.asarray(res["pos"], float)
                 settled = r["last"] is not None and float(np.linalg.norm(pos[:2] - r["last"][:2])) * 1000 \
                     <= WATCH_RELOCATE_AGREE_MM
                 o.pos, o.quat, o.source = pos, np.asarray(res["quat"], float), "perception"
                 r["last"] = pos
                 ev.update(pos=[round(float(v), 4) for v in pos], settled=settled)
+                ev.update(before7=before7, after7=[float(v) for v in np.r_[o.pos, o.quat]])
                 if settled:
                     st["relocate"].pop(lab)
             if r["tries"] >= WATCH_RELOCATE_TRIES:

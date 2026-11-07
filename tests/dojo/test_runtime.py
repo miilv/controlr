@@ -2,6 +2,7 @@
 kinematic env through the proxy_eval policy interface. CPU only (no Isaac, no perception service)."""
 
 import copy
+import json
 import math
 import re
 from pathlib import Path
@@ -1485,14 +1486,66 @@ class _LaidWatch:
                 "iou": 0.8, "shift_mm": float(np.hypot(*a))}
 
 
-def _laid_setup(cfg, pc):
+def _laid_setup(cfg, pc, scene="make_kong"):
     env = _env()
     up = [np.cos(np.pi / 4), np.sin(np.pi / 4), 0.0, 0.0]
     tile = AssetInfo(key="Rigid/mahjong/00005", bbox_min=np.array([-0.012, -0.008, 0.0]),
                      bbox_max=np.array([0.012, 0.008, 0.034]), place={"up": np.asarray(up)})
     pol, prov = _place_setup(cfg, pc, env)
     prov.belief.objects["block_0"].asset = tile
-    return pol, prov, pol._make_watcher(prov, pol.bridge.obs, "make_kong")
+    return pol, prov, pol._make_watcher(prov, pol.bridge.obs, scene)
+
+
+@pytest.mark.parametrize("global_on", [False, True])
+def test_watch_relocate_task_overrides_global_and_matches_exact_routed_name(global_on, monkeypatch):
+    monkeypatch.setenv("DOJO_RUNTIME", '{"watch_relocate_task":"make_kong"}')
+    assert RuntimeConfig.from_env().watch_relocate_task == "make_kong"
+    cfg = RuntimeConfig(watch_relocate=global_on, watch_relocate_task="make_kong")
+    assert cfg.watch_relocate_for("make_kong") is True
+    for scene in ("imitate_sorting_sequence", "stack_blocks", "", "make_kong_random"):
+        assert cfg.watch_relocate_for(scene) is False
+    assert RuntimeConfig(watch_relocate=global_on).watch_relocate_for("stack_blocks") is global_on
+    assert RuntimeConfig().watch_relocate_task == ""
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(watch_relocate_task="make_kogn"))
+
+
+@pytest.mark.parametrize("scene", ["make_kong", "imitate_sorting_sequence", "stack_blocks", ""])
+def test_scoped_watcher_matches_legacy_path_and_belief_bytes(scene):
+    """Force even unsupported tasks to report a knock: exclusion must hold before a locate read/write.
+
+    Compare every watcher call's runtime code path, event bytes, belief pose bytes and perception reads.
+    Kong matches legacy global-on; every other scene matches global-off.
+    """
+    import json
+    import sys
+
+    def capture(cfg):
+        pc = _LaidWatch([(0, -45), (1, -47)])
+        pol, prov, watch = _laid_setup(cfg, pc, scene)
+        path, snapshots = [], []
+
+        def trace(frame, event, arg):
+            if event == "call" and frame.f_code.co_filename.endswith("runtime/policy.py"):
+                path.append(frame.f_code.co_name)
+            return trace
+
+        previous = sys.gettrace()
+        try:
+            sys.settrace(trace)
+            for _ in range(8):
+                watch(pol.bridge.obs)
+                obj = prov.belief.objects["block_0"]
+                snapshots.append((obj.pos.tobytes(), obj.quat.tobytes(), obj.source,
+                                  json.dumps(pol.report["events"], sort_keys=True).encode()))
+        finally:
+            sys.settrace(previous)
+        return path, snapshots, pc.n, pc.bases
+
+    baseline = capture(RuntimeConfig(watch=True, watch_every=0, watch_relocate=scene == "make_kong"))
+    scoped = capture(RuntimeConfig(watch=True, watch_every=0, watch_relocate_task="make_kong"))
+    assert scoped == baseline
+    assert ("_relocate_laid" in scoped[0]) == (scene == "make_kong")
 
 
 def test_watch_relocate_moves_the_laid_tile_to_where_the_head_view_finds_it_until_two_agree():
@@ -1530,6 +1583,41 @@ def test_watch_relocate_keeps_the_laid_pose_when_nothing_is_found_and_gives_up()
     for _ in range(P.WATCH_RELOCATE_TRIES + 5):
         w(obs)
     assert np.allclose(o.pos, laid) and len(pc.bases) == P.WATCH_RELOCATE_TRIES
+
+
+def test_relocation_pose_logging_preserves_writes_and_convergence():
+    pc = _LaidWatch([(0, -45), None, (1, -47)])
+    pol, prov, watch = _laid_setup(RuntimeConfig(watch=True, watch_every=0, watch_relocate=True), pc)
+    obj = prov.belief.objects["block_0"]
+    obs = pol.bridge.obs
+    watch(obs)
+    watch(obs)
+    before = np.r_[obj.pos, obj.quat].copy()
+    watch(obs)
+    first = np.r_[obj.pos, obj.quat].copy()
+    events = [e for e in pol.report["events"] if e["kind"] == "watch_relocate"]
+    assert np.array_equal(events[0]["after7"], first)
+    lay = next(e for e in pol.report["events"] if e["kind"] == "watch_lay")
+    assert np.array_equal(lay["before7"], before)
+    assert lay["after7"] == events[0]["before7"]
+    # Face-up orientation is applied before relocation; its previous position is unchanged in xy.
+    assert events[0]["before7"][:2] == before[:2].tolist()
+    watch(obs)  # rejected read: no pose write, no audit pair
+    assert np.r_[obj.pos, obj.quat].tobytes() == first.tobytes()
+    watch(obs)
+    final = np.r_[obj.pos, obj.quat].copy()
+    for _ in range(5):
+        watch(obs)
+    events = [e for e in pol.report["events"] if e["kind"] == "watch_relocate"]
+    assert len(events) == 3 and len(pc.bases) == 3 and pc.n == 3
+    assert [e.get("settled") for e in events] == [False, None, True]
+    assert "before7" not in events[1] and "after7" not in events[1]
+    assert np.array_equal(events[2]["before7"], first)
+    assert np.array_equal(events[2]["after7"], final)
+    assert np.array_equal(final[:2], before[:2] + [0.001, -0.047])
+    # Audit lists own their values: later object mutation must not rewrite the log.
+    obj.pos[:] = 0
+    assert np.array_equal(events[2]["after7"], final)
 
 
 def test_watch_relocate_off_by_default_lays_the_tile_where_it_stood():
@@ -1829,6 +1917,48 @@ def test_scan_macro_parks_both_wrists_and_starts_from_the_scan_pose(mode, needs,
 KONG = "Wait for the opponent to discard a tile, then declare a kong with the matching tiles and draw a tile."
 IMITATE = ("Observe the object placement order, remember it, then place the corresponding objects into the basket in "
            "the same order.")
+
+
+@pytest.mark.parametrize("instruction", [KONG, IMITATE, STACK])
+def test_scoped_relocate_preserves_resolved_skill_parameters(instruction):
+    import json
+
+    class Perception:
+        def estimate(self, frames, vocabulary, fold, prior_record=None):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}",
+                                         "default_pos": list(p), "default_ori": [1, 0, 0, 0]}
+                                        for i, p in enumerate(POS)]}}
+
+        def watch(self, *args):
+            return {"supported": False}
+
+    def capture(scope):
+        seen = []
+
+        def program(ctx):
+            # All JSON-valued Skills instance parameters, including constructor defaults and runtime overrides.
+            # Service/executor/world objects are dependencies, not config parameters.
+            params = {}
+            for key, value in vars(ctx.sk).items():
+                if isinstance(value, set):
+                    value = sorted(value)
+                try:
+                    json.dumps(value)
+                except (TypeError, ValueError):
+                    continue
+                params[key] = value
+            seen.append((ctx.scene, json.dumps(params, sort_keys=True).encode(),
+                         ctx.prov.watcher.__code__))
+            return {"ok": True}
+
+        pol = RuntimePolicy(RuntimeConfig(mode="perception", verify="off", watch=True,
+                                          watch_relocate_task=scope),
+                            assets=FakeAssets(), perception_client=Perception(), program=program)
+        rep = run_episode(pol, FakeEpisode(_env(instruction=instruction)), "perception")
+        assert rep["result"]["ok"] and len(seen) == 1
+        return seen
+
+    assert capture("make_kong") == capture("")
 
 
 @pytest.mark.parametrize("instruction, hold", [(KONG, "declare_kong"), (IMITATE, "copy_demonstration"), (STACK, None)])
@@ -3935,3 +4065,102 @@ def test_vocab_explain_ignores_raised_labels_and_can_require_a_close_score(raise
     v, _rec = pol._explain_vocabulary(cands, {"instruction": "x"})
     assert v.name == chosen
     assert RuntimeConfig().vocab_found_needs_score is False
+
+
+@pytest.mark.parametrize("handover", ["v1", "v2"])
+@pytest.mark.parametrize("lean", ["off", "on"])
+def test_key_scope_defaults_validation_env_and_all_routes(handover, lean, monkeypatch):
+    from dojo.runtime.supervisor import VOCABULARIES
+
+    monkeypatch.setenv("DOJO_RUNTIME", '{"key_scope_task":"insert_key"}')
+    assert RuntimeConfig.from_env().key_scope_task == "insert_key"
+    assert RuntimeConfig().key_scope_task == ""
+    legacy = RuntimeConfig(key_handover=handover, key_lean=lean)
+    scoped = RuntimeConfig(key_handover=handover, key_lean=lean, key_scope_task="insert_key")
+    RuntimePolicy(scoped)
+    # Include catalog fallback names, unknown routes and near matches, not just the regex table.
+    import json
+    catalog = json.loads((Path(__file__).resolve().parents[1] / "fixtures/catalog_task_label_categories.json").read_text())
+    for scene in {v.name for v in VOCABULARIES} | set(catalog) | {"", "insert_key_random", "INSERT_KEY"}:
+        assert legacy.key_params_for(scene) == (handover, lean)
+        assert scoped.key_params_for(scene) == ((handover, lean) if scene == "insert_key" else ("v1", "off"))
+    with pytest.raises(ValueError):
+        RuntimePolicy(RuntimeConfig(key_scope_task="insert_keey"))
+
+
+@pytest.mark.parametrize("instruction, scene", [
+    ("Insert the key into the keyhole and turn it.", "insert_key"),
+    ("Plug the charger into the power strip.", "plug_in_charger"),
+    (STACK, "stack_blocks"), (KONG, "make_kong"), (IMITATE, "imitate_sorting_sequence"),
+] + [(f"route:{name}", name) for name in json.loads(
+    (Path(__file__).resolve().parents[1] / "fixtures/catalog_task_label_categories.json").read_text()
+)] + [("route:unknown", ""), ("route:near-match", "insert_key_random")])
+def test_key_scope_resolved_skills_and_consumer_paths(instruction, scene, monkeypatch):
+    """Compare serialized Skills params and actual shared consumer line paths, also after a rebuild.
+
+    Synthetic block geometry exercises the existing consumers on CPU; this is route/parameter
+    parity evidence, not a physical insertion or camera outcome claim.
+    """
+    import json
+    import sys
+    from dojo.skills import regrasp
+
+    if instruction.startswith("route:"):
+        # Inject catalog/explain-away resolver output; the five real instructions above test routing itself.
+        from dojo.runtime.supervisor import Vocabulary
+        monkeypatch.setattr("dojo.runtime.policy.perception_vocabulary", lambda text: Vocabulary(scene, ()))
+
+    class Perception:
+        def estimate(self, *args, **kwargs):
+            return {"Rigid": {"block": [{"category": "block", "category_idx": 5, "label": f"block_{i}",
+                                         "default_pos": list(p), "default_ori": [1, 0, 0, 0]}
+                                        for i, p in enumerate(POS)]}}
+
+    def capture(cfg):
+        seen = []
+
+        def program(ctx):
+            assert ctx.scene == scene
+            for rebuild in (False, True):
+                if rebuild:
+                    ctx.make_skills(ctx.sk)
+                params = {}
+                for key, value in vars(ctx.sk).items():
+                    if isinstance(value, set):
+                        value = sorted(value)
+                    try:
+                        json.dumps(value)
+                    except (TypeError, ValueError):
+                        continue
+                    params[key] = value
+                path = []
+
+                def trace(frame, event, arg):
+                    if event == "line" and frame.f_code.co_filename == regrasp.__file__:
+                        path.append((frame.f_code.co_name, frame.f_lineno))
+                    return trace
+
+                previous = sys.gettrace()
+                try:
+                    sys.settrace(trace)
+                    target = ctx.sk.refresh().obj("block_0").T.copy()
+                    handover = regrasp.plan_rest_handover(ctx.sk, "block_0", [target], "block_1")
+                    turn = regrasp.turn_held(ctx.sk, "left", "block_0", -np.pi / 3)
+                finally:
+                    sys.settrace(previous)
+                seen.append((json.dumps(params, sort_keys=True).encode(), path, repr(handover), repr(turn)))
+            return {"ok": True}
+
+        pol = RuntimePolicy(cfg, assets=FakeAssets(), perception_client=Perception(), program=program)
+        # FakeEpisode advertises stack_blocks metadata even for insert_key: only instruction may scope.
+        rep = run_episode(pol, FakeEpisode(_env(instruction=instruction)), "perception")
+        assert rep["error"] is None, rep["error"]
+        assert rep["result"]["ok"] and len(seen) == 2
+        return seen
+
+    legacy = RuntimeConfig(mode="perception", verify="off",
+                           key_handover="v2" if scene == "insert_key" else "v1",
+                           key_lean="on" if scene == "insert_key" else "off")
+    scoped = RuntimeConfig(mode="perception", verify="off", key_handover="v2", key_lean="on",
+                           key_scope_task="insert_key")
+    assert capture(scoped) == capture(legacy)

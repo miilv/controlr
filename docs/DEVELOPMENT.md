@@ -61,6 +61,15 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 | cache / router / timings | `llm/` | `test_llm_*`; live `bench-cache` |
 | an experiment axis | field in `config.py` + `configs/base.yaml` | `test_cli` / `test_loop`; the default must not change behaviour |
 
+### Task-scoped key switches
+
+`RuntimeConfig.key_scope_task` accepts `""` (legacy global behavior) or
+`"insert_key"`. With the latter, `key_handover` / `key_lean` are copied into
+Skills only for the exact instruction-routed key vocabulary; all other routes
+resolve `v1/off`, including Skills rebuilds. Scope alone enables neither switch.
+Use runtime config for camera scoping; G3's direct `--skill-attr` overrides
+remain global. Defaults and presets retain legacy behavior.
+
 ### Testing belief-object routing
 
 G3 uses --skill-attr plan_world=objects and optionally
@@ -703,3 +712,10 @@ policy consumes them.
 halves the threaded-hook reorienting carry rate to 0.03 rad/step. Cradle,
 pick, slide, lower and release behavior retain their existing settings. The
 switch changes carry pacing only; the episode step budget stays fixed.
+
+For the opt-in egg endpoint-search experiment, use G3
+`--skill-attr egg_reach=search` (runtime `egg_reach: search`). The default is `off`.
+`tests/dojo/test_egg_reach.py` covers scoped practical bounds and endpoint rejection;
+`test_egg_grasp_height.py` covers unchanged baseline geometry. Its endpoint screen
+must never bypass the subsequent collision and motion planner. Clear the IK cache
+when entering and leaving a scoped joint envelope: cache keys omit joint limits.

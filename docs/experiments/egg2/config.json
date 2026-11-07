@@ -1,0 +1,31 @@
+{
+  "status": "exploratory G3 development; not a camera pre-registration",
+  "controller": "8be287c3",
+  "task": "fill_egg_holder",
+  "layouts": [
+    100000,
+    100001,
+    100010,
+    100012,
+    100015,
+    100016,
+    100019,
+    100053,
+    100054,
+    100055
+  ],
+  "generator": "simlab/v6; copied frozen EGG dev10",
+  "baseline": {},
+  "candidate": {
+    "egg_reach": "search"
+  },
+  "mode": "A (perfect perception)",
+  "step_limit": 700,
+  "workers": 2,
+  "admission": {
+    "vram_used_max_mib": 20480,
+    "mem_available_min_mib": 12288,
+    "load1_max": 26
+  },
+  "camera_condition": "Write a fresh current-rule camera pre-registration only if G3 clearly gains; no camera runs authorized here"
+}

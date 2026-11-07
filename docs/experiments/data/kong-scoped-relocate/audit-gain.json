@@ -1,0 +1,1391 @@
+{
+  "time": "2026-11-07T00:11:25.013011+00:00",
+  "code": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+  "expected_episodes": 40,
+  "audited_episodes": 20,
+  "complete": false,
+  "coverage_ok": true,
+  "expected_writes": 148,
+  "scored_writes": 148,
+  "uncertain_writes": 0,
+  "ineligible_attempts": [],
+  "config_or_route_mismatches": [],
+  "unexpected_non_kong_relocation_writes": [],
+  "input_hash_mismatches": null,
+  "replay_quality": [],
+  "analysis_script_sha256": "40842f1a3957f0d8ff93128227cb90f9906d4231c357bd01844e7113f16d52c4",
+  "counts": [
+    {
+      "task": "make_kong",
+      "arm": "A",
+      "writer": "perception",
+      "writes": 37,
+      "harmful": 22,
+      "helpful": 4,
+      "neutral": 11,
+      "uncertain": 0
+    },
+    {
+      "task": "make_kong",
+      "arm": "A",
+      "writer": "predicted",
+      "writes": 6,
+      "harmful": 2,
+      "helpful": 2,
+      "neutral": 2,
+      "uncertain": 0
+    },
+    {
+      "task": "make_kong",
+      "arm": "A",
+      "writer": "watch_lay",
+      "writes": 10,
+      "harmful": 6,
+      "helpful": 0,
+      "neutral": 4,
+      "uncertain": 0
+    },
+    {
+      "task": "make_kong",
+      "arm": "B",
+      "writer": "perception",
+      "writes": 47,
+      "harmful": 28,
+      "helpful": 9,
+      "neutral": 10,
+      "uncertain": 0
+    },
+    {
+      "task": "make_kong",
+      "arm": "B",
+      "writer": "predicted",
+      "writes": 8,
+      "harmful": 3,
+      "helpful": 2,
+      "neutral": 3,
+      "uncertain": 0
+    },
+    {
+      "task": "make_kong",
+      "arm": "B",
+      "writer": "watch_lay",
+      "writes": 10,
+      "harmful": 6,
+      "helpful": 0,
+      "neutral": 4,
+      "uncertain": 0
+    },
+    {
+      "task": "make_kong",
+      "arm": "B",
+      "writer": "watch_relocate",
+      "writes": 30,
+      "harmful": 2,
+      "helpful": 15,
+      "neutral": 13,
+      "uncertain": 0
+    }
+  ],
+  "pooled_counts": [
+    {
+      "task": "ALL",
+      "arm": "A",
+      "writer": "perception",
+      "writes": 37,
+      "harmful": 22,
+      "helpful": 4,
+      "neutral": 11,
+      "uncertain": 0
+    },
+    {
+      "task": "ALL",
+      "arm": "A",
+      "writer": "predicted",
+      "writes": 6,
+      "harmful": 2,
+      "helpful": 2,
+      "neutral": 2,
+      "uncertain": 0
+    },
+    {
+      "task": "ALL",
+      "arm": "A",
+      "writer": "watch_lay",
+      "writes": 10,
+      "harmful": 6,
+      "helpful": 0,
+      "neutral": 4,
+      "uncertain": 0
+    },
+    {
+      "task": "ALL",
+      "arm": "B",
+      "writer": "perception",
+      "writes": 47,
+      "harmful": 28,
+      "helpful": 9,
+      "neutral": 10,
+      "uncertain": 0
+    },
+    {
+      "task": "ALL",
+      "arm": "B",
+      "writer": "predicted",
+      "writes": 8,
+      "harmful": 3,
+      "helpful": 2,
+      "neutral": 3,
+      "uncertain": 0
+    },
+    {
+      "task": "ALL",
+      "arm": "B",
+      "writer": "watch_lay",
+      "writes": 10,
+      "harmful": 6,
+      "helpful": 0,
+      "neutral": 4,
+      "uncertain": 0
+    },
+    {
+      "task": "ALL",
+      "arm": "B",
+      "writer": "watch_relocate",
+      "writes": 30,
+      "harmful": 2,
+      "helpful": 15,
+      "neutral": 13,
+      "uncertain": 0
+    }
+  ],
+  "deltas": [
+    {
+      "task": "make_kong",
+      "writer": "perception",
+      "harmful_A": 22,
+      "harmful_B": 28,
+      "harmful_delta": 6,
+      "helpful_A": 4,
+      "helpful_B": 9
+    },
+    {
+      "task": "make_kong",
+      "writer": "predicted",
+      "harmful_A": 2,
+      "harmful_B": 3,
+      "harmful_delta": 1,
+      "helpful_A": 2,
+      "helpful_B": 2
+    },
+    {
+      "task": "make_kong",
+      "writer": "watch_lay",
+      "harmful_A": 6,
+      "harmful_B": 6,
+      "harmful_delta": 0,
+      "helpful_A": 0,
+      "helpful_B": 0
+    },
+    {
+      "task": "make_kong",
+      "writer": "watch_relocate",
+      "harmful_A": 0,
+      "harmful_B": 2,
+      "harmful_delta": 2,
+      "helpful_A": 0,
+      "helpful_B": 15
+    }
+  ],
+  "pooled_deltas": [
+    {
+      "task": "ALL",
+      "writer": "perception",
+      "harmful_A": 22,
+      "harmful_B": 28,
+      "harmful_delta": 6,
+      "helpful_A": 4,
+      "helpful_B": 9
+    },
+    {
+      "task": "ALL",
+      "writer": "predicted",
+      "harmful_A": 2,
+      "harmful_B": 3,
+      "harmful_delta": 1,
+      "helpful_A": 2,
+      "helpful_B": 2
+    },
+    {
+      "task": "ALL",
+      "writer": "watch_lay",
+      "harmful_A": 6,
+      "harmful_B": 6,
+      "harmful_delta": 0,
+      "helpful_A": 0,
+      "helpful_B": 0
+    },
+    {
+      "task": "ALL",
+      "writer": "watch_relocate",
+      "harmful_A": 0,
+      "harmful_B": 2,
+      "harmful_delta": 2,
+      "helpful_A": 0,
+      "helpful_B": 15
+    }
+  ],
+  "reported_logical_calls": {
+    "cx/gpt-6-luna": 23
+  },
+  "reported_tokens": {
+    "cx/gpt-6-luna": {
+      "prompt": 260061,
+      "completion": 8067,
+      "reasoning": 4138,
+      "cache_read": 185600
+    }
+  },
+  "episodes": [
+    {
+      "name": "c6b_makekongsg_kongAr1b1_100000",
+      "attempt": "c6b_makekongsg_kongAr1b1_100000",
+      "arm": "A",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "expected_writes": 10,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongAr1b1_100000/writes.jsonl",
+      "relocation_writes": 0,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongAr1b1_100000.provenance.json",
+      "scored_writes": 10,
+      "uncertain_writes": 0,
+      "writes_sha256": "da17a7ae3efa0438c94dcfc88ddcd6ea1729137e374c6f6cb24e6e1974b4a4bb",
+      "report_sha256": "1f353cac413e64d1c570cb27efa86f4da74597001903bbf1021bc43a5bd9e75f",
+      "category": "budget",
+      "steps_used": 590,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongBr1b1_100000",
+      "attempt": "c6b_makekongsg_kongBr1b1_100000",
+      "arm": "B",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "expected_writes": 14,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongBr1b1_100000/writes.jsonl",
+      "relocation_writes": 4,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongBr1b1_100000.provenance.json",
+      "scored_writes": 14,
+      "uncertain_writes": 0,
+      "writes_sha256": "62f1f047d723c29454fe5e459bede6b75e716325955873f0525f91f64e608410",
+      "report_sha256": "7959edd1c3fc61294a972efbd03c538b1756f05efe9f3bcef9029cdc82067e8a",
+      "category": "budget",
+      "steps_used": 590,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongBr1b1_100001",
+      "attempt": "c6b_makekongsg_kongBr1b1_100001",
+      "arm": "B",
+      "task": "make_kong",
+      "layout_id": 100001,
+      "expected_writes": 11,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongBr1b1_100001/writes.jsonl",
+      "relocation_writes": 3,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongBr1b1_100001.provenance.json",
+      "scored_writes": 11,
+      "uncertain_writes": 0,
+      "writes_sha256": "232771d147600f501a940f66804c5b15c13c242bc8839adaafd820ad631bf747",
+      "report_sha256": "01bb346896137a7eadbd2ca348816e6d3527b2bf2f8f9f8d2681d38a794f6b14",
+      "category": "ok",
+      "steps_used": 427,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongAr1b1_100001",
+      "attempt": "c6b_makekongsg_kongAr1b1_100001",
+      "arm": "A",
+      "task": "make_kong",
+      "layout_id": 100001,
+      "expected_writes": 1,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongAr1b1_100001/writes.jsonl",
+      "relocation_writes": 0,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongAr1b1_100001.provenance.json",
+      "scored_writes": 1,
+      "uncertain_writes": 0,
+      "writes_sha256": "ecc187a6d4470ba7b8fc521eaae56cbd5c2db55b87f52e5732dc0a3cb2dcdfc3",
+      "report_sha256": "4c97b03564cef8a1dffe463a98d5ca7d979c5538b519e1fb3b1dd7b2c4eaf82f",
+      "category": "other",
+      "steps_used": 67,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongAr1b1_100002",
+      "attempt": "c6b_makekongsg_kongAr1b1_100002",
+      "arm": "A",
+      "task": "make_kong",
+      "layout_id": 100002,
+      "expected_writes": 1,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongAr1b1_100002/writes.jsonl",
+      "relocation_writes": 0,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongAr1b1_100002.provenance.json",
+      "scored_writes": 1,
+      "uncertain_writes": 0,
+      "writes_sha256": "949422edb250b0da0451647f3f99c2c4cfdc98d4567bee9d8f763d91b3bdc7a6",
+      "report_sha256": "771f5796fe3af3fc8555ef8fc1e9a21eb7db574ee3e0bc87b18729a636a35aba",
+      "category": "other",
+      "steps_used": 67,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongBr1b1_100002",
+      "attempt": "c6b_makekongsg_kongBr1b1_100002",
+      "arm": "B",
+      "task": "make_kong",
+      "layout_id": 100002,
+      "expected_writes": 7,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongBr1b1_100002/writes.jsonl",
+      "relocation_writes": 2,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongBr1b1_100002.provenance.json",
+      "scored_writes": 7,
+      "uncertain_writes": 0,
+      "writes_sha256": "81a213d60f96a45cb3798c50e6f56fd76dc1fd94c1fdc1ebfaa1742d3a638cf7",
+      "report_sha256": "26ad96ac3cea21a9008aa286bbb3aa705b1b7471a08fd52f627eb35635c85c76",
+      "category": "not_home",
+      "steps_used": 179,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongBr1b1_100003",
+      "attempt": "c6b_makekongsg_kongBr1b1_100003",
+      "arm": "B",
+      "task": "make_kong",
+      "layout_id": 100003,
+      "expected_writes": 5,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongBr1b1_100003/writes.jsonl",
+      "relocation_writes": 3,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongBr1b1_100003.provenance.json",
+      "scored_writes": 5,
+      "uncertain_writes": 0,
+      "writes_sha256": "a66a9c9772445b507d016b366da325d5bba9d404d75f09926d64753e8aeb544d",
+      "report_sha256": "263e48b72d74dba6d09e98e3a8696c5fbe6902ce2612b79b82ad635b06f1e374",
+      "category": "other",
+      "steps_used": 67,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongAr1b1_100003",
+      "attempt": "c6b_makekongsg_kongAr1b1_100003",
+      "arm": "A",
+      "task": "make_kong",
+      "layout_id": 100003,
+      "expected_writes": 2,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongAr1b1_100003/writes.jsonl",
+      "relocation_writes": 0,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongAr1b1_100003.provenance.json",
+      "scored_writes": 2,
+      "uncertain_writes": 0,
+      "writes_sha256": "b4052be3f470e7e137d19cc5d58f39d8c61637a95bb57146cc1883c3bed6c537",
+      "report_sha256": "3c792b2acd7ddce6051acadac6d5f6c8c4ae8212ea5a362c0984feb08b01ae18",
+      "category": "other",
+      "steps_used": 67,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongAr1b1_100004",
+      "attempt": "c6b_makekongsg_kongAr1b1_100004",
+      "arm": "A",
+      "task": "make_kong",
+      "layout_id": 100004,
+      "expected_writes": 8,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongAr1b1_100004/writes.jsonl",
+      "relocation_writes": 0,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongAr1b1_100004.provenance.json",
+      "scored_writes": 8,
+      "uncertain_writes": 0,
+      "writes_sha256": "dc8cc2c355c5c1e0fd23efee4327cf8207cf0e61009d68405439ec47f4b3bd2f",
+      "report_sha256": "f9a95b2f3fa9a3168a1e3f852b7fc9f362d6b772720bd6db484c1c29c6fb2b7f",
+      "category": "ok",
+      "steps_used": 433,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongBr1b1_100004",
+      "attempt": "c6b_makekongsg_kongBr1b1_100004",
+      "arm": "B",
+      "task": "make_kong",
+      "layout_id": 100004,
+      "expected_writes": 11,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongBr1b1_100004/writes.jsonl",
+      "relocation_writes": 2,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongBr1b1_100004.provenance.json",
+      "scored_writes": 11,
+      "uncertain_writes": 0,
+      "writes_sha256": "b9d54486b1c2af16edfce2f6792f92ad4a8c30e4c9645e693b3b080520c39ede",
+      "report_sha256": "1d2df6c08e1291418fa97d871f332def72914e813c4f5c23407c0e067d98468d",
+      "category": "ok",
+      "steps_used": 513,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongBr1b2_100000",
+      "attempt": "c6b_makekongsg_kongBr1b2_100000",
+      "arm": "B",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "expected_writes": 11,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongBr1b2_100000/writes.jsonl",
+      "relocation_writes": 3,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongBr1b2_100000.provenance.json",
+      "scored_writes": 11,
+      "uncertain_writes": 0,
+      "writes_sha256": "84bd36e5db685d812caffb89d69f3363787f3ba2b2a99ddcd58a406dd9da6f65",
+      "report_sha256": "c4ee123515dfad0457adf1fcc6aab5933f5d267222a394e129aef0494709b147",
+      "category": "ok",
+      "steps_used": 429,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongAr1b2_100000",
+      "attempt": "c6b_makekongsg_kongAr1b2_100000",
+      "arm": "A",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "expected_writes": 8,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongAr1b2_100000/writes.jsonl",
+      "relocation_writes": 0,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongAr1b2_100000.provenance.json",
+      "scored_writes": 8,
+      "uncertain_writes": 0,
+      "writes_sha256": "8530bd0cfffc2bf3995fbbf7ed82637907cb9f72c5be5e6be5c77b0e95d00881",
+      "report_sha256": "eac07794865d795680e5c7c79314785001a60d73f61d125528653fe83d0da541",
+      "category": "ok",
+      "steps_used": 429,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongAr1b2_100001",
+      "attempt": "c6b_makekongsg_kongAr1b2_100001",
+      "arm": "A",
+      "task": "make_kong",
+      "layout_id": 100001,
+      "expected_writes": 2,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongAr1b2_100001/writes.jsonl",
+      "relocation_writes": 0,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongAr1b2_100001.provenance.json",
+      "scored_writes": 2,
+      "uncertain_writes": 0,
+      "writes_sha256": "169cf9807f70a3d5417d20919b23332e679948559a0256cd97b481b233f7f2cc",
+      "report_sha256": "243549358e9920e47e14f03e5978f88039a7714073a9fef6d96181e38ae942e4",
+      "category": "other",
+      "steps_used": 67,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongBr1b2_100001",
+      "attempt": "c6b_makekongsg_kongBr1b2_100001",
+      "arm": "B",
+      "task": "make_kong",
+      "layout_id": 100001,
+      "expected_writes": 5,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongBr1b2_100001/writes.jsonl",
+      "relocation_writes": 3,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongBr1b2_100001.provenance.json",
+      "scored_writes": 5,
+      "uncertain_writes": 0,
+      "writes_sha256": "f2220b72e1c3ce3bfa041fe891194bfe5e0d7a9ec63d19abcd60ac0654ba9f7f",
+      "report_sha256": "daf4d24508452c9078384560330a2f5f92e1f03c7f379a8dc6977d1bb730c9f9",
+      "category": "other",
+      "steps_used": 67,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongBr1b2_100002",
+      "attempt": "c6b_makekongsg_kongBr1b2_100002",
+      "arm": "B",
+      "task": "make_kong",
+      "layout_id": 100002,
+      "expected_writes": 9,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongBr1b2_100002/writes.jsonl",
+      "relocation_writes": 4,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongBr1b2_100002.provenance.json",
+      "scored_writes": 9,
+      "uncertain_writes": 0,
+      "writes_sha256": "cb77faa253699b6cb3fd1fb5f655fc0ea13827d6813ceef939331b8b4c1223fd",
+      "report_sha256": "d13c4e2a5640ab6ca9f98615bb4843821b0639e057550f31e2015a9f0e5c4b61",
+      "category": "not_home",
+      "steps_used": 167,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongAr1b2_100002",
+      "attempt": "c6b_makekongsg_kongAr1b2_100002",
+      "arm": "A",
+      "task": "make_kong",
+      "layout_id": 100002,
+      "expected_writes": 5,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongAr1b2_100002/writes.jsonl",
+      "relocation_writes": 0,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongAr1b2_100002.provenance.json",
+      "scored_writes": 5,
+      "uncertain_writes": 0,
+      "writes_sha256": "d949d997ce25616fb6114db98fa582116b9129707cb14fd64be529caf92f1cb4",
+      "report_sha256": "fa9c14150e97775d8079762dbbd8d6f736d5c10e2e5b4ae531c4b7a1fc85b702",
+      "category": "not_home",
+      "steps_used": 167,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongAr1b2_100003",
+      "attempt": "c6b_makekongsg_kongAr1b2_100003",
+      "arm": "A",
+      "task": "make_kong",
+      "layout_id": 100003,
+      "expected_writes": 8,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongAr1b2_100003/writes.jsonl",
+      "relocation_writes": 0,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongAr1b2_100003.provenance.json",
+      "scored_writes": 8,
+      "uncertain_writes": 0,
+      "writes_sha256": "c4c3420f9437b846eb4129b9adb6a7e7d00ecc766105f6a99ad472d90b729cf3",
+      "report_sha256": "700a1ac32d285b0408c7f253b9938c0969f1ec36ac634679313b2d615230283c",
+      "category": "ok",
+      "steps_used": 426,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongBr1b2_100003",
+      "attempt": "c6b_makekongsg_kongBr1b2_100003",
+      "arm": "B",
+      "task": "make_kong",
+      "layout_id": 100003,
+      "expected_writes": 10,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongBr1b2_100003/writes.jsonl",
+      "relocation_writes": 2,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongBr1b2_100003.provenance.json",
+      "scored_writes": 10,
+      "uncertain_writes": 0,
+      "writes_sha256": "e3b59e1b8c759b83ee2c924d0982601234123c4fa58240c1414b069d284f5bef",
+      "report_sha256": "24785f48b1db22bf364ad1cc9c205714e7f80a33f2088e220795361c140769b2",
+      "category": "ok",
+      "steps_used": 427,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongBr1b2_100004",
+      "attempt": "c6b_makekongsg_kongBr1b2_100004",
+      "arm": "B",
+      "task": "make_kong",
+      "layout_id": 100004,
+      "expected_writes": 12,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongBr1b2_100004/writes.jsonl",
+      "relocation_writes": 4,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongBr1b2_100004.provenance.json",
+      "scored_writes": 12,
+      "uncertain_writes": 0,
+      "writes_sha256": "98011f97badb3bf241e2f4ff2b3716bbcdb0c647248386d4b6362ef40868b8c9",
+      "report_sha256": "88cb733fb2105e35d2b9437a7c1b422528b1d581b15405ec079e09ab69f0987a",
+      "category": "ok",
+      "steps_used": 443,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    },
+    {
+      "name": "c6b_makekongsg_kongAr1b2_100004",
+      "attempt": "c6b_makekongsg_kongAr1b2_100004",
+      "arm": "A",
+      "task": "make_kong",
+      "layout_id": 100004,
+      "expected_writes": 8,
+      "writes_path": "/home/robotics/dojo-data/kong-1107/audit/by-run/c6b_makekongsg_kongAr1b2_100004/writes.jsonl",
+      "relocation_writes": 0,
+      "provenance": "/home/robotics/dojo-data/kong-1107/audit/jobs/c6b_makekongsg_kongAr1b2_100004.provenance.json",
+      "scored_writes": 8,
+      "uncertain_writes": 0,
+      "writes_sha256": "6592ab7192d32891aa62584560a16dc096e750b3698995869e468e51fb9e6f2b",
+      "report_sha256": "d8ada9c855af794a2519c98f03abe110fd9d1eeb5c8bc2ba575dc59e60c33f62",
+      "category": "ok",
+      "steps_used": 443,
+      "code": {
+        "head": "ffb2c151",
+        "dirty": false,
+        "host": "compute6",
+        "family_prefix": "c6b_",
+        "simulation_environment": {
+          "python": "3.11.18",
+          "msgpack": "1.2.4",
+          "compute4_reference": {
+            "python": "3.11.17",
+            "msgpack": "1.2.3"
+          },
+          "lead_accepted": true,
+          "decision": "INTEG6 round 2: paired arms on compute6; do not modify RoboDojo env"
+        },
+        "full_head": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "launcher_commit": "5b9337bc96cc65290cbe5007d2f3dd6368f31084",
+        "r3_runtime_recipe": {
+          "ext_overlay": "/home/robotics/dojo-data/integ6-r3/extscache",
+          "registry_enabled": false,
+          "extension_hash_manifest_sha256": "ca77c6a30c149a0e032e5cf89af8faa5ea522249b97e1ab6682f73484c634eaa",
+          "soft_watchdog_s": 600,
+          "hard_watchdog_s": 600,
+          "episode_cap_minutes": 25,
+          "qualification": "c6dev_imitate_offline_grace_100002: rc=0, no infra/watchdog, policy result perception_gross",
+          "reason": "dev stack traces show active inverse-layout/EGL fitting while driver waits for perception; avoid false 300-s zenity-triggered kill without increasing hard watchdog"
+        },
+        "commit": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "sha": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+        "stream": "KONG",
+        "parent_lane_deployment": "416a2a0374e06628350816a019862caf5156e730",
+        "operational_lane_sha256": "c904b0d3f6e7bfabd9c6355e69588d975ad0e3315a97d2938bc3043ccde0df43",
+        "model": "cx/gpt-6-luna",
+        "weights": {
+          "seg": "2f546196145fc424f76a5e2e47dd3210",
+          "digit": "df7da507a3d3e65e1736a16ce955932b",
+          "kong": "300f319c1f77ac1b04551cf2a957f64f"
+        },
+        "note": "Merged main containing #410 and #411; existing lane environment and Kit overlay retained; independent venv parity checked"
+      }
+    }
+  ],
+  "qualification": "Write audit only, no camera verdict. Partial panels cannot qualify. Exact write snapshots on original action prefixes; raw logs and physics replay provenance retained remotely."
+}
