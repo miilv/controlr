@@ -415,6 +415,7 @@ class RuntimeConfig:
     stand_offset: str = "off"
     retreat_axis: str = "off"
     place_via: str = "off"          # stream ORG2: off | clear (``torso.clear_vias``)
+    slip_avoid: str = "off"         # stream ORG2: off | on (``skills.slip_penalty``)
     # Additional face-contact approach tilts, with fingertip position preserved.
     push_approach: str = "off"
     arrange_hover: str = "off"
@@ -761,6 +762,7 @@ class RuntimePolicy:
                 or self.cfg.arrange_retry not in ("off", "once")
                 or self.cfg.grasp_torso not in ("off", "on") or self.cfg.stand_offset not in ("off", "base")
                 or self.cfg.retreat_axis not in ("off", "on") or self.cfg.place_via not in ("off", "clear")
+                or self.cfg.slip_avoid not in ("off", "on")
                 or self.cfg.fill_guard not in ("off", "geometry")
                 or (self.cfg.fill_guard == "geometry" and any(getattr(self.cfg, k) != "off" for k in
                     ("fill_grasp", "fill_holder", "fill_drop", "fill_insert")))
@@ -1155,6 +1157,7 @@ class RuntimePolicy:
             sk_.stand_offset = cfg.stand_offset
             sk_.retreat_axis = cfg.retreat_axis
             sk_.place_via = cfg.place_via
+            sk_.slip_avoid = cfg.slip_avoid
             sk_.push_approach = cfg.push_approach
             sk_.arrange_hover = cfg.arrange_hover
             sk_.arrange_route = cfg.arrange_route

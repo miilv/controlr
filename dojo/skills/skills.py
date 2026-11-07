@@ -258,6 +258,20 @@ def _objects_from_rows_nodb(rows):
     return out
 
 
+SLIP_NEAR = (0.02, 35.0)      # m, deg: a grasp this close (object frame) to one that slipped is penalised (``slip_avoid``)
+SLIP_PENALTY = 3.0            # added to its screen rank (rank units: a grasp score ~0-1, + 0.05 per target index)
+
+
+def slip_penalty(T_obj_grasp, slipped) -> float:
+    """``Skills.slip_avoid`` "on": ``SLIP_PENALTY`` when the object-frame grasp is within ``SLIP_NEAR`` of one that slipped."""
+    for S in slipped:
+        if float(np.linalg.norm(T_obj_grasp[:3, 3] - S[:3, 3])) < SLIP_NEAR[0]:
+            c = (float(np.trace(T_obj_grasp[:3, :3].T @ S[:3, :3])) - 1.0) / 2.0
+            if math.degrees(math.acos(max(-1.0, min(1.0, c)))) < SLIP_NEAR[1]:
+                return SLIP_PENALTY
+    return 0.0
+
+
 class Skills:
     def __init__(self, env, provider, kin: X5Kin | None = None, reserve: int = 30, log=None, verifier=None,
                  verify_k: int = 2, n_cands: int = 6, remeasure: bool = True, on_verified=None, refine=None,
@@ -342,6 +356,9 @@ class Skills:
         # ``library.arrange`` (stream ORG2): place_via "off" | "clear" (a place whose transit collides tries via points
         # out from the fixtures next to its support, then a straight line in: ``torso.clear_vias``)
         self.place_via = "off"
+        # ``Skills.verify_pick`` / ``plan_transfer`` (stream ORG2): slip_avoid "off" | "on" (a grasp that slipped is kept
+        # in the object's frame; transfer screens of that object rank grasps within SLIP_NEAR of it SLIP_PENALTY later)
+        self.slip_avoid = "off"
         self.push_plan = "off"
         # ``library.arrange`` (stream ORG2): "off" | "once" (each failed step tried once more after the others)
         self.arrange_retry = "off"
@@ -983,6 +1000,9 @@ class Skills:
         lift_planned = float((pp.plan.q_end is not None) and (self.kin.tcp(pp.arm, pp.plan.q_end)[2, 3] - pp.grasp.T[2, 3]))
         if dz < 0.5 * max(lift_planned, 0.02) or drift > 0.03:
             self.held[pp.arm] = None
+            if getattr(self, "slip_avoid", "off") == "on":
+                # stream ORG2: the slipped grasp in the object frame; later transfer screens rank grasps near it last
+                self.__dict__.setdefault("_slipped", {}).setdefault(pp.label, []).append(inv_T(pp.T_tcp_obj))
             return SkillResult(False, "pick", "grasp_slip", pp.steps, pp.arm, exp, meas,
                                f"object rose {dz*1000:.0f} mm (planned {lift_planned*1000:.0f}), in-hand drift {drift*1000:.0f} mm"
                                f" [{pp.grasp.method} {pp.grasp.note}]")
@@ -2205,6 +2225,7 @@ class Skills:
         # (twin: pliers squeezed across their diverging handles, a hammer across its head, slid out; the
         # handle at the centre of mass holds)
         irregular = held_box(obj, np.eye(4)).points is not None or G.com_off(obj) > 0.008
+        slipped = self.__dict__.get("_slipped", {}).get(label, []) if getattr(self, "slip_avoid", "off") == "on" else []
         if irregular and "approach_rad" not in place_kw:
             # uneven objects swing in the pads on fast carries (twin: a wrench held 6 mm off its centre of mass,
             # 4 mm drift after the lift, fell out on the way to its slot)
@@ -2279,6 +2300,8 @@ class Skills:
                         if not self.kin.ik(a, T_l, r.q, n_random=0).ok:
                             continue
                     pr = 0.0 if pair_rank is None else float(pair_rank(g, T_tcp_obj, T_obj, T_tcp))
+                    if slipped:
+                        pr += slip_penalty(inv_T(T_tcp_obj), slipped)
                     screened.append((g.score + hq + 0.05 * (ti // max(1, yaw_sym)) + pr, a, g, T_obj))
             notes.append(f"{a}: {n_g}/{len(cands)} grasps reachable, {n_p} grasp-place pairs")
         screened.sort(key=lambda x: x[0])

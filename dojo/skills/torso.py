@@ -36,6 +36,8 @@ CORRIDOR = 0.010                          # m: half-width (across the closing ax
 FINGER_HALF = 0.012                       # m: a finger's half-width across the closing axis
 FINGER_REACH = 0.014                      # m: how far a finger extends past the TCP along the approach
 PRE = 0.07                                # m: the pre-grasp retreat (``Grasp.pre_dist``)
+TORSO_FIRST = -0.6                        # score offset: screened and planned before the slice pinches (G3 dev: all 5
+                                          # executed slice picks of a figurine slid out, baseline 100000-09)
 PALM_DEPTH, PALM_HALF_W, PALM_HALF_H = 0.084, 0.08, 0.03   # m: ``X5Kin.palm_points``' box (flange frame)
 
 
@@ -122,13 +124,13 @@ def torso_grasps(obj: ObjectState, kin, arm: str, heights=TORSO_HEIGHTS, offsets
                     if in_p.any():
                         continue
                     out.append(Grasp("torso", T, w, pre_dist=PRE,
-                                     score=0.2 * abs(frac - 0.65) / 0.15 + pitch / 100.0 + 0.3 * w / 0.08,
+                                     score=TORSO_FIRST + 0.2 * abs(frac - 0.65) / 0.15 + pitch / 100.0 + 0.3 * w / 0.08,
                                      note=f"torso h {frac:.2f} off {off:+.0f} w {w * 1000:.0f}mm pitch {pitch:.0f}"))
     return out
 
 
 CLEAR_CAP = 0.02         # m: clearance beyond this does not rank a stand position higher (then: nearest the centre)
-STAND_KEEP = 8           # the clearest stand positions kept (the transfer screen's IK budget: positions x headings x grasps)
+STAND_KEEP = 10          # the clearest stand positions kept (the transfer screen's IK budget: positions x headings x grasps)
 BEARING_SPREAD = (0.0, math.radians(30.0), -math.radians(30.0))
 
 

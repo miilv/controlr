@@ -15,7 +15,7 @@ from dojo.skills.kinematics import TIP_BEYOND_TCP
 
 SWITCHES = {"push_contact": ("off", "pair"), "push_plan": ("off", "sequence"), "arrange_retry": ("off", "once"),
             "grasp_torso": ("off", "on"), "stand_offset": ("off", "base"), "retreat_axis": ("off", "on"),
-            "place_via": ("off", "clear")}
+            "place_via": ("off", "clear"), "slip_avoid": ("off", "on")}
 
 
 @pytest.mark.parametrize("name,values", sorted(SWITCHES.items()))
@@ -494,3 +494,32 @@ def test_stand_yaws_keep_the_bearing_from_each_arm(monkeypatch):
     b0, b1 = np.arctan2(*(fig.center_w[:2] - base)[::-1]), np.arctan2(*(stand.center_w[:2] - base)[::-1])
     assert ys[0] == pytest.approx(b1 - b0)
     assert ys[1] - ys[0] == pytest.approx(np.radians(30.0))
+
+
+def test_slip_penalty_near_a_slipped_grasp_only():
+    from dojo.skills.skills import SLIP_PENALTY, slip_penalty
+    S = np.eye(4)
+    near = np.eye(4)
+    near[:3, 3] = [0.01, 0.0, 0.0]
+    far = np.eye(4)
+    far[:3, 3] = [0.05, 0.0, 0.0]
+    turned = np.eye(4)
+    turned[:3, :3] = np.array([[0, -1.0, 0], [1.0, 0, 0], [0, 0, 1.0]])
+    assert slip_penalty(near, [S]) == SLIP_PENALTY
+    assert slip_penalty(far, [S]) == 0.0 and slip_penalty(turned, [S]) == 0.0 and slip_penalty(near, []) == 0.0
+
+
+@pytest.mark.parametrize("mode", ["off", "on"])
+def test_verify_pick_records_a_slip_only_when_on(mode):
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.skills import GTProvider, PickPlan, Skills
+    rows = [dict(label="fig", category="garage", category_idx=0, type="Rigid", pos=[-0.2, -0.2, 0.86],
+                 quat=[1, 0, 0, 0], half=[0.05, 0.05, 0.095])]
+    env = KinematicEnv(rows, step_lim=100)
+    sk = Skills(env, GTProvider(env, None))
+    sk.slip_avoid = mode
+    g = SimpleNamespace(T=np.eye(4), method="torso", note="torso h 0.50")
+    pp = PickPlan("left", SimpleNamespace(q_end=None), g, np.eye(4), 10, "fig", "auto", {})
+    r = sk.verify_pick(pp, np.array([-0.2, -0.2, 0.86]))
+    assert r.status == "grasp_slip"
+    assert (len(sk.__dict__.get("_slipped", {}).get("fig", [])) == 1) == (mode == "on")
