@@ -133,3 +133,36 @@ def test_later_originals_report_their_actual_source(monkeypatch, skill, commit):
     sk = SimpleNamespace(ex=SimpleNamespace(steps_used=0, ended=False, steps_left=800),
                          provider=SimpleNamespace(events=[]), _record=lambda r: None)
     assert adapter.ported(sk, skill)['source'] == f'robot-harness {commit} skills/{skill}'
+
+
+def test_budget_pace_keeps_flow_and_angles_and_spends_only_last_profile_reserve(monkeypatch):
+    import dojo.skills.ported as adapter
+    from dojo.skills import planner
+    from dojo.skills.pour_order import pour_in_order
+    assert RuntimeConfig().ported_pour_pace == 'v1'
+    assert 'budget' in SKILL_ATTRS['ported_pour_pace']
+    args = planner.pour_bottle_call('b10', 'budget')[1]
+    assert args == {'tilt_speed': .8, 'untilt_speed': 1., 'lift_speed': 'normal', 'drain_steps': 12, 'spout_back': .01}
+    assert not {'phis', 'flow_speed', 'untilt_phis'} & args.keys()
+    calls = []
+    monkeypatch.setattr(adapter, 'ported', lambda sk, name, args, reserve=None:
+                        calls.append(args) or {'ok': True, 'verified': True, 'pour': {'max_phi': 150, 'stop': 'profile end', 'final_tilt': .5}})
+    class Sk:
+        ported_pour_pace, ported_pour_aim = 'budget', 'b10'
+        def refresh(self):
+            return None
+        def log(self, message):
+            pass
+    assert pour_in_order(Sk(), [['a', 'x'], ['b', 'y'], ['c', 'z']])['ok']
+    assert [c.get('profile_reserve') for c in calls] == [None, None, 0]
+    assert [c.get('untilt_reserve') for c in calls] == [None, None, 0]
+    assert [c.get('companion') for c in calls] == [['@b', '@y'], ['@c', '@z'], None]
+
+
+@pytest.mark.parametrize('phi,stop,tilt,complete', [(120, 'step budget', .5, False), (150, 'step budget', .5, False),
+                                                  (150, 'profile end', 47.4, False), (150, 'profile end', 29., True)])
+def test_budget_never_counts_partial_or_untilted_pour_as_complete(phi, stop, tilt, complete):
+    from dojo.skills.pour_order import poured
+    r = {'ok': True, 'verified': True, 'pour': {'max_phi': phi, 'stop': stop, 'final_tilt': tilt}}
+    assert poured(r, full=True) is complete
+    assert poured(r)  # legacy path remains unchanged

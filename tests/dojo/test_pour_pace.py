@@ -110,3 +110,11 @@ def test_default_and_validation():
         RuntimePolicy(RuntimeConfig(mode="perception", ported_pour_pace="rush"), assets=_Assets())
     from dojo.skills.g3 import SKILL_ATTRS
     assert SKILL_ATTRS["ported_pour_pace"][0] == RuntimeConfig().ported_pour_pace
+
+
+def test_profile_reserve_is_independent_of_put_back_reserve():
+    _, _, legacy = _pour('pour_bottle_lean', {'min_return_steps': 800})
+    _, _, terminal = _pour('pour_bottle_lean', {'min_return_steps': 800, 'profile_reserve': 0})
+    assert legacy['pour'] == [] and legacy['pour_stop'] == 'step budget'
+    assert terminal['pour_stop'] == 'profile end' and terminal['pour'][-1]['phi'] == 150
+    assert 'hover' not in terminal['return']  # the override does not spend the put-back reserve

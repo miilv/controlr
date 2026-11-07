@@ -228,7 +228,9 @@ POUR_PACE = {"v1": None,
              # (v1 "slow" = 0.6), a 12-step drain; pour_order adds the other arm grasping and lifting the next bottle
              # during each pour (``companion``) and no home between pours. The camera rows (compute1) slipped 5 of 12
              # lean pours, v1's pace none of 10, and three v1-speed pours cannot fit 800 steps even fully overlapped
-             "overlap": {"tilt_speed": 0.8, "untilt_speed": 0.8, "drain_steps": 12}}
+             "overlap": {"tilt_speed": 0.8, "untilt_speed": 0.8, "drain_steps": 12},
+             # POUR: same flow profile; faster staged return and lift within existing joint limits.
+             "budget": {"tilt_speed": 0.8, "untilt_speed": 1.0, "lift_speed": "normal", "drain_steps": 12}}
 
 
 def pour_bottle_call(aim: str | None, pace: str | None, profile: str = "off") -> tuple[str, dict]:

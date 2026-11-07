@@ -350,6 +350,7 @@ class Skills:
         # pour_p1's way back to upright (stream H; ``RuntimeConfig.ported_pour_untilt``): "direct" (today) | "staged" | "capped"
         self.ported_pour_untilt = "direct"
         self.ported_pour_profile = "off"
+        self.ported_pour_pace = "v1"
         # ``library.fill_container``'s joint range (stream H; ``RuntimeConfig.fill_joint_limits``): "inherit" (today: the
         # episode's ``joint_limits``) | "measured" (joint 5 inside the sim's stop for that skill only)
         self.fill_joint_limits = "inherit"

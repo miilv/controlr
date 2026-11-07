@@ -741,3 +741,10 @@ For ordered pours, `checked` runs the original v5 composite (adaptive drain,
 pre-flow-only retry, stop on an unsuccessful pair, checked held-bottle return).
 A still-held bottle suppresses generic finish, which otherwise opens both hands.
 Single-cup checked pours use the v5 bottle skill directly.
+
+`ported_pour_pace=budget` is an opt-in overlap derivative. Flow angles, flow
+speed, hold count, drain and staged untilt angles remain the overlap profile;
+lift uses normal speed and staged untilt uses the existing full held-speed
+limit. The last pour alone receives `profile_reserve=0`: the 60-step put-back
+reserve no longer cuts its flow profile short. The put-back reserve and all
+move-budget/lease checks remain in force. Single-cup routing retains v1 pacing.

@@ -727,7 +727,7 @@ class RuntimePolicy:
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
-                or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap")
+                or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap", "budget")
                 or self.cfg.ported_pour_profile not in ("off", "sparse", "via", "checked")
                 or self.cfg.plan_profile not in ("legacy", "recover")
                 or self.cfg.plan_capture not in ("off", "requests")

@@ -96,9 +96,14 @@ def alternate_arms(xs: list) -> list:
 DRAIN_FROM = 120.0  # deg: the vendored pour skills' ``drain_from`` (their liquid profile pours from this roll on)
 
 
-def poured(r: dict) -> bool:
+def poured(r: dict, full: bool = False) -> bool:
     """A ported liquid pour that poured: verified, or it ran its profile to ``DRAIN_FROM`` without an in-hand slip and
     with no error (an unverified end: the bottle left tilted, an arm not home)."""
+    if full:
+        p = r.get("pour") or {}
+        return bool(r.get("ok") and not r.get("error") and p.get("max_phi") is not None
+                    and float(p["max_phi"]) >= 150 and p.get("stop") == "profile end"
+                    and p.get("final_tilt") is not None and float(p["final_tilt"]) <= 30)
     if r.get("verified"):
         return True
     p = r.get("pour") or {}
@@ -119,7 +124,7 @@ def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
     done = []
     held = None                     # overlap: the bottle the other arm grasped and lifted during the previous pour
     plan_arms = None
-    if getattr(sk, "ported_pour_pace", "v1") == "overlap":
+    if getattr(sk, "ported_pour_pace", "v1") in ("overlap", "budget"):
         try:
             w = sk.refresh()
             plan_arms = alternate_arms([float(w.obj(b).pos[0]) for b, _ in pairs])
@@ -135,7 +140,7 @@ def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
             # "either arm", and the idle arm never leaves), the next pour starts from the retreat (the skill homes
             # the other arm itself when it switches arms), and the episode's finish homes both at the end
             args["home"] = False
-        if pace == "overlap":
+        if pace in ("overlap", "budget"):
             # the other arm grasps and lifts the next pair's bottle while this pour runs; that pour then starts with
             # it in hand. The pours themselves stay strictly in order
             if i < len(pairs) - 1:
@@ -148,13 +153,17 @@ def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
                 # the last pour's untilt may spend the move reserve: its upright edge ends the episode (camera rows:
                 # three third pours poured out and stopped at 60-150 deg, the untilt refused for "budget")
                 args["untilt_reserve"] = 0
+                if pace == "budget":
+                    # The final upright edge completes the task; do not stop its
+                    # flow profile early to reserve a put-back that comes afterward.
+                    args["profile_reserve"] = 0
         r = ported(sk, skill, {"container": f"@{bottle}", "target": f"@{bowl}", **args}, reserve=reserve)
         held = r.get("companion")
         sk.log(f"[pour_order] {i + 1}/{len(pairs)} {bottle} -> {bowl}: ok {r.get('ok')} verified {r.get('verified')} "
                f"steps {r.get('steps')} {str(r.get('error') or '')[:120]}")
         if not r.get("ok"):
             return {"ok": False, "stage": f"pour {i + 1}", "note": f"done {done}; {bottle} -> {bowl}: {r.get('status')}"}
-        if not poured(r):
+        if not poured(r, full=pace == "budget"):
             # ok=True also when it found no neck grasp, or the grasp failed (Misha's review P1-1): the later pours must
             # not come before this one, so stop here and report the pair that did not run
             return {"ok": False, "stage": f"pour {i + 1}", "note": f"done {done}; {bottle} -> {bowl} not poured: "

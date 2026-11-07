@@ -222,7 +222,7 @@ SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "lo
                "belt_waist_first": ("off", "on"),
                "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured"),
                "kong_draw_read": ("off", "place", "place3"), "kong_draw_first": ("near", "far"),
-               "ported_pour_pace": ("v1", "lean", "overlap"),
+               "ported_pour_pace": ("v1", "lean", "overlap", "budget"),
                "ported_pour_profile": ("off", "sparse", "via", "checked"),
                "nest_verify": ("target", "support"),
                "push_goal": ("centre", "cover", "cover_obb"), "fill_move_lift": ("off", "clear"),

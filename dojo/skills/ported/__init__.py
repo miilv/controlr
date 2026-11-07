@@ -76,7 +76,7 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
     r0, a0 = TIER_A.get(skill, (RESERVE, {}))
     # the two-arm move verb exists only for the overlap pour pace (stream H; ``harness_robot.PAIR_COMMANDS``)
     robot = HarnessRobot(sk, reserve=r0 if reserve is None else int(reserve),
-                         pair_moves=skill == "pour_bottle_lean" and getattr(sk, "ported_pour_pace", "v1") == "overlap")
+                         pair_moves=skill == "pour_bottle_lean" and getattr(sk, "ported_pour_pace", "v1") in ("overlap", "budget"))
     n0 = sk.ex.steps_used
     try:
         rep = robot.run_skill(skill, {**a0, **(args or {})})
@@ -130,6 +130,8 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
         # pour that poured: the skill returns ok=True also when it found no neck grasp, or the grasp failed)
         phis = [float(t["phi"]) for t in d["pour"] if isinstance(t, dict) and t.get("phi") is not None]
         out["pour"] = {"max_phi": max(phis) if phis else None, "stop": d.get("pour_stop")}
+        if getattr(sk, "ported_pour_pace", "v1") == "budget":
+            out["pour"]["final_tilt"] = (d.get("final") or {}).get("bottle_tilt")
     return out
 
 
