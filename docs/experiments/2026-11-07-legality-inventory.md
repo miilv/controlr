@@ -12,14 +12,14 @@ source SHA256: `334f617d48de0a803247c64c8d92006cea62da1c98e18213ea6094fab9f5af48
 Our separate prototype scanner was removed. `scripts/legality/scan.py` is only
 report formatting and a CI debt ratchet over this shared engine.
 
-Main snapshot: `abe04225839a96eac2d17be597e9d2b598ccb9ce`.
+Main snapshot: `9fa62eda557ddc01a4afbaa4173ad2f4e6ba4f59`.
 D-C19 source: `127b65c4` (the exact partner-audited source), candidate provenance
 `5509d7be`. Complete flags: [immutable candidate](data/legality/dc19-candidate.txt)
 and [parsed overrides/hash](data/legality/candidate-config.json), including submit_v3,
 ported routes and all five new_routes. This removes the audit's truncated-JSON limit.
 
 `dojo/legality/profiles.py:controlr_inference` indexes our `dojo/` and `controlr/`
-code without importing it. Main has 521 declared roots, D-C19 502: planner, supervisor,
+code without importing it. Main has 527 declared roots, D-C19 502: planner, supervisor,
 runtime entry/setup, model-agent runtime, perception, all local registered skills,
 every callable/module in the path-loaded ported subtree, known adjacent file-loader
 targets, all cmd_* handlers and the internal observation boundary. Imported
@@ -54,10 +54,10 @@ comments are review evidence. These counts must not be reported as proven board 
 
 | Category | Main | D-C19 |
 |---|---:|---:|
-| reflection | 51 | 39 |
-| unresolved | 31814 | 29884 |
+| reflection | 52 | 39 |
+| unresolved | 28042 | 26174 |
 | checker_module | 1 | 1 |
-| task_data | 99 | 96 |
+| task_data | 101 | 96 |
 | checker_provenance | 174 | 165 |
 | checker_tolerance | 59 | 57 |
 | task_switch | 88 | 67 |
@@ -65,9 +65,9 @@ comments are review evidence. These counts must not be reported as proven board 
 | termination | 3 | 3 |
 | task_vocabulary | 75 | 75 |
 | task_name | 335 | 321 |
-| dynamic_code | 49 | 45 |
+| dynamic_code | 51 | 45 |
 | identity_source | 3 | 3 |
-| instruction_or_identity | 97 | 96 |
+| instruction_or_identity | 98 | 96 |
 | benchmark_composite | 6 | 6 |
 | checker_predicate | 2 | 2 |
 
@@ -187,6 +187,8 @@ cannot detect this geometric/checker knowledge.
 
 
 
+
+
 ## Proposed additions to send back to the partner
 
 All additions extend the shared engine/profile; there is no second call-graph engine.
@@ -197,6 +199,10 @@ All additions extend the shared engine/profile; there is no second call-graph en
   are resolved; a planted imported global demonstrates this case. All path-loaded
   modules/helpers and cmd_* handlers are explicit roots; unknown targets have
   dynamic-loader findings. The reviewed pour_p1 predicate has a regression case.
+- **Resolved leaves:** builtin float/list, specifically imported dataclasses.field
+  and numpy.ascontiguousarray, and field-only stdlib dataclass constructors are
+  recognized operations, not caller exemptions. Shadowed callbacks and file-loading
+  calls remain unresolved. This removes false positives without growing exemptions.
 - **Opaque/dynamic calls:** our profile reports unresolved calls rather than
   silently certifying them. This is deliberately conservative, including external
   dependencies; it explains the large separate unresolved inventory.
@@ -240,6 +246,10 @@ mock cannot certify the real perception service; static findings show it is not 
 Glib findings 12–19 (cardinality, duplicate/self pairs, movable roles, default frames,
 NaN, false look success, overstated outcomes and occupancy geometry) are shared-library
 review cases, not additional proven defects in our snapshot.
+
+Current-main-only additions include the default-off sort-container/evidence work
+merged before this tool: its source is included as initial retirement/review debt,
+not adopted as a clean board policy. D-C19 retains its original source snapshot.
 
 ## CI and policy
 

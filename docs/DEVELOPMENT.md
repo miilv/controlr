@@ -1081,7 +1081,8 @@ is an explicit root; unknown/external loader sites remain findings. The inventor
 includes a hashed path-loaded module/root manifest.
 Run `uv run python scripts/legality/scan.py --output /tmp/legality.json`, or add
 `--check --base-ref origin/main` for enforcement. `--root CHECKOUT` audits a different
-source snapshot. `--candidate FILE` records the exact candidate flags/parsed overrides;
+source snapshot. Pin a full commit hash before archive/merge operations: remote
+refs such as `origin/main` can advance across shared worktrees. `--candidate FILE` records the exact candidate flags/parsed overrides;
 it does not execute them or claim path feasibility.
 
 The report-only CI job uploads all findings. A separate ratchet rejects new findings

@@ -32,3 +32,10 @@ The asset-path firewall test permits only the auditor's explicit denial-symbol s
 and rejection regex; it still rejects Path/open/list constructions in that module.
 Validation: full unit suite on four workers, 2,317 passed / 214 skipped; final
 combined legality/provider/firewall coverage, 41 passed / 8 glib-only skips.
+
+CI exposed two main advances during this first baseline's review. The bootstrap now
+pins actual merged-main source `9fa62eda`, including existing CLASSIFY3/evidence code.
+New legacy rows remain debt, not board permission; no clean-path exemptions were added.
+The resolver recognizes only named numeric/record leaves, with shadowed callbacks and
+file-loading calls still unresolved. The updated branch ratchet passes locally and
+combined tooling/provider/firewall tests pass: 43 passed / 8 glib-only skips.

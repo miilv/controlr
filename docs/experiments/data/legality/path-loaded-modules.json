@@ -701,6 +701,19 @@
     ]
    },
    {
+    "module": "dojo.skills.ported.skills.sort_into_containers.skill_robodojo",
+    "file": "dojo/skills/ported/skills/sort_into_containers/skill_robodojo.py",
+    "sha256": "a3fc43f6675957dd2e937a6f29125a34fc04f640b06124f9400210dccd055ef4",
+    "roots": [
+     "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:blocked_by_other_arm",
+     "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:in_bin_bottom",
+     "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:load_p2",
+     "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:parking",
+     "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:run"
+    ]
+   },
+   {
     "module": "dojo.skills.ported.skills.swap_poses.skill",
     "file": "dojo/skills/ported/skills/swap_poses/skill.py",
     "sha256": "a793bfaefb809687f17cef8b7d6bee33847c1fbe74e309ed59067ae08f039209",
@@ -1521,6 +1534,34 @@
     "evidence": "spec.loader.exec_module(m)",
     "clean_reachable": false,
     "key": "c3a0752739a9aebbbc0a0ee93bcd40f75dcff995c481585ce88e47d3b6d885eb"
+   },
+   {
+    "root": "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:load_p2",
+    "func": "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:load_p2",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 34)",
+    "path": [
+     "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:load_p2"
+    ],
+    "file": "dojo/skills/ported/skills/sort_into_containers/skill_robodojo.py",
+    "line": 34,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"cib_p2_for_sort_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "3a9bd146652835d7483f32a1ba3e305549ba111854da6c1a89446f5e7245adf3"
+   },
+   {
+    "root": "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:load_p2",
+    "func": "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:load_p2",
+    "why": "dynamic code loader spec.loader.exec_module (line 36)",
+    "path": [
+     "dojo.skills.ported.skills.sort_into_containers.skill_robodojo:load_p2"
+    ],
+    "file": "dojo/skills/ported/skills/sort_into_containers/skill_robodojo.py",
+    "line": 36,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "fc96064ad9cd326b56b5b6dcacf05688dbf528e9be418d8951489800aacc5d65"
    }
   ]
  },
