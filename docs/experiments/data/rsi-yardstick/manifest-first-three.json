@@ -1,0 +1,241 @@
+{
+  "generator": "simlab/v15",
+  "preparation": "first ten stable ids; imitation demo speed 1.5",
+  "preparation_script_sha256": "82d1012a4008510eed5fa8e807e9ed48c07b63b2ea85903bf4e3d8b7e926b83b",
+  "salt": "rsi-yardstick-20261107",
+  "schema": "rsi-yardstick/1",
+  "source_sha256": {
+    "dojo/simlab/demo_gen.py": "f76b8332ae01493539e6737af451e14cb7ad6b88a7ac5bc3cab9514fc030ac04",
+    "dojo/simlab/dev_eval.py": "1f72c4dc2701b3fb3369316554be58e3b31b609e0483cce23506f57d81805af4",
+    "dojo/simlab/gen_layouts.py": "64496ed372dbbce85e6785b355cccc86d0a3f5a9ce44d38fe5aea5f898e1de62",
+    "dojo/simlab/presettle.py": "2a60f0cf17b9f4f62a71070d51a917b4613dcec3ac3adc180b83fb2e9ed05c85"
+  },
+  "tasks": {
+    "imitate_sorting_sequence": [
+      {
+        "demo_sha256": "63f1095613279ed50552d9e379fcafde4dd54c538b97657201de8af70a62d0fd",
+        "file": "imitate_sorting_sequence/100000.json",
+        "id": 100000,
+        "position": 0,
+        "sha256": "60c0d555eb2da380675045636e2c0dbe8f5d76a1c885b9e9836dccf487f31552",
+        "source_form": "settled"
+      },
+      {
+        "demo_sha256": "e43b4c70782234d90e0f5615fffa9840941c69b060712c03c29ff4f7ee9a57e2",
+        "file": "imitate_sorting_sequence/100001.json",
+        "id": 100001,
+        "position": 1,
+        "sha256": "4c4ab1551384626e2fe0255d33065435777ad787bbc0b7a720e350fb29649a15",
+        "source_form": "settled"
+      },
+      {
+        "demo_sha256": "1291a8577f511fd4103818b96ca8cfec2e6b7816992559cdf7c21706f41d7fab",
+        "file": "imitate_sorting_sequence/100002.json",
+        "id": 100002,
+        "position": 2,
+        "sha256": "59f60944266553e7e61883b30a54242669c787ddeec2b7005359bd2be9a1fce9",
+        "source_form": "settled"
+      },
+      {
+        "demo_sha256": "130bd372c4eee2c954e813edfad4c5d7f6cd599206e717c78335a4f24c248f80",
+        "file": "imitate_sorting_sequence/100003.json",
+        "id": 100003,
+        "position": 3,
+        "sha256": "a385ca98ca398709231d85834c8bdbba5d7c85342d1f7f8cdc77d3c0c1939c30",
+        "source_form": "settled"
+      },
+      {
+        "demo_sha256": "028e94b6fb0a0734d84b5c5395f23aab0fd48e33659e68694750d73fcf55343c",
+        "file": "imitate_sorting_sequence/100004.json",
+        "id": 100004,
+        "position": 4,
+        "sha256": "70142dbca6ac102cc39aee65cdc7bbca80457462775932b0f36138ad411dc481",
+        "source_form": "settled"
+      },
+      {
+        "demo_sha256": "09fd63a24850437ba933607f1265c37bbccd28a5ce282e4936da7825477f0564",
+        "file": "imitate_sorting_sequence/100005.json",
+        "id": 100005,
+        "position": 5,
+        "sha256": "76ce2f048d74103e3185d768de14b39d5f2f4ec7b31045a145d9ffd57a961059",
+        "source_form": "settled"
+      },
+      {
+        "demo_sha256": "bcd4513beb9d3ff89f0ea5adfb023dc62bce8ebec4ec6437d829b9617f5adf4a",
+        "file": "imitate_sorting_sequence/100006.json",
+        "id": 100006,
+        "position": 6,
+        "sha256": "db6b05ac76d33fcdb2a668ec4997a9d44785dea76f488c733bbe4eb4e74b4827",
+        "source_form": "settled"
+      },
+      {
+        "demo_sha256": "5a6a98b2a3d096cfb5d8241e40fe1ad2aa4bac763e35ad710529239507ed7b2e",
+        "file": "imitate_sorting_sequence/100007.json",
+        "id": 100007,
+        "position": 7,
+        "sha256": "b051871a723550c652bfd936753cb14895067f63fb52d905d2268624358ad7fd",
+        "source_form": "settled"
+      },
+      {
+        "demo_sha256": "3d00af9cd0168898bb6b70098cab032b10b0fcd756ab94b155ac1fe233e50f3e",
+        "file": "imitate_sorting_sequence/100008.json",
+        "id": 100008,
+        "position": 8,
+        "sha256": "998e601e9d562a6000ee487981868da00b9637046ec30e182200705f62fb3845",
+        "source_form": "settled"
+      },
+      {
+        "demo_sha256": "4ef23d39d835e77c313d57731a3b4ed9ae83003b3bd394f6e3223aaa7a1af672",
+        "file": "imitate_sorting_sequence/100009.json",
+        "id": 100009,
+        "position": 9,
+        "sha256": "6a09c6546d2224fe221320a83add7b0cd155b3cda5b02611d6a129a45f59facc",
+        "source_form": "settled"
+      }
+    ],
+    "match_and_pick_from_conveyor": [
+      {
+        "file": "match_and_pick_from_conveyor/100000.json",
+        "id": 100000,
+        "position": 0,
+        "sha256": "f3ef2701676c798d8d17a0dc3da328328945e2340ed6ecdde6b74df47d168035",
+        "source_form": "raw"
+      },
+      {
+        "file": "match_and_pick_from_conveyor/100001.json",
+        "id": 100001,
+        "position": 1,
+        "sha256": "a09c6726b51ae9977d5a45f7c1e1cac7743d4ea4500d2f2b87966d38ae0a8c5b",
+        "source_form": "raw"
+      },
+      {
+        "file": "match_and_pick_from_conveyor/100002.json",
+        "id": 100002,
+        "position": 2,
+        "sha256": "dab49d1247bddba7d2956b5732104d0cba343e46a4aff795051a0f87ee850780",
+        "source_form": "raw"
+      },
+      {
+        "file": "match_and_pick_from_conveyor/100003.json",
+        "id": 100003,
+        "position": 3,
+        "sha256": "811c278b1b147d69a090599370a85cd0c684021fef71cf52ed259d82bcf1dedb",
+        "source_form": "raw"
+      },
+      {
+        "file": "match_and_pick_from_conveyor/100004.json",
+        "id": 100004,
+        "position": 4,
+        "sha256": "eeb54cea37e907294656f83bc313edef1049bfd3ebfdc2a23fda83452ea228ff",
+        "source_form": "raw"
+      },
+      {
+        "file": "match_and_pick_from_conveyor/100005.json",
+        "id": 100005,
+        "position": 5,
+        "sha256": "787d7cea43269fd85a70eefd172464517b79bc41522819d8f33f42a50c5d377e",
+        "source_form": "raw"
+      },
+      {
+        "file": "match_and_pick_from_conveyor/100006.json",
+        "id": 100006,
+        "position": 6,
+        "sha256": "ab5b8e9b26a2df32373dd196a6f7d66901103f0dd864cd341e84ef2e1ef2a217",
+        "source_form": "raw"
+      },
+      {
+        "file": "match_and_pick_from_conveyor/100007.json",
+        "id": 100007,
+        "position": 7,
+        "sha256": "e2978ff0d3af0b7833ad4d083e33b5353d95f589f1ba3da2b420c1a1154936f1",
+        "source_form": "raw"
+      },
+      {
+        "file": "match_and_pick_from_conveyor/100008.json",
+        "id": 100008,
+        "position": 8,
+        "sha256": "b5868bfbdfed1bd324d0a84eb5eb4183910b7e8448cef59299f514a1cddbc8be",
+        "source_form": "raw"
+      },
+      {
+        "file": "match_and_pick_from_conveyor/100009.json",
+        "id": 100009,
+        "position": 9,
+        "sha256": "53bfd9b447ff0d39b871fa9a12b65087fc22485404f9e24c014aec1ae5eaafbb",
+        "source_form": "raw"
+      }
+    ],
+    "pour_by_language": [
+      {
+        "file": "pour_by_language/100000.json",
+        "id": 100000,
+        "position": 0,
+        "sha256": "556feab0e4130393fffebfe1a2de62b685d33115eb16deeb6daaaaf61d61ba0e",
+        "source_form": "settled"
+      },
+      {
+        "file": "pour_by_language/100001.json",
+        "id": 100001,
+        "position": 1,
+        "sha256": "6fd624a6e9dcb5a9d4bc6a9d2e4e88d00626c3d02d05cffcd2ce3e3d3f9ec61e",
+        "source_form": "settled"
+      },
+      {
+        "file": "pour_by_language/100002.json",
+        "id": 100002,
+        "position": 2,
+        "sha256": "561582e76cc9acc695d6963daf83f00d6f08a6d492bd284a0099b56818e999f6",
+        "source_form": "settled"
+      },
+      {
+        "file": "pour_by_language/100003.json",
+        "id": 100003,
+        "position": 3,
+        "sha256": "cac0083f88c550d74a94bb9eec94b29c54639d690f072d44243497524e2ec2a6",
+        "source_form": "settled"
+      },
+      {
+        "file": "pour_by_language/100004.json",
+        "id": 100004,
+        "position": 4,
+        "sha256": "3c93967ff937d4c193913377ff960343c04ee34ce81a0cdd5216f81c3c4543d8",
+        "source_form": "settled"
+      },
+      {
+        "file": "pour_by_language/100005.json",
+        "id": 100005,
+        "position": 5,
+        "sha256": "898d5bd52ca8aae0e3ebf2a9c8cf8983a3e8803b0ec7a6ff58bfacad952b81f8",
+        "source_form": "settled"
+      },
+      {
+        "file": "pour_by_language/100006.json",
+        "id": 100006,
+        "position": 6,
+        "sha256": "fa1717d3521a1f27532e9df26ebc689363cf96f315a252f4372cf54862c048cf",
+        "source_form": "settled"
+      },
+      {
+        "file": "pour_by_language/100007.json",
+        "id": 100007,
+        "position": 7,
+        "sha256": "add0ec9eda35d3cf7deed448f32a28f609730faa509e7603b0488a50cf0f6d25",
+        "source_form": "settled"
+      },
+      {
+        "file": "pour_by_language/100008.json",
+        "id": 100008,
+        "position": 8,
+        "sha256": "60ec328ee63e103fa27f33f4f2155b5dfc97072d728c0ecd3517478882bebbb9",
+        "source_form": "settled"
+      },
+      {
+        "file": "pour_by_language/100009.json",
+        "id": 100009,
+        "position": 9,
+        "sha256": "daa6c7f30bd492a86ec881665e72e1e4f73583ffb82026cd73cd9a19d03933df",
+        "source_form": "settled"
+      }
+    ]
+  }
+}
