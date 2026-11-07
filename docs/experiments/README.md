@@ -6,7 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
-| 2026-11-07 | [pour-g3](2026-11-07-pour-g3.md) | Can port parity and pacing make language pouring work in physics-only G3? | Fresh main baseline 0/10, 0 ±0 points; eight budget / two slip failures; exploratory pilots running, paired panel not registered |
+| 2026-11-07 | [pour-g3](2026-11-07-pour-g3.md) | Can port parity and pacing make language pouring work in physics-only G3? | Fresh main baseline 0/10; six pilots, budget 2/3; one ten-pair language + ten-pair guard panel registered, not dispatched |
 | 2026-11-07 | [BYIMG lift-first](2026-11-07-byimg-g3-r2.md) | Can a level raised basket support catching and loading? | Fresh 10 pairs: 10→20, 1/10→2/10 success, 2 wins/1 loss; released-target replay confirmed; gate fails |
 | 2026-11-07 | [BYIMG fresh retest](2026-11-07-byimg-g3-r2-retest.md) | Does the unchanged positive lift-first bundle generalize? | 14 fresh pairs: 14.29→21.43, 2/14→3/14 success, 2 wins/1 loss; gate fails; stays off |
 | 2026-11-07 | [BYIMG G3](2026-11-07-byimg-g3.md) | Does a braced, re-aimed hook lift the loaded basket? | Ten fresh settled v15 pairs: 0±0→0±0, 0/10 successes both, 0 wins/0 losses; rejected, no camera jobs |
