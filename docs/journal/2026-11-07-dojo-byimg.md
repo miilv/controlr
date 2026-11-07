@@ -36,3 +36,53 @@ slides through the wall pinch (actual basket y=-0.055) and still has no far-wall
 IK. A working physics chain remains unresolved; do not infer success from the
 new route or mocked tests. Settled files keep post-load belt phase and reset
 advances it again; this explicitly limits historical raw-v15 comparability.
+
+## Round 2 — active development
+
+Lead explicitly requested sustained, multi-approach work and kept #414 unmerged.
+Fresh isolation draws: v15 variant 9, salt `byimg-r2-isolation-20261107`, ids
+100000–09; separate fresh pilots 100022–23. All private data under
+`~/dojo-data/byimg/r2`, same 8G/600% scopes, per-start admission and light3/light4
+locks. Physics-only, zero model calls. Round-1 files remain frozen.
+
+Fifty physical isolation episodes (ten fresh layouts × five profiles): free
+both-arm 125 mm lift 6/10, free left 125 mm 6/10, free left 150 mm 5/10;
+after stopping basket, left 125 mm **9/10**, left 150 mm **8/10**. At 125 mm
+the one miss is a slip; at 150 mm there is additionally a no-intercept ending.
+The old matchbelt reference is `2026-10-27-dojo-memory` §6: 24/25 after a
+second grasp family and partial-lift top-up. Its lift is 125 mm, not the image
+chain's 150 mm. Narrowing intercept to a central arm window is also being
+tested; early data do not support it as a universal fix.
+
+Basket-first: six lift/pull combinations on right with inherited bounds, then
+six on left and the later corrections/regrasps with measured bounds. No bound
+was loosened. Origin lift alone is misleading: a 111 mm
+origin lift left bottom only 31 mm above start at ~27 degrees tilt. Right-arm
+tracking error there is <0.4 mrad. An actual measured-pose correction to
+x=±0.05,y=-0.18 with intended bottom 0.88–0.90 does hold bottom at
+0.858–0.878 m with 4–5 degrees tilt. Three subsequent left-arm target picks
+succeeded. No checker success yet: drops/carries miss. Extra 30 settling steps
+did not recover them.
+
+Transfers/regrasps after the rim lift: band 210 sites / 96 endpoint-reachable,
+arch 13 / 6; tested first reachable grasps closed but lost the basket after
+release, despite final joint tracking within microradians. A hook insertion
+returned partial. Level-pose correction alone also sometimes slips the wall.
+Two left-arm rim examples tilt >40 degrees and do not retain a level hold.
+
+Accessed actual cooked geometry through PhysX's
+`request_convex_collision_representation`: **64 convex hulls**, valid result.
+The older get_nb_convex_mesh_data/get_convex_mesh_data methods are unavailable
+in this installed API. Collider analysis uses returned hulls, not an assumed
+solid convex basket. No collider or physics parameter was modified.
+
+Current probes distinguish target loss during transfer from release-point
+misses. A slow center-drop trial measured empty picking fingers before opening:
+the target was already back on/near the belt. Also found `belt_container=on`
+leaks the basket-specific box-rim grasp family into target picks; the next
+controlled trial scopes it off for the target while retaining the basket grip.
+A depth/tilt/end-wall matrix is testing whether the stable raised basket grip
+can generalize beyond one pilot.
+
+Round-1 full local suite completed: **2058 passed, 191 skipped, 18m19s**.
+CI passed on e68dd094; the newer evidence-only head needs a fresh CI trigger.

@@ -631,3 +631,13 @@ segment refuses the motion. Explicit contact legs retain the existing contact
 motion convention. `new_routes=["basket_image"]` is separately opt-in and
 requires the pictured conveyor instruction plus unique observed basket, belt
 and picture roles. It consumes the existing world and never creates detections.
+
+`belt_first=on` adds an independent, default-off lift-first sequence on the
+pictured-container route. It uses a precomputed end-wall intercept, a measured
+rim-attachment correction, a slow central carry/drop and an airborne loaded
+lift. Its scoped joint envelope intersects current bounds with measured bounds;
+original bounds, flags and IK-cache invalidation restore on every exit.
+`belt_target=match` separately selects the matchbelt 125 mm target lift for
+image-container calls; `off` retains 150 mm. Neither changes match-and-pick.
+These skills consume the existing WorldState and do not add perception or read
+checker state. A terminal environment signal is left to the driver to grade.

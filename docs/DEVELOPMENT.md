@@ -726,3 +726,11 @@ The basket-image experiment uses `--routes basket_image` and
 these fields; all are off by default. CPU guards live in `test_basket_hook.py`.
 Belt riders cannot pass the stationary presettle check: use a documented
 belt-relative rest check and identical frozen inputs in both comparison arms.
+
+The lift-first profile is independently enabled with `belt_first=on` and
+`belt_target=match` (both default off), mirrored by RuntimeConfig and G3.
+`test_basket_first.py` guards dispatch, legacy target/planner arguments and
+restoration/intersection of the temporary measured joint envelope.
+`settle_native_phase.py --ids ...` removes total belt travel from authored
+positions, avoiding the extra horizontal phase introduced by the round-1
+snapshot method; its pure correction has a CPU test.
