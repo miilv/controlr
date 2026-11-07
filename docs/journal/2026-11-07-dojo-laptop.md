@@ -304,3 +304,16 @@ launcher stopped before any episode/scope. No physics job stopped/duplicated.
 Full H local suite2200 passed/191 skipped in1025.96 s;72 focused pass. All
 action/test files remain identical to10f3e0a8, defaults legacy/off, CI green
 on the pushed source. Fresh variant21 remains gated on H standard completion.
+
+
+## Strict-transfer source admitted to untouched paired validation
+
+Source10f completes44 development rows: original12/12 standard,11/12 random;
+independent8/10 standard,9/10 random. Original gates pass unchanged. No
+exclusions/full successes. Standard34 now earns20 in789/800. Generate30
+registered variant21 raw records at previously unused100000–14. Light2 was
+acquired by IMIT2; cancel only our verified waiting generator wrapper/flock,
+leave that stream alone, and generate on free8. Two free7/8 physics-only
+settlers use unchanged admissions. Freeze both cell manifests before A/B;
+no policy outcomes yet. Local2200/191 and CI green on pushed source. No
+camera/model calls or board change.

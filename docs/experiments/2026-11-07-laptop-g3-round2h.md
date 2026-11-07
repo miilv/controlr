@@ -1,5 +1,29 @@
 # Laptop G3 round 2h — strict-transfer loaded proof
 
+## Development admission completed; fresh panel pending
+
+All44 registered source10f3e0a8 development episodes complete. Original bank:
+12/12 standard and11/12 random headset credits. Independent coverage:
+8/10 standard and9/10 random. Both original gates pass unchanged. All44
+rows are stable with complete meshes, no episode exclusions or replacements.
+Full-task successes0.
+
+| Bank | Cell | n | Headset credits | Mean ± sample SD /100 | Steps median / max |
+|---|---|---:|---:|---:|---:|
+| Original | Standard | 12 | 12 | 20.00 ±0.00 | 247.5 /632 |
+| Original | Random | 12 | 11 | 18.33 ±5.77 | 245.5 /533 |
+| Independent | Standard | 10 | 8 | 16.00 ±8.43 | 356.0 /789 |
+| Independent | Random | 10 | 9 | 18.00 ±6.32 | 289.0 /399 |
+
+The scope correction rescues standard34 in789/800 steps. Independent
+standard33/38 and random35 remain0; all outcomes are retained separately
+from the fresh A/B. Full local2200 passed/191 skipped;72 focused mocks pass.
+All new defaults remain legacy/off.
+
+The registered30-file variant21 raw draw is settling. Freeze both first-ten-
+stable manifests before either policy condition. The requested fresh7/10
+target is not yet tested. No camera/model calls or board change.
+
 ## Registration before revised actions
 
 The source041 loaded-proof development screen remains frozen and completes
