@@ -3643,6 +3643,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
 
     def plan_hook(lab: str, hi: int, H, tip, q_start=None):
         """(lab, hook, H, T_obj, T_pre, (pick, place)) for hanging ``lab`` on hook ``hi`` with one arm, or a note."""
+        from dojo.skills.headset import cradle_pick_kwargs
         if parts is not None:
             sk.coll.parts[rack] = without_arm(hi, tip)
         o = sk.world.obj(lab)
@@ -3675,7 +3676,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                                  grasps=(lambda a, o=o: [g for g in hang_grasps(o, a)
                                                          if g.method not in slipped.get(o.label, ())
                                                          and (not seat or g.width >= HANG_WIDE_W or cup_mode or o.label in cup_labels)]),
-                                 **({"pick_kw": {"squeeze": 8}} if seat else {}),
+                                 pick_kw=(cradle_pick_kwargs(sk, seat=seat) if not thread else {}),
                                  place_kw={"pre_h": 0.03, "release": False, "approach_rad": carry_rad, "purpose": "hang",
                                            **({"approach_staged": True} if not thread and
                                               getattr(sk, "headset_carry", "legacy") == "staged" else {})}, q_start=q_start,

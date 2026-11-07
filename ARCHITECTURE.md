@@ -654,6 +654,9 @@ plus 3 mm clearance; invalid geometry uses the previous bbox target.
 With `headset_retry=sites`, a failed measured-attachment place re-plan puts
 the object down and rejects that pickup site instead of carrying a nominal
 attachment. Legacy retry retains the original fallback.
+`headset_lift=slow` (default `legacy`, mirrored in Skills/G3) uses a checked
+0.03 rad/step lift in cradle pickups and staging; threaded hooks keep their
+original lift. Closure, lift height and physical hold thresholds are unchanged.
 
 
 ### Basket image experiment

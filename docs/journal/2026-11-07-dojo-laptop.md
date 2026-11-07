@@ -180,3 +180,29 @@ Measured-joint continuous audit of production random66: max attachment drift
 1.97 mm staging,2.74 mm final carry through99.2-degree turn. A transient j1
 command/measurement gap13.9 degrees (-1.745/-1.502 rad) remains; do not claim
 ideal kinematic tracking. Original lift/loose verification stays unchanged.
+
+Independent shape pilots45–49 expose narrow-opening contact: standard48's
+TCP reaches0.03 mm/0.004 degrees yet the object rises15.9 mm before closure.
+Full88 mm opening changes its first lift drift14.9→6.6 mm and staging carry
+shift to1.1 mm. Full-opening plus a true mesh-support rest rescues random47
+and48, while standard48/random49 still fail. A later clean standard48 pickup
+cannot re-plan its measured place; nominal fallback loses258 mm. Opt-in sites
+now puts that hold down rather than carrying an unchecked nominal attachment.
+
+The heavy headset can also be hung via a genuinely different mechanism:
+checked upright table rest, downward bridge pinch (3.3 mm pickup drift),
+fixed-orientation carry, release above the cradle and30 support steps. Its
+horizontal bridge pinch was loose18.1 mm then slipped186 mm. This is a pilot
+success only: standard45 fails static upright-rest stability before moving;
+random49's upright rest misses19.8 mm and9.3 degrees. Keep the bridge recipe
+as feasibility evidence, outside production.
+
+The full-opening/rest source bf6ff63c regresses old-success standard45 and
+random45 at pickup, despite rescuing random47/48. Stop additional dispatch
+from its12/cell development drivers, keeping in-flight/completed rows. The
+continuous random45 trace separates6.4 mm closure movement from5.1 mm load-
+onset movement/4.37-degree rotation; first lift TCP step17.2 mm. A slower
+0.03 rad/step lift rescues the same pilot after rejecting its8.3 mm first
+pickup, then a7.5 mm pick and6.1 mm carry shift earn20. Add a separate opt-in
+headset_lift=slow axis, mirrored in RuntimeConfig/Skills/G3; lift height,
+closure, physical drift thresholds and all original defaults are unchanged.

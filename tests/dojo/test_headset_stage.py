@@ -252,3 +252,22 @@ def test_mesh_rest_seats_real_geometry_without_changing_xy_or_orientation():
 def test_invalid_support_mesh_retains_bbox_target(mesh):
     target=np.eye(4)
     assert headset.mesh_support_target(SimpleNamespace(asset=SimpleNamespace(mesh=mesh)),target) is target
+
+
+def test_slow_lift_is_opt_in_and_preserves_pick_verifier_defaults():
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from dojo.skills.env import KinematicEnv
+    from dojo.skills.g3 import SKILL_ATTRS
+    from dojo.skills.skills import Skills
+    from dojo.skills.world import WorldState
+    sk = Skills(KinematicEnv([]), SimpleNamespace(refresh=lambda:WorldState("", "", {}, {}, {})))
+    assert sk.headset_lift == RuntimeConfig().headset_lift == "legacy"
+    assert SKILL_ATTRS["headset_lift"] == ("legacy", "slow")
+    assert headset.cradle_pick_kwargs(sk, seat=False) == {}
+    assert headset.cradle_pick_kwargs(sk, seat=True) == {"squeeze":8}
+    sk.headset_lift = "slow"
+    assert headset.cradle_pick_kwargs(sk, seat=False) == {"lift_rad":.03}
+    assert headset.cradle_pick_kwargs(sk, seat=True) == {"squeeze":8, "lift_rad":.03}
+    RuntimePolicy(RuntimeConfig(headset_lift="slow"), assets=object())
+    with pytest.raises(ValueError, match="bad runtime config"):
+        RuntimePolicy(RuntimeConfig(headset_lift="invalid"), assets=object())

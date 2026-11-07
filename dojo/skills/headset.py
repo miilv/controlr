@@ -110,7 +110,7 @@ def stage_for_cradle(sk, objects, rack, hook_tag, bridge_tag):
                     candidates = cup_grasps(sk, o, a, bridge_tag)
                     return sites.filter(o, a, candidates) if sites is not None else candidates
                 plans = sk.plan_transfer(label, [target], arms=[arm], max_full=24, grasps=grasps,
-                                         pick_kw={"squeeze": 8},
+                                         pick_kw=cradle_pick_kwargs(sk, seat=True),
                                          place_kw={"pre_h": 0.03, "approach_rad": 0.03, "approach_line": True})
                 if isinstance(plans, SkillResult):
                     sk.log(f"[headset_stage] {label} {xy}: {plans.note}")
@@ -188,3 +188,11 @@ def mesh_support_target(obj, target):
     out = target.copy()
     out[2, 3] = TABLE_Z + .003 - float((vertices @ target[:3, :3].T)[:, 2].min())
     return out
+
+
+def cradle_pick_kwargs(sk, *, seat):
+    """Slow the checked lift's load onset without changing its hold verifier."""
+    kw = {"squeeze": 8} if seat else {}
+    if getattr(sk, "headset_lift", "legacy") == "slow":
+        kw["lift_rad"] = .03
+    return kw
