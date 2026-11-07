@@ -1124,3 +1124,5 @@
   default-off lever. See journal `2026-11-06-dojo-hang-ceiling`.
 
 - ~~**Relocation write audit coverage:** `RuntimePolicy._relocate_laid` emits resulting pos only; `m95_score.py audit` does not ingest it. Add explicit pre/post write coverage before collecting the [scoped KONG camera A/B](experiments/2026-11-07-kong-scoped-relocate-prereg.md); an audit omitting these writes cannot qualify the lever.~~ Instrumentation completed in #411; paired replay outcomes remain required by the preregistration.
+
+- **Actor-relocation audit identity association:** the nearest-pre-write/group rule can select a standing neighbour after the tracked tile has fallen. In the [scoped KONG audit](experiments/2026-11-07-kong-scoped-relocate-prereg.md), two `mahjong7_0` writes are judged against GT `mahjong8_0` (44.3→66.2 mm), while a same-label diagnostic improves 46.31→1.64 mm. Preserve registered flags; review a general identity-aware audit before interpreting these as actual relocation harm. No controller change or retrospective threshold tuning.

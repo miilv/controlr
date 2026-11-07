@@ -211,3 +211,21 @@ for this writer. Helpful writes do not cancel harmful writes under the
 registered rule. This is a write-audit finding, not a camera score verdict;
 no adoption is authorized. Scheduled guards continue without changing the
 lever, speed, thresholds, sample size or frozen inputs.
+
+### Association diagnostic for the two registered harmful flags
+
+[All 30 relocation-write records](data/kong-scoped-relocate/relocation-writes.json)
+retain 3-D and separate z errors. Both harmful flags occur at step 32 for
+belief label `mahjong7_0`: block 1 / 100002 and block 2 / 100003. The registered
+nearest-pre-write/group association selects **GT `mahjong8_0`**, not `mahjong7_0`.
+For that selected neighbour, the scorer reports **44.3→66.2 mm** 3-D error,
+with z error unchanged **−16.1→−16.1 mm** (display rounded to 0.1 mm).
+
+A supplemental diagnostic against the same-labelled GT `mahjong7_0` in those
+same exact replay frames gives **46.31→1.64 mm**, z **−0.23→−0.23 mm**, in both
+cases. This identifies a cross-instance association issue; it does **not**
+silently replace the registered metric. The raw registered totals remain
+15 helpful / 13 neutral / 2 harmful. Any identity-aware audit or interpretation
+requires explicit lead review; no threshold, camera treatment or verdict has
+been changed based on this diagnostic. The known nearest-instance limitation
+is now tracked in BACKLOG with these concrete cases.
