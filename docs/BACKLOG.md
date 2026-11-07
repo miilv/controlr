@@ -1138,7 +1138,9 @@
 - [ ] **dojo skills: sweep_blocks** (lead: a real broom sweep only, no pick-into-pan; low weight, after the others) and ~~**fold_clothes** (parked: no cloth state in the skills layer)~~ — `fold_garment` (#103); Sol, Sonnet and the planner route fold_clothes (+ `_random`) to it 6/6 each (journal 2026-10-27-dojo-official §2.2).
 - [x] ~~**dojo skills: deposit_coin.** The coin starts out of the inserting arm's reach in about half the layouts.~~ Rim grasps tilted in the coin's plane reach 12/25 with one arm; the rest go through an in-air rim handover (the giver turns the coin on its side, the taker takes its top rim 8 mm off-centre). The coin is 28.4 mm x 1.9 mm (the collider; `physics.size` in its metadata says 21 x 1 mm). Two grippers can share it this way (journal/2026-10-26-dojo-skills5.md).
 - [ ] **dojo skills: a rim-held coin slides in the pads as it leaves its stand** (G3 2/25, journal
-  2026-10-27-dojo-precision.md §3). 100002: the coin slid 5.2 mm down in the pads during the lift out of the stand
+  2026-10-27-dojo-precision.md §3). COIN2 (journal 2026-11-07-dojo-coin2): the camera's losses are this, driven by the
+  belief's plane yaw (median 3.9 deg off; the stand's slot allows +-1.4 deg); `disc_snap=on` (+ `disc_align=walls`,
+  `disc_seat=table`) holds 12 mm instead of 9 mm and fixes it in G3 under +10 / -12 deg errors — camera A/B pending. 100002: the coin slid 5.2 mm down in the pads during the lift out of the stand
   (cover 9 -> 3.8 mm) and fell out early in the carry; 100019: it slid back into the stand. Ideas: a longer squeeze, a
   re-grasp when the measured cover is under `DISC_MIN_COVER` while the coin is still over its stand. Also note: a hand
   on its side at the slot (finger roots over the bank) is now avoided only for the handover's taker (`hand_down_first`).
@@ -1282,6 +1284,15 @@
   tubes stay on the fallback; a coin's own-camera read under-covers (perception-held: never adopt it without a second
   view), which the protocol does not enforce yet (`disc_into_slot` places pass no `held_tol`).
 
+- [ ] **dojo coin: camera A/B of the thin-disc contact profile** (`insert_into(disc_contact="on")` / the `disc_*`
+  RuntimeConfig fields; COIN2 report 2026-11-07-coin2-contact). Needs strict v2 (`_official`) for `disc_align`; audit
+  the `wall_probe` writer. Its chooser text (manual / J2 registry) is not written: a new manual version + A/B.
+- [ ] **dojo coin: tilted edge grasps under `disc_snap`.** All 3 snap failures at +10 deg were +-12 deg in-plane
+  tilted grasps (lost in the lift). Try tilt 0 first, or no snap for tilted grasps.
+- [ ] **dojo coin: the wall probe's fit is biased toward 0 when the true yaw is near a squeeze turn** (three squeezes,
+  three unknowns: apex -7.4..-9.6 for a true -10). A fourth squeeze at the fitted apex would over-determine it (~12 steps).
+- [ ] **dojo coin: held_look calls a held coin "dropped" 7 / 17 times** (camera re-test, GT replays); 0 false "held".
+  A deeper seated hold may make the coin visible below the fingertips; measure on the camera A/B.
 - [ ] **dojo coin: validate disc_hold_evidence in strict CAMERA.** Isolated default-off disc scope of held_thin; historical dev rows have 12 opening-negative belief drops in six handover failures, but one has no demonstrated lift. No camera gain claimed. See journal/2026-11-05-dojo-coin-disc-hold-evidence.md and experiments/2026-11-05-coin-disc-hold-evidence-prereg.md. slot_read remains parked.
 - [ ] **Agentic transport accounting / quota fallback:** `ChatReply` drops httpx attempt counts;
   runtime `agentic.calls` is logical calls, so retries are invisible in the request budget.
