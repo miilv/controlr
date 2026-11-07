@@ -929,6 +929,31 @@ replays match_and_pick's decision (first object, speed, the match it would take)
 record + logged reads, robot at home, stub pick); its GT is the layout moved along the belt, for scoring only.
 `scripts/skills/match2_g3_job.sh` runs one scoped compute3 physics job on light3 / light4.
 
+### Thin-disc contact switches (COIN2)
+
+Six default-off `RuntimeConfig` fields, copied onto Skills and mirrored in G3 `--skill-attr`
+(`dojo/skills/coin_contact.py`): `disc_align=walls`, `disc_snap=on`, `disc_lift=shallow`, `disc_seat=table`,
+`disc_release=staged`, `disc_reserve=on`. They act only inside `precision.disc_into_slot` /
+`plan_disc_handover`, which `insert_into` reaches by geometry (a thin disc, `disc_axis`, standing in a fixed holder,
+`holder_of`), never by task name. A planner selects them per call with `insert_into(..., disc_contact="on")`
+(`coin_contact.PROFILE`, scoped to the call and restored on exit); `None` keeps the configured switches. The agent
+manual and the J2 registry do not document the argument yet: adding it there changes the chooser prompt for every
+task and needs its own manual version and A/B.
+
+- `disc_align=walls` reads `<arm>_ee_joint_state_official` (strict v2, `DOJO_GRIP_SOURCE=v2` in G3). Without the key
+  the probe ends with "no official jaw reading" and writes nothing. Its writes go through `provider.set_pose`
+  (runtime: a `belief_write` with writer `wall_probe`, before7 / after7; G3 `OffsetBeliefProvider`: the offset is
+  re-derived; the GT provider has none). Include `wall_probe` in the write audit.
+- The V's slope varies by layout and arm (0.0016-0.0021 per degree in the twin): the fit takes it free within
+  `WALL_B_RANGE`; the offset along the closing axis uses the calibrated intercept `WALL_A`.
+- `plan_pick` gained `snap_in`, `snap_rad`, `lift_step` and `post_lift`; all default to today's plan (the op list is
+  unchanged, `tests/dojo/test_coin_contact.py`). `plan_place` / `_place_tail` gained `release_stages`.
+- G3 `--belief-offset-file F` (dev) gives per-layout belief offsets `{seed: {label: [dx, dy, dyaw]}}`, on top of
+  `--belief-offset`. Camera-like coin errors: `docs/experiments/data/coin2/camera_pick_errors.json`.
+- `scripts/skills/coin2_stages.py` scores the contact stages from `m95_replay.py --every 1 --full` replays (GT, dev
+  only): fingertip clearance at each close, hold loss stage, slip, end state, release pose in the bank's frame.
+  `scripts/skills/coin2_g3_job.sh` runs one scoped compute3 job on light5 / light6.
+
 ### Internal RSI yardstick launcher
 
 `baselines/rsi/` measures the external fixed-program baseline on our hashed
