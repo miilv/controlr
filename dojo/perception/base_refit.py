@@ -25,6 +25,11 @@ GRID = 0.002          # m: its step
 MARGIN = 0.08         # score gain over the current pose needed to propose a shift
 UNIQUE = 0.006        # m: a competing peak farther than this must score MARGIN / 2 below the best
 MIN_POINTS = 12       # usable band points (over all views) for a reading
+SEEN_MIN = 0.3        # image-quality gate: the current pose must already explain this much of the base (score); below
+                      # it the base is not seen (shadowed contact, under the body at ~3 mm/px) and a search only chases
+                      # the object's own silhouette (offline, recorded head frames: 3 harmful shifts of 28-38 mm, all
+                      # from scores of 0.02-0.03 at the true pose)
+MAX_SHIFT_FRAC = 0.5  # the shift may not exceed this fraction of the band's radius (the base stays under the old one)
 
 
 def base_band(V: np.ndarray, F: np.ndarray, band: float = BAND, step: float = STEP) -> np.ndarray:
@@ -41,14 +46,26 @@ def base_band(V: np.ndarray, F: np.ndarray, band: float = BAND, step: float = ST
     return P[np.sort(keep)]
 
 
+RING_BINS = 36
+
+
 def _ring(P: np.ndarray, ring: float) -> np.ndarray:
-    """``P`` (world, the band) pushed out horizontally from the band's xy centre by ``ring``."""
+    """The band's outline (its outermost point per ``RING_BINS`` direction about its xy centre), pushed out
+    horizontally by ``ring``: points just outside the base, never inside it."""
     c = P[:, :2].mean(0)
     d = P[:, :2] - c
-    n = np.linalg.norm(d, axis=1, keepdims=True)
-    out = P.copy()
-    out[:, :2] = P[:, :2] + d / np.maximum(n, 1e-9) * ring
-    return out
+    n = np.linalg.norm(d, axis=1)
+    b = np.floor((np.arctan2(d[:, 1], d[:, 0]) + np.pi) / (2 * np.pi) * RING_BINS).astype(int) % RING_BINS
+    out = []
+    for k in range(RING_BINS):
+        m = np.flatnonzero(b == k)
+        if len(m) == 0:
+            continue
+        i = m[np.argmax(n[m])]
+        q = P[i].copy()
+        q[:2] = P[i, :2] + d[i] / max(float(n[i]), 1e-9) * ring
+        out.append(q)
+    return np.asarray(out) if out else P[:0].copy()
 
 
 def _lookup(mask: np.ndarray, uv: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -94,6 +111,11 @@ def refit_xy(views: dict, T_obj: np.ndarray, band_pts: np.ndarray, search: float
     s0, n0 = score_at(views, P0, _ring(P0, ring))
     if n0 < MIN_POINTS:
         return {"ok": False, "dxy": [0.0, 0.0], "score0": s0, "score": s0, "points": n0, "why": "too few points"}
+    if s0 < SEEN_MIN:
+        return {"ok": False, "dxy": [0.0, 0.0], "score0": round(s0, 4), "score": round(s0, 4), "points": n0,
+                "why": "base not seen"}
+    radius = float(np.max(np.linalg.norm(P0[:, :2] - P0[:, :2].mean(0), axis=1)))
+    search = min(search, MAX_SHIFT_FRAC * radius)
     offs = np.arange(-search, search + 1e-9, grid)
     best, best_s, scores = None, -9.0, []
     for dx in offs:
@@ -115,7 +137,8 @@ def refit_xy(views: dict, T_obj: np.ndarray, band_pts: np.ndarray, search: float
     if best_s - s0 < MARGIN:
         out["why"] = "gain below margin"
         return out
-    rival = max((s for s, dx, dy in scores if math.hypot(dx - best[0], dy - best[1]) > UNIQUE), default=-9.0)
+    apart = max(UNIQUE, 0.5 * radius)                   # a separate peak, not the shoulder of this one
+    rival = max((s for s, dx, dy in scores if math.hypot(dx - best[0], dy - best[1]) > apart), default=-9.0)
     if best_s - rival < MARGIN / 2:
         out["why"] = "ambiguous peak"
         return out

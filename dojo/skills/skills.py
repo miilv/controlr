@@ -2313,9 +2313,10 @@ class Skills:
         screened.sort(key=lambda x: x[0])
         for _, a, g, T_obj in screened[:max_full]:
             kw_p = dict(pick_kw)
-            if g.method == "torso":
-                # stream ORG2: a side grasp across a tall body squeezes before a slow lift (G3 dev: lifted right after
-                # the close, a 0.45 kg figure stayed on the table, the jaws closed around it, 3 of 5 torso picks)
+            if g.method == "torso" or (g.method == "slice" and getattr(self, "grasp_torso", "off") == "on"):
+                # stream ORG2: a grasp across an irregular body (side or top-down slice) squeezes before a slow lift
+                # (G3 dev: lifted right after the close, a 0.45 kg figure stayed on the table, 3 of 5 torso picks and
+                # every slice pick)
                 from dojo.skills.torso import TORSO_SQUEEZE
                 kw_p.setdefault("squeeze", TORSO_SQUEEZE)
                 kw_p.setdefault("lift_rad", SLOW)
