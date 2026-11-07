@@ -1,0 +1,114 @@
+[
+  {
+    "block": "disc-gain1",
+    "task": "deposit_coin",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-gain1-r1",
+    "salt_sha256": "dd30c37ddba289c64e023fdd8930edbaa3f222c4fd7470d6e9dd46dcbaecadf6",
+    "refill": false
+  },
+  {
+    "block": "disc-gain2",
+    "task": "deposit_coin",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-gain2-r1",
+    "salt_sha256": "510a9e8514006a78f59c882bb8f2fd1f4972f4ddde56eac6978ec33c71c3504f",
+    "refill": false
+  },
+  {
+    "block": "disc-gain3",
+    "task": "deposit_coin",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-gain3-r1",
+    "salt_sha256": "273eda92b708cf874c6988a684df6529cc23d987b5150937bd9462470fa7ca9f",
+    "refill": false
+  },
+  {
+    "block": "disc-gain4",
+    "task": "deposit_coin",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-gain4-r1",
+    "salt_sha256": "be4265e2f17e919d2937f9b32cc841d9b4c45d83ffe8fd983dd423cd12ebd6ce",
+    "refill": false
+  },
+  {
+    "block": "disc-gainrefill1",
+    "task": "deposit_coin",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-gainrefill1-r1",
+    "salt_sha256": "917107a48649d06e50e274274f0f80752e8c79428cf5c6cb23aa1b194f1b6ebe",
+    "refill": true
+  },
+  {
+    "block": "disc-key1",
+    "task": "insert_key",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-key1-r1",
+    "salt_sha256": "bb4f7a707e10ed84327564e069428edffc8033057db30ae3376c4ff3495ec962",
+    "refill": false
+  },
+  {
+    "block": "disc-key2",
+    "task": "insert_key",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-key2-r1",
+    "salt_sha256": "4afd3828ca1f177e077b04e9091d3d18c7863f326f16ed48721c6344c9837ca7",
+    "refill": false
+  },
+  {
+    "block": "disc-keyrefill1",
+    "task": "insert_key",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-keyrefill1-r1",
+    "salt_sha256": "19d2636ebdad0ca599919c2660ea517e38830c48ab9a9218cd9feec94691bbdb",
+    "refill": true
+  },
+  {
+    "block": "disc-ttt1",
+    "task": "play_tic_tac_toe",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-ttt1-r1",
+    "salt_sha256": "d246ac7c1395875e0a14ddb32abb934a388507a9f3f7f6a318172f06a914c823",
+    "refill": false
+  },
+  {
+    "block": "disc-ttt2",
+    "task": "play_tic_tac_toe",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-ttt2-r1",
+    "salt_sha256": "35f26c42eb77e39c52c9409c3fd701e79ae62d9cefc9780cd601314adc480bcc",
+    "refill": false
+  },
+  {
+    "block": "disc-tttrefill1",
+    "task": "play_tic_tac_toe",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-tttrefill1-r1",
+    "salt_sha256": "b2aa41d3779e94f1465c99dce0a25ae08773c29f95d436ed3b5fb6e78f156f8a",
+    "refill": true
+  },
+  {
+    "block": "disc-stack1",
+    "task": "stack_blocks",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-stack1-r1",
+    "salt_sha256": "deef1e7e2dc3b3dfd58a79dea76e9c4929d1dce7362598d74c7e3fbe62b65674",
+    "refill": false
+  },
+  {
+    "block": "disc-stack2",
+    "task": "stack_blocks",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-stack2-r1",
+    "salt_sha256": "d4d8695d175d416c04e4c4f0daae038ecad4e7f0b08271c723bbc0f572a95106",
+    "refill": false
+  },
+  {
+    "block": "disc-stackrefill1",
+    "task": "stack_blocks",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-stackrefill1-r1",
+    "salt_sha256": "b98fe74107a7930897cfb16f6cd99d3031eddb6cb242818d33b28c4a2dff6102",
+    "refill": true
+  }
+]
