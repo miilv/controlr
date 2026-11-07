@@ -354,3 +354,40 @@ def test_flat_rider_tells_a_dish_from_a_body():
         return ObjectState("x", "Rigid", "x", 0, np.zeros(3), np.array([1.0, 0, 0, 0]), a)
     assert flat_rider(obj([0.20, 0.20, 0.025]))        # a plate
     assert not flat_rider(obj([0.12, 0.07, 0.08]))     # a camera
+
+
+def _duplicate_scene():
+    """compute6 screen B 100000: frame 0 puts two labels on the one camera in view (target0, target1), and the belt reads
+    split it into two blobs, so the tracker confirms both. The second camera comes from upstream later."""
+    start = [_rider("camera", 0.446, 0.04, 0.8, "target0", idx=2), _rider("camera", 0.53, 0.04, 0.6, "target1", idx=2)]
+    reads = {}
+    for s in range(0, 400, 4):
+        rs = []
+        if 0.446 + 0.004 * s < 0.85:
+            rs += [_rider("camera", 0.446 + 0.004 * s, 0.04, 0.9, "rider0", idx=2),
+                   _rider("camera", 0.53 + 0.004 * s, 0.04, 0.7, "rider1", idx=2)]
+        xc = -0.90 + 0.004 * (s - 140)
+        if s >= 140 and -0.8 < xc < 0.8:
+            rs.append(_rider("camera", xc, -0.08, 0.9, label="rider2", idx=2))
+        reads[s] = _rec(*rs)
+    return start, reads
+
+
+def test_a_second_frame0_label_on_the_first_object_is_never_the_match(monkeypatch):
+    import dojo.skills.interactive as I
+    start, reads = _duplicate_scene()
+    prov, b, obs = _provider(start)
+    sk = _ReplaySkills(prov, b, obs, reads, belt_ref="tracked")
+    picked = []
+
+    def pick(sk_, label, v, **k):
+        w = sk_.refresh()
+        picked.append((label, w.obj(label).pos[:2].copy()))
+        return SimpleNamespace(ok=True, status="ok", note="", arm="left")
+    monkeypatch.setattr(I, "pick_from_belt", pick)
+    r = I.match_and_pick(sk, ["target0", "target1"], conveyor="conveyor")
+    st = sk.refresh().notes["belt"]
+    assert r["ok"] and len(picked) == 1
+    assert st["ref_dups"] and st["first"] not in st["ref_dups"]
+    assert picked[0][0] not in ("target0", "target1")             # not the first object under its other label
+    assert abs(float(picked[0][1][1]) + 0.08) < 0.03               # the upstream camera
