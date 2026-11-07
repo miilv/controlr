@@ -12,7 +12,7 @@ source SHA256: `334f617d48de0a803247c64c8d92006cea62da1c98e18213ea6094fab9f5af48
 Our separate prototype scanner was removed. `scripts/legality/scan.py` is only
 report formatting and a CI debt ratchet over this shared engine.
 
-Main snapshot: `9fa62eda557ddc01a4afbaa4173ad2f4e6ba4f59`.
+Main snapshot: `27eb254521d66cf50123d730afc95a43b2e13850`.
 D-C19 source: `127b65c4` (the exact partner-audited source), candidate provenance
 `5509d7be`. Complete flags: [immutable candidate](data/legality/dc19-candidate.txt)
 and [parsed overrides/hash](data/legality/candidate-config.json), including submit_v3,
@@ -54,12 +54,12 @@ comments are review evidence. These counts must not be reported as proven board 
 
 | Category | Main | D-C19 |
 |---|---:|---:|
-| reflection | 52 | 39 |
-| unresolved | 28042 | 26174 |
+| reflection | 53 | 39 |
+| unresolved | 28172 | 26174 |
 | checker_module | 1 | 1 |
 | task_data | 101 | 96 |
-| checker_provenance | 174 | 165 |
-| checker_tolerance | 59 | 57 |
+| checker_provenance | 175 | 165 |
+| checker_tolerance | 60 | 57 |
 | task_switch | 88 | 67 |
 | checker_state | 53 | 51 |
 | termination | 3 | 3 |
@@ -189,6 +189,7 @@ cannot detect this geometric/checker knowledge.
 
 
 
+
 ## Proposed additions to send back to the partner
 
 All additions extend the shared engine/profile; there is no second call-graph engine.
@@ -246,10 +247,6 @@ mock cannot certify the real perception service; static findings show it is not 
 Glib findings 12–19 (cardinality, duplicate/self pairs, movable roles, default frames,
 NaN, false look success, overstated outcomes and occupancy geometry) are shared-library
 review cases, not additional proven defects in our snapshot.
-
-Current-main-only additions include the default-off sort-container/evidence work
-merged before this tool: its source is included as initial retirement/review debt,
-not adopted as a clean board policy. D-C19 retains its original source snapshot.
 
 ## CI and policy
 
