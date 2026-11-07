@@ -1,0 +1,69 @@
+{
+  "stream": "IMIT2-CAM",
+  "code": "89b194be6a947d2d9c6a56eb3e97cbbfb285d63f",
+  "deployment": "/home/robotics/dojo-integ-c6-89b194be",
+  "model": "claude/claude-sonnet-5-5",
+  "baseline_candidate": "scripts/dojo/queues/2026-11-06-candidate.txt",
+  "baseline_candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "candidate_robotics_sha256": "f52fe25b8f5931a9a0ac78aea3a5349e1b171f7fe7275e00352e45d87975b1ca",
+  "overrides": {
+    "A": {},
+    "C": {
+      "imitate_wait": "home",
+      "imitate_keep_sides": true
+    },
+    "B": {
+      "imitate_wait": "home",
+      "imitate_keep_sides": true,
+      "imitate_order": "persist_elim",
+      "imitate_pairing": "cues",
+      "imitate_carry": "reach",
+      "imitate_retry": "refind"
+    }
+  },
+  "cells": {
+    "imitate_sorting_sequence": [
+      100000,
+      100001,
+      100003,
+      100004,
+      100005,
+      100006,
+      100007,
+      100008,
+      100009,
+      100020,
+      100021,
+      100022,
+      100023,
+      100024,
+      100025,
+      100026,
+      100027,
+      100028,
+      100029
+    ],
+    "stack_blocks": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004
+    ],
+    "classify_objects": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004
+    ]
+  },
+  "salt": "imit2-camera-20261107-7494a61e23c5271cadfdda1d011ecd89",
+  "prep_design_sha256": "0a650e5d0b82bf5476128f7d7aff8c88c899e422b4671e115e522bfa3738c408",
+  "order": "per id the three arms back to back, rotated by ordinal: ACB, CBA, BAC",
+  "repeats_per_arm": 1,
+  "comparisons": [
+    "C vs A",
+    "B vs C"
+  ]
+}

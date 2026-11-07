@@ -904,8 +904,9 @@ reconstructions are supplementary diagnostics, never retroactive qualification o
 
 ### match_and_pick MATCH2 switches
 
-Seven `RuntimeConfig` fields, all `off` by default (G3 `--skill-attr` mirrors all but `belt_speed`, which lives in the
-runtime's belt tracker; G3's GT provider has no tracker, so `belt_ref`, `belt_veto` and `belt_wrist_id` are inert there):
+Six `RuntimeConfig` fields, all `off` by default, each a skill parameter (Skills attributes, mirrored by G3
+`--skill-attr`; none keyed by task name, none reading a task config). G3's GT provider has no belt tracker, so
+`belt_ref`, `belt_veto`, `belt_speed` and `belt_wrist_id` are inert there:
 
 - `belt_ref=tracked`: the remembered first object is the leading start rider the tracker still holds after its first
   reads (a frame-0 phantom ahead of it is dropped, never confirmed), and its key is the leading asset of its own
@@ -919,10 +920,9 @@ runtime's belt tracker; G3's GT provider has no tracker, so `belt_ref`, `belt_ve
   line residual <= 4 mm), projected on the belt axis and kept (event `belt_lock`).
 - `belt_grasp=solid`: a rider with no top grasp that is not a flat dish (`interactive.flat_rider`) is intercepted with
   mesh-antipodal grasps ranked by `grasps.lift_hold`, then a waist, rim pinches last. A plate keeps today's order.
-- `belt_high_lift=on`: a picked match goes up another 10 cm (the belief's lift is the jaws'; an off-centre hold pivots).
 - `belt_retry=window`: up to six match rounds while 60 steps remain.
 - `belt_wrist_id=on`: a moving rider's pick look re-identifies it over every rider candidate
-  (`policy.rider_candidates`); a confident other category than the first object's is not picked (status `other`).
+  (`policy.observed_candidates`: the identities the belt tracker read this episode, never a task config's candidates); a confident other category than the first object's is not picked (status `other`).
 
 `save_belt_look_frames: N` (dev) keeps the first N belt pick-look frames. `scripts/skills/match2_decision_replay.py`
 replays match_and_pick's decision (first object, speed, the match it would take) on recorded camera reports (frame-0
@@ -945,7 +945,11 @@ task and needs its own manual version and A/B.
   (runtime: a `belief_write` with writer `wall_probe`, before7 / after7; G3 `OffsetBeliefProvider`: the offset is
   re-derived; the GT provider has none). Include `wall_probe` in the write audit.
 - The V's slope varies by layout and arm (0.0016-0.0021 per degree in the twin): the fit takes it free within
-  `WALL_B_RANGE`; the offset along the closing axis uses the calibrated intercept `WALL_A`.
+  `WALL_B_RANGE`. The intercept (pads square and centred) comes from the holder's catalogue mesh at the squeeze
+  height (`wall_intercept`); `WALL_A` only when the mesh is unknown.
+- `coin_contact.insert_thin(obj, receptacle, slot_pose7=None, contact="on")` is the general entry: a perceived slot
+  pose gives the targets (`slot_targets_from_pose`), else the receptacle's perceived pose and catalogue frame. Only
+  discs run the contact sequence; another thin shape is refused with a named stage.
 - `plan_pick` gained `snap_in`, `snap_rad`, `lift_step` and `post_lift`; all default to today's plan (the op list is
   unchanged, `tests/dojo/test_coin_contact.py`). `plan_place` / `_place_tail` gained `release_stages`.
 - G3 `--belief-offset-file F` (dev) gives per-layout belief offsets `{seed: {label: [dx, dy, dyaw]}}`, on top of
@@ -954,8 +958,34 @@ task and needs its own manual version and A/B.
   only): fingertip clearance at each close, hold loss stage, slip, end state, release pose in the bank's frame.
   `scripts/skills/coin2_g3_job.sh` runs one scoped compute3 job on light5 / light6.
 
-### Internal RSI yardstick launcher
+### Offline SAM task-prompt comparison
 
+`scripts/perception/sam/collect_task_frames.py ROOT` exports existing `c4b_` /
+`c6b_` frame-zero look captures as a tar stream without writing to the source.
+It reads only dev IDs 100000–09 and 100020–24, excluding the historical v2b
+training range. GT comes from the exact `layout` path in each episode manifest,
+including salted inputs; a same-numbered standard layout is insufficient.
+Loaded raw and settled inputs are marked separately. `--phase-look` exports
+a small pre-grasp survey panel; report its unchanged-object-pose assumption
+separately from frame-zero evidence.
+
+`task_prompt_eval.py prepare ROOT` uses `seg_twin.gt_code_map` on CPU Mesa
+(`PYOPENGL_PLATFORM=egl`, Mesa vendor, `LIBGL_ALWAYS_SOFTWARE=1`,
+`EGL_DEVICE_ID=1` on compute3). `pred ROOT --out ROWS --model sam3|sam3.1
+--checkpoint CKPT --weights V2B --classes CLASSES` runs the paired component
+comparison. SAM3.1 takes the original multiplex safetensors, constructs its
+text detector without the unused tracker, and checks checkpoint compatibility.
+Use an 8 GiB / 600% systemd scope on shared compute3, one model arm at a time.
+Inference checks the 24 GiB-used admission ceiling and 10 GiB disk floor and
+caps its CUDA allocator at 30% of device capacity. Store caches under the
+experiment directory, not a shared package environment.
+
+`task_prompt_summary.py ROWS... --out DIR` emits summary, frame and instance
+CSVs. Prompt categories are distinct from asset identities: ambiguous category
+sets are not correct class reads. Union de-duplication retains v2b identities
+first and adds disjoint SAM masks at IoU <=0.5. This is an offline component
+comparison, not a runtime proposer or an end-to-end task-score evaluation.
+### Internal RSI yardstick launcher
 `baselines/rsi/` measures the external fixed-program baseline on our hashed
 inputs through the official eval client; its programs never enter policy code.
 All host/state/lane/lock paths are explicit arguments. The desktop profile
@@ -964,3 +994,87 @@ load; the camera profile uses the existing lane2 caps and startup/boot gates.
 See [the install recipe](../baselines/rsi/INSTALL.md). CPU tests mock telemetry
 and verify admission, credential isolation, portable commands and input hashes.
 Running a recipe still requires current permission for the destination box.
+
+### Task-scoped SAM camera proposals and shared service
+
+**Diagnostic-only; prohibited for a board candidate.** `sam_task_routes` and
+`sam_task_banks.json` are historical component experiments, default-off. Never enable
+these fields or their task-keyed prompt lists for board episodes. The board requires
+one general perception path, with no task names, task-keyed code, task-config values
+or checker values. A general mask proposer must consume only episode instruction text
+and the one shared catalogue; thresholds and post-filters must be uniform. The legacy
+inverse-layout fitter also reads task-config candidate pools/priors, so replacing only
+its mask prompts does not by itself establish board compliance.
+
+
+`EstimatorConfig.sam_task_routes` defaults to `{}`. Keys are the instruction-routed
+vocabulary passed to perception (as for other task switches), never launcher task IDs.
+Each entry accepts `mode: v2b|sam|union`, `bank` (same task), `model: sam3|sam3.1_text`,
+`threshold`, `dedup_iou` and conveyor `roi` / optional `labels`. Example perception
+JSON overlay: `{"sam_task_routes":{"pour_by_language":{"mode":"sam","model":"sam3","threshold":0.2}}}`.
+Merge it into the candidate's `DOJO_PERCEPTION_CFG`; do not discard the candidate fields.
+No entry means the existing v2b path. `sam` replaces detector proposals; `union` retains
+v2b first and adds SAM masks at IoU <=0.5. Background proposals remain unchanged.
+SAM categories restrict the public candidate fits and cannot supply an exact-asset hint.
+Existing silhouette acceptance and appearance identity stages still apply. The committed
+`dojo/perception/data/sam_task_banks.json` is SAMBAKE's phrase inventory; runtime reads
+no evaluation manifests or GT. Conveyor ROI filters are separately registered hypotheses.
+The existing `sam_fg` and `sam_propose` flags remain independent and unchanged.
+Requested SAM routes require a live service and fail as infrastructure errors if it dies.
+
+On a **lead-allocated, drained compute4 or compute6**, deploy the merged code to a pinned
+`~/controlr*` directory. Never update a running lane's deployment. Install the server's
+separate venv with Python 3.12, torch **2.9.1+cu128**, torchvision, safetensors, timm,
+ftfy, regex, iopath, einops, psutil, hydra-core, omegaconf, Pillow, numpy and Meta SAM3
+at commit `f1647e8d0c1d280991f4d1b7d974c2704537fe66` (no SAM2 needed for these routes).
+Use a dedicated `~/controlr-sam/venv`; do not alter simulator Python. Copy the already
+verified checkpoints from compute3's `~/dojo-data/sambake/models/sam3.pt` and
+`sam31.safetensors` to `~/dojo-data/models/sam3/sam3.pt` and
+`~/dojo-data/models/sam3.1/sam3.1_multiplex_fp16.safetensors`, respectively. The lifecycle
+script verifies both SHA256s before starting; no model download is performed.
+
+```bash
+export LANE_REPO=$HOME/controlr-<merged-pin> SAM_PY=$HOME/controlr-sam/venv/bin/python
+export LANE_STATE=$HOME/dojo-integ-c6-state LANE_STREAM=integ-c6  # c4: c4-state / integ-c4
+export LANE_SHARED_SAM=sam3  # egg/conveyor wave: sam3.1_text; drain before switching
+bash "$LANE_REPO/scripts/dojo/queues/sam_shared.sh" start
+bash "$LANE_REPO/scripts/dojo/queues/sam_shared.sh" status
+# Both lane queue rows use --sam sam3 (or both sam3.1_text), never a per-lane SAM process.
+# After STOP/drain and completion of both jobs:
+bash "$LANE_REPO/scripts/dojo/queues/sam_shared.sh" stop
+```
+
+Start also maintains the existing shared v2b/digit/kong services, using the pinned lane
+venv, and enables `shared.on` only after SAM health. Stop stops the shared bundle after
+the lanes drain. `shared_side.sh` serializes lifecycle operations; lane `shared_ok()`
+checks PID, socket info and exact loaded models before/after each job. The service
+serializes inference across clients. A dead/replaced service requeues the row and stops
+the lanes. `side.shared-sam` counts one big service in `sides()`; nvidia-smi admission
+includes its actual residency. Default admission remains unchanged. A measured
+single-checkpoint wave may explicitly export `LANE_SAM_LANE_MIB=12288` to reserve 12 GiB
+free per new rendered lane (20 GiB used ceiling), only with healthy shared SAM. Keep
+this opt-in unset until the box's actual lane footprint is checked. Do not load both
+checkpoints for a two-lane wave: their measured 9.46 GiB service residency leaves too
+little room for two lanes and the other services. Load one checkpoint per box/wave.
+Use `scripts/perception/sam/shared_bench.py` under a light lock to reproduce startup,
+request and two-client timings on an existing permitted RGB. It terminates only its
+own server child. Detailed measurements and parked specs: `docs/experiments/data/samint/`.
+
+
+The SAM route key enters at the perception RPC's explicit `vocabulary` field.
+`_Perception.estimate` forwards it as `inverse_layout.estimate(..., task=vocabulary)`;
+`sam_routing.resolve(config.sam_task_routes, vocabulary)` selects the configuration.
+It is derived from permitted instruction routing in the current runtime, not launcher
+metadata or an environment task ID. A model planner using a skill registry can supply
+the same canonical perception vocabulary explicitly: the estimator does not require
+an instruction-pattern branch to choose SAM. Registry entries must map to an existing
+public candidate vocabulary/bank key; an arbitrary skill display name is not a bank.
+The task key also selects the existing public candidate pool. SAM's route map chooses
+mode/checkpoint/thresholds/filters, while the existing fit stage chooses asset identity.
+
+The key is per **estimate request**, including candidate vocabularies evaluated by
+`RuntimePolicy._explain_vocabulary`, before the final route is chosen. For a scoped
+SAM parity guard, inspect every `vocab_explain.candidates` entry as well as the final
+vocabulary and record routing counters. A final inactive vocabulary alone does not
+prove that an earlier candidate estimate made zero SAM requests. An active bank
+in a guard's candidate exploration blocks the zero-request parity proof.

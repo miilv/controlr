@@ -1,0 +1,1092 @@
+{
+  "selected": {
+    "imitate_sorting_sequence": [
+      100000,
+      100001,
+      100003,
+      100004,
+      100005,
+      100006,
+      100007,
+      100008,
+      100009,
+      100020,
+      100021,
+      100022,
+      100023,
+      100024,
+      100025,
+      100026,
+      100027,
+      100028,
+      100029
+    ],
+    "imitate_excluded": [
+      100002
+    ],
+    "stack_blocks": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004
+    ],
+    "classify_objects": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004
+    ]
+  },
+  "attempts": {
+    "imitate_sorting_sequence": [
+      {
+        "id": 100000,
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.94,
+        "pass1_drift_deg": 2.34,
+        "pass2_top": [
+          [
+            "aim2",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "aim0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.007,
+        "pass2_drift_deg": 0.008,
+        "passes": 2,
+        "status": "ok",
+        "s": 11.5
+      },
+      {
+        "id": 100001,
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "t3",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "aim0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.007,
+        "pass2_drift_deg": 0.008,
+        "passes": 2,
+        "status": "ok",
+        "s": 11.8
+      },
+      {
+        "id": 100002,
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "aim1",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "aim0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.005,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 13.8
+      },
+      {
+        "id": 100003,
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.94,
+        "pass1_drift_deg": 1.73,
+        "pass2_top": [
+          [
+            "aim2",
+            0.06,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "aim0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.062,
+        "pass2_drift_deg": 0.144,
+        "passes": 2,
+        "status": "ok",
+        "s": 14.7
+      },
+      {
+        "id": 100004,
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "t3",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "aim3",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.008,
+        "pass2_drift_deg": 0.007,
+        "passes": 2,
+        "status": "ok",
+        "s": 13.5
+      },
+      {
+        "id": 100005,
+        "from": "100005.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "aim2",
+            0.03,
+            "Rigid"
+          ],
+          [
+            "t2",
+            0.02,
+            "Rigid"
+          ],
+          [
+            "t3",
+            0.01,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.035,
+        "pass2_drift_deg": 0.359,
+        "passes": 2,
+        "status": "ok",
+        "s": 14.2
+      },
+      {
+        "id": 100006,
+        "from": "100006.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 1.01,
+        "pass1_drift_deg": 1.74,
+        "pass2_top": [
+          [
+            "aim2",
+            0.13,
+            "Rigid"
+          ],
+          [
+            "t2",
+            0.07,
+            "Rigid"
+          ],
+          [
+            "t1",
+            0.05,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.127,
+        "pass2_drift_deg": 0.274,
+        "passes": 2,
+        "status": "ok",
+        "s": 14.7
+      },
+      {
+        "id": 100007,
+        "from": "100007.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.94,
+        "pass1_drift_deg": 2.34,
+        "pass2_top": [
+          [
+            "aim2",
+            0.2,
+            "Rigid"
+          ],
+          [
+            "t3",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "aim3",
+            0.01,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.201,
+        "pass2_drift_deg": 0.446,
+        "passes": 2,
+        "status": "ok",
+        "s": 12.9
+      },
+      {
+        "id": 100008,
+        "from": "100008.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 1.01,
+        "pass1_drift_deg": 2.34,
+        "pass2_top": [
+          [
+            "aim3",
+            0.05,
+            "Rigid"
+          ],
+          [
+            "t3",
+            0.04,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.048,
+        "pass2_drift_deg": 0.385,
+        "passes": 2,
+        "status": "ok",
+        "s": 14.5
+      },
+      {
+        "id": 100009,
+        "from": "100009.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "aim4",
+            0.04,
+            "Rigid"
+          ],
+          [
+            "t4",
+            0.03,
+            "Rigid"
+          ],
+          [
+            "t1",
+            0.01,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.035,
+        "pass2_drift_deg": 0.297,
+        "passes": 2,
+        "status": "ok",
+        "s": 14.7
+      },
+      {
+        "id": 100020,
+        "from": "100020.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.94,
+        "pass1_drift_deg": 1.73,
+        "pass2_top": [
+          [
+            "aim4",
+            0.28,
+            "Rigid"
+          ],
+          [
+            "t4",
+            0.12,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.284,
+        "pass2_drift_deg": 0.657,
+        "passes": 2,
+        "status": "ok",
+        "s": 15.2
+      },
+      {
+        "id": 100021,
+        "from": "100021.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "t0",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "aim0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "t1",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.008,
+        "pass2_drift_deg": 0.007,
+        "passes": 2,
+        "status": "ok",
+        "s": 16.1
+      },
+      {
+        "id": 100022,
+        "from": "100022.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "aim2",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "aim0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.006,
+        "pass2_drift_deg": 0.009,
+        "passes": 2,
+        "status": "ok",
+        "s": 14.9
+      },
+      {
+        "id": 100023,
+        "from": "100023.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.94,
+        "pass1_drift_deg": 1.73,
+        "pass2_top": [
+          [
+            "t1",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "aim1",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.007,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 13.9
+      },
+      {
+        "id": 100024,
+        "from": "100024.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "aim0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "t1",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.005,
+        "pass2_drift_deg": 0.005,
+        "passes": 2,
+        "status": "ok",
+        "s": 14.0
+      },
+      {
+        "id": 100025,
+        "from": "100025.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "t0",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "aim0",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "t1",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.01,
+        "pass2_drift_deg": 0.009,
+        "passes": 2,
+        "status": "ok",
+        "s": 14.7
+      },
+      {
+        "id": 100026,
+        "from": "100026.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "aim0",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "t1",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.007,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 13.5
+      },
+      {
+        "id": 100027,
+        "from": "100027.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 1.01,
+        "pass1_drift_deg": 1.74,
+        "pass2_top": [
+          [
+            "t4",
+            0.04,
+            "Rigid"
+          ],
+          [
+            "aim4",
+            0.04,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.042,
+        "pass2_drift_deg": 0.351,
+        "passes": 2,
+        "status": "ok",
+        "s": 14.4
+      },
+      {
+        "id": 100028,
+        "from": "100028.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "aim2",
+            0.05,
+            "Rigid"
+          ],
+          [
+            "t2",
+            0.04,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.046,
+        "pass2_drift_deg": 0.416,
+        "passes": 2,
+        "status": "ok",
+        "s": 12.1
+      },
+      {
+        "id": 100029,
+        "from": "100029.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.94,
+        "pass1_drift_deg": 2.34,
+        "pass2_top": [
+          [
+            "t0",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "aim0",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "t1",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.009,
+        "pass2_drift_deg": 0.011,
+        "passes": 2,
+        "status": "ok",
+        "s": 10.7
+      }
+    ],
+    "demos": [
+      {
+        "id": 100000,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100001,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100002,
+        "speed": 1.25,
+        "status": "dropped: validation"
+      },
+      {
+        "id": 100003,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100004,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100005,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100006,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100007,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100008,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100009,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100020,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100021,
+        "speed": 1.25,
+        "status": "dropped: validation"
+      },
+      {
+        "id": 100022,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100023,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100024,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100025,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100026,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100027,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100028,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100029,
+        "speed": 1.25,
+        "status": "ok"
+      },
+      {
+        "id": 100002,
+        "speed": 1.5,
+        "status": "dropped: validation"
+      },
+      {
+        "id": 100021,
+        "speed": 1.5,
+        "status": "ok"
+      }
+    ],
+    "stack_blocks": [
+      {
+        "id": 100000,
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.15,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.001,
+        "pass2_drift_deg": 0.004,
+        "passes": 2,
+        "status": "ok",
+        "s": 5.7
+      },
+      {
+        "id": 100001,
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.15,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.001,
+        "pass2_drift_deg": 0.004,
+        "passes": 2,
+        "status": "ok",
+        "s": 6.0
+      },
+      {
+        "id": 100002,
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.15,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.001,
+        "pass2_drift_deg": 0.004,
+        "passes": 2,
+        "status": "ok",
+        "s": 6.0
+      },
+      {
+        "id": 100003,
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.15,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.001,
+        "pass2_drift_deg": 0.004,
+        "passes": 2,
+        "status": "ok",
+        "s": 5.9
+      },
+      {
+        "id": 100004,
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 4.79,
+        "pass1_drift_deg": 0.49,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.001,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 5.9
+      }
+    ],
+    "classify_objects": [
+      {
+        "id": 100000,
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.71,
+        "pass1_drift_deg": 25.94,
+        "pass2_top": [
+          [
+            "cat0_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "cat1_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "cat2_0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.0,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.0
+      },
+      {
+        "id": 100001,
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 1.01,
+        "pass1_drift_deg": 0.53,
+        "pass2_top": [
+          [
+            "cat0_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "cat1_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "cat2_0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.0,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.0
+      },
+      {
+        "id": 100002,
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.58,
+        "pass1_drift_deg": 28.26,
+        "pass2_top": [
+          [
+            "cat2_0",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "cat0_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "cat1_0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.006,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 6.9
+      },
+      {
+        "id": 100003,
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.95,
+        "pass1_drift_deg": 1.77,
+        "pass2_top": [
+          [
+            "cat0_0",
+            0.03,
+            "Rigid"
+          ],
+          [
+            "cat0_1",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "cat1_0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 6,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.031,
+        "pass2_drift_deg": 0.04,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.6
+      },
+      {
+        "id": 100004,
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.28,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "cat1_2",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "cat0_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "cat0_1",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 9,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.005,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.1
+      }
+    ]
+  }
+}

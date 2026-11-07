@@ -138,11 +138,15 @@ class SamClient:
         req = dict(req, key=image_key(img), shape=img.shape)
         try:
             self.conn.send(req)
+            if not self.conn.poll(self.timeout_s):
+                raise TimeoutError("SAM response deadline")
             r = self.conn.recv()
             if r.get("need_image"):
                 self.conn.send({"image": np.ascontiguousarray(img, np.uint8).tobytes()})
+                if not self.conn.poll(self.timeout_s):
+                    raise TimeoutError("SAM inference deadline")
                 r = self.conn.recv()
-        except (EOFError, OSError) as e:
+        except (EOFError, OSError, TimeoutError) as e:
             if self.loud:
                 raise SideServerDown(f"side server at {self.addr} gone mid-run: {type(e).__name__}: {e}") from e
             raise
@@ -152,8 +156,8 @@ class SamClient:
             raise RuntimeError(f"sam server: {r['error']}")
         return r
 
-    def text(self, img: np.ndarray, prompts: list[str], thr: float = 0.4) -> list[SamMask]:
-        r = self._call({"op": "text", "prompts": list(prompts), "thr": float(thr)}, img)
+    def text(self, img: np.ndarray, prompts: list[str], thr: float = 0.4, model: str = "sam3.1") -> list[SamMask]:
+        r = self._call({"op": "text", "prompts": list(prompts), "thr": float(thr), "model": model}, img)
         return [SamMask(unpack(m, s), sc, p) for m, s, sc, p in r["masks"]]
 
     def points(self, img: np.ndarray, uv: np.ndarray, model: str = "sam2.1_small", multimask: bool = True) -> list[SamMask]:
@@ -261,20 +265,34 @@ class _Models:
     def __init__(self, names: list[str]):
         import torch
 
+        if any(n in ("sam3", "sam3.1_text") for n in names):
+            torch.set_num_threads(6)
+            torch.cuda.set_per_process_memory_fraction(0.30)
         self.torch = torch
         self.names = names
         self.lock = threading.Lock()
         self.sam31 = None
+        self.text_processors = {}
         self.sam2: dict = {}
         self._img_key: dict = {}
         self.timing: dict = {}
         t0 = time.time()
+        for name in names:
+            if name in ("sam3", "sam3.1_text"):
+                self._load_text(name)
         if "sam3.1" in names:
             self._load_sam31()
         for n in names:
             if n in SAM2_CKPT:
                 self._load_sam2(n)
         self.load_s = round(time.time() - t0, 1)
+
+    def _load_text(self, name):
+        from .sam_text_model import load_text_model
+        from sam3.model.sam3_image_processor import Sam3Processor
+
+        model = load_text_model(name, MODELS_DIR)
+        self.text_processors[name] = Sam3Processor(model, confidence_threshold=0.05)
 
     # ---- SAM 3.1
     def _load_sam31(self):
@@ -304,16 +322,17 @@ class _Models:
 
         pred.model.tracker.add_new_points = cap
 
-    def sam31_text(self, img, prompts, thr):
+    def sam31_text(self, img, prompts, thr, model="sam3.1"):
+        proc = self.sam31_proc if model == "sam3.1" else self.text_processors[model]
         torch = self.torch
         from PIL import Image
 
         out = []
         with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
-            st = self.sam31_proc.set_image(Image.fromarray(img))
+            st = proc.set_image(Image.fromarray(img))
             for p in prompts:
-                self.sam31_proc.reset_all_prompts(st)
-                st = self.sam31_proc.set_text_prompt(p, st)
+                proc.reset_all_prompts(st)
+                st = proc.set_text_prompt(p, st)
                 ms = st["masks"].squeeze(1).cpu().numpy()
                 sc = st["scores"].float().cpu().numpy()
                 for m, s in zip(ms, sc):
@@ -374,7 +393,7 @@ class _Models:
         op = req["op"]
         with self.lock:
             if op == "text":
-                res = [(*pack(m), s, p) for m, s, p in self.sam31_text(img, req["prompts"], req.get("thr", 0.4))]
+                res = [(*pack(m), s, p) for m, s, p in self.sam31_text(img, req["prompts"], req.get("thr", 0.4), req.get("model", "sam3.1"))]
             elif op == "points":
                 name = req.get("model", "sam2.1_small")
                 if name == "sam3.1":

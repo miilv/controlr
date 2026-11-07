@@ -1,0 +1,904 @@
+{
+  "design_cam_sha256": "162bff7a1103e4f184b841cc519927d2a9d2beb25b90a57597ace8b0f5d886d9",
+  "prep_design_sha256": "0a650e5d0b82bf5476128f7d7aff8c88c899e422b4671e115e522bfa3738c408",
+  "selection_sha256": "8279e340d75c7c14dc2b71e2f88d2b5c69bcf36ac7e29157d2ff39ecc20e45c8",
+  "queue": {
+    "path": "/home/robotics/dojo-data/imit2-cam/queue-imit2.txt",
+    "sha256": "201b02a1a76fb2c252d3a246acaee46e0659d29a17337d01d3e5d39f756affb0",
+    "rows": 87
+  },
+  "schedule": [
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100000",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100000,
+      "ordinal": 0,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100000.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100000",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100000,
+      "ordinal": 0,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100000.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100000",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100000,
+      "ordinal": 0,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100000.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100001",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100001,
+      "ordinal": 1,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100001.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100001",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100001,
+      "ordinal": 1,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100001.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100001",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100001,
+      "ordinal": 1,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100001.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100003",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100003,
+      "ordinal": 2,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100003.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100003",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100003,
+      "ordinal": 2,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100003.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100003",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100003,
+      "ordinal": 2,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100003.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100004",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100004,
+      "ordinal": 3,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100004.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100004",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100004,
+      "ordinal": 3,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100004.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100004",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100004,
+      "ordinal": 3,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100004.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100005",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100005,
+      "ordinal": 4,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100005.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100005",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100005,
+      "ordinal": 4,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100005.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100005",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100005,
+      "ordinal": 4,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100005.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100006",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100006,
+      "ordinal": 5,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100006.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100006",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100006,
+      "ordinal": 5,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100006.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100006",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100006,
+      "ordinal": 5,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100006.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100007",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100007,
+      "ordinal": 6,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100007.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100007",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100007,
+      "ordinal": 6,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100007.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100007",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100007,
+      "ordinal": 6,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100007.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100008",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100008,
+      "ordinal": 7,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100008.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100008",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100008,
+      "ordinal": 7,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100008.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100008",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100008,
+      "ordinal": 7,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100008.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100009",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100009,
+      "ordinal": 8,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100009.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100009",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100009,
+      "ordinal": 8,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100009.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100009",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100009,
+      "ordinal": 8,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100009.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100020",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100020,
+      "ordinal": 9,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100020.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100020",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100020,
+      "ordinal": 9,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100020.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100020",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100020,
+      "ordinal": 9,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100020.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100021",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100021,
+      "ordinal": 10,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100021.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100021",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100021,
+      "ordinal": 10,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100021.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100021",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100021,
+      "ordinal": 10,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100021.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100022",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100022,
+      "ordinal": 11,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100022.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100022",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100022,
+      "ordinal": 11,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100022.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100022",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100022,
+      "ordinal": 11,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100022.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100023",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100023,
+      "ordinal": 12,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100023.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100023",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100023,
+      "ordinal": 12,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100023.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100023",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100023,
+      "ordinal": 12,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100023.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100024",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100024,
+      "ordinal": 13,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100024.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100024",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100024,
+      "ordinal": 13,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100024.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100024",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100024,
+      "ordinal": 13,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100024.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100025",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100025,
+      "ordinal": 14,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100025.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100025",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100025,
+      "ordinal": 14,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100025.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100025",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100025,
+      "ordinal": 14,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100025.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100026",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100026,
+      "ordinal": 15,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100026.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100026",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100026,
+      "ordinal": 15,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100026.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100026",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100026,
+      "ordinal": 15,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100026.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100027",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100027,
+      "ordinal": 16,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100027.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100027",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100027,
+      "ordinal": 16,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100027.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100027",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100027,
+      "ordinal": 16,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100027.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100028",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100028,
+      "ordinal": 17,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100028.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100028",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100028,
+      "ordinal": 17,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100028.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100028",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100028,
+      "ordinal": 17,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100028.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Ar1_100029",
+      "arm": "A",
+      "task": "imitate_sorting_sequence",
+      "id": 100029,
+      "ordinal": 18,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100029.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Cr1_100029",
+      "arm": "C",
+      "task": "imitate_sorting_sequence",
+      "id": 100029,
+      "ordinal": 18,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100029.settled.json"
+    },
+    {
+      "name": "c6b_imitatesg_imit2Br1_100029",
+      "arm": "B",
+      "task": "imitate_sorting_sequence",
+      "id": 100029,
+      "ordinal": 18,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100029.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Cr1_100000",
+      "arm": "C",
+      "task": "stack_blocks",
+      "id": 100000,
+      "ordinal": 19,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100000.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Br1_100000",
+      "arm": "B",
+      "task": "stack_blocks",
+      "id": 100000,
+      "ordinal": 19,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100000.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Ar1_100000",
+      "arm": "A",
+      "task": "stack_blocks",
+      "id": 100000,
+      "ordinal": 19,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100000.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Br1_100001",
+      "arm": "B",
+      "task": "stack_blocks",
+      "id": 100001,
+      "ordinal": 20,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100001.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Ar1_100001",
+      "arm": "A",
+      "task": "stack_blocks",
+      "id": 100001,
+      "ordinal": 20,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100001.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Cr1_100001",
+      "arm": "C",
+      "task": "stack_blocks",
+      "id": 100001,
+      "ordinal": 20,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100001.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Ar1_100002",
+      "arm": "A",
+      "task": "stack_blocks",
+      "id": 100002,
+      "ordinal": 21,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100002.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Cr1_100002",
+      "arm": "C",
+      "task": "stack_blocks",
+      "id": 100002,
+      "ordinal": 21,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100002.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Br1_100002",
+      "arm": "B",
+      "task": "stack_blocks",
+      "id": 100002,
+      "ordinal": 21,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100002.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Cr1_100003",
+      "arm": "C",
+      "task": "stack_blocks",
+      "id": 100003,
+      "ordinal": 22,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100003.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Br1_100003",
+      "arm": "B",
+      "task": "stack_blocks",
+      "id": 100003,
+      "ordinal": 22,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100003.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Ar1_100003",
+      "arm": "A",
+      "task": "stack_blocks",
+      "id": 100003,
+      "ordinal": 22,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100003.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Br1_100004",
+      "arm": "B",
+      "task": "stack_blocks",
+      "id": 100004,
+      "ordinal": 23,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100004.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Ar1_100004",
+      "arm": "A",
+      "task": "stack_blocks",
+      "id": 100004,
+      "ordinal": 23,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100004.settled.json"
+    },
+    {
+      "name": "c6b_stackblockssg_imit2Cr1_100004",
+      "arm": "C",
+      "task": "stack_blocks",
+      "id": 100004,
+      "ordinal": 23,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100004.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Ar1_100000",
+      "arm": "A",
+      "task": "classify_objects",
+      "id": 100000,
+      "ordinal": 24,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100000.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Cr1_100000",
+      "arm": "C",
+      "task": "classify_objects",
+      "id": 100000,
+      "ordinal": 24,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100000.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Br1_100000",
+      "arm": "B",
+      "task": "classify_objects",
+      "id": 100000,
+      "ordinal": 24,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100000.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Cr1_100001",
+      "arm": "C",
+      "task": "classify_objects",
+      "id": 100001,
+      "ordinal": 25,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100001.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Br1_100001",
+      "arm": "B",
+      "task": "classify_objects",
+      "id": 100001,
+      "ordinal": 25,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100001.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Ar1_100001",
+      "arm": "A",
+      "task": "classify_objects",
+      "id": 100001,
+      "ordinal": 25,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100001.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Br1_100002",
+      "arm": "B",
+      "task": "classify_objects",
+      "id": 100002,
+      "ordinal": 26,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100002.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Ar1_100002",
+      "arm": "A",
+      "task": "classify_objects",
+      "id": 100002,
+      "ordinal": 26,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100002.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Cr1_100002",
+      "arm": "C",
+      "task": "classify_objects",
+      "id": 100002,
+      "ordinal": 26,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100002.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Ar1_100003",
+      "arm": "A",
+      "task": "classify_objects",
+      "id": 100003,
+      "ordinal": 27,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100003.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Cr1_100003",
+      "arm": "C",
+      "task": "classify_objects",
+      "id": 100003,
+      "ordinal": 27,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100003.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Br1_100003",
+      "arm": "B",
+      "task": "classify_objects",
+      "id": 100003,
+      "ordinal": 27,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100003.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Cr1_100004",
+      "arm": "C",
+      "task": "classify_objects",
+      "id": 100004,
+      "ordinal": 28,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100004.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Br1_100004",
+      "arm": "B",
+      "task": "classify_objects",
+      "id": 100004,
+      "ordinal": 28,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100004.settled.json"
+    },
+    {
+      "name": "c6b_classifysg_imit2Ar1_100004",
+      "arm": "A",
+      "task": "classify_objects",
+      "id": 100004,
+      "ordinal": 28,
+      "layout": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100004.settled.json"
+    }
+  ],
+  "files": [
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100000.settled.json",
+      "sha256": "4468aa7b616a914cc468651dc366820159c9825294020aae16a6eb50f4fa7eb3"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100000.pkl",
+      "sha256": "d160bf68117c5a28859d905a4e8d02d1e41b3030a780952653db22a5b739cc35"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100001.settled.json",
+      "sha256": "b0fc14e94d41a9d455a783afca1cc84d34e774651d36a4f9bfba7737900f2a6a"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100001.pkl",
+      "sha256": "fbd0c3dccef9d2ebc2ab78d77c75993175ff4b653af8b1fc19dad5bd08fbc7ed"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100003.settled.json",
+      "sha256": "89a234b77b949aaffbabb2454d2b807219818d1fef9311efb548f22a30abdd1e"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100003.pkl",
+      "sha256": "06d4c7f677e8c59c4f5f6dbfacaaabbd553dff99b38863a213cbb3e89e9d45a0"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100004.settled.json",
+      "sha256": "1fb23dd5d1075d0c136461ed87af57481fd56455d460e61bccb57e32dc9aa609"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100004.pkl",
+      "sha256": "cddb348d883318b77a0b2d6e55c2f669820e35d137a9ef07ee10c48e35be410f"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100005.settled.json",
+      "sha256": "2b449c3aa191222d62ea229ce978ce20ed36677ae4b0d8a9dd63374886ef3469"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100005.pkl",
+      "sha256": "86f0468e9dd0a349c26c69ea1c9a8048aca18902921e102b180d1971c21ee615"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100006.settled.json",
+      "sha256": "38519b85a000fda4d0504ef3ad0aa7ff20d966954a7b2cf91cb2cc76f8720543"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100006.pkl",
+      "sha256": "8e60dece02fba85827014fd75ce0f76a60da6764ed354c66fc8c6d554949a0bd"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100007.settled.json",
+      "sha256": "2c1bffb4de45c1c54c0c1e8f0b5214d21f7159aa5a01ac38cf60a1955ca5505b"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100007.pkl",
+      "sha256": "0c79a4e551393121a1a000819ccf069cc8cd9e35c7d3c1b402b75a80e4a0372e"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100008.settled.json",
+      "sha256": "e9f764e87fc998a9ef8351fd138c930e4750ff7bfcd6f503a5e03f6b55454ec5"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100008.pkl",
+      "sha256": "1f7a4b20eff5c7dd50631c1dc37618309a34b8356e6f451cfcf9ab504582d7fc"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100009.settled.json",
+      "sha256": "49708d90fec777baaabc741ec00933eee300560e016096ebdd90421d7f106b73"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100009.pkl",
+      "sha256": "f143351360c8306b37bfa42045a4feb6d16e4e61b6e58c1a2a2dde128b4e5c85"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100020.settled.json",
+      "sha256": "1740712f04d3e0cfe74af78bb569428d827ff9f9082f54ab4096c5e1bd1e6ec8"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100020.pkl",
+      "sha256": "4477e63b04916b5d02e4e00a74a793bddc1c005bf69d68937aded792dd9e65d7"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100021.settled.json",
+      "sha256": "1f10714a4018b79dc5b9becc4a1180f27603250c4b96b657a517713b5eab2d49"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100021.pkl",
+      "sha256": "30d056264385a5a602b7a65f2cdcaa115b6e48886da85859c630e77fea159f64"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100022.settled.json",
+      "sha256": "23eba76bb2ba4a85706da02e69cd56ef95d7c086c0979d5dbd4783f7d2b3d2be"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100022.pkl",
+      "sha256": "1ef628a3a922ec0f45b34a9df82cbf03c768504ec78b9e0e71f06d908547d958"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100023.settled.json",
+      "sha256": "f0efd8c4c83a8ffa07019a7029fcf96cbb3ce5b74ac2eb2734aa2be8677b3992"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100023.pkl",
+      "sha256": "1b8bf2a1e8cc2cab6d883246c147f01ecd0d0cbce61baba74804e7e9b429aee1"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100024.settled.json",
+      "sha256": "f6ef28f875a63a1b881b91b61ea13b56c6eb99e28bf46c2b7c9468ab68b2fa5f"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100024.pkl",
+      "sha256": "cc71131d0930deab308a0bb8e655d488359082df9c8f5d4d4890d8dbbaaf943e"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100025.settled.json",
+      "sha256": "d7fa7a9f59b62c4c6e01a9c9d7c9ff6c1903610acf4181b2144706cf5352fd10"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100025.pkl",
+      "sha256": "4cafcbcc2431121475ffb6c9c7c26952f0609380aaf2cf9f2355bc677779df4e"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100026.settled.json",
+      "sha256": "4479c3f6fc0f086a99f454a0f33715d6db4afd3643dd62ef67144383cb8d59dd"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100026.pkl",
+      "sha256": "1f2a3b9a0a155f57301201a9fb7e95d9ce7f1ad8b22588b5be8a4ebe5d0752c4"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100027.settled.json",
+      "sha256": "666adb510d7e1b38f6d971b01848f00b9e541471cdb2d75b1c8efff2745163f2"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100027.pkl",
+      "sha256": "e5a57a66114d5f5e2b38d627893b9edb9be0d51f5482842229c99a9bdf9d9d64"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100028.settled.json",
+      "sha256": "8ae3619e6cf52c73b9b3bccf03d1ce342daf5d051ab766ec6aefc0c300e36045"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100028.pkl",
+      "sha256": "d22f907b44253f1013ae372ecbab14e410112fd3df5b1c7e272597b2ac7b1777"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/imitate_sorting_sequence/100029.settled.json",
+      "sha256": "9bda9a6743aefa8471d772f60b19f23f78ea4422735af2b9fcaf9c65419ff291"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/traj/imitate_sorting_sequence/100029.pkl",
+      "sha256": "8a431425368539d3ed1d67ef13ce059f4fbbbc9fe21365d47f4d15bd1b268cdf"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100000.settled.json",
+      "sha256": "7ca83378f7e6678e3fdaa51664aa643201f26c643b5feb3f4d2f18dc643287b2"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100001.settled.json",
+      "sha256": "fa0bd2d4bbd81ce96384c63ad9c05554935d54b4f0f6543d5c332eeb7628ca6a"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100002.settled.json",
+      "sha256": "af1ae35aa3647363580f9d527377afd1eeef0b02154e7371020d6263c2e1bdb6"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100003.settled.json",
+      "sha256": "dd62b809bad0a38429c10a69ffba94f3006e0ec851b3763f023f9a5b02d9bc7a"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/stack_blocks/100004.settled.json",
+      "sha256": "4f64d943b33978746c39975a5b815aa81d7387293de03a0ebd4827446571174d"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100000.settled.json",
+      "sha256": "1d5fa5db5e5d194c54fc7f5e93890f444da169b700f46076009673e17839fcf6"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100001.settled.json",
+      "sha256": "0543f3cc34622014877b954779f137cf85b5924ae7c82662fda765f11a7679dd"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100002.settled.json",
+      "sha256": "b72112def171b644d9d0fb231f67251c8c215ad54e990d735438f8305ad9efe3"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100003.settled.json",
+      "sha256": "92ac409f7d54a99d00542eb5d64585a1ec2636ce932de07ce1d10983165a9bee"
+    },
+    {
+      "path": "/home/robotics/dojo-data/imit2-cam/imit2-cam-1/simlab/layouts/classify_objects/100004.settled.json",
+      "sha256": "c4c13600be900512ad1e39e1c8c4dbea969a86eaf6e326f611ab3891905220c3"
+    }
+  ],
+  "parity": {},
+  "deployed_json_sha256": "f50bb764a32ecacdeb5cfe889be39f997cda28b874187441fbe40dca1864714a"
+}

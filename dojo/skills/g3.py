@@ -248,7 +248,7 @@ SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "lo
                "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on"),
                "belt_waist_first": ("off", "on"),
                "belt_ref": ("off", "tracked", "similar"), "belt_veto": ("off", "evidence"),
-               "belt_high_lift": ("off", "on"), "belt_retry": ("off", "window"), "belt_grasp": ("off", "solid"),
+               "belt_retry": ("off", "window"), "belt_grasp": ("off", "solid"),
                "belt_wrist_id": ("off", "on"), "belt_speed": ("off", "lock"),
                "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured"),
                "kong_draw_read": ("off", "place", "place3"), "kong_draw_first": ("near", "far"),

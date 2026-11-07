@@ -1,0 +1,68 @@
+{
+  "status": "DIAGNOSTIC_ONLY_BOARD_DISPATCH_CANCELLED",
+  "salt": "samint-conveyors-20261107-670dce1ba6c84e23",
+  "ids": [
+    100000,
+    100001,
+    100002,
+    100003,
+    100004,
+    100005,
+    100006,
+    100007,
+    100008,
+    100009,
+    100020,
+    100021,
+    100022,
+    100023,
+    100024,
+    100025,
+    100026,
+    100027,
+    100028,
+    100029
+  ],
+  "gain_cells": [
+    "match_and_pick_from_conveyor",
+    "pick_from_conveyor_by_image"
+  ],
+  "candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "sam_task_routes": {
+    "match_and_pick_from_conveyor": {
+      "mode": "sam",
+      "model": "sam3.1_text",
+      "bank": "match_and_pick_from_conveyor",
+      "threshold": 0.05,
+      "dedup_iou": 0.5,
+      "roi": [
+        0.25,
+        0.68,
+        0.75,
+        0.87
+      ],
+      "labels": [
+        "target0"
+      ]
+    },
+    "pick_from_conveyor_by_image": {
+      "mode": "sam",
+      "model": "sam3.1_text",
+      "bank": "pick_from_conveyor_by_image",
+      "threshold": 0.2,
+      "dedup_iou": 0.5,
+      "roi": [
+        0,
+        0.1,
+        1,
+        0.9
+      ]
+    }
+  },
+  "strong_guard": "play_Xylophone",
+  "parity_guard": "classify_objects",
+  "episodes": 110,
+  "lane_hours_estimate": 15.1,
+  "call_estimate": 330,
+  "call_reserve": 2640
+}

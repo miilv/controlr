@@ -6,6 +6,31 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **fill_egg_holder has a high native settle-failure rate.** SAMINT's first
+  fresh registered salt rejected **13/20 (65%)** under unchanged two-pass presettle:
+  eggs fell to the floor or remained in motion. All attempts are retained. The lead
+  prospectively permits at most three deterministic fresh-salt refills per failed
+  ID, requiring both default settling and raw-check, with n>=15 or the panel parks.
+  Diagnose the public generator/native physics separately; do not loosen validity
+  or replace records based on camera outcomes ([registration](experiments/2026-11-07-samint-egg-camera-spec.md)).
+
+
+- [ ] **Per-vocabulary SAM exclusion must cover explain-away candidates.**
+  `RuntimePolicy._explain_vocabulary` calls the estimator on each candidate before
+  choosing the final vocabulary. A final inactive route is not a zero-SAM-request
+  proof. Audit all `vocab_explain.candidates` against the frozen route map for the
+  SAMINT parity guards; any active candidate blocks parity qualification. A future
+  planner/registry caller must supply the canonical perception key explicitly.
+
+
+- [ ] **Task-prompt masks need an asset identity/pose gate.** SAM semantic labels
+  cannot replace catalogue IDs. Prototype only behind a default-off task-bank
+  flag, preserve base v2b identity during union de-duplication, honor SAM API
+  minima below the current server's 0.3 processor floor, and measure phantoms
+  before any camera A/B ([SAMBAKE](experiments/2026-11-07-sam3-task-prompts.md)).
+Default-off routing/shared service implemented by [SAMINT](journal/2026-11-07-samint.md);
+  keep this item open until the parked camera identity/pose audits qualify the lever.
+
 - [ ] **Persist token usage for agentic held-look calls.** `held_look_impl`
   counts logical calls and records their model, but discards each response's
   token usage before writing `calls.jsonl`. Preserve summed prompt/completion/
@@ -96,6 +121,17 @@
     slots (`~/coord/dc19.lock.1`, `.2`), non-blocking, for one call = one cell's tranche (BRIDGE-RUNBOOK).
   - Open: the manifest format and who generates / holds the sealed directory, as Misha amends the design. Then the
     `route_probe.py` pre-flight and the real freeze manifest before tranche A.
+- [ ] **dojo imitate: validate demonstration timing and visible return home, not only physical success.**
+  Our `demo_gen` accepts up to 900 native actions and validates basket success with policy arms holding;
+  it does not establish official-demo timing/path/occlusion parity. RSI's fixed programme stops watching
+  at 640. On the first five frozen RSI layouts, demos last 620.2, 691.4, 697.0, 668.7 and 727.5 actions;
+  the four longer cases terminate on the first pick motions before any grasp, consistent with the native
+  policy/support mutual-home interlock. Even after the last release the support's return tail matters.
+  This can confound **all imitate dev comparisons**, not just RSI. Establish duration/home/end-frame and
+  path/visibility validation before claiming official comparability; preserve the existing frozen inputs
+  and 20-point observation, and use a separately frozen paired check for any proposed change. Public code
+  does not promise a 640-action bound; official timing distribution remains unverified. See the
+  [offline RSI diagnosis](journal/2026-11-07-rsi-repro.md#offline-diagnosis-imitations-20-point-bar).
 - [ ] **dojo D-C19: a supplementary generation for the 4 empty cells (proposed to Misha, not scheduled).** In the
   30 Oct block (manifest ebc899e9), make_toast and the two conveyor tasks were 0 / 20 stable, and imitate had all 20
   demos dropped (journal 2026-10-31-dojo-dc19-supp-gen). Once both sides agree, after tranche A: `dc19_generate.py
@@ -450,6 +486,13 @@
   phantom at step 4, but match_and_pick chose the first object from the frame-0 pool and kept "camera" for the episode:
   0 / 15 ice-cream episodes in the compute4 camera rows. `belt_ref=tracked` (default off) takes the leading rider the
   tracker still holds (offline: reference right 103 / 110 vs 88). Camera A/B pending.
+- [ ] **dojo skills: the belt pick look is taken too close to see the rider** (MATCH2 screen, compute6 frames): the
+  rider fills the wrist view under the open fingers, the robot mask hides the prior (visible 0.00). Then either the
+  veto fires on a real rider (A) or `belt_veto=evidence` descends on the head estimate and misses (B: 6 / 6 air
+  closes). Wanted: a look pose high / upstream enough that the rider is wholly in view, then re-aim from its fit.
+- [ ] **dojo skills: yaw-dependent grasps miss lying bottles on camera poses** (MATCH2 screen): axis grasps across a
+  lying bottle close on air; the waist grasp that followed held (B 100004, 100006). Test in G3 with
+  `--belief-offset` (15-50 mm, yaw +-20 deg) which grasp family tolerates the camera's pose error.
 - [ ] **dojo skills: the belt wrist veto vetoes real riders it cannot see** (MATCH2 landmine). `wrist_look_absent`
   ignores `visible_frac`: a pick look whose prior is under our own fingers or out of view (visible 0.00) counts as
   "nothing there". compute4 camera rows: 31 of 34 such vetoes were of a rider within 60 mm of the track, and with one
@@ -1326,3 +1369,16 @@
 - [x] ~~**Actor-relocation audit identity association:** the nearest-pre-write/group rule can select a standing neighbour after the tracked tile has fallen. In the [scoped KONG audit](experiments/2026-11-07-kong-scoped-relocate-prereg.md), two `mahjong7_0` writes are judged against GT `mahjong8_0` (44.3→66.2 mm), while a same-label diagnostic improves 46.31→1.64 mm. Preserve registered flags; review a general identity-aware audit before interpreting these as actual relocation harm. No controller change or retrospective threshold tuning.~~ Fixed by `AuditIdentity`: chronological tight anchors, first-pick/grasp-close finalization and persistent physical identity; nearest fallbacks are counted. Registered verdicts are not revised.
 
 - [x] ~~**Held-pose audit before pose includes arm transport:** cached world pose was compared with the new attachment at the show TCP.~~ The logger now projects the prior attachment at the same current measured arm pose, preserving the raw `before_sync7`; live actions/beliefs are unchanged and covered by a FakeLLM/mock episode.
+
+- [ ] **dojo runtime: cover_blocks starts with an actor hold.** Partner team's report, 7 Nov. On cover_blocks,
+  `waits_on_actor`'s text fallback matches the copy-demonstration pattern, so the episode starts with an actor hold
+  and skips the scan. D-C19 scored 100 on cover_blocks, so this is low priority. Fix the fallback so that only a
+  scene with an actual demonstrator triggers the hold; it may matter on other instruction phrasings.
+- [ ] **dojo architecture: task-keyed routing vs the RoboDojo single-system rule.** The board rule, read verbatim from
+  the site's rules list on 7 Nov: one fixed system with the same inference procedure on every task. An agent or
+  planner is allowed; a router that switches by task is not. Ours has task-named vocabularies
+  (`dojo/runtime/supervisor.py` `Vocabulary("<task>", ...)`), text-rule routing (`routes.py` / `planner.py`) and
+  task-keyed switches (`watch_relocate_task`, `key_scope_task`).
+  - The partner team's model planner (`planner="model"`, skill registry in scene words) is the path to a compliant
+    entry.
+  - New per-cell work is built as skills or skill parameters.

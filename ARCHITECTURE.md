@@ -731,11 +731,20 @@ checker state. A terminal environment signal is left to the driver to grade.
 
 ### match_and_pick evidence switches
 
-The default-off MATCH2 switches (`belt_ref`, `belt_veto`, `belt_speed`, `belt_grasp`, `belt_high_lift`,
+The default-off MATCH2 switches (`belt_ref`, `belt_veto`, `belt_speed`, `belt_grasp`,
 `belt_retry`, `belt_wrist_id`; RuntimeConfig, Skills and G3) change only `interactive.match_and_pick`,
 `pick_from_belt`, `plan_intercept` and the runtime belt tracker. The tracker additionally keeps, per track, every
 matched read's asset and confidence (`identity_dist`), the last matched step (`track_age`) and the latest 64 read
 positions; these are bookkeeping unless a switch reads them, so the off path's beliefs and velocities are unchanged.
 `belt_wrist_id` widens the pick look's existing identity refine to the riders' candidate keys for tracked riders
-(`rider_candidates`); it adds no perception op. No switch reads layout ids, GT or the evaluator's termination: a
+(`observed_candidates`: identities the belt tracker read, no task config); it adds no perception op. No switch reads layout ids, GT or the evaluator's termination: a
 retry is decided from the skill's own lift check and the wrist / head reads.
+
+Task-scoped camera proposer overlays live in `EstimatorConfig.sam_task_routes` (empty
+by default). The key is the perception service's instruction-derived vocabulary.
+`sam_routing` selects the committed phrase bank, thresholds, mask competition and optional
+region/label filters; `sam_masks` remains the shared torch-free socket boundary. Detector-only
+SAM3/SAM3.1 models live in one serialized side service per box, reused by both camera lanes.
+SAM masks carry allowed candidates rather than asset identities and enter the existing
+silhouette/appearance fit path. Raw prompt categories never become exact identity hints.
+The lane accounts for the shared GPU process once and verifies its health around each job.
