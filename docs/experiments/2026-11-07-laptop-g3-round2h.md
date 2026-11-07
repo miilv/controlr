@@ -113,3 +113,12 @@ flags, source, layouts, group membership, gate and all policy outcomes stay
 unchanged; bank order is not an experimental condition. Retain the cancellation
 of only our verified waiting parent PID and both scheduler recipes. Never
 stop an in-flight physics job or overwrite an existing outcome.
+
+Before the standard scheduler leaves its G-completion wait (no H standard
+manifest exists), refine worker allocation to claim the next predetermined
+group from a shared FIFO, rather than fixing every other group to one slot.
+This avoids putting all three known slow standard coverage groups on light2.
+Membership/order in the pending list, all22 layouts, source and gates stay
+fixed; completion time only determines which free slot claims the next group.
+Retain both waiting-parent cancellations and scheduler versions. No in-flight
+physics process or outcome is stopped or replaced.
