@@ -416,6 +416,15 @@ class RuntimeConfig:
     # ``library.hang_on_hooks``: grasps at least HANG_WIDE_W (35 mm) across planned first, the rest as the fallback
     # (``Skills.hang_wide``; off = today)
     hang_wide: bool = False
+    # Cradle only: wide holds, squeeze, and seat the bridge before release.
+    headset_seat: str = "off"
+    headset_carry: str = "legacy"
+    headset_grasp: str = "legacy"
+    headset_table: str = "bbox"
+    headset_stage: str = "off"
+    headset_retry: str = "legacy"
+    headset_lift: str = "legacy"
+    headset_hold: str = "legacy"
     # Try the opposite handle orientation on threaded hooks (same hole axis).
     hang_half_turn: bool = False
     # Mesh-confirmed pinches on the handle outer bar before body-wall pinches.
@@ -450,7 +459,9 @@ class RuntimeConfig:
     # (``Skills.tile_look_cap``; off = today: one unread tile looked at up to max_looks times)
     tile_look_cap: bool = False
     # ``copy_demonstration``'s twins (``Skills.imitate_pairing``): greedy (today) | one_to_one (a least-cost assignment of
-    # the demonstrator's objects to ours; the instruction pairs them one-to-one, by appearance: D-C17 ruling 28 Oct)
+    # the demonstrator's objects to ours; the instruction pairs them one-to-one, by appearance: D-C17 ruling 28 Oct) |
+    # cues (IMIT2: the same joint assignment on image cues read at frame 0, ``dojo.perception.twin_match``: colour
+    # histograms and plane-corrected size, not the believed identity; falls back to one_to_one without a reader)
     imitate_pairing: str = "greedy"
     # ``copy_demonstration``'s wait for the demonstrator (``Skills.imitate_wait``): still (today) | origin (a wait timeout
     # never starts the copy: hold until its arm is at rest, the copy's steps kept back; camera 100007 / 100009 ended on
@@ -497,6 +508,19 @@ class RuntimeConfig:
     # half is the far half of the objects as they stand now; two of ours already in basket0 moved that line and our toy
     # car counted as the demonstrator's: "no free object like" at 2/5, dev 100001) | True (the episode start's halves)
     imitate_keep_sides: bool = False
+    # IMIT2 (``Skills.imitate_order`` / ``imitate_carry`` / ``imitate_retry``; all default today's behaviour):
+    # imitate_order: v1 (a departure read once is final) | persist (a spot counts as left after PERSIST_READS reads in a
+    # row, dated by the first: a single read under the demonstrator's arm or its shadow is not a departure) | elim (all but
+    # one of the demonstrator's objects read leaving: the last one goes last, by elimination) | persist_elim (both)
+    imitate_order: str = "v1"
+    # imitate_carry: v1 | reach (an object on the far side of the table, REACH_MARGIN nearer the other arm: the
+    # container's arm with centred grasps only, else a table handover by the side arm (phones: the handover first);
+    # camera 100021 / 100009: left picks at x = 0.25-0.30 with grasps 45 mm off centre slipped)
+    imitate_carry: str = "v1"
+    # imitate_retry: v1 | refind (up to RETRY_TRIES puts per twin while RETRY_MIN_STEPS remain; after a failed put the
+    # hands rise before going home, and a belief moved > 40 mm off the twin's start spot is re-checked there through
+    # ``confirm_pose``)
+    imitate_retry: str = "v1"
     # the belief's labels for a series perception keeps under one config label (classify_objects' ``rigid0`` x 6, its
     # per-category prefixes not observable): keep (today: keyed by that label, one object stands for all; the classify
     # route saw one item and planned nothing) | numbered (``<label>_<k>``, k by x then y: ``estimate.series_names``)
@@ -748,13 +772,23 @@ class RuntimePolicy:
                 or self.cfg.arrange_hover not in ("off", "low")
                 or self.cfg.push_approach not in ("off", "tilted")
                 or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
+                or self.cfg.headset_retry not in ("legacy", "sites")
+                or self.cfg.headset_lift not in ("legacy", "slow")
+                or self.cfg.headset_hold not in ("legacy", "loaded")
+                or self.cfg.headset_stage not in ("off", "center", "mesh_center", "mesh_clear")
+                or self.cfg.headset_table not in ("bbox", "mesh")
+                or self.cfg.headset_grasp not in ("legacy", "dense", "cups")
+                or self.cfg.headset_carry not in ("legacy", "staged")
+                or self.cfg.headset_seat not in ("off", "on")
                 or self.cfg.hang_cradle not in ("strict", "straddle") or self.cfg.artic_geom not in ("authored", "measured")
                 or not set(self.cfg.new_routes or ()) <= set(NEW_ROUTES)
                 or self.cfg.align_measure not in ("seq", "parallel")
                 or self.cfg.tile_grasp not in ("any", "flat", "prefer")
-                or self.cfg.imitate_pairing not in ("greedy", "one_to_one")
+                or self.cfg.imitate_pairing not in ("greedy", "one_to_one", "cues")
                 or self.cfg.imitate_wait not in ("still", "origin", "home")
                 or self.cfg.imitate_look not in ("off", "ambiguous")
+                or self.cfg.imitate_order not in ("v1", "persist", "elim", "persist_elim") or self.cfg.imitate_carry not in ("v1", "reach")
+                or self.cfg.imitate_retry not in ("v1", "refind")
                 or self.cfg.row_size_read not in ("off", "look", "look_union")
                 or self.cfg.series_labels not in ("keep", "numbered") or self.cfg.place_verdict not in ("belief", "measured")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
@@ -1104,6 +1138,14 @@ class RuntimePolicy:
             sk_.push_stroke = cfg.push_stroke
             sk_.hang_cradle = cfg.hang_cradle
             sk_.hang_wide = bool(cfg.hang_wide)
+            sk_.headset_seat = cfg.headset_seat
+            sk_.headset_carry = cfg.headset_carry
+            sk_.headset_grasp = cfg.headset_grasp
+            sk_.headset_table = cfg.headset_table
+            sk_.headset_stage = cfg.headset_stage
+            sk_.headset_retry = cfg.headset_retry
+            sk_.headset_lift = cfg.headset_lift
+            sk_.headset_hold = cfg.headset_hold
             sk_.hang_half_turn = bool(cfg.hang_half_turn)
             sk_.hang_handle_grasp = bool(cfg.hang_handle_grasp)
             sk_.hang_carry_slow = bool(cfg.hang_carry_slow)
@@ -1124,6 +1166,7 @@ class RuntimePolicy:
             sk_.sweep_hold_pan = bool(cfg.sweep_hold_pan)
             sk_.imitate_keep_sides = bool(cfg.imitate_keep_sides)
             sk_.imitate_repair = bool(cfg.imitate_repair)
+            sk_.imitate_order, sk_.imitate_carry, sk_.imitate_retry = cfg.imitate_order, cfg.imitate_carry, cfg.imitate_retry
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.belt_waist_first = cfg.belt_waist_first
             sk_.belt_ref, sk_.belt_veto = cfg.belt_ref, cfg.belt_veto
@@ -1256,6 +1299,9 @@ class RuntimePolicy:
                     r0 = {"why": f"{type(e).__name__}: {str(e)[:120]}"}
                 prov.support_home0 = bool(r0.get("at_home"))
                 events.append({"kind": "support_home0", **{k: r0.get(k) for k in ("name", "diff", "at_home", "why")}})
+            if cfg.imitate_pairing == "cues" and hasattr(pc, "twin_costs"):
+                # provider.twin_costs (copy_demonstration's twins by appearance, read on the episode start's views)
+                prov.twin_reader = lambda objects, demo, ours: pc.twin_costs(obs0, objects, demo, ours)
             if hasattr(pc, "garment_read"):             # provider.garment (a garment lying flat: the fold skill)
                 prov.garment_reader = lambda obs: pc.garment_read(obs, self.fold)
             if hasattr(pc, "garment_update"):           # provider.garment_update (its hem corners again, later)

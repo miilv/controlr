@@ -65,7 +65,7 @@ Weights are fractions of Average: Gen 1/120, Memory 1/30, others 1/40. Camera is
 | play_tic_tac_toe | Long-Horizon | 0.025000 | 90 | 100 (10; eeb94de; 10-27 05) | +0.250 | 0.000 | Ilia | L17, L20 |
 | put_bottles_into_dustbin | Long-Horizon | 0.025000 | 0 | unknown (proxy 32, n=4) | ? | ? | Misha | L6, L13, L17, L40 |
 | cover_blocks | Memory | 0.033333 | 100 | 100 (10; 5bfe623; 10-28 18:42) | +0.000 | 0.000 | Misha | none measured; see backlog |
-| imitate_sorting_sequence | Memory | 0.033333 | 8.8 | 82 (10; 1f7e965; 10-27 02) | +2.440 | 0.600 | Ilia | L4, L23, L25, L32, L37; home wait/keep-sides adopted fixes; tie-look CANDIDATE OFF (camera unknown) |
+| imitate_sorting_sequence | Memory | 0.033333 | 8.8 | 82 (10; 1f7e965; 10-27 02) | +2.440 | 0.600 | Ilia | L4, L23, L25, L32, L37; home wait/keep-sides proposed, camera-untested (C arm of IMIT2); tie-look CANDIDATE OFF (camera unknown) |
 | match_and_pick_from_conveyor | Memory | 0.033333 | 50 | 96 (25; 475bf80; 10-27 14) | +1.533 | 0.133 | Ilia | L7, L10, L34 |
 | press_by_number | Memory | 0.033333 | 100 | 100 (10; eeb94de; 10-27 05) | +0.000 | 0.000 | Paired (unresolved) | none measured; see backlog |
 | swap_T | Memory | 0.033333 | 88.9 | 100 (10; 955afcf; 10-28 18:51) | +0.370 | 0.000 | Misha | none measured; see backlog |

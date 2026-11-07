@@ -376,6 +376,14 @@ class Skills:
         self.hang_cradle = "strict"
         # ``library.hang_on_hooks`` (stream N): grasps >= HANG_WIDE_W planned first (off = today)
         self.hang_wide = False
+        self.headset_seat = "off"
+        self.headset_carry = "legacy"
+        self.headset_grasp = "legacy"
+        self.headset_table = "bbox"
+        self.headset_stage = "off"
+        self.headset_retry = "legacy"
+        self.headset_lift = "legacy"
+        self.headset_hold = "legacy"
         # Opposite handle orientation about its upward axis, after original candidates.
         self.hang_half_turn = False
         self.hang_handle_grasp = False
@@ -410,6 +418,12 @@ class Skills:
         # look at each of our objects whose assigned twin has another believed asset, then the assignment again)
         self.imitate_look = "off"
         self.imitate_tie_look = False  # equal-cost twin swaps, including same-asset pairs
+        # IMIT2 (``RuntimeConfig.imitate_order`` / ``imitate_carry`` / ``imitate_retry``): departure persistence,
+        # reach-aware carries, re-find and lift-clear retries; "v1" = today. ``imitate_pairing`` "cues": twins by
+        # appearance (``provider.twin_costs``), one_to_one without a reader
+        self.imitate_order = "v1"
+        self.imitate_carry = "v1"
+        self.imitate_retry = "v1"
         # ``rows.row_by_size`` (stream N): "off" (today: the order from the believed assets' volumes) | "look" (a wrist
         # look at each object of a shared believed size class first, the refine hook of kind "size" re-reading its
         # identity; then the order by height) | "look_union" (as look, the read over the std / _random twin's shapes too)
@@ -1003,7 +1017,7 @@ class Skills:
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
                    blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None,
                    held_read: bool | None = None, purpose: str | None = None, approach_line: bool = False, carry_read: bool = False,
-                   approach_lateral: bool = False):
+                   approach_lateral: bool = False, approach_staged: bool = False):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``approach_line``: collision-checked Cartesian transit to the hover, preserving the interpolated TCP
         orientation along the carry instead of a joint-space transit. No joint-path fallback.
@@ -1092,7 +1106,9 @@ class Skills:
                                              * o.asset.extents + o.asset.bbox_min).T).T + T_obj[:3, 3]
                 lift = max(pre_h, sup_top + pre_clear - float(corners[:, 2].min()))
             T_pre[2, 3] += release_gap + lift
-            transit = (self.motion.line if approach_line else
+            from dojo.skills.headset import staged_carry
+            transit = ((lambda *a, **kw: staged_carry(self.motion, *a, **kw)) if approach_staged else
+                       self.motion.line if approach_line else
                        self.motion.lateral if approach_lateral else self.motion.to_pose)
             to_pre = transit(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
                              ignore=(h.label,), **({} if approach_line else {"ease": ease}))
@@ -2269,6 +2285,9 @@ class Skills:
         """Execute a planned transfer: pick, check the grasp, re-plan the place for the measured in-hand
         pose (same target; the nominal plan when the re-plan fails, ``run_place`` re-measures at the
         approach anyway), place."""
+        loaded = (getattr(self, "headset_hold", "legacy") == "loaded"
+                  and self.world.obj(pp.label).category == "headset")
+        before = self.world.obj(pp.label).pos.copy() if loaded else None
         r = self._record(self.run_pick(pp))
         px = getattr(self, "last_pick", None)
         if isinstance(px, PickPlan) and px is not pp and px.label == pp.label:
@@ -2276,6 +2295,12 @@ class Skills:
             if isinstance(px.paired_place, PlacePlan):
                 pl = px.paired_place
             pp = px
+        if (loaded and r.ok and r.status == "loose"
+                and (tol_xy < LOOSE_OK_TOL or "in-hand view" in r.note)):
+            from dojo.skills.headset_hold import loaded_hold
+            proof = loaded_hold(self, pp, r, before)
+            if proof is not r:
+                r = self._record(proof)
         if not r.ok:
             return r
         if r.status == "ok" and self.refine is not None:
@@ -2290,6 +2315,13 @@ class Skills:
         self.refresh()
         kw = dict(getattr(pl, "transfer_kw", {}) or {})
         pl2 = self.plan_place(pp.arm, pl.T_obj_target, yaw_sym=1, **kw)
+        if (getattr(self, "headset_retry", "legacy") == "sites"
+                and self.world.obj(pp.label).category == "headset" and not isinstance(pl2, PlacePlan)):
+            back = self._record(self.regrasp(pp.arm))
+            if not back.ok:
+                return back
+            return SkillResult(False, "transfer", "grasp_unusable", r.steps, pp.arm,
+                               note=f"measured attachment has no checked place: {getattr(pl2, 'note', '')}")
         use = pl2 if isinstance(pl2, PlacePlan) else pl
         # the idle arm must be clear of the carry including the held object's reach (twin: a wrench carried
         # past the other hand, left open over a failed pick, was knocked out and flung off the table)

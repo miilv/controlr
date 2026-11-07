@@ -1,0 +1,67 @@
+{
+  "stream": "IMIT2-CAM",
+  "code": "89b194be6a947d2d9c6a56eb3e97cbbfb285d63f",
+  "block": "imit2-cam-1",
+  "salt": "imit2-camera-20261107-7494a61e23c5271cadfdda1d011ecd89",
+  "salt_sha256": "3d60b1fcd56bad3e95c24b97383893a40abe450d1ccdf799eaf5ed266ea70028",
+  "cells": [
+    {
+      "task": "imitate_sorting_sequence",
+      "role": "gain",
+      "pairs": 20,
+      "batches": [
+        [
+          100000,
+          10
+        ],
+        [
+          100020,
+          10
+        ]
+      ]
+    },
+    {
+      "task": "stack_blocks",
+      "role": "strong guard",
+      "pairs": 5,
+      "batches": [
+        [
+          100000,
+          5
+        ],
+        [
+          100005,
+          5
+        ],
+        [
+          100020,
+          10
+        ]
+      ]
+    },
+    {
+      "task": "classify_objects",
+      "role": "parity guard",
+      "pairs": 5,
+      "batches": [
+        [
+          100000,
+          5
+        ],
+        [
+          100005,
+          5
+        ],
+        [
+          100020,
+          10
+        ]
+      ]
+    }
+  ],
+  "demo_speeds": [
+    1.25,
+    1.5
+  ],
+  "selection_rule": "stability (default two-pass presettle) then, for imitation, demo validation at 1.25 then 1.5; no score, appearance or outcome input; an imitation id failing both is excluded and reported (no spare ids in our slices)"
+}
