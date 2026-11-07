@@ -234,6 +234,9 @@ POUR_PACE = {"v1": None,
 def pour_bottle_call(aim: str | None, pace: str | None, profile: str = "off") -> tuple[str, dict]:
     """(skill, args) of one liquid pour: the vendored pour_bottle, or pour_bottle_lean under a pace; the aim's
     ``spout_back`` on top (``POUR_AIM``)."""
+    if profile == "checked":
+        args = {} if POUR_AIM.get(aim or "v1") is None else {"spout_back": POUR_AIM[aim]}
+        return "pour_bottle_v5", args
     if profile in ("sparse", "via"):
         args = {"via": profile == "via"}
         if POUR_AIM.get(aim or "v1") is not None:
