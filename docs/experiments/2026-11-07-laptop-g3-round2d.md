@@ -48,3 +48,17 @@ The standalone 12.9 mm centre-band pick rises 44/80 mm and is rejected for
 jaw steps: compare the original pinch site and object root in TCP coordinates
 to distinguish rotation at a maintained pinch from continued sliding/falling.
 Do not override verification or execute a rejected carry in this diagnostic.
+
+## Individual physical grasp screen
+
+The stationary thin-band hold falls: original pinch-site error grows ~10→82 mm,
+and both jaws close to zero by step 51; the object returns to its table z.
+The 24 reachable band hang endpoints split into 20 IK failures and four stand
+collisions. Before a new mechanism, screen up to eight distinct checked pick
+sites per arm on the same independent pilot, resetting the settled layout for
+each. Candidates: existing box/slice bank, 800-face/13-approach antipodal bank
+without the 35 mm cutoff, and mesh-verified shallow band sites. Rank by existing
+contact/lever quality; require separation in site or closing axis to avoid
+spending all probes on duplicates. Record native refusals, rise, attachment
+and pinch-site drift, measured jaws and support clearance after 30 stationary
+closed-jaw steps. No verifier override, release claim or panel credit.
