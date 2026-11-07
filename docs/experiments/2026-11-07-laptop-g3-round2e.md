@@ -159,3 +159,20 @@ release gap, retaining the ground target for verification. Stop if either
 checked plan or physical hold fails. If upright after30 steps, test the same
 mesh-verified bridge bank/raised release above. This isolates actual physics
 from a large coupled-plan search; retain the exact known grasp in the recipe.
+
+## Mesh-derived gravity-balanced bridge site
+
+The upright-release standard48 prototype physically rests upright:10.6 mm xy,
+-1.1 mm z,4.7 deg tilt after30 steps. Its first off-centre(-45 mm) bridge grip
+is loose13.6 mm; another shoulder grip slips. Measured arm tracking in these
+bridge picks is <=0.7 deg, not a joint-stop explanation.
+
+The initial band sampler used feature z85 mm and lower. Actual central-band
+vertices span z79.5–99 mm; opposed-face rays at z85 mm all miss, at89 mm find
+31.5 mm only for a horizontal approach, and at97 mm find42.7–44.2 mm. Probe
+mesh-derived upper-band levels and the horizontal site above the mesh-estimated
+COM (minimising gravity moment about the closing axis), retaining nearby
+alternatives. Carry with the current upright orientation to the cradle, rather
+than correcting the4.7-degree rest tilt; this stays within the task's alignment
+and avoids introducing another wrist torque. All native checks, original pick
+verification and30-step released-support proof remain. No scene pose changes.
