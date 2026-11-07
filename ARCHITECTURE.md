@@ -663,8 +663,9 @@ place and pickup repair retain the ground target for physical verification.
 Every leg uses native hand, held-object and scene checks.
 
 `headset_hold=loaded` (default `legacy`, mirrored in Skills/G3) can prove a
-nominally loose headset pickup through actual following motion. Only an
-originally successful loose lift qualifies: hold30 stationary steps, then
+nominally loose headset pickup through actual following motion. It applies
+only where the original loose rule would put the object down; tolerant relays
+retain their original execution. Only an originally successful loose lift qualifies: hold30 stationary steps, then
 plan/check a20 mm vertical raise/return with8 steps at each endpoint. Refreshed
 attachment samples must stay within3 mm/3 degrees, the object must rise17 mm
 and its full mesh clear the table20 mm. Original hard rise/30 mm slip gates

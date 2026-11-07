@@ -184,3 +184,38 @@ def test_transfer_proof_is_scoped_and_uses_the_actual_pre_pick_root(monkeypatch,
     out = Skills.run_transfer(sk, pp, pl)
     assert calls == (['proof', 'place', 'put_down'] if prove else ['put_down'])
     assert not out.ok and out.status == ('grasp_unusable' if prove else 'loose')
+
+
+@pytest.mark.parametrize('mode', ['legacy', 'loaded'])
+def test_tolerant_relay_has_identical_legacy_execution_without_a_load_proof(monkeypatch, mode):
+    from dojo.skills.skills import Skills, PickPlan, PlacePlan
+    obj = SimpleNamespace(category='headset', pos=np.array([0., 0., .8]),
+                          asset=SimpleNamespace(extents=np.full(3, .1)))
+    pp = PickPlan('left', object(), object(), np.eye(4), 40, 'headset')
+    pl = PlacePlan('left', object(), np.eye(4), 40, 'headset')
+    events = []
+    sk = SimpleNamespace(headset_hold=mode, headset_retry='sites', refine=None, last_pick=pp,
+                         world=SimpleNamespace(obj=lambda label:obj, objects={}),
+                         held={'left':object(), 'right':None}, _record=lambda r:r,
+                         run_pick=lambda p: events.append('pick') or SkillResult(True, 'pick', 'loose'),
+                         refresh=lambda:None, plan_place=lambda *a,**kw:events.append('plan_place') or pl,
+                         _park_if_blocking=lambda *a,**kw:events.append('park'),
+                         run_place=lambda *a,**kw:events.append('place') or SkillResult(True, 'place'))
+    monkeypatch.setattr(headset_hold, 'loaded_hold', lambda *a:pytest.fail('relay must keep its old path'))
+    out = Skills.run_transfer(sk, pp, pl, tol_xy=.03)
+    assert out.ok and events == ['pick', 'plan_place', 'park', 'place']
+
+
+def test_strict_transfer_puts_down_after_refused_proof(monkeypatch):
+    from dojo.skills.skills import Skills, PickPlan, PlacePlan
+    pp = PickPlan('left', object(), object(), np.eye(4), 40, 'headset')
+    raw = SkillResult(True, 'pick', 'loose')
+    events = []
+    sk = SimpleNamespace(headset_hold='loaded', world=SimpleNamespace(obj=lambda l:SimpleNamespace(
+                         category='headset', pos=np.zeros(3))), last_pick=pp, refine=None,
+                         _record=lambda r:r, run_pick=lambda p:raw,
+                         regrasp=lambda a:events.append('put_down') or SkillResult(True, 'regrasp'),
+                         plan_place=lambda *a,**kw:pytest.fail('refused proof cannot carry'))
+    monkeypatch.setattr(headset_hold, 'loaded_hold', lambda *a:events.append('proof_refused') or raw)
+    out = Skills.run_transfer(sk, pp, PlacePlan('left', object(), np.eye(4), 40, 'headset'), tol_xy=.015)
+    assert not out.ok and out.status == 'loose' and events == ['proof_refused', 'put_down']

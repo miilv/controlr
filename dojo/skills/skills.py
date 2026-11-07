@@ -2289,7 +2289,8 @@ class Skills:
             if isinstance(px.paired_place, PlacePlan):
                 pl = px.paired_place
             pp = px
-        if loaded and r.ok and r.status == "loose":
+        if (loaded and r.ok and r.status == "loose"
+                and (tol_xy < LOOSE_OK_TOL or "in-hand view" in r.note)):
             from dojo.skills.headset_hold import loaded_hold
             proof = loaded_hold(self, pp, r, before)
             if proof is not r:
