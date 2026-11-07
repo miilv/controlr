@@ -7,7 +7,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
 | 2026-11-07 | [Laptop strict loaded G3](2026-11-07-laptop-g3-round2h.md) | Prove only previously rejected holds, preserving tolerant relays | Source10f frozen; full development screen before conditional fresh panel |
-| 2026-11-07 | [Laptop loaded following G3](2026-11-07-laptop-g3-round2g.md) | Can an unsupported motion proof distinguish pendulum settling from slip? | Source041 screen retained; fresh panel superseded before generation by strict-transfer caller correction |
+| 2026-11-07 | [Laptop loaded following G3](2026-11-07-laptop-g3-round2g.md) | Can an unsupported motion proof distinguish pendulum settling from slip? | Source041: old12/12,11/12; independent7/10,8/10; standard gate fails; fresh superseded before generation |
 | 2026-11-07 | [Laptop wide/clear G3](2026-11-07-laptop-g3-round2f.md) | Keep strong wide holds and plan actual staging release height | Original11/12 standard,10/12 random; independent6/10,9/10; gate fails, no fresh panel |
 | 2026-11-07 | [Laptop shape diagnosis](2026-11-07-laptop-g3-round2e.md) | Diagnose enclosure, load onset, carry and release reach | Source504: old9/12 both; independent6/10 standard,8/10 random; gate fails, no fresh panel |
 | 2026-11-07 | [Laptop centre re-grasp G3](2026-11-07-laptop-g3-round2d.md) | Verified centre rest and cup re-grasp | Ten pairs/cell: 0→14 / 0→10 points; 7/10 / 5/10 credits, random target still open |

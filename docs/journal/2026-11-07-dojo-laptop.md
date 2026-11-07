@@ -289,3 +289,18 @@ refusal. Freeze separately under controlr-laptop/frozen-round2h; each new cell
 waits for its G predecessor to complete. Same22/cell development gate before
 variant21 fresh salt; ids100000–14 are still ungenerated. No source changes
 in running scopes, no camera/model calls or board change.
+
+
+## Source041 development completes; strict source tests pass
+
+All44 G rows complete: original12/12 standard,11/12 random; independent7/10
+standard,8/10 random. Standard fails8/10 gate; conditional fresh generation
+already superseded on caller review, no variant20 layouts drawn. Raw archive
+retains diagnostics and every row, no episode exclusions or full successes.
+H random completes11/12 original and9/10 independent; H standard now runs
+on the two-worker FIFO after G releases its slot. The proposed ready-parent
+replacement was refused because FIFO had started; original continued, extra
+launcher stopped before any episode/scope. No physics job stopped/duplicated.
+Full H local suite2200 passed/191 skipped in1025.96 s;72 focused pass. All
+action/test files remain identical to10f3e0a8, defaults legacy/off, CI green
+on the pushed source. Fresh variant21 remains gated on H standard completion.

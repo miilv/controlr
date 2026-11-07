@@ -135,3 +135,11 @@ released slot. Both H manifests still precede outcomes and both sources stay
 isolated. This removes a scheduling-only dependency, without changing any
 layout, controller, group, gate or outcome. Retain the verified waiting-parent
 replacement; no physics process is stopped.
+
+
+The last scheduling amendment was not applied: G standard finished and the
+existing FIFO parent created both H manifests before the replacement PID
+check. That parent was resumed/preserved. The additional launcher refused
+the existing manifest before creating any episode or scope. Retain its
+startup refusal separately; no physical job was stopped, duplicated or
+excluded. The original two-worker FIFO is the actual standard scheduler.

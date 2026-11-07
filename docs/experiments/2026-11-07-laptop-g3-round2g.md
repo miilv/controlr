@@ -1,5 +1,30 @@
 # Laptop G3 round 2g — loaded-hold diagnosis
 
+## Completed development decision
+
+All44 registered source041 episodes complete, with no unstable/missing-mesh
+rows or episode exclusions. Full-task successes0. Original bank12/12 standard
+and11/12 random; independent bank **7/10 standard,8/10 random**. Standard fails
+its8/10 admission gate. Separately, caller review had already superseded the
+fresh registration before generation; it remains unexecuted. No variant20
+layout was generated or rerolled. Continue the separately frozen
+[strict-transfer source](2026-11-07-laptop-g3-round2h.md).
+
+| Development bank | Cell | n | Headset credits | Mean ± sample SD /100 | Full successes |
+|---|---|---:|---:|---:|---:|
+| Original | Standard | 12 | 12 | 20.00 ±0.00 | 0 |
+| Original | Random | 12 | 11 | 18.33 ±5.77 | 0 |
+| Independent coverage18 | Standard | 10 | 7 | 14.00 ±9.66 | 0 |
+| Independent coverage18 | Random | 10 | 8 | 16.00 ±8.43 | 0 |
+
+These are candidate-only development screens, not a paired fresh-panel gain.
+Keep earlier panels/banks separate. [Raw rows, diagnostics, recipes, manifests
+and admissions](2026-11-07-laptop-g3-round2g-results.json) retain every outcome,
+including the nominally loose raw verdicts alongside successful loaded proofs.
+Episode.steps is the actual physical budget counter; raw/proven pick entries
+describe overlapping phases and must not be summed as independent executions.
+Physics-only traces replace rendered videos on this driver; no camera job.
+
 ## Fresh registration superseded before generation
 
 The source041 development screen continues to completion and all scores will
