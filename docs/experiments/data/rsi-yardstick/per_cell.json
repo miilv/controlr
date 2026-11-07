@@ -81,13 +81,69 @@
     },
     "arrange_largest_number_random": {
       "dimension": "Generalization",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "7ad15c36cbfa328368b2b5681dc2822bedc3641a1a978eef713abb63f6f18459",
+          "official_score": 100.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T2146314ab221Z_arrange_largest_number_random",
+          "steps": 484,
+          "success": true,
+          "task": "arrange_largest_number_random",
+          "wall_s": 85.21308160305489
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "962c6e4fbbded9499b63312c266c88f4e2928371e771043a3e28b17d1c40b0a1",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T2146314ab221Z_arrange_largest_number_random",
+          "steps": 613,
+          "success": true,
+          "task": "arrange_largest_number_random",
+          "wall_s": 97.17797163396608
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "3d51d2f6bbba9df93f2ae20d6a3b55d770634d0a4d37ff0999166a853aa618f1",
+          "official_score": 30.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T2146314ab221Z_arrange_largest_number_random",
+          "steps": 351,
+          "success": false,
+          "task": "arrange_largest_number_random",
+          "wall_s": 64.66416210797615
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "aec55e8a994851f3ef35643fb9a091532810c75bd39d40877a87229a2c59e7c1",
+          "official_score": 100.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T2146314ab221Z_arrange_largest_number_random",
+          "steps": 505,
+          "success": true,
+          "task": "arrange_largest_number_random",
+          "wall_s": 82.82176713400986
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "e7c4604352f7c7243fca9be5b6dbf0917dad3997f735c29b5a3c9a44393e1e01",
+          "official_score": 100.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T2146314ab221Z_arrange_largest_number_random",
+          "steps": 642,
+          "success": true,
+          "task": "arrange_largest_number_random",
+          "wall_s": 105.29311108600814
+        }
+      ],
+      "n": 5,
+      "official_score": 86.0,
+      "score_sd": 31.304951684997057,
+      "steps": 2595,
+      "successes": 4,
+      "wall_s": 435.1700935650151,
       "weight": 0.008333333333333333
     },
     "build_tower": {
