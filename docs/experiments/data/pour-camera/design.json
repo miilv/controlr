@@ -1,0 +1,49 @@
+{
+  "code": "066e9c8f34c727d9bbfdfa1c219e7c6a78366a45",
+  "deployment": "/home/robotics/dojo-integ-c6-066e9c8f",
+  "baseline_candidate": "scripts/dojo/queues/2026-11-06-candidate.txt",
+  "baseline_candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "model": "claude/claude-sonnet-5-5",
+  "candidate_start": 100000,
+  "candidate_end": 100079,
+  "repeats_per_arm": 1,
+  "A_overrides": {
+    "ported_pour_aim": "b10",
+    "ported_pour_profile": "off",
+    "ported_pour_pace": "v1"
+  },
+  "B_overrides": {
+    "ported_pour_aim": "b10",
+    "ported_pour_profile": "off",
+    "ported_pour_pace": "budget"
+  },
+  "cells": [
+    {
+      "task": "pour_by_language",
+      "slug": "pourlangsg",
+      "pairs": 20,
+      "role": "gain",
+      "block": "pourlangsg",
+      "salt": "pour-camera-pourlangsg-20261107-95da64b7013438aea24f48a53bdd51fb22e0b06bbb69249e638a082bb9181de8",
+      "salt_sha256": "293da0d83bae44a898de4cc7fa4e0371404b98a672d0407b6e993d74259af13f"
+    },
+    {
+      "task": "pour_liquid_into_cup",
+      "slug": "pourliquidsg",
+      "pairs": 10,
+      "role": "guard",
+      "block": "pourliquidsg",
+      "salt": "pour-camera-pourliquidsg-20261107-509a129938e4588fdd681e410f123168d5c8fc962c113717bfe7f8ef39b1102d",
+      "salt_sha256": "2d194b23e3711f5a1911488c8eee6873d10034227bb6192c9a44f9958fb392ff"
+    },
+    {
+      "task": "play_Xylophone",
+      "slug": "xylophonesg",
+      "pairs": 10,
+      "role": "strong_guard",
+      "block": "xylophonesg",
+      "salt": "pour-camera-xylophonesg-20261107-df98d24cba2f5b6a22dda25eae4ca112e591cf4a47b2b246a72d30500971e172",
+      "salt_sha256": "46c8978f31e372697d82cae508173cdd145cb23bbf741b3f314233a069f50fe2"
+    }
+  ]
+}
