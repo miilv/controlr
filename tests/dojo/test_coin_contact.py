@@ -173,3 +173,39 @@ def test_panel_offsets_are_deterministic_and_follow_the_coin_frame():
     b, _ = m.offsets_for("s", 100000, lay, samples)
     assert a == b and a["coin0"] == a["vertical_coin_stand"] and a["coin0"][2] == samples[meta["sample"]]["yaw_deg"]
     assert abs(math.hypot(a["coin0"][0], a["coin0"][1]) * 1000 - 2.0 * (meta["sample"] == 0) - 1.0 * (meta["sample"] == 1)) < 1e-6
+
+
+def _thin(label="disc", ext=(0.0285, 0.0285, 0.0019)):
+    from dojo.skills.world import AssetInfo, ObjectState
+    e = np.asarray(ext, float) / 2
+    info = AssetInfo(key="Rigid/thing/00000", bbox_min=-e, bbox_max=e, mesh=None)
+    return ObjectState(label, "Rigid", "thing", 0, np.array([0.1, -0.2, 0.78]), np.array([1.0, 0, 0, 0]), info)
+
+
+def test_slot_targets_put_the_thin_axis_across_a_perceived_slot():
+    o = _thin()
+    yaw = math.radians(30.0)
+    Rs = rot_z(yaw)                                   # slot along x' , across y', opening up
+    p = np.array([0.3, -0.1, 0.88])
+    tg = CC.slot_targets_from_pose(o, list(p) + list(R_to_quat(Rs)))
+    assert len(tg) == 2
+    for T in tg:
+        assert abs(abs(float(T[:3, 2] @ Rs[:, 1])) - 1.0) < 1e-9           # thin axis (z) across the slot
+        c = T[:3, :3] @ o.asset.center + T[:3, 3]
+        assert np.allclose(c[:2], p[:2]) and c[2] == pytest.approx(0.88 - 0.01425 - 0.003)
+    assert CC.thin_axis(_thin(ext=(0.03, 0.02, 0.01))) is None
+
+
+def test_wall_intercept_from_the_holder_mesh_matches_the_twin_reading():
+    from dojo.skills.world import AssetInfo, ObjectState
+    hw = 0.00308                                      # twin: finger 0 stopped 3.08 mm off the TCP line
+    V = np.array([[x, y, z] for x in (-0.016, 0.016) for y in (-hw, hw) for z in (-0.0086, 0.0086)])
+    info = AssetInfo(key="Geometry/holder/00000", bbox_min=V.min(0), bbox_max=V.max(0), mesh=(V, np.zeros((0, 3), int)))
+    h = ObjectState("holder", "Geometry", "holder", 0, np.array([0.0, 0.0, 0.7736]), np.array([1.0, 0, 0, 0]), info)
+    from dojo.skills.grasps import _frame
+    T = np.eye(4)
+    T[:3, :3] = _frame(np.array([0.0, 0.0, -1.0]), np.array([0.0, 1.0, 0.0]))
+    T[:3, 3] = [0.0, 0.0, 0.79]
+    assert CC.wall_intercept(h, T, 0.7736 + 0.0086) == pytest.approx(0.0348, abs=5e-4)
+    h.asset.mesh = None
+    assert CC.wall_intercept(h, T, 0.78) == CC.WALL_A

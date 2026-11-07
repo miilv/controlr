@@ -1,29 +1,30 @@
-"""deposit_coin's contact sequence (COIN2): default-off switches for a thin disc standing in a fixed holder.
+"""Inserting a thin flat object that stands in a fixed slotted holder into a slot of another object: default-off
+contact switches (COIN2). Selected by object geometry or by a planner's skill argument, never by a task name.
 
 Each switch is a ``Skills`` attribute, mirrored by a ``RuntimeConfig`` field and a G3 ``--skill-attr`` (first value =
-default = today's behaviour). They act only inside ``precision.disc_into_slot`` / ``plan_disc_handover``:
+default = today's behaviour). They act inside ``precision.disc_into_slot`` / ``plan_disc_handover`` (reached through
+``library.insert_into`` for a thin disc) and through ``insert_thin`` (this module):
 
-* ``disc_align`` "walls": before the pick, the picking hand straddles the holder's two walls with its pads, closes on
-  them and reads the strict-v2 official jaw value (the applied gripper control). That value follows one finger, so it
-  grows with the pads' yaw error to the walls (V-shaped, ``WALL_B``) and with the hand's offset along the closing axis
-  (signed, ``WALL_C``). Three squeezes at yaw -delta / 0 / +delta (more while the V is not bracketed) give the signed
-  yaw error and the offset; the coin and the holder are rewritten together (the coin stands in the holder's slot, whose
-  plane is the holder's long axis). A fixed holder (a Geometry object) cannot move under the squeeze. No reading (strict
-  v1, G3 without ``DOJO_GRIP_SOURCE=v2``) or a fit that does not explain the readings leaves the belief as it is.
+* ``disc_align`` "walls": before the pick the picking hand straddles the holder's walls with its pads, closes on them
+  and reads the strict-v2 official jaw value (the applied gripper control, which follows one finger). It grows with the
+  pads' yaw error to the walls (V-shaped, slope fitted) and with the hand's offset along the closing axis
+  (``WALL_C``); the intercept comes from the holder's catalogue mesh at the squeeze height (``wall_intercept``).
+  Three squeezes at yaw -delta / 0 / +delta (one more while the V is not bracketed) give the signed yaw error and the
+  offset; the object and its holder are rewritten together (it stands in the holder's slot). The holder is a fixed
+  object, so the squeeze moves nothing. No reading (strict v1) or a fit that does not explain the readings: no write.
 * ``disc_snap`` "on": the pick descends with the pads open around the walls, closes on them, and rises with the jaws
-  closing until the fingertips clear the walls' top (``SNAP_CLEAR`` over it): the pads then close onto the coin there,
-  wherever the real top is, holding ~3 mm more of the coin than the default grasp (fingertips 3 mm over the top).
-* ``disc_lift`` "shallow": while the hold is shallow the lift goes in ``LIFT_STEP_M`` per env step and the carry is
-  slow (``CARRY_RAD``).
-* ``disc_seat`` "table": after the lift the hand moves the coin ``SEAT_OFF`` along its own plane, clear of the holder,
-  and lowers it onto the table until the table has pushed it ``SEAT_DEPTH`` (same-arm) / ``SEAT_DEPTH_GIVER`` (an
-  in-air handover's giver) below the TCP: a grip across the coin's widest part instead of its top. The planned in-hand
-  pose moves with it.
-* ``disc_release`` "staged": the insertion asks for the in-hand read at the pre-insert hover and lets go in stages
-  (``RELEASE_STAGES``), the fingertips just over the slot.
-* ``disc_reserve`` "on": a pick (and its retry) starts only with ``RESERVE_SAME`` / ``RESERVE_CROSS`` env steps left.
+  closing until the fingertips clear the walls' top (``SNAP_CLEAR`` over it): the pads shut on the object there,
+  wherever the real top is.
+* ``disc_lift`` "shallow": while the hold is shallow the lift goes ``LIFT_STEP_M`` per env step; the carry is slow.
+* ``disc_seat`` "table": after the lift the hand moves the object ``SEAT_OFF`` along its own plane, clear of the
+  holder, and presses it onto the table until it sits ``SEAT_DEPTH`` (``SEAT_DEPTH_GIVER`` for an in-air handover's
+  giver) below the TCP: a grip across its widest part. The planned in-hand pose moves with it.
+* ``disc_release`` "staged": the in-hand read at the pre-insert hover and a staged release.
+* ``disc_reserve`` "on": a pick starts only with ``RESERVE_SAME`` / ``RESERVE_CROSS`` env steps left.
 
-Simulator constants here were re-measured in our twin (journal 2026-11-07-dojo-coin2): readings are deterministic.
+The slot comes from perception: the receptacle's perceived pose and its catalogue functional frame, or an explicit
+perceived slot pose (``insert_thin(slot_pose7=...)``). Nothing reads a task config or a checker. Motion constants were
+measured in our twin (journal 2026-11-07-dojo-coin2).
 """
 from __future__ import annotations
 
@@ -40,7 +41,9 @@ TIP = 0.0126                  # m: fingertips beyond the TCP along the approach 
 # --- disc_align "walls" (twin, coin stand 32.1 x 11.1 x 17.1 mm, fingertips 5 mm under its top, 6 identical reads)
 WALL_IN = 0.005               # m: fingertips this far under the holder's top while squeezing its walls
 WALL_GAP = 0.020              # m: pad gap around the 11.1 mm walls before the squeeze
-WALL_A = 0.0347               # official value, pads square to the walls and centred
+WALL_A = 0.0347               # official value, pads square and centred, when the holder's mesh is unknown (twin stand)
+FINGER_INNER = 0.0004         # m: a finger's inner face beyond its joint coordinate (finger model)
+GRIP_Q0, GRIP_DQ = -0.01, 0.054   # official value = (finger joint + 0.01) / 0.054 - 0.2 while the jaws are blocked
 WALL_B = 0.00163              # per degree of yaw error (|psi|: 0.0423-0.0429 at 5 deg, 0.0512-0.0516 at 10 deg)
 WALL_B_RANGE = (0.0010, 0.0030)  # slopes the fit accepts (0.0016-0.0021 seen across layouts / arms)
 WALL_C = -0.0164              # per mm of TCP offset along its +y (closing) axis: one finger's travel
@@ -110,6 +113,34 @@ class scoped:
         return False
 
 
+def thin_axis(o, thin: float = 0.005) -> int | None:
+    """The object-frame axis of a thin flat object (its smallest extent, under ``thin``), else None."""
+    ext = np.asarray(o.asset.extents, float)
+    k = int(np.argmin(ext))
+    return k if ext[k] < thin else None
+
+
+def wall_intercept(holder, T_sq, z: float) -> float:
+    """Expected official value with the pads square and centred on ``holder``'s walls at height ``z``: half the
+    holder's width along the closing axis (TCP y of ``T_sq``) at that height, from its catalogue mesh, through the
+    gripper's finger model. ``WALL_A`` when the mesh is unknown."""
+    mesh = getattr(holder.asset, "mesh", None)
+    if mesh is None:
+        return WALL_A
+    V = np.asarray(mesh[0], float)
+    W = (holder.R @ V.T).T + holder.pos
+    band = W[np.abs(W[:, 2] - z) <= 0.001]
+    if len(band) < 3:
+        return WALL_A
+    y = (band - T_sq[:3, 3]) @ T_sq[:3, 1]
+    x = (band - T_sq[:3, 3]) @ T_sq[:3, 2]
+    near = np.abs(x) <= 0.009                               # under the pads' width
+    if near.sum() < 2:
+        return WALL_A
+    hw = float(np.max(y[near]))                             # finger 0 is on the TCP's +y side
+    return (hw - FINGER_INNER - GRIP_Q0) / GRIP_DQ - 0.2
+
+
 def on(sk, name: str, value: str) -> bool:
     return getattr(sk, name, "off") == value
 
@@ -169,8 +200,7 @@ def wall_frame(sk, coin, hold) -> np.ndarray | None:
     """TCP pose that squeezes ``hold``'s walls: straight down over the coin's centre, closing along the coin's believed
     normal, fingertips ``WALL_IN`` under the holder's top."""
     from dojo.skills.grasps import _frame
-    from dojo.skills.precision import disc_axis
-    k = disc_axis(coin)
+    k = thin_axis(coin)
     if k is None:
         return None
     n = np.array(coin.R[:, k], float)
@@ -242,8 +272,10 @@ def wall_probe(sk, obj: str, hold: str, arm: str) -> dict:
     if len(out["reads"]) < 3:
         out.setdefault("why", "too few reads")
         return out
-    fit = wall_fit(out["reads"])
+    A = wall_intercept(h, T0, h.top_z - WALL_IN)
+    fit = wall_fit(out["reads"], A=A)
     out["fit"] = fit
+    out["intercept"] = round(A, 4)
     if not fit["bracketed"] or fit["resid"] > WALL_FIT_TOL:
         out["why"] = "fit not bracketed" if not fit["bracketed"] else f"residual {fit['resid']:.4f}"
         return out
@@ -308,10 +340,9 @@ def seat_post_lift(sk, label: str, holder: str | None, depth: float):
     T_tcp_obj) | None. It moves the coin ``SEAT_OFF`` along its plane at the lift height (the side farther from the
     other objects, collision-checked with the coin), presses it onto the table, holds, and lifts ``SEAT_UP``."""
     from dojo.skills.motion import FAST, held_box
-    from dojo.skills.precision import disc_axis
 
     def post(arm, q, T_tcp_obj, obj):
-        k = disc_axis(obj)
+        k = thin_axis(obj)
         if k is None:
             return None
         T_tcp = sk.kin.tcp(arm, q)
@@ -322,8 +353,12 @@ def seat_post_lift(sk, label: str, holder: str | None, depth: float):
             return None
         n /= np.linalg.norm(n)
         u = np.cross([0.0, 0.0, 1.0], n)
-        r = float(np.delete(obj.asset.extents, k).max()) / 2
         c_loc = obj.asset.center
+        # the object's reach below its centre along the world vertical: a disc's radius at any spin, else its box's
+        from dojo.skills.precision import disc_axis
+        ext = np.asarray(obj.asset.extents, float)
+        r = (float(np.delete(ext, k).max()) / 2 if disc_axis(obj) is not None
+             else float(np.abs(T_obj[2, :3]) @ (ext / 2)))
         # the coin's centre below the TCP along the approach, as planned
         e0 = float((T_tcp_obj[:3, :3] @ c_loc + T_tcp_obj[:3, 3])[0])
         if e0 <= depth + 0.001:
@@ -375,4 +410,46 @@ def reserve_ok(sk, cross: bool) -> tuple[bool, int]:
     return left >= need, left
 
 
-__all__ = ["scoped", "wall_fit", "wall_probe", "pick_kw", "place_kw", "edge_floor", "seat_post_lift", "reserve_ok"]
+def slot_targets_from_pose(o, slot_pose7) -> list[np.ndarray]:
+    """Object poses that put thin ``o`` into a perceived slot: ``slot_pose7`` = the opening's centre (xyz) and a frame
+    (wxyz) whose x runs along the slot, y across it, z out of the opening. The object's thin axis goes across the slot,
+    an in-plane axis along it, its centre just below the opening (its reach along z + 3 mm); both in-plane turns."""
+    from dojo.skills.geometry import quat_to_R
+    k = thin_axis(o)
+    if k is None:
+        return []
+    p = np.asarray(slot_pose7[:3], float)
+    Rs = quat_to_R(np.asarray(slot_pose7[3:7], float))
+    a = [i for i in range(3) if i != k][0]
+    ext = np.asarray(o.asset.extents, float)
+    out = []
+    for sgn in (1.0, -1.0):
+        R = np.zeros((3, 3))
+        R[:, k] = Rs[:, 1]
+        R[:, a] = sgn * Rs[:, 0]
+        b = 3 - k - a
+        R[:, b] = np.cross(R[:, (b + 1) % 3], R[:, (b + 2) % 3])
+        reach = float(np.abs((R.T @ Rs[:, 2])) @ (ext / 2))
+        c = p - Rs[:, 2] * (reach + 0.003)
+        out.append(T_from(c - R @ o.asset.center, R))
+    return out
+
+
+def insert_thin(sk, obj: str, receptacle: str, slot_pose7=None, contact: str | None = "on") -> dict:
+    """General skill: a thin flat object standing in a fixed slotted holder into a slot of ``receptacle``. The slot is
+    perceived: ``slot_pose7`` (``slot_targets_from_pose``) when given, else the receptacle's perceived pose with its
+    catalogue functional frame (``library.insert_into``). ``contact`` = ``scoped`` mode ("on": ``PROFILE``). The
+    contact sequence is implemented for discs; another thin shape is refused (stage names it)."""
+    from dojo.skills.library import insert_into
+    from dojo.skills.precision import disc_axis, disc_into_slot
+    if slot_pose7 is None:
+        return insert_into(sk, obj, [receptacle], disc_contact=contact)
+    o = sk.refresh().obj(obj)
+    if disc_axis(o) is None:
+        return {"ok": False, "stage": f"insert_thin {obj}: the contact sequence handles discs only"}
+    tg = slot_targets_from_pose(o, slot_pose7)
+    with scoped(sk, contact):
+        return disc_into_slot(sk, obj, receptacle, tg)
+
+
+__all__ = ["insert_thin", "slot_targets_from_pose", "thin_axis", "wall_intercept", "scoped", "wall_fit", "wall_probe", "pick_kw", "place_kw", "edge_floor", "seat_post_lift", "reserve_ok"]
