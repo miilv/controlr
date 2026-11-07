@@ -207,3 +207,17 @@ that interpretation is qualified by this fixed-pivot fit. Contact locations
 were not read from the simulator. In contrast, the original97.6 mm carry-loss
 trace could not maintain one pivot (43.6 mm maximum residual), so these are
 distinct mechanisms: a settled initial pendulum and later loss/contact change.
+
+The two additional3866+recipe prototypes both remain0: standard38 in408 steps
+(stable first loaded hold has no checked place; later holds slide/slip), and
+standard34 in643 (checked right stage succeeds, several left holds are
+unusable, final clean44 mm pickup cannot afford its219-step place with212
+available). These are retained separately from the source041 production
+screen. Its new early budget/end return avoids the prototype's old release
+tail after a failed place budget; it does not convert that episode to credit.
+The complete prototype set is2/4, not a reliability panel.
+
+Initial local implementation suite:2193 passed/191 skipped,1017.94 s. Final
+suite includes the subsequent four scoping/post-challenge-slip cases and is
+running;69 focused mock cases pass. No physical criteria or production flags
+change between the registered screen and conditional fresh panel.

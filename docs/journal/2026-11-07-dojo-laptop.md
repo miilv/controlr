@@ -252,3 +252,24 @@ on that pilot before proposing another grasp/admission mechanism. Source3866
 full local suite2174 passed/191 skipped. Zero model spend, no camera dispatch
 or board change. The latest actual paired panel remains standard7/10 and
 random5/10; the user stopping condition has not been reached.
+
+
+## Loaded hold and pendulum diagnosis
+
+Coverage18 standard30's16.3 mm nominal drift is a settled load-onset pendulum:
+closing-axis alignment0.986; one fixed pivot at[11.63,-19.42,-2.17] mm in TCP
+fits steps40–82 within0.93 mm (median0.39). Contact positions were not read;
+nominal material-point movement alone did not prove contact sliding. Standard30
+and31 follow a checked20 mm vertical raise by19.56/19.69 mm with<=0.62 mm and
+0.42-degree relative movement. Original nominal verifiers stay loose.
+
+Add default-legacy headset_hold=loaded, requiring measured stationary stability,
+unsupported following, both native checked legs and original hard slip/lift
+gates before/after. Preserve raw nominal evidence and existing step observers;
+require a checked measured-attachment place. A cached object belief cannot pass.
+Prototypes2/4 earn20, including the original two diagnosed failures, with one
+requiring775/800 steps. Freeze source04132591 for a complete original12 plus
+independent10/cell screen before unused layouts. Gate>=9/12 and>=8/10 each;
+conditional fresh variant20/salt registered before generation, still unexecuted.
+Initial full2193/191 passes; final suite with four more scoping/hard-slip tests
+is running,69 focused pass. No camera/model calls or board changes.
