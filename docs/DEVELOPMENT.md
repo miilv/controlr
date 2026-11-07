@@ -729,3 +729,10 @@ They supersede `ported_pour_pace` when enabled; `ported_pour_aim` remains indepe
 The existing default-off `new_routes: [pour_order]` / G3 `--routes pour_order`
 routes the three color-named bottle/bowl clauses in instruction order. It refuses
 incomplete or repeated-color assignments. No task/checker labels ground targets.
+
+The `checked` pour profile uses the original strict RGB wrapper's underlying
+v5 skill: staged rolls, mandatory waypoint retries, checked put-downs. These
+profiles are dev feasibility switches; they do not select a camera candidate.
+`scripts/skills/pour_g3_job.sh` serializes the POUR stream on compute3's light7
+lock, checks <=24 GiB used VRAM and >=10 GB free disk before each scoped job,
+and uses an 8G/600% physics-only process with a bounded KILL tail.

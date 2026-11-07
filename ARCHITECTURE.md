@@ -620,3 +620,9 @@ Actor lay-face-up events (`watch_lay`) and accepted relocation events retain ful
 The audit includes these exact writes alongside the coarse version log,
 replacing a matching coarse endpoint record to avoid counting a relocation twice;
 subthreshold relocation writes remain visible. These fields do not feed policy decisions.
+
+The ported liquid pour's optional `ported_pour_profile` selects the original
+multi-bottle v2 (`sparse` or `via`) or the original strict wrapper's v5
+(`checked`). `off` preserves the legacy skill and pacing dispatch. Target pairs
+come from the existing default-off `pour_order` language route; color clauses
+must form a complete distinct assignment before any pour executes.

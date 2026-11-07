@@ -28,3 +28,12 @@ def test_bad_profile_is_rejected():
 def test_checked_uses_strict_wrappers_underlying_profile():
     assert pour_bottle_call("v1", "v1", "checked") == ("pour_bottle_v5", {})
     assert pour_bottle_call("b20", "v1", "checked") == ("pour_bottle_v5", {"spout_back": .02})
+
+
+def test_diagnostic_boxes_follow_rotated_checker_frame():
+    import numpy as np
+    from dojo.skills.pour_diagnostics import box_mask
+    q = [2**-.5, 0, 0, 2**-.5]
+    vertices = [[-.1, -.02, 0], [.1, .02, .1]]
+    assert box_mask([[1, 2.09, .05], [1.09, 2, .05], [1, 2, 0]],
+                    [1, 2, 0], q, vertices, .001).tolist() == [True, False, False]
