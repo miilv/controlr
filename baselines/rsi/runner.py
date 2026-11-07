@@ -54,6 +54,8 @@ def commands(host: Host, task: str, layouts: Path, count: int, port: int, out: P
 
 def run(host: Host, task: str, layouts: Path, count: int, phase: str, timeout: int = 3600) -> Path:
     import fcntl
+    if host.profile == 'desktop' and count > 5:
+        raise ValueError('desktop permission allows at most five episodes per cell')
     host.directories()
     with regular_lock(host.state / 'freeze.lock', create=True) as freeze:
         fcntl.flock(freeze, fcntl.LOCK_EX)
