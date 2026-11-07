@@ -1,0 +1,378 @@
+{
+  "audit_applies": false,
+  "reason": "Motion/intercept grasp-selection change only; no new or changed belief writer or perception-read predicate.",
+  "primary_instrument": "Preregistered nearest-group identity and raw harmful-write counts: not applicable; no GT audit claimed.",
+  "supplementary_instrument": "Fixed persistent identity (#417): not applicable to the motion-only exemption; no supplementary harmful-write score claimed.",
+  "resolved_config_pair_differences": [
+    "belt_waist_first"
+  ],
+  "cells": {
+    "match_and_pick_from_conveyor": {
+      "A": {
+        "rows": 20,
+        "logged_writes": 3147,
+        "writers": {
+          "perception": 8,
+          "tracked": 3127,
+          "refine_pick": 12
+        },
+        "explicit_writers": {
+          "perception": 8,
+          "tracked": 3127
+        },
+        "perception_ops": {
+          "estimate": 20,
+          "watch": 20,
+          "needs_agent": 20,
+          "agentic_estimate": 20,
+          "belt_read": 1431,
+          "refine": 38
+        },
+        "read_events": {
+          "track_read": 1028,
+          "refine": 38
+        },
+        "resolved_read_config": {
+          "save_track_frames": 0,
+          "refine": true,
+          "refine_max_shift_m": 0.07,
+          "refine_identity": true,
+          "refine_search_radius": 0.07,
+          "refine_empty_hand": true,
+          "refine_max_turn_deg": 90.0,
+          "refine_turn_check_deg": 45.0,
+          "refine_turn_min_iou": 0.9,
+          "held_flip_confirm": true,
+          "held_flip_agree_deg": 30.0,
+          "refine_recentre_guard": "vis",
+          "held_identity_guard": false,
+          "watch": true,
+          "watch_every": 4,
+          "watch_relocate": false,
+          "agentic_count_held": true,
+          "tracker": "auto",
+          "held_look": "b1_then_agent",
+          "held_refine_max_mm": 10.0,
+          "held_refine_min_iou": 0.85,
+          "held_thin": "off",
+          "held_drop_conf": 0.9,
+          "track_moving": "auto",
+          "track_read": "belt",
+          "held_pose": "request",
+          "belt_wrist_veto": "on",
+          "belt_container": "off",
+          "belt_deposit": "off",
+          "belt_confirm_zone": "off",
+          "track_expire": "off",
+          "peg_base_refine": "local",
+          "peg_held_read": "off",
+          "scan": "trigger",
+          "scan_budget_frac": 0.12,
+          "scan_min_step_lim": 300,
+          "scan_step_rad": 0.16,
+          "scan_settle": 2
+        }
+      },
+      "B": {
+        "rows": 20,
+        "logged_writes": 3432,
+        "writers": {
+          "perception": 10,
+          "tracked": 3413,
+          "refine_pick": 9
+        },
+        "explicit_writers": {
+          "perception": 10,
+          "tracked": 3413
+        },
+        "perception_ops": {
+          "estimate": 20,
+          "watch": 20,
+          "needs_agent": 20,
+          "agentic_estimate": 20,
+          "belt_read": 1535,
+          "refine": 27
+        },
+        "read_events": {
+          "track_read": 1016,
+          "refine": 27
+        },
+        "resolved_read_config": {
+          "save_track_frames": 0,
+          "refine": true,
+          "refine_max_shift_m": 0.07,
+          "refine_identity": true,
+          "refine_search_radius": 0.07,
+          "refine_empty_hand": true,
+          "refine_max_turn_deg": 90.0,
+          "refine_turn_check_deg": 45.0,
+          "refine_turn_min_iou": 0.9,
+          "held_flip_confirm": true,
+          "held_flip_agree_deg": 30.0,
+          "refine_recentre_guard": "vis",
+          "held_identity_guard": false,
+          "watch": true,
+          "watch_every": 4,
+          "watch_relocate": false,
+          "agentic_count_held": true,
+          "tracker": "auto",
+          "held_look": "b1_then_agent",
+          "held_refine_max_mm": 10.0,
+          "held_refine_min_iou": 0.85,
+          "held_thin": "off",
+          "held_drop_conf": 0.9,
+          "track_moving": "auto",
+          "track_read": "belt",
+          "held_pose": "request",
+          "belt_wrist_veto": "on",
+          "belt_container": "off",
+          "belt_deposit": "off",
+          "belt_confirm_zone": "off",
+          "track_expire": "off",
+          "peg_base_refine": "local",
+          "peg_held_read": "off",
+          "scan": "trigger",
+          "scan_budget_frac": 0.12,
+          "scan_min_step_lim": 300,
+          "scan_step_rad": 0.16,
+          "scan_settle": 2
+        }
+      }
+    },
+    "pick_from_conveyor_by_image": {
+      "A": {
+        "rows": 10,
+        "logged_writes": 100,
+        "writers": {
+          "perception": 9,
+          "tracked": 91
+        },
+        "explicit_writers": {
+          "perception": 9,
+          "tracked": 91
+        },
+        "perception_ops": {
+          "estimate": 10,
+          "watch": 10,
+          "needs_agent": 10,
+          "agentic_estimate": 10,
+          "belt_read": 70
+        },
+        "read_events": {
+          "track_read": 70
+        },
+        "resolved_read_config": {
+          "save_track_frames": 0,
+          "refine": true,
+          "refine_max_shift_m": 0.07,
+          "refine_identity": true,
+          "refine_search_radius": 0.07,
+          "refine_empty_hand": true,
+          "refine_max_turn_deg": 90.0,
+          "refine_turn_check_deg": 45.0,
+          "refine_turn_min_iou": 0.9,
+          "held_flip_confirm": true,
+          "held_flip_agree_deg": 30.0,
+          "refine_recentre_guard": "vis",
+          "held_identity_guard": false,
+          "watch": true,
+          "watch_every": 4,
+          "watch_relocate": false,
+          "agentic_count_held": true,
+          "tracker": "auto",
+          "held_look": "b1_then_agent",
+          "held_refine_max_mm": 10.0,
+          "held_refine_min_iou": 0.85,
+          "held_thin": "off",
+          "held_drop_conf": 0.9,
+          "track_moving": "auto",
+          "track_read": "belt",
+          "held_pose": "request",
+          "belt_wrist_veto": "on",
+          "belt_container": "off",
+          "belt_deposit": "off",
+          "belt_confirm_zone": "off",
+          "track_expire": "off",
+          "peg_base_refine": "local",
+          "peg_held_read": "off",
+          "scan": "trigger",
+          "scan_budget_frac": 0.12,
+          "scan_min_step_lim": 300,
+          "scan_step_rad": 0.16,
+          "scan_settle": 2
+        }
+      },
+      "B": {
+        "rows": 10,
+        "logged_writes": 96,
+        "writers": {
+          "perception": 4,
+          "tracked": 92
+        },
+        "explicit_writers": {
+          "perception": 4,
+          "tracked": 92
+        },
+        "perception_ops": {
+          "estimate": 10,
+          "watch": 10,
+          "needs_agent": 10,
+          "agentic_estimate": 10,
+          "belt_read": 70
+        },
+        "read_events": {
+          "track_read": 70
+        },
+        "resolved_read_config": {
+          "save_track_frames": 0,
+          "refine": true,
+          "refine_max_shift_m": 0.07,
+          "refine_identity": true,
+          "refine_search_radius": 0.07,
+          "refine_empty_hand": true,
+          "refine_max_turn_deg": 90.0,
+          "refine_turn_check_deg": 45.0,
+          "refine_turn_min_iou": 0.9,
+          "held_flip_confirm": true,
+          "held_flip_agree_deg": 30.0,
+          "refine_recentre_guard": "vis",
+          "held_identity_guard": false,
+          "watch": true,
+          "watch_every": 4,
+          "watch_relocate": false,
+          "agentic_count_held": true,
+          "tracker": "auto",
+          "held_look": "b1_then_agent",
+          "held_refine_max_mm": 10.0,
+          "held_refine_min_iou": 0.85,
+          "held_thin": "off",
+          "held_drop_conf": 0.9,
+          "track_moving": "auto",
+          "track_read": "belt",
+          "held_pose": "request",
+          "belt_wrist_veto": "on",
+          "belt_container": "off",
+          "belt_deposit": "off",
+          "belt_confirm_zone": "off",
+          "track_expire": "off",
+          "peg_base_refine": "local",
+          "peg_held_read": "off",
+          "scan": "trigger",
+          "scan_budget_frac": 0.12,
+          "scan_min_step_lim": 300,
+          "scan_step_rad": 0.16,
+          "scan_settle": 2
+        }
+      }
+    }
+  },
+  "static_source": {
+    "dojo/runtime/policy.py": {
+      "sha256": "f3e48ba9285fedf3232a5525a92192adece7818f22384c263daa3c0d11bc7e07",
+      "references": [
+        {
+          "line": 474,
+          "text": "belt_waist_first: str = \"off\""
+        },
+        {
+          "line": 680,
+          "text": "or self.cfg.belt_waist_first not in (\"off\", \"on\")"
+        },
+        {
+          "line": 1014,
+          "text": "sk_.belt_waist_first = cfg.belt_waist_first"
+        }
+      ]
+    },
+    "dojo/skills/interactive.py": {
+      "sha256": "222e1b56821870b789fdf36954dd7830c53966981f51060214b022e41785aab3",
+      "references": [
+        {
+          "line": 880,
+          "text": "if not cands and getattr(sk, \"belt_waist_first\", \"off\") == \"on\":"
+        },
+        {
+          "line": 909,
+          "text": "if getattr(sk, \"belt_waist_first\", \"off\") != \"on\" or g.method not in skip_methods][:12]"
+        }
+      ]
+    },
+    "dojo/skills/g3.py": {
+      "sha256": "7a50946847c251f76e777f414944fa2fecc9e810c6a26624fcabacc103969db2",
+      "references": [
+        {
+          "line": 218,
+          "text": "\"belt_waist_first\": (\"off\", \"on\"),"
+        }
+      ]
+    },
+    "plan_intercept": {
+      "file": "dojo/skills/interactive.py",
+      "start_line": 864,
+      "end_line": 912,
+      "sha256": "f0eb786beb9149ef356203834f2701f747752296b63743c50c7074e763498e15"
+    },
+    "waist_grasps": {
+      "file": "dojo/skills/interactive.py",
+      "start_line": 918,
+      "end_line": 945,
+      "sha256": "f3d4ea278afc8ff830224d5a773976bcb8da66d463ca8e87a079e12cb6307766"
+    },
+    "_intercept_search": {
+      "file": "dojo/skills/interactive.py",
+      "start_line": 948,
+      "end_line": 1019,
+      "sha256": "cf90226c7b8480b027df196b42f60c38210c0c4891785bdc217377e6af945af3"
+    }
+  },
+  "hashes_verified": 270,
+  "static_flag_functions": [
+    "plan_intercept"
+  ],
+  "perception_flag_references": 0,
+  "deployment_source_files_verified": 1317,
+  "lane_lock_seconds": 13813,
+  "episode_wall_seconds": 10395.5,
+  "last_done_utc": "2026-11-07T09:16:08Z",
+  "generated_utc": "2026-11-07T09:26:41.796832+00:00",
+  "manifest_reference_checks": 90,
+  "unique_raw_index_files": 36,
+  "raw_index_hashes": {
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain1/simlab/layouts/match_and_pick_from_conveyor/100000.json": "4977fea6e4a860bba4dc964b5aa74de8720b57104951076f19e42fd6df07e1a3",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain1/simlab/layouts/match_and_pick_from_conveyor/raw_index.json": "bb2160f7b008e322f956b71633cf1f303727ac0e48c926099c9e1514fd70e8f4",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain1/simlab/layouts/match_and_pick_from_conveyor/100001.json": "307880c44ef9001edccbe667aa77ac8c4ecdda42cc2d5747e14858b9606ece35",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain1/simlab/layouts/match_and_pick_from_conveyor/100002.json": "d40b5ba0f312dfba8f66fbb9df5dc1fc03ff7c6bc38ae4807f9ef1de6fc9d428",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain1/simlab/layouts/match_and_pick_from_conveyor/100003.json": "adeafaf428398ffc36468dc98997d27403048f2e1ed7e44af0b3423d2984a596",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain1/simlab/layouts/match_and_pick_from_conveyor/100004.json": "d2ebf3349ce4e785308fc388bf0002a782b1ab8b53dd29c6a543c2bead2983ab",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain2/simlab/layouts/match_and_pick_from_conveyor/100000.json": "b7b95498fb5cfd35f1f46da18d42a6ba5b83e2f8e898ed67cc904c0d51cba3d0",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain2/simlab/layouts/match_and_pick_from_conveyor/raw_index.json": "1f962856da4a1167345394f7b3f6944cb875383017734cf22b549800cb9bc4a9",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain2/simlab/layouts/match_and_pick_from_conveyor/100001.json": "0222276c091361666e5dfca7504deca1851c2b154c3074d2d8cc0d391ac76c2d",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain2/simlab/layouts/match_and_pick_from_conveyor/100002.json": "5699bd8dc233d314a40607b4892c99795ed9bc60a1bcf3df0bee67d9346043f0",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain2/simlab/layouts/match_and_pick_from_conveyor/100003.json": "53abe9bdea36a0e3f9a5d13feffa8412ebb41d8168dd5c3f4ee0fb1bd99aeb5d",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain2/simlab/layouts/match_and_pick_from_conveyor/100004.json": "0dd62b6a8df09f1f8a9765af24f9416c995df90453eac4bf7a9c209373b112e8",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain3/simlab/layouts/match_and_pick_from_conveyor/100000.json": "56379c6585b50b505d8edb1a009a293e165cc33d0b4d05034592dcc07b4770b1",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain3/simlab/layouts/match_and_pick_from_conveyor/raw_index.json": "34860304733800f64ef9bb670094ce4aef300d7a07b5afc949b8d49c40a8bd8e",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain3/simlab/layouts/match_and_pick_from_conveyor/100001.json": "46bda3e2b417409d390261a9b1bc00a6da0659dd4145b243d4916f12916c1b11",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain3/simlab/layouts/match_and_pick_from_conveyor/100002.json": "da0a6e44982a815ab4b6ae04e9fd5aba02ffb66659bbc06f63254cb7662b31a9",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain3/simlab/layouts/match_and_pick_from_conveyor/100003.json": "c153b0f0fffcea2447b5a44737adb5e476292c11331ccd69d78692534dd8df02",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain3/simlab/layouts/match_and_pick_from_conveyor/100004.json": "0e1b2a70cbbb46b60cb6f1f552ae87793e58f674141ead47225ce98e0fcfa35c",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain4/simlab/layouts/match_and_pick_from_conveyor/100000.json": "9e47dca92b394a804d98cc4f8f1a181970ef52c571d9da941c344e0e47c5bd02",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain4/simlab/layouts/match_and_pick_from_conveyor/raw_index.json": "75c0fcad355441bc0187da0414b52b44125238b5adf0f83e3e3bc7f3e261baf7",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain4/simlab/layouts/match_and_pick_from_conveyor/100001.json": "fcd9928173fb77748dc477d03f6f00dd86fa59fb4be441918283fba78d6d184c",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain4/simlab/layouts/match_and_pick_from_conveyor/100002.json": "a69ce4b5fd38726ad57427bfbe93518c8e660d6af8042a2fd0205fd1e2c6fede",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain4/simlab/layouts/match_and_pick_from_conveyor/100003.json": "01cc9e715a70d7ca4eb83aa762887b5f391c95c45d8963befa556432dbccccaf",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain4/simlab/layouts/match_and_pick_from_conveyor/100004.json": "e46b85432799faa8ff2069103bef71a2a4429e9fd279d5723e47104dfca7e618",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard1/simlab/layouts/pick_from_conveyor_by_image/100000.json": "a97484a73ae1388b0d3a2237cc899c62056f709c67ab4d611825664f6ea4b936",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard1/simlab/layouts/pick_from_conveyor_by_image/raw_index.json": "f335c16fd417a1cccac464424fbb91d8c9bbfcd724a8a428aaaa4ea9b4c940ab",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard1/simlab/layouts/pick_from_conveyor_by_image/100001.json": "da2c4488f06f1dae9ea4d5eefdd0830bafef71cd206af2125b7fb392d2ea60d3",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard1/simlab/layouts/pick_from_conveyor_by_image/100002.json": "38c57e9ce6ea42e4317aa66d263dae3adb402f14a87fba804bb2c05ffff336c1",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard1/simlab/layouts/pick_from_conveyor_by_image/100003.json": "4120ea4e6b24e1d56ad3054c46a48a17a021f3ca0e490fe2b8847b453a3065e3",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard1/simlab/layouts/pick_from_conveyor_by_image/100004.json": "0ba12ac3dd27525f6c949d90863b8b0cb3605a6705792cf9184e941f12426bce",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard2/simlab/layouts/pick_from_conveyor_by_image/100000.json": "ac27b437979a9179316e8f4fc80176898774105af433736d351d68cd9ee2ac53",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard2/simlab/layouts/pick_from_conveyor_by_image/raw_index.json": "2681b00a1de2cb31549c7ccc5b3872341e5d743e317562b34e41c6bb82e5a225",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard2/simlab/layouts/pick_from_conveyor_by_image/100001.json": "20b72de790161af30fbb47cb20a6fcf675a45eebbdbefbc396b65bdada98e41f",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard2/simlab/layouts/pick_from_conveyor_by_image/100002.json": "19a1962de56ade16f948f493c87b54f7aef666d51e061d3a361dc0b9b2205dc8",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard2/simlab/layouts/pick_from_conveyor_by_image/100003.json": "986e65f4e0d0e589b83738e9df56b4eaf1d0d21b869d64558590f45a54c0d01b",
+    "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard2/simlab/layouts/pick_from_conveyor_by_image/100004.json": "0280ace9bacf015ade7c42dc49beae879f7a7c61c9829173c7f5f1646ab697c8"
+  }
+}
