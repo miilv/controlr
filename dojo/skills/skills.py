@@ -2226,6 +2226,12 @@ class Skills:
         # handle at the centre of mass holds)
         irregular = held_box(obj, np.eye(4)).points is not None or G.com_off(obj) > 0.008
         slipped = self.__dict__.get("_slipped", {}).get(label, []) if getattr(self, "slip_avoid", "off") == "on" else []
+        if (getattr(self, "grasp_torso", "off") == "on" and irregular and obj.asset.mesh is not None
+                and label not in self.coll.parts):
+            # stream ORG2: the object as small boxes from its mesh (``Collision.parts``), so a torso grasp's transit to
+            # its pre-grasp is checked against the body and arms, not against the empty corners of its bbox
+            from dojo.skills.motion import mesh_parts
+            self.coll.parts[label] = mesh_parts(*obj.asset.mesh, cell=0.015, step=0.004)
         if irregular and "approach_rad" not in place_kw:
             # uneven objects swing in the pads on fast carries (twin: a wrench held 6 mm off its centre of mass,
             # 4 mm drift after the lift, fell out on the way to its slot)
