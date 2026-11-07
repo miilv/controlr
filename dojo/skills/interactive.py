@@ -502,7 +502,27 @@ def drop_spots(sk: Skills, container: str, label: str, n: int = 9, margin: float
                                       float(np.linalg.norm(p - ctr))))[:n]
 
 
-def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillResult:
+REACH_MARGIN = 0.15     # imitate_carry "reach": the object this much nearer the other arm's base is on the far side
+CROSS_TRIES_KEYS = ("phone",)   # ... categories that go by a table handover first on the far side (flat, long)
+
+
+def far_side(sk: Skills, label: str, container: str) -> str | None:
+    """``imitate_carry`` "reach": the arm on the object's side when that is not the container's arm and the object is
+    ``REACH_MARGIN`` nearer to it (the container's arm would reach across, at the edge of its workspace: camera 100021 /
+    100009, a left pick at x = 0.25-0.30 with a grasp 45 mm off centre slipped), else None."""
+    o = sk.world.obj(label)
+    c = sk.world.obj(container)
+    d = {a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - o.pos[:2])) for a in ARMS}
+    cont = min(ARMS, key=lambda a: float(np.linalg.norm(sk.kin.base(a)[:2, 3] - c.center_w[:2])))
+    side = min(ARMS, key=lambda a: d[a])
+    return side if side != cont and d[cont] - d[side] > REACH_MARGIN else None
+
+
+def _centred(cands: list) -> list:
+    return [g for g in cands if not re.search(r"off [+-]?[1-9]", g.note)]
+
+
+def put_in_open(sk: Skills, label: str, container: str, relay_xy=None, carry: str = "v1") -> SkillResult:
     """Put one object into an open container on the table: carried level (as it lies) over a free spot of the
     container's floor and let go with its bottom just above the rim, so it drops in; planned with its pick, one arm at
     a time. When neither arm can, the other arm first moves it to a free table spot between the arms
@@ -517,11 +537,18 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
 
     bad = sk.world.notes.setdefault("bad_grasps", {}).setdefault(label, [])
 
+    far = far_side(sk, label, container) if carry == "reach" else None
+
     def grasps(a):
         from dojo.skills import grasps as G
         ob = sk.world.obj(label)
         cands = G.box_grasps(ob, sk.kin, a, tilts=(0.0, 25.0, 40.0, -25.0)) + G.candidates(ob, sk.kin, a)
-        return [g for g in cands if (a, g.note) not in bad]
+        cands = [g for g in cands if (a, g.note) not in bad]
+        if far is not None and far_side(sk, label, container) is not None:
+            # reach-aware: centred grasps only on a far-side object (a grasp off the believed centre at long reach
+            # leaves no margin for a pose a few mm off); the other arm or the handover takes it otherwise
+            cands = _centred(cands)
+        return cands
 
     def transfer(arms):
         targets = [rest_pose(sk, label, p, rim + 0.012, sym=sym) for p in drop_spots(sk, container, label)]
@@ -537,11 +564,19 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
                         bad.append((a, plans[0].grasp.note))      # a retry takes another grasp
                     return r
         return plans
-    r = transfer(near)
-    if not isinstance(r, SkillResult) or r.ok or r.status not in ("ik_fail", "collision"):
-        return r
+    if far is not None:
+        sk.log(f"[put_in_open] {label}: far side, {far} first (cross-carry, then a table handover)")
+        if o.category not in CROSS_TRIES_KEYS:
+            r = transfer([far])                 # the side arm carries it across itself
+            if not isinstance(r, SkillResult) or r.ok or r.status not in ("ik_fail", "collision"):
+                return r
+        giver = far
+    else:
+        r = transfer(near)
+        if not isinstance(r, SkillResult) or r.ok or r.status not in ("ik_fail", "collision"):
+            return r
+        giver = near[1]
     # relay: the other arm puts it down on a table spot both arms reach, the container's arm takes it from there
-    giver = near[1]
     mid = np.asarray(relay_xy if relay_xy is not None else (o.pos[:2] + c.center_w[:2]) / 2, float)
     spots = []
     for p in [mid, (0.0, -0.2), (-0.05, -0.15), (0.05, -0.2), (0.0, -0.28)]:
@@ -563,6 +598,8 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None) -> SkillR
         if rr is not None:
             break
     if rr is None:
+        if far is not None:                     # no handover: the container's arm reaches across after all (v1)
+            return transfer(near)
         return plans
     sk.bank()
     try:
@@ -621,6 +658,40 @@ def twin_assignment(w, demo: list[str], ours: list[str]) -> dict[str, str]:
     return {demo[int(i)]: ours[int(j)] for i, j in pairs}
 
 
+def cue_twins(sk: Skills, w, demo: list[str], ours: list[str]) -> dict | None:
+    """``imitate_pairing`` "cues": the provider's appearance assignment (``twin_match.twin_costs`` on the episode start's
+    views) of ``demo`` to ``ours``, read before the demonstrator moves anything. None without a reader or when its
+    assignment does not cover these labels (the caller falls back to ``twin_assignment``)."""
+    f = getattr(sk.provider, "twin_costs", None)
+    if f is None:
+        return None
+    objs = [{"label": l, "key": w.obj(l).asset.key, "pos": [float(v) for v in w.obj(l).pos],
+             "quat": [float(v) for v in w.obj(l).quat]} for l in list(demo) + list(ours) if l in w.objects]
+    r = f(objs, [d for d in demo if d in w.objects], [o for o in ours if o in w.objects])
+    if not r or not r.get("assign"):
+        sk.log("[imitate] twins by appearance: no read (believed identities instead)")
+        return None
+    a = {d: o for d, o in r["assign"].items() if d in demo and o in ours}
+    if len(set(a.values())) != len(a) or not a:
+        return None
+    return {"assign": a, "cost": r.get("cost") or {}, "ties": list(r.get("ties") or []), "margin": r.get("margin") or {}}
+
+
+def cue_reassign(cue: dict, demo: list[str], ours: list[str]) -> dict[str, str]:
+    """The cue assignment again over what is left (a twin dropped by ``imitate_repair``): least total appearance cost."""
+    C = cue.get("cost") or {}
+    demo = [d for d in demo if d in C]
+    ours = [o for o in ours if all(o in C[d] for d in demo)]
+    if not demo or not ours:
+        return {}
+    from dojo.perception.twin_match import assign
+    M = np.array([[float(C[d][o]) for o in ours] for d in demo])
+    return {demo[i]: ours[j] for i, j in assign(M)}
+
+
+RETRY_TRIES = 4      # imitate_retry "refind": puts of one twin
+RETRY_MIN_STEPS = 120  # ... and no further try with fewer steps left (one put needs ~110)
+PERSIST_READS = 3    # imitate_order "persist": consecutive departure reads (every 5 steps) before a spot counts as left
 REPAIR_TRIES = 2     # imitate_repair: puts of one twin before it is dropped as a misread and the next candidate is tried
 MAX_TWIN_LOOKS = 3   # imitate_look "ambiguous": wrist looks before the copy (each ~30-60 steps; the copy needs ~120 per object)
 
@@ -665,6 +736,50 @@ def look_twins(sk: Skills, twins: dict) -> list[str]:
     return looked
 
 
+def _lift_open(sk: Skills, dz: float = 0.06) -> None:
+    """``imitate_retry`` "refind": after a failed put, open, raise every hand that is low ``dz`` straight up, then home
+    (a hand sent home from table height can sweep the objects beside it)."""
+    from dojo.skills.executor import ArmPlan
+    from dojo.skills.motion import CARRY
+    plans = {}
+    for arm in ARMS:
+        T = sk.kin.tcp(arm, sk.ex.q[arm])
+        if float(T[2, 3]) > TABLE_Z + 0.15:
+            continue
+        T_up = T.copy()
+        T_up[2, 3] += dz
+        mv = sk.motion.to_pose(arm, sk.ex.q[arm], T_up, CARRY, "lift_clear", gripper=OPEN, check=False)
+        if mv.ok:
+            plans[arm] = ArmPlan(arm, sk.ex.q[arm].copy(), OPEN).move(mv, "lift_clear")
+    try:
+        if plans:
+            sk.ex.run(plans, name="lift clear")
+    except (BudgetExceeded, EpisodeEnded):
+        return
+    sk.home(gripper=OPEN)
+    sk.held = {a: None for a in sk.held}
+
+
+def refind_twin(sk: Skills, twin: str, container: str, p0) -> None:
+    """``imitate_retry`` "refind": a put that failed may leave the belief of the twin elsewhere (a slip read as carried,
+    an empty-jaw place: camera 100009 believed a watch on basket0's rim and looked for it there twice). When the belief
+    moved more than 40 mm from the spot the twin stood on and it is not in the container, propose that spot to the
+    provider (``confirm_pose``: perception's head view adopts it only if it clearly prefers it). Nothing else is
+    written; a provider without the read (G3) keeps its belief."""
+    f = getattr(sk.provider, "confirm_pose", None)
+    w = sk.refresh()
+    if f is None or twin not in w.objects or inside_xy(w.obj(twin), w.obj(container)):
+        return
+    if float(np.linalg.norm(w.obj(twin).pos[:2] - np.asarray(p0[0])[:2])) <= 0.04:
+        return
+    try:
+        r = f(twin, np.asarray(p0[0], float), np.asarray(p0[1], float)) or {}
+    except Exception as e:  # noqa: BLE001 (an optional read)
+        sk.log(f"[imitate] re-find {twin}: {type(e).__name__}: {e}")
+        return
+    sk.log(f"[imitate] re-find {twin} at its start spot: {'adopted' if r.get('adopted') else 'not adopted'}")
+
+
 def copy_demonstration(sk: Skills, container: str, demo_container: str, objects: list[str], quiet: int = 4,
                        every: int = 5, after_last: int = 110, max_wait: int = 1400, tries: int = 3,
                        gone_quiet: int = 260) -> dict:
@@ -701,6 +816,11 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
         # a re-entry (re-plan mid-copy) keeps the first entry's halves: ours already in basket0 moved the line
         demo_side = [l for l in st.setdefault("demo_side", demo_side) if l in w.objects]
     st.setdefault("gone", [])
+    if getattr(sk, "imitate_pairing", "greedy") == "cues" and "cue" not in st:
+        # IMIT2: twins by appearance, read once on the episode start's views (``provider.twin_costs``) before the
+        # demonstrator moves anything; None (no reader: G3, a failed read) falls back to the one_to_one assignment
+        st["cue"] = cue_twins(sk, w, demo_side, [m for m in movers if m not in demo_side])
+    persist = getattr(sk, "imitate_order", "v1") == "persist"
     if not st["order"] or len(st["order"]) < expect:      # (the start estimate may see no identity twice)
         t0 = w.step
         ao = ArrivalOrder(n_consecutive=quiet, expected=expect)
@@ -711,7 +831,30 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
             except (EpisodeEnded, BudgetExceeded) as e:
                 return {"ok": False, "stage": "watch", "note": str(e)}
             read = watch(sk, region, prior)
-            if "gone" in read:
+            if "gone" in read and persist:
+                # IMIT2 ``imitate_order`` "persist": perception's departure is this read's alone (the prior goes back
+                # without its gone list); a spot counts as left after PERSIST_READS reads in a row, dated by the first
+                prior = {k: v for k, v in read.items() if k != "gone"}
+                now = {e["label"]: e for e in read["gone"]}
+                streak = st.setdefault("streak", {})
+                for l in demo_side:
+                    if l in st["gone"]:
+                        continue
+                    if l in now:
+                        streak.setdefault(l, [int(sk.ex.steps_used), 0])[1] += 1
+                    else:
+                        streak.pop(l, None)
+                new_ = sorted((l for l, (t, n) in streak.items() if n >= PERSIST_READS and l not in st["gone"]),
+                              key=lambda l: streak[l][0])
+                for l in new_:
+                    st["gone"].append(l)
+                    st.setdefault("gone_t", {})[l] = streak[l][0]
+                    last_new = sk.ex.steps_used
+                    sk.log(f"[imitate] step {streak[l][0]}: {l} ({now[l]['asset']}) left its place, #{len(st['gone'])} "
+                           f"(held {streak[l][1]} reads)")
+                st["gone"].sort(key=lambda l: st.get("gone_t", {}).get(l, 0))
+                st["order"] = list(st["gone"])
+            elif "gone" in read:
                 prior = read
                 for e in read["gone"]:
                     if e["label"] in demo_side and e["label"] not in st["gone"]:
@@ -719,6 +862,7 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
                         last_new = sk.ex.steps_used
                         sk.log(f"[imitate] step {sk.ex.steps_used}: {e['label']} ({e['asset']}) left its place, #{len(st['gone'])}")
                 st["order"] = list(st["gone"])
+            if "gone" in read:
                 quiet_long = st["gone"] and sk.ex.steps_used - last_new > gone_quiet
                 if len(st["gone"]) >= len(demo_side) or quiet_long:
                     r = wait_demo_done(sk, after_last, len(st["gone"]))
@@ -747,7 +891,11 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
     # copy: the twin of each demonstrated object, in order
     if st["gone"]:
         expect = len(st["gone"])
-    if getattr(sk, "imitate_pairing", "greedy") == "one_to_one" and "twins" not in st:
+    pairing = getattr(sk, "imitate_pairing", "greedy")
+    if pairing == "cues" and st.get("cue") and "twins" not in st:
+        st["twins"] = dict(st["cue"]["assign"])
+        sk.log(f"[imitate] twins by appearance {st['twins']} (ties {st['cue'].get('ties')})")
+    if pairing in ("one_to_one", "cues") and "twins" not in st:
         ours = [m for m in movers if m not in demo_side]
         st["twins"] = twin_assignment(w, demo_side, ours)
         sk.log(f"[imitate] one-to-one twins {st['twins']}")
@@ -794,18 +942,31 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
         # nothing reachable) is dropped as a misread and the next candidate like it is tried; the demonstrator's objects
         # still to copy are paired again among ours that are left (dev 100001: our watch read as a garage was the
         # garage's twin, 6 empty closes; the real garage was the second candidate)
+        carry = "reach" if getattr(sk, "imitate_carry", "v1") == "reach" else "v1"
+        refind = getattr(sk, "imitate_retry", "v1") == "refind"
         for twin in (cands if repair else cands[:1]):
-            for attempt in range(REPAIR_TRIES if repair else tries):
-                r = put_in_open(sk, twin, container)
+            p0 = (w.obj(twin).pos.copy(), w.obj(twin).quat.copy()) if refind and twin in w.objects else None
+            n_try = RETRY_TRIES if refind else (REPAIR_TRIES if repair else tries)
+            for attempt in range(n_try):
+                left = _steps_left(sk)
+                if refind and attempt > 0 and left is not None and left < RETRY_MIN_STEPS:
+                    sk.log(f"[imitate] {twin}: {left} steps left, no further try")
+                    break
+                r = put_in_open(sk, twin, container, **({"carry": carry} if carry != "v1" else {}))
                 sk.bank()
                 w = sk.refresh()
                 if inside_xy(w.obj(twin), w.obj(container)):
                     ok = True
                     break
                 sk.log(f"[imitate] {twin} not in {container} after try {attempt + 1}: {str(r.note)[:160]}")
-                if any(sk.held.values()):
+                if refind:
+                    _lift_open(sk)
+                elif any(sk.held.values()):
                     sk.home(gripper=OPEN)
                     sk.held = {a: None for a in sk.held}
+                if refind and p0 is not None:
+                    refind_twin(sk, twin, container, p0)
+                    w = sk.refresh()
             if ok or not repair:
                 break
             bad.append(twin)
@@ -813,7 +974,10 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
             if st.get("twins") is not None and later:
                 ours = [m for m in movers if m not in demo_side and m not in st["done"] and m not in bad
                         and m in w.objects and not inside_xy(w.obj(m), w.obj(container))]
-                st["twins"].update(twin_assignment(w, later, ours))
+                if st.get("cue"):
+                    st["twins"].update(cue_reassign(st["cue"], later, ours))
+                else:
+                    st["twins"].update(twin_assignment(w, later, ours))
             sk.log(f"[imitate] {twin} dropped after {REPAIR_TRIES} tries (misread or unreachable); next candidate like {l}")
         if not ok:
             return {"ok": False, "stage": f"put {twin}", "note": f"done {st['done']}"}

@@ -410,6 +410,12 @@ class Skills:
         # look at each of our objects whose assigned twin has another believed asset, then the assignment again)
         self.imitate_look = "off"
         self.imitate_tie_look = False  # equal-cost twin swaps, including same-asset pairs
+        # IMIT2 (``RuntimeConfig.imitate_order`` / ``imitate_carry`` / ``imitate_retry``): departure persistence,
+        # reach-aware carries, re-find and lift-clear retries; "v1" = today. ``imitate_pairing`` "cues": twins by
+        # appearance (``provider.twin_costs``), one_to_one without a reader
+        self.imitate_order = "v1"
+        self.imitate_carry = "v1"
+        self.imitate_retry = "v1"
         # ``rows.row_by_size`` (stream N): "off" (today: the order from the believed assets' volumes) | "look" (a wrist
         # look at each object of a shared believed size class first, the refine hook of kind "size" re-reading its
         # identity; then the order by height) | "look_union" (as look, the read over the std / _random twin's shapes too)
