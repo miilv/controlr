@@ -136,3 +136,17 @@ that height; vertical approaches are not. This is a genuine gravity seating
 attempt: require final physical support, stable orientation and open hands,
 not transient proximity while falling. Do not change checker thresholds.
 First probe standard48, then random47 if supported. No new panel/source freeze.
+
+## Upright release-height compatibility probe
+
+The upright-table screen has34–36 endpoint pairs but its first24 full plans
+cannot pick; the original clean cup grasp's upright endpoint puts the palm
+near the table. Probe a50 mm release gap over the true upright rest, using
+the release-height pose for endpoint screening and rebuilding the checked
+place plan against the actual ground rest with `release_gap=.05`. This
+preserves the original place verifier's ground target; no widened tolerance
+or forced pose. Full pick, measured re-plan and place paths remain checked.
+Then allow30 stationary steps for a genuine upright rest before the bridge
+pickup. Restrict the initial feasibility test to two centre spots rather than
+repeating the same refused grasp list over a large grid. If this does not
+physically rest upright, stop this mechanism and retain the null.
