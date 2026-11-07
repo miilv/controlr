@@ -332,3 +332,10 @@ omitting it (2136 passed/191 skipped, one failure). Preserve the original
 omitted keyword when seat/lift are legacy; keep the existing regression
 test unchanged. This does not change any seat-on candidate motion. Re-run
 the focused suite and full suite against the integrated source before merging.
+
+Freeze production screen action source **504daaef**: integrated main plus
+legacy-keyword fix,45 focused tests passed. Source fc90c405 was not deployed.
+The original12/cell and first-ten-stable coverage18 screen use source504daaef
+with exactly the registered slow enclosure/rest flags, two concurrent slots
+and fixed settled files. Full integrated local suite starts before dispatch.
+No new fresh-panel id or checker/verifier threshold is changed.
