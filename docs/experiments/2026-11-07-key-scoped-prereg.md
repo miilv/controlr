@@ -264,3 +264,76 @@ entirely on Sonnet. `STOP` was cleared at 02:15 UTC. No row was dropped, and the
 panel, guards and decision rule are unchanged. The 40 KONG Sonnet re-run rows
 sit after the KEY rows and before the remaining tie rows (see the KONG prereg
 amendment). `compute6:~/dojo-data/key-1107/notes.log` records each step.
+
+## Camera verdict — candidate Sonnet panel: DOES NOT PASS
+
+This verdict applies the **7 November score-based rule**, after the lead's
+route correction in `74d9ed80`. All **40 analysed arms / 20 pairs** completed
+with **rc 0**, no missing pairs, no time caps and no unexpected additional
+attempts. The [per-row route audit, input/config checks, pairs, usage and
+source hashes](data/key-scoped/verdict.json) retain the evidence. Snapshot
+SHA256: `47eb18604752ae700bbf1c281b831c1d7bd5c8e73047335fc18982060abbbcc0`.
+
+**Route audit:** every analysed arm has `claude/claude-sonnet-5-5` in its
+`agentic/**/calls.jsonl`, its transcript `start.model`, and the report's
+`agentic[].model`. All 121 logical replies reconcile with call-log and report
+counts/tokens. No analysed route violation was found. The original Luna
+`c6b_insertkeysg_keyAr1b1_100001` is excluded from the paired results and
+Sonnet spend; `c6b_insertkeysg_keyAr1b1_100001__sonnet` supplies that A arm.
+The original attempt is retained only as excluded provenance. Static
+`code.model` / `provenance.json.model` still advertise Luna, and `stream`
+retains KONG from the copied deployment metadata. These are stale labels,
+not the executed route; no route conclusion here relies on queue text or
+those static fields. All frozen RuntimeConfig fields, routed vocabularies,
+code SHA and selected raw/settled/index hashes match the preparation freeze.
+
+Score means/deltas are on 0–100. Score wins/losses use **>=10 points**;
+success flips are shown separately as B-only / A-only.
+
+| cell | pairs | A pooled | B pooled | Δ | success flips (B / A) | score wins / losses (>=10 pts) | successes A / B |
+|---|---|---|---|---|---|---|---|
+| insert_key (gain) | 10 | 23.5 | 23.5 | 0.0 | 1 / 1 | 1 / 1 | 1 / 1 |
+| plug_in_charger (guard) | 5 | 80.0 | 80.0 | 0.0 | 0 / 0 | 0 / 0 | 4 / 4 |
+| stack_blocks (strong guard) | 5 | 100.0 | 100.0 | 0.0 | 0 / 0 | 0 / 0 | 5 / 5 |
+
+- **Gain fails:** n=10 is complete, but delta 0 < +5; score wins 1 < 2×1
+  losses; net score wins 0 < 2. Eight gain pairs are score ties.
+- **Both guards pass:** each delta is 0 >=−5; each has zero success-flip
+  losses and wins, satisfying losses <=wins. Every guard pair is a score tie.
+- **Paired bootstrap 95% CI on the pooled gain:** **[−25.5, +25.5] points**,
+  percentile interval from 10,000 resamples of the ten salted layout pairs,
+  NumPy `default_rng(0)`. The CI is descriptive, not a substitute for the rule.
+- **Spread:** score sample SD A/B is 26.88/26.88 (key), 44.72/44.72 (charger),
+  0/0 (stack); key paired-delta SD is 40.07. The sole gain win is refill-2 /
+  100003 (15→100); the sole loss is refill-1 / 100002 (100→15). Both remain
+  in the panel. Identical guard scores do not imply identical trajectories.
+
+**Write/physics audit applicability:** unchanged from the registered motion
+search/budget classification above. No perception read, belief writer,
+acceptance predicate or schema was added/changed; downstream observations
+and ordinary writes can differ when motion differs. The perception/belief
+write-audit prerequisite is not triggered. No new physics audit was run and
+no audit pass is claimed; camera rc 0 and successful preparation are not a
+physics-audit result.
+
+**Actual reported Sonnet spend:** **121 logical calls** (key 67, charger 26,
+stack 28); **1,725,976 prompt / 84,499 completion / 49,981 reasoning /
+1,419,036 cache-read tokens**. Reasoning/cache counts are reported alongside,
+not added again to completion/prompt. Counts exclude the disclosed Luna
+attempt. Summed analysed episode wall time is 3,160.5 s; summed lane lock
+occupancy is 5,234 s (1.45 lane-hours), excluding inter-job/admission waits.
+
+**Transport retries and 429:** actual recovered retry count is **not
+observable** in these artifacts. `OmniChat` maps `LLMResult` into `ChatReply`
+without `attempts` / `http_status`; transcripts record logical replies, not
+HTTP attempts. All 121 logical replies have no surfaced transport error, and
+no 429/rate-limit failure is logged in their transcripts or captured service /
+job logs. That is **zero surfaced transport failures/429**, not proof of zero
+recovered retries or transient 429s. Failed-attempt usage is not reconstructible.
+Source hashes and the observability limitation are retained in the snapshot;
+retry telemetry and stale static provenance are tracked in BACKLOG.
+
+**Decision:** the scoped lever **does not pass** and is not adopted. Candidate
+and defaults remain unchanged. This fresh candidate-perceiver panel does not
+reproduce the earlier global lever's gain; the earlier global verdict remains
+as registered. No new camera runs or sample expansion are authorized here.
