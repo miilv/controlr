@@ -8,13 +8,14 @@ calls/tokens/spend remain **0/0/$0**. Compute3 driver595.99 cannot run the
 Isaac renderer; the lead must separately assign a compatible rendering host.
 No compute4 access is implied.
 
-The proposed mechanical source is **10f3e0a8**, the strict-transfer bundle in
-[round2h](2026-11-07-laptop-g3-round2h.md). Its fresh G3 panel must first meet
-both the7/10-per-cell headset-credit target and the registered paired gain
-rule. Until complete qualifying results are linked here, this spec remains
-blocked. Earlier development screens are not camera qualification.
+Mechanical qualification is complete on source **10f3e0a8**:
+[round2h](2026-11-07-laptop-g3-round2h.md) runs ten fresh pairs per cell,
+A0.00 ±0.00→B18.00 ±6.32 points in both. Headset credits0/10→9/10 each;
+9 wins/0 losses/1 tie each, full-task successes0. All40 rows valid. Both
+7/10-per-cell and paired-gain rules pass, with no older outcomes pooled.
+This clears only the mechanical prerequisite.
 
-A second, independent blocker is **fresh physical held-pose evidence**. The
+The remaining observer blocker is **fresh physical held-pose evidence**. The
 loaded proof samples object pose while the robot holds, raises and returns
 it. Current cached runtime belief cannot establish that following motion;
 a pose projected from commanded joints or an assumed rigid attachment is

@@ -317,3 +317,26 @@ leave that stream alone, and generate on free8. Two free7/8 physics-only
 settlers use unchanged admissions. Freeze both cell manifests before A/B;
 no policy outcomes yet. Local2200/191 and CI green on pushed source. No
 camera/model calls or board change.
+
+
+## Fresh stopping rule achieved; physical work stopped
+
+Source10f3e0a8, variant21 strictload salt, first ten stable100000–09 each cell,
+same settled bytes. Both cells: A0.00 ±0.00→B18.00 ±6.32 points,
+headset0/10→9/10, W/L/T9/0/1, full-task successes0/0. All40 rows valid;
+20/20 attempts per driverrc0, no exclusions/retries/reserves. Both mechanical
+and paired-gain gates pass. Net+0.30 G3 Average points, board unchanged.
+Both B zeros100005 retained; no retuning after the complete panel.
+
+Archive44 development +40 primary rows, exact30 settled JSON texts/hashes,
+source/config/recipes/admissions/attempts. Random all asset8; standard4x7/
+2x1/5x2, no fresh rare9/10 claim. Earlier panels separate. Stop physical
+experiments; all our physics processes exited, other streams/root3613
+untouched. Deployment296 MB/data43 MB,91 GB free.
+
+Full local2200/191 and72 focused mocks pass; controller/tests unchanged10f.
+All new behavior defaults off. Camera spec mechanical gate met but blocked
+on fresh held-observer provenance and renderer host; projected belief cannot
+count as measured evidence. No camera/model calls or board change. Laptop80
+supported pickup remains open, numeric study retained. Finish PR #413 checks
+and conditional merge, without further physics.

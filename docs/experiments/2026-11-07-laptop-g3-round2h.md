@@ -1,6 +1,78 @@
 # Laptop G3 round 2h — strict-transfer loaded proof
 
-## Development admission completed; fresh panel pending
+## Completed fresh-panel decision
+
+**The requested mechanical stopping rule and paired gain rule both pass.**
+Source **10f3e0a8**, perfect-state G3 mode A, physics only, ten fresh pairs
+per cell. All40 official rows are valid, stable and complete: no episode
+exclusions, retries, reserve replacements or missing meshes. Each A/B pair
+uses identical frozen settled bytes. Earlier panels remain separate.
+
+| Cell | Pairs | A mean ± sample SD /100 | B mean ± sample SD /100 | Headset credits A → B | Score W/L/T | Full successes A/B |
+|---|---:|---:|---:|---:|---:|---:|
+| Standard | 10 | 0.00 ±0.00 | 18.00 ±6.32 | 0/10 →9/10 | 9/0/1 | 0/0 |
+| Random | 10 | 0.00 ±0.00 | 18.00 ±6.32 | 0/10 →9/10 | 9/0/1 | 0/0 |
+
+Paired delta18.00 ±6.32 points in each cell; pooled delta18,18 score wins,
+0 losses,2 ties. Headset-credit flips18/0; full-task success flips0/0.
+Both B rates exceed7/10. Net **+0.30 G3 Average points** at1/120 per cell,
+without camera adoption or board change.
+
+A/B steps median/max: standard60/145 versus280.5/422; random133.5/169 versus
+241.5/338. No primary episode exhausts800 steps. Raw/proven pick entries
+overlap phases; these are actual episode counters, not summed skill steps.
+
+The [frozen manifest](2026-11-07-laptop-g3-round2h-manifest.json),
+[raw archive](2026-11-07-laptop-g3-round2h-results.json) and
+[validated summary](2026-11-07-laptop-g3-round2h-summary.json) retain44
+development plus40 primary rows, all30 exact settled JSON texts/hashes,
+source hashes, profiles, recipes, admissions and attempts. Both drivers
+complete20/20 attempts withrc0. Policy zeros are retained.
+
+## What works and what remains
+
+The bundle combines clear rotation/fixed-orientation carry, geometry-filtered
+full-opening grasps, checked table rest/re-grasp, actual release clearance,
+bounded site retries and a loaded proof only where the original loose rule
+would put down. Original hard rise/30 mm slip limits remain. The
+[diagnosis](2026-11-07-laptop-g3-round2g.md) separates a one-pad pendulum
+(fixed-pivot residual<=0.93 mm) from the earlier97.6 mm carry loss. Two
+unsupported holds follow20 mm raises by19.56/19.69 mm with<=0.62 mm/0.42
+degrees of relative movement. This does not claim a rigid nominal grasp.
+
+Both retained B zeros are100005. Standard rejects26 mm pickups at18.9,
+16.1 and23.5 mm nominal drift, then a21 mm pickup rises0/80 mm and drifts
+98 mm. Random rejects a39 mm pickup at12.2 mm drift, puts it down and has
+no later hang plan. These were inspected only after all40 rows completed,
+for reporting. No retuning or further physical experiment follows.
+
+Fresh coverage: standard asset4 seven times,2 once,5 twice; all ten random
+records are asset8. Older development includes9/10, but this panel does not
+establish fresh rare-shape reliability. The result meets the operational
+target on this registered draw, without selected pooling.
+
+The laptop80-point tier still needs a supported pickup. The
+[tray/rack study](2026-11-07-laptop-g3-round2.md) records a179.3 x125.95 x10.07
+mm closed slab, stand interference for bimanual tray targets, and0/348 left
+versus4/504 right upright endpoints passing native checks. Right reach exists;
+a supported pickup is unproven. The1.09 N/pad ideal friction requirement is
+not a measured force-capacity claim. Closing alone earns0; no laptop panel.
+
+The [camera spec](2026-11-07-laptop-camera-ab-spec.md) remains blocked on a
+real held observer and compatible renderer. Cached/projected belief is not
+physical evidence; this helper lacks a timestamp/provenance contract for
+camera use. No observer is implemented here, no camera jobs/model calls,
+no board change. Physics-only numeric traces replace rendered videos on
+driver595.99. Model calls/tokens/spend **0/0/$0**.
+
+Full local **2200 passed,191 skipped**,1025.96 s;72 focused mocks pass.
+Defaults stay legacy/off. Native refusal, other objects/threaded hooks and
+unchanged tolerant relay execution are covered. Controller/tests remain
+byte-identical to10f throughout this panel; later main integration changes
+research/docs only. All LAPTOP physics jobs exited; other streams/root3613
+untouched. Footprint296 MB deployment +43 MB data,91 GB disk free.
+
+## Development admission completed before primary
 
 All44 registered source10f3e0a8 development episodes complete. Original bank:
 12/12 standard and11/12 random headset credits. Independent coverage:
@@ -197,3 +269,10 @@ settled filename. Refuse malformed or incomplete outcomes for explicit
 adjudication; completed policy zeros are never rerun. The40-row primary
 validation is running. No controller/test changes after source10f, no camera
 or model calls, no board change.
+
+
+## Primary completion
+
+Both drivers finish20/20 official episodes withrc0, no retries or reserves.
+The mechanical target is met; stop physical work. Finish reports, BACKLOG
+and PR checks only. Defaults off, camera spec blocked, board unchanged.
