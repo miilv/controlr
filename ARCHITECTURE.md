@@ -639,5 +639,15 @@ lift. Its scoped joint envelope intersects current bounds with measured bounds;
 original bounds, flags and IK-cache invalidation restore on every exit.
 `belt_target=match` separately selects the matchbelt 125 mm target lift for
 image-container calls; `off` retains 150 mm. Neither changes match-and-pick.
+`belt_first_recover=on` adds a picker-only grasp-family retry, a 24-action
+approach-settle window for riders below 30 mm, a 100 mm pull fallback only
+after an unexecuted no-intercept plan, fixed-wrist Cartesian inset placement
+with attachment-drift guards, and a synchronous
+second-rim loaded lift with measured leveling. Only this contact sequence may
+exclude the held hollow container from target-intercept collision boxes.
+`belt_first_phase=on` reserves the target arm from predicted belt reach after
+75 basket actions and mirrors the holder's end wall and hold position.
+Both switches default off and require the lift-first dispatch; neither alters
+match-and-pick or the legacy lift-first path. The joint profile stays restricted.
 These skills consume the existing WorldState and do not add perception or read
 checker state. A terminal environment signal is left to the driver to grade.

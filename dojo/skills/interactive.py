@@ -863,7 +863,7 @@ def belt_velocity(sk: Skills, labels: list[str], steps: int = 4, max_wait: int =
 
 def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max: int = 600, n_desc: int = 8,
                    n_close: int = 5, h_pre: float = 0.06, lift: float = 0.125, arms=None, ignore=(), pull: float = 0.0,
-                   skip_methods=()):
+                   skip_methods=(), approach_settle: int = 0):
     """A grasp of an object riding the belt: for each arm, the earliest step ``t`` (from now, >= ``t_min``) at which a
     top grasp of the object's predicted pose is reachable with its pre-grasp and lift; the plan tracks the object
     (TCP moving with the belt) through the descent and the close. Returns (arm, t_contact, per-step list from the
@@ -896,19 +896,20 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
         cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.6 and g.method not in skip_methods],
                        key=lambda g: g.score)[:12]
         rel[a] = [(g, g.T[:3, 3] - o.pos, UP) for g in cands]
+    timing = {"approach_settle": approach_settle} if approach_settle else {}
     best = None
     if any(waist_rel.values()):
         best = _intercept_search(sk, label, o, v3, {a: waist_rel.get(a, []) for a in arms}, arms,
-                                 t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull)
+                                 t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull, **timing)
     if best is None:
-        best = _intercept_search(sk, label, o, v3, rel, arms, t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull)
+        best = _intercept_search(sk, label, o, v3, rel, arms, t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull, **timing)
     if best is None:
         # wider than the hand at the top (an ice cream's 104 mm scoop on a 69 mm cone): a level grasp of its waist,
         # approached along the hand's axis while tracking the belt
         rel = {a: [(g, g.T[:3, 3] - o.pos, -g.T[:3, 0]) for g in waist_grasps(sk, o, a)
                    if getattr(sk, "belt_waist_first", "off") != "on" or g.method not in skip_methods][:12]
                for a in arms}
-        best = _intercept_search(sk, label, o, v3, rel, arms, t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull)
+        best = _intercept_search(sk, label, o, v3, rel, arms, t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull, **timing)
     return best
 
 
@@ -946,7 +947,7 @@ def waist_grasps(sk: Skills, o, arm: str, fracs=(0.3, 0.45, 0.6), pitches=(0.0, 
 
 
 def _intercept_search(sk: Skills, label: str, o, v3, rel: dict, arms, t_min, t_max, n_desc, n_close, h_pre, lift,
-                      ignore, pull):
+                      ignore, pull, approach_settle=0):
     """``plan_intercept``'s search over contact times and arms for grasps given in the object's frame
     ({arm: [(grasp, offset from the object, pre-grasp direction)]})."""
     from dojo.skills.kinematics import gap_to_grip
@@ -1004,7 +1005,7 @@ def _intercept_search(sk: Skills, label: str, o, v3, rel: dict, arms, t_min, t_m
                 # the approach from the current joints to the first sample
                 mv = sk.motion.joint(a, sk.ex.q[a], qs[0][1], FAST_RAD, "belt_approach", gripper=go, check=False)
                 n_app = mv.n_steps() if hasattr(mv, "n_steps") else sum(s.n_steps() for s in mv.segments)
-                if n_app > t - n_desc:
+                if n_app + approach_settle > t - n_desc:
                     continue
                 lst = []
                 from dojo.skills.motion import segment_targets
@@ -1066,13 +1067,16 @@ def wrist_look_absent(lr: dict) -> bool:
 
 
 def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, ignore=(), arms=None,
-                   pull: float = 0.0, skip_methods=(), min_rise: float | None = None, planned_intercept=None) -> SkillResult:
+                   pull: float = 0.0, skip_methods=(), min_rise: float | None = None, planned_intercept=None,
+                   approach_settle: int = 0) -> SkillResult:
     """Pick an object off the moving belt: plan an intercept, wait so the approach ends just before the descent,
     approach, then the tracked descent / close / lift (one IK target per env step). Checked by the object's height."""
     w = sk.refresh()
     z0 = float(w.obj(label).pos[2])
+    timing = {"approach_settle": approach_settle} if approach_settle else {}
     plan = (planned_intercept if planned_intercept is not None else
-            plan_intercept(sk, label, v, lift=lift, ignore=ignore, arms=arms, pull=pull, skip_methods=skip_methods))
+            plan_intercept(sk, label, v, lift=lift, ignore=ignore, arms=arms, pull=pull,
+                           skip_methods=skip_methods, **timing))
     if plan is None:
         return SkillResult(False, "belt_pick", "ik_fail", 0, None, note=f"no intercept for {label}")
     a, t, app, track, g, samples, go = plan
@@ -1090,9 +1094,14 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
         app, q_look = look
         wait = max(0, n_desc_start - len(app) - BELT_LOOK_DOWN)
     try:
-        if wait:
-            sk.ex.hold(wait)
+        # Move part of the existing wait after approach; contact phase is unchanged.
+        # Camera wrist-look timing retains its established schedule.
+        lead = min(wait, max(0, approach_settle)) if look is None else 0
+        if wait > lead:
+            sk.ex.hold(wait - lead)
         sk.ex.run_lists({a: app}, name="belt approach")
+        if lead:
+            sk.ex.hold(lead)
         # re-read the object and shift the tracked part by the prediction error (the belt keeps moving)
         w = sk.refresh()
         p_now = w.obj(label).pos.copy()

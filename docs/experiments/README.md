@@ -6,6 +6,8 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [BYIMG R3 reliability](2026-11-07-byimg-g3-r3.md) | Can guarded fixed-wrist carry and phase-aware acquisition stabilize lift-first? | 16 fresh pairs: B-r2 18.75±40.31 (3/16) → B-r3 0±0 (0/16), 0 wins/3 losses; rejected; numeric contact/IK limits |
+| 2026-11-07 | [BYIMG native-5.1 perception spec](2026-11-07-byimg-perception-spec.md) | What must compute6 capture and pass before camera evaluation? | Parked: native image readiness, fixture background and six-label/causal-track gates; 4 GPU-hour allowance; no dispatch |
 | 2026-11-07 | [kong-scoped-retest-prereg](2026-11-07-kong-scoped-retest-prereg.md) | Does scoped kong relocation pass its one fresh-layout re-test under refined audit/parity gates? | Preregistered: 20 kong + 5 imitation parity + 5 stack strong pairs; Sonnet; append after tie; no adoption |
 | 2026-11-07 | [BYIMG lift-first](2026-11-07-byimg-g3-r2.md) | Can a level raised basket support catching and loading? | Fresh 10 pairs: 10→20, 1/10→2/10 success, 2 wins/1 loss; released-target replay confirmed; gate fails |
 | 2026-11-07 | [BYIMG fresh retest](2026-11-07-byimg-g3-r2-retest.md) | Does the unchanged positive lift-first bundle generalize? | 14 fresh pairs: 14.29→21.43, 2/14→3/14 success, 2 wins/1 loss; gate fails; stays off |

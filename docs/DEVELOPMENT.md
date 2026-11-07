@@ -436,6 +436,12 @@ deadline have different startup/overrun semantics; report them explicitly.
   make_kong's stand at the release of the drawn tile. A read or confirm planned AFTER the final placement never runs,
   and the tile was used unread. Read before the final place, on a spot the checker does not score
   (`library.kong_draw_read`'s read spot).
+- **A native success latch does not prove a stable released placement.** For a conveyor
+  container, archive the first latch, the release segment and an independently measured
+  post-chain hold. A development-only continuation may suppress success termination while
+  retaining failure/step-limit stops; label it unscored and keep the official G3 panel on
+  the unmodified native environment. A later read of latched stage count cannot establish
+  current containment or lift. Check the unlatched geometry and report both outcomes.
 - **`classify_mask` needs the arm mask.** The digit / operator margins were calibrated without the crops it refuses:
   masks cut by the image border (`edge`) and masks whose 3-px ring is >= 30 % arm (`robot`, only when `robot=` is
   passed: `~known` of a B1 view or `render.robot_mask`). Without `robot=`, a tile half hidden by the gripper is read

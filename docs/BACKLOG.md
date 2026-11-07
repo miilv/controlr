@@ -321,6 +321,12 @@
   `Dynamic/conveyor/00001`, build its background in a separate frozen calibration set, and validate
   belt foreground and moving rider tracks before camera A/B. compute3 cannot render on driver 595.99;
   do not substitute 6.0 proxy frames or modify its drivers.
+  The parked [compute6 execution spec](experiments/2026-11-07-byimg-perception-spec.md)
+  fixes independent fresh calibration/measurement inputs, native RGB/optional depth capture,
+  image-buffer readiness, exact fixture-key/background provenance, six-label/photo scoring and
+  causal belt-track gates. Reserve one drained camera lane for an estimated four GPU-hours and
+  20 GB; no dispatch or agentic model budget is authorized. A similarly named directory is not
+  evidence of a usable native background; validate its pixels, provenance and runtime selection.
 - [ ] **dojo skills: pick_from_conveyor_by_image, the lift binds** (stream H after C, parked; journal
   2026-10-29-dojo-h95-conveyor-image). On my v15 dev draws C's belt_deposit scores 1/20: 14 episodes end at the lift
   with the target already in the basket. A horizontal hook under the handle bar (`belt_lift` "hook", branch
@@ -341,6 +347,24 @@
   general solution. Carry retention and partial target lifts now bind; all new switches remain off.
   No camera spec/jobs or board change. A future lever needs grasp-family/retry and carry-path evidence
   on fresh layouts, rather than another unchanged-bundle retest.
+  [Round 3](experiments/2026-11-07-byimg-g3-r3.md) rejects the guarded bundle: 16 fresh pairs,
+  B-r2 **18.75±40.31 (3/16)** versus B-r3 **0±0 (0/16)**, 0 wins/3 losses/13 ties.
+  Nine fixed-wrist planners find no inset path; a loaded-lift attempt leaves its bottom 762.2 mm.
+  It separates transient native latches from
+  released stability: skill-only continued R2 100012 ends at 14.3 mm rise, while 100017 stays at 119.7 mm.
+  Fresh target-hold screens are 5/10 initially and 6/10 on the frozen recovery prefix; the adaptive
+  spent-layout 7/10 is not independent evidence. Full squeeze, thin-rider approach settling,
+  a planning-only pull fallback and fixed-wrist inset carry remain default-off. A second rim
+  produces a released native latch on glue but ends with 42.6–50 mm bottom gaps (>40 mm);
+  raising before release reaches an 868 mm bottom which falls 51 mm under load. Horizontal hooks
+  retain 43–103 mm command/actual error after long settling; underside/fork approaches hit native
+  IK or contact-tracking limits. G3's unconditional `planner.solve → finish()` also opens both
+  grippers/homes both arms, undoing a maintained basket hold; direct-skill continuations bypass
+  that cleanup and do not prove a full-controller endpoint. Full-planner R2 100017 reproduces
+  latch 304, but finish+100 holds leaves target rise **-32.1 mm**, basket bottom 758.5 mm,
+  inside=1/lift=0. A future bundle needs a separately
+  guarded final-hold policy. Next: identify blocking contact pairs and establish a rim/handle
+  attachment that withstands load before another fresh comparison. Do not widen joint bounds.
 - [ ] **dojo skills: pick_from_conveyor_by_image, the basket lifted level with the target in it** (stream C, parked;
   journal/2026-10-29-dojo-conveyor-deposit.md). The checker wants the target on the basket's bottom 8 cm above its
   start. A rim pinch holds the basket 40 deg tilted. `belt_deposit` (default off) stops it on the belt, drags it toward
@@ -353,6 +377,11 @@
   photo), even with the `Dynamic_conveyor_00001` background installed. Every episode ends at step 3/700 (integ-c4
   round 2, 7f29156, 4 rows; journal 2026-10-28-dojo-integ-c4-round2 §3).
   BYIMG adds a separately default-off `basket_image` observed-roles route; it creates no objects.
+  The [compute6 readiness spec](experiments/2026-11-07-byimg-perception-spec.md) first distinguishes
+  an absent image buffer from valid RGB with zero detections, audits the exact Dynamic_conveyor_00001
+  background and frozen-fold binding, then tests all six labels and the visually read photo identity.
+  Background repair alone is not assumed to solve the empty record. Keep this parked until camera
+  lanes drain; no proxy substitution, GT belief repair or new model calls.
   On compute6, first record and inspect frame 0 plus an unobstructed board view; require all six roles
   (basket, pictured target, three distractors, photo) with geometry and photo identity evidence.
   Audit why B1 and the agentic record stay empty even with the right background. Test the route on

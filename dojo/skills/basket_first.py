@@ -37,11 +37,11 @@ def profile(sk):
         sk.kin.__dict__.pop("_ik_cache", None)
 
 
-def end_grasps(sk, obj, arm, u):
+def end_grasps(sk, obj, arm, u, side=1):
     gs = G.box_rim_grasps(
         obj, sk.kin, arm, depth=0.012, fracs=(-0.3, -0.1, 0.0, 0.1, 0.3), tilts=(25.0,)
     )
-    gs = [g for g in gs if float((g.T[:2, 3] - obj.center_w[:2]) @ u[:2]) > 0.10]
+    gs = [g for g in gs if side * float((g.T[:2, 3] - obj.center_w[:2]) @ u[:2]) > 0.10]
     perp = np.array([-u[1], u[0]])
     return sorted(gs, key=lambda g: abs(float((g.T[:2, 3] - obj.center_w[:2]) @ perp)))
 
@@ -208,11 +208,22 @@ def lift_first(sk, container, target, velocity, ignore):
     picker = next(a for a in ARMS if a != holder)
     try:
         with profile(sk):
+            from dojo.skills import basket_transfer as transfer
+
+            recover = getattr(sk, "belt_first_recover", "off") == "on"
+            phase = getattr(sk, "belt_first_phase", "off") == "on"
+            if phase:
+                holder, picker = transfer.choose_arms(sk, target, container, velocity, ignore)
             obj = sk.refresh().obj(container)
             if obj.asset.mesh is None:
                 return dict(ok=False, stage="basket", note="no basket mesh")
             initial_R, bottom0 = obj.R.copy(), obj.bottom_z
-            grasps = end_grasps(sk, obj, holder, u)
+            holder_side = 1 if float((sk.kin.base(holder)[:3, 3]
+                                      - sk.kin.base(picker)[:3, 3]) @ u) >= 0 else -1
+            grasps = (
+                end_grasps(sk, obj, holder, u, side=holder_side)
+                if phase else end_grasps(sk, obj, holder, u)
+            )
             rel = {holder: [(g, g.T[:3, 3] - obj.pos, I.UP) for g in grasps]}
             plan = I._intercept_search(
                 sk,
@@ -246,35 +257,42 @@ def lift_first(sk, container, target, velocity, ignore):
             if not result.ok:
                 return dict(ok=False, stage="basket pick", note=result.note)
             mid = 0.5 * (sk.kin.base("left")[:3, 3] + sk.kin.base("right")[:3, 3])
-            xy = (mid[0] + 0.05 * u[0], mid[1] + 0.27)
+            side = holder_side if phase else 1
+            xy = (mid[0] + side * 0.05 * u[0], mid[1] + 0.27)
             ready = False
             for _ in range(4):
                 reached, bottom, tilt = level_hold(
                     sk, container, holder, initial_R, xy, float(mid[2]) + 0.115
                 )
-                ready = reached and bottom > bottom0 + 0.068 and tilt < 28.0
+                required_rise = 0.08 if recover else 0.068
+                ready = reached and bottom > bottom0 + required_rise and tilt < 28.0
                 if ready:
                     break
             if not ready:
                 return dict(
                     ok=False, stage="basket hold", note="no stable elevated hold"
                 )
-            result = I.pick_from_belt(
-                sk,
-                target,
-                velocity,
-                lift=I.target_lift(sk),
-                arms=[picker],
-                ignore=ignore,
-            )
+            if recover:
+                result = transfer.pick_target(sk, target, container, velocity, picker, ignore)
+            else:
+                result = I.pick_from_belt(
+                    sk,
+                    target,
+                    velocity,
+                    lift=I.target_lift(sk),
+                    arms=[picker],
+                    ignore=ignore,
+                )
             if not result.ok:
                 return dict(ok=False, stage="target pick", note=result.note)
             # Load from a lower airborne pose to bring the central release within reach.
             translate(sk, holder, -0.05, "lower in air")
-            result = drop_center(sk, picker, target, container, ignore)
+            result = (transfer.drop_inset(sk, picker, target, container, ignore)
+                      if recover else drop_center(sk, picker, target, container, ignore))
             if not result.ok:
                 return dict(ok=False, stage="target carry/drop", note=result.note)
-            lifted = translate(sk, holder, 0.08, "loaded basket lift", hold=20)
+            lifted = (transfer.lift_loaded(sk, container, target, holder, picker, ignore)
+                      if recover else translate(sk, holder, 0.08, "loaded basket lift", hold=20))
             return dict(
                 ok=lifted,
                 stage="loaded lift",

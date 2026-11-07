@@ -494,6 +494,8 @@ class RuntimeConfig:
     belt_deposit: str = "off"
     belt_lift: str = "off"
     belt_first: str = "off"
+    belt_first_recover: str = "off"
+    belt_first_phase: str = "off"
     belt_target: str = "off"
     # match_and_pick (``interactive._match_round``, ``Skills.belt_confirm_zone``): off (today) | on (a match counts only
     # once it has ridden 10 cm past the downstream arm's home hand, where the head view reads riders whole; that arm
@@ -723,6 +725,8 @@ class RuntimePolicy:
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_lift not in ("off", "braced_hook")
                 or self.cfg.belt_first not in ("off", "on")
+                or self.cfg.belt_first_recover not in ("off", "on")
+                or self.cfg.belt_first_phase not in ("off", "on")
                 or self.cfg.belt_target not in ("off", "match")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
                 or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
@@ -1076,6 +1080,8 @@ class RuntimePolicy:
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.belt_lift = cfg.belt_lift
             sk_.belt_first, sk_.belt_target = cfg.belt_first, cfg.belt_target
+            sk_.belt_first_recover = cfg.belt_first_recover
+            sk_.belt_first_phase = cfg.belt_first_phase
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
             sk_.disc_handover_read = cfg.disc_handover_read
             sk_.kong_draw_read = cfg.kong_draw_read
