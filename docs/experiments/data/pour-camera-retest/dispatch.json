@@ -1,0 +1,85 @@
+{
+  "inserted_utc": "2026-11-07T15:43:21.399695+00:00",
+  "positions_1_based": [
+    9,
+    88
+  ],
+  "new_rows": 80,
+  "existing_rows": 8,
+  "queue_sha256_before": "a83a2027d3c2e94e230e5d3c178fc018efe6c8f34a27f59af42ab8f759a25d36",
+  "queue_sha256_after": "88ddd338fd135332566ff357fde3bfb5ae39cd5079102b5c890d3ed548c56102",
+  "manifest_sha256": "3334e3eba4862f99c7b0f53e40b7e4c52602122445ec13802028406975745218",
+  "prereg_commit": "d956bc00040f10779efe34a4d4c9033239ed6c95",
+  "freeze_commit": "fb3f70db48e176305f8deef3b9c2cd0317c1b3fd",
+  "preserved_old_bytes_and_relative_order": true,
+  "match2_queued_rows_ahead": [
+    "c6b_matchpicksg_m2scrAr1_100006",
+    "c6b_matchpicksg_m2scrBr1_100006",
+    "c6b_matchpicksg_m2scrBr1_100007",
+    "c6b_matchpicksg_m2scrAr1_100007",
+    "c6b_matchpicksg_m2scrAr1_100008",
+    "c6b_matchpicksg_m2scrBr1_100008",
+    "c6b_matchpicksg_m2scrBr1_100009",
+    "c6b_matchpicksg_m2scrAr1_100009"
+  ],
+  "match2_started_names": [
+    "c6b_matchpicksg_m2scrAr1_100000",
+    "c6b_matchpicksg_m2scrAr1_100001",
+    "c6b_matchpicksg_m2scrAr1_100002",
+    "c6b_matchpicksg_m2scrAr1_100003",
+    "c6b_matchpicksg_m2scrAr1_100004",
+    "c6b_matchpicksg_m2scrAr1_100005",
+    "c6b_matchpicksg_m2scrBr1_100000",
+    "c6b_matchpicksg_m2scrBr1_100001",
+    "c6b_matchpicksg_m2scrBr1_100002",
+    "c6b_matchpicksg_m2scrBr1_100003",
+    "c6b_matchpicksg_m2scrBr1_100004",
+    "c6b_matchpicksg_m2scrBr1_100005"
+  ],
+  "match2_done_names": [
+    "c6b_matchpicksg_m2scrAr1_100000",
+    "c6b_matchpicksg_m2scrAr1_100001",
+    "c6b_matchpicksg_m2scrAr1_100002",
+    "c6b_matchpicksg_m2scrAr1_100003",
+    "c6b_matchpicksg_m2scrAr1_100004",
+    "c6b_matchpicksg_m2scrBr1_100000",
+    "c6b_matchpicksg_m2scrBr1_100001",
+    "c6b_matchpicksg_m2scrBr1_100002",
+    "c6b_matchpicksg_m2scrBr1_100003",
+    "c6b_matchpicksg_m2scrBr1_100004"
+  ],
+  "match2_priority_mode": "after remaining MATCH2 rows",
+  "protected_started_pair_rows": [],
+  "preserved_prefix_rows": [
+    "c6b_matchpicksg_m2scrAr1_100006",
+    "c6b_matchpicksg_m2scrBr1_100006",
+    "c6b_matchpicksg_m2scrBr1_100007",
+    "c6b_matchpicksg_m2scrAr1_100007",
+    "c6b_matchpicksg_m2scrAr1_100008",
+    "c6b_matchpicksg_m2scrBr1_100008",
+    "c6b_matchpicksg_m2scrBr1_100009",
+    "c6b_matchpicksg_m2scrAr1_100009"
+  ],
+  "next_unstarted_tie": null,
+  "route_checked_rows": 80,
+  "model": "claude/claude-sonnet-5-5",
+  "estimated_block_lane_s": 19121,
+  "eta": {
+    "active_jobs": [
+      {
+        "name": "c6b_matchpicksg_m2scrBr1_100005",
+        "estimated_remaining_s": 57.60030499999999
+      },
+      {
+        "name": "c6b_matchpicksg_m2scrAr1_100005",
+        "estimated_remaining_s": 208.600305
+      }
+    ],
+    "estimated_first_pour_utc": "2026-11-07T16:09:30.500000+00:00",
+    "estimated_finish_utc": "2026-11-07T19:29:30.500000+00:00",
+    "estimated_block_wall_s": 12000,
+    "startup_cadence_seconds": 150,
+    "prior_match2_mean_s": 359.0
+  },
+  "eta_note": "Rough timing only: original19121 summed lane seconds plus150-second serialized startup cadence (~3h20 block), then preceding/active work. Admission/caps/retries may delay; not an outcome forecast."
+}
