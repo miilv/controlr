@@ -1,0 +1,31 @@
+{
+  "repository": "https://github.com/msannikov03/robot-harness",
+  "commit": "6769a6c5b3df8c55f56b0324cfdf196084b9ec94",
+  "files": [
+    {
+      "path": "skills/pour_bottle/skill_robodojo.py",
+      "git_blob": "2d54a1bdb05164582fb0ffb873dc5fb119b3d52b",
+      "sha256": "71277c68e9ffd5a303ddb158ebefa6681fec8d8b54367390b85b12ca5d5bfc11",
+      "local_body_matches": true
+    },
+    {
+      "path": "skills/pour_bottle_v2/skill_robodojo.py",
+      "git_blob": "f4199ff412713062e7e6a0d041ce595cbbfafe74",
+      "sha256": "9f782527f2cd16f1a6e558b5fe3a5f6b00973c8524423096e6cba2b5c9e03fca",
+      "local_body_matches": true
+    },
+    {
+      "path": "skills/pour_bottle_v5/skill_robodojo.py",
+      "git_blob": "8b43512d9834153ae57b2c49297ac72f0db3aed8",
+      "sha256": "d5605011c6cd53ed53f89e2542eda3df585638b0f1ce87ce0514f6b71234a95a",
+      "local_body_matches": true
+    },
+    {
+      "path": "skills/pour_in_order_v5/skill_robodojo.py",
+      "git_blob": "1e3fb32657515be10e52c6c5c38e920235f7fc25",
+      "sha256": "11396046786fbfe93f0a260556007d6b0fd3f6c6664dadbcf65acf0f1bac289d",
+      "local_body_matches": true
+    }
+  ],
+  "sealed_data_read": false
+}
