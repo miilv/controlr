@@ -3560,7 +3560,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
     # from above and let go 2 cm over it (it settles; the point need only end within a few cm)
     thread = "handle" in handle_tag.lower()
     seat = not thread and getattr(sk, "headset_seat", "off") == "on"
-    carry_rad = HANG_CARRY * (0.5 if thread and getattr(sk, "hang_carry_slow", False) in (True, "on") else 1.0)
+    carry_rad = HANG_CARRY * (0.5 if seat or (thread and getattr(sk, "hang_carry_slow", False) in (True, "on")) else 1.0)
     if not thread:
         hooks = [(i, H, None) for i, H, _ in hooks]
     hooks_by = {h[0]: h for h in hooks}
