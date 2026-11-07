@@ -41,3 +41,22 @@ all IK/collision/physical verification and the existing search/step budgets.
 This is a new bounded-coverage hypothesis motivated by pilot refusals, not an
 individual panel failure. If it finds a pick, record the selected rank/site,
 physical hold and score rather than equating IK pairs with actual coverage.
+
+## Geometry amendment before mesh-table physics probes
+
+The 96-plan probes remain zero: 403 and 389 pick-plan calls across direct,
+high and relay searches on standard 100067/69. Detailed default-budget
+instrumentation on standard 100067/68 identifies the dominant refusal as
+`pick_lift: held object below the table` at the first waypoint (119/120 such
+failures). The current guard uses held OBB corners, even for a sparse headset
+whose empty box corners extend below the support plane. Arm/finger endpoints
+pass, and no joint-stop evidence appears.
+
+Probe an optional **full-mesh** table guard. It may reclassify only that held-
+object table refusal after every arm/finger/obstacle check already passed.
+Use all mesh vertices, retain the existing table tolerance, and conservatively
+check global minimum z whenever the mesh XY bbox overlaps the table; this
+also covers triangles crossing the table with no vertex inside. Missing or
+invalid mesh falls back to the original bbox guard. Record OBB and mesh min z,
+override counts, physical lift/hold and final score on pilot records only.
+No blanket collision-disable, smaller safety margin or unchecked lift is allowed.
