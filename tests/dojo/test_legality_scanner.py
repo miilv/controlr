@@ -103,3 +103,10 @@ def test_legacy_first_call_path_cannot_hide_clean_root_reachability():
     r.pop('clean_reachable')
     r['root'] = 'dojo.general.alias:run'
     assert gate([r], {'old': 1})
+
+
+def test_evaluator_termination_and_historical_log_sources_are_inventoried(tmp_path):
+    p = profile(tmp_path, {'pkg/entry.py': 'def run(env):\n    return env.episode_over(), "logs/answer.json", "Traj/reference.json"\n'})
+    found = A.audit_callgraph(profile=p, names=['make_kong'])
+    assert any('termination feedback surface' in v.why for v in found)
+    assert sum('task data path' in v.why for v in found) == 2

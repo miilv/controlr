@@ -105,7 +105,7 @@ TASK_ACCESSORS = {'task_map', 'label_groups', 'label_candidates', 'instance_rang
                   'scene_keys', 'public_constants', 'task_candidates', 'load_sets', '_placement_prior', 'quota_lists'}
 CHECKER_ATTRS = ("reward_manager", "func_parser", "take_action_cnt", "end_flag", "obs_manager")
 DATA_PATHS = re.compile(r"tasks\.json|task/RoboDojo/(config|tasks)|Eval_Layout|Assets/Traj|\.settled\.json|layout_file|"
-                        r"settled_index")
+                        r"settled_index|(?:^|/)(?:Traj|logs?|runs)(?:/|$)")
 TASK_MODULES = re.compile(r"(^|\.)(tasks?|checkers?|reward(_manager)?|func_parser|eval_layout)($|\.)", re.I)
 
 
@@ -382,6 +382,8 @@ def scan_function(idx: Index, key, rx: re.Pattern) -> list[str]:
                 out.append(f"checker provenance (line {line})")
                 if re.search(r'\d', text):
                     out.append(f"checker-shaped tolerance (line {line})")
+            if re.search(r'\b(?:episode_over|env_end|success_latch|termination_feedback)\b', text):
+                out.append(f'termination feedback surface (line {line})')
             if 'CATEGORY_ATTRIBUTES' in text or ('number_card' in text and 'idx' in text):
                 out.append(f"category-index identity rule (line {line})")
     return out

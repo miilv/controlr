@@ -23,7 +23,7 @@ def category(why):
     for prefix, cat in [('task name', 'task_name'), ('task data', 'task_data'),
                         ('imports task', 'checker_module'), ('task symbol', 'task_vocabulary'),
                         ('task switch', 'task_switch'), ('checker-shaped', 'checker_tolerance'),
-                        ('checker provenance', 'checker_provenance'), ('benchmark composite', 'benchmark_composite'), ('category-index', 'identity_source'),
+                        ('termination feedback', 'termination'), ('checker provenance', 'checker_provenance'), ('benchmark composite', 'benchmark_composite'), ('category-index', 'identity_source'),
                         ('checker / env', 'checker_state'), ('unresolved', 'unresolved')]:
         if why.startswith(prefix):
             return cat

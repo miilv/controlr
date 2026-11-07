@@ -14,7 +14,7 @@ GENERAL = ('dojo/general/', 'dojo/skills/general/', 'dojo/perception/general/', 
 
 
 def controlr_inference(root=ROOT):
-    root = Path(root)
+    root = Path(root).resolve()
     index = sorted(p for base in ('dojo', 'controlr') for p in (root / base).rglob('*.py')
                    if '/legality/' not in str(p))
     roots = ['dojo.skills.planner:plan', 'dojo.skills.planner:solve',

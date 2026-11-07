@@ -63,7 +63,8 @@ comments are review evidence. These counts must not be reported as proven board 
 | identity_source | 3 | 3 |
 | task_vocabulary | 75 | 75 |
 | task_switch | 86 | 65 |
-| task_data | 46 | 46 |
+| task_data | 90 | 87 |
+| termination | 3 | 3 |
 | checker_state | 53 | 51 |
 | benchmark_composite | 6 | 6 |
 
@@ -157,6 +158,7 @@ CSVs (the audit's old line numbers do not match current main).
   pools contaminate that argument (audit §4.4–4.6).
 
 
+
 ## Proposed additions to send back to the partner
 
 All additions extend the shared engine/profile; there is no second call-graph engine.
@@ -172,6 +174,8 @@ All additions extend the shared engine/profile; there is no second call-graph en
   RuntimeConfig task fields, ported variant routing, checker-shaped tolerance
   comments, known loader/accessor symbols, near one-to-one composites and the
   category-index digit rule. Known prompt resources share the same audit rules.
+  Historical logs/Traj paths and evaluator-termination surfaces are also signals;
+  writing logs or transport shutdown alone is not a violation.
 - **Pin scope:** reflective and carrier exemptions match their exact stripped
   source line. One approved reflective call cannot exempt a second dynamic read
   elsewhere in the function. Changed pins are themselves findings.

@@ -18,9 +18,10 @@ import pytest
 from dojo.legality import audit as AU
 from dojo.legality.audit import SENTINEL_TEXT, InstructionRead
 from dojo.legality.audit import InstructionSentinel as Sentinel
-try:
+from importlib.util import find_spec
+if find_spec("dojo.skills.glib") is not None:
     from dojo.skills import glib as G
-except ImportError:
+else:
     G = None
 
 ROOT = Path(__file__).resolve().parents[2]
