@@ -53,3 +53,48 @@ Original hard thresholds,30 stationary/20 mm checked challenge and all native
 checks stay unchanged. Retain source hashes before the first new outcome.
 Source041 jobs continue to completion in their frozen deployment; new H drivers
 wait for the corresponding completed G cell before claiming its slot.
+
+## Conditional fresh paired-panel registration — before generation
+
+Only execute if the complete source10f3e0a8 development screen passes both
+>=9/12 original and>=8/10 independent credits in each cell. Otherwise keep
+this registration unexecuted and continue pilot development. Do not substitute
+source041 rows into this gate. The source041 conditional panel is superseded
+before any generation because of the caller-scope issue above.
+
+Both conditions are perfect-state G3 mode A, physics only, same rule plan,
+800-step task budget and frozen source10f3e0a8. Common hang_cradle=straddle.
+A explicitly sets hang_wide=off, seat=off, carry/grasp/retry/lift/hold=legacy,
+table=bbox, stage=off. B is the exact registered wide/clear+loaded bundle:
+hang_wide=on, seat=on, carry=staged, grasp=cups, table=mesh, stage=mesh_clear,
+retry=sites, lift=slow, hold=loaded. No laptop route, model call or belief noise.
+
+Generate previously unused root-namespace ids **100000–14**, v15 **variant21**,
+salt `laptop-round2h-strictload-2026-11-07-88c48b74`, in each cell. Preflight
+refuses any existing raw/settled record. Neither variant19 nor20 was drawn;
+this is source correction before generation, not a salt reroll after outcomes.
+Settle each once, select first ten stable ids ascending before policy outcomes,
+retain later stable records as infrastructure reserves only. Freeze BOTH cell
+manifests and layout/source hashes before launching either condition. Each
+pair uses identical settled bytes in A/B; assert hashes before every job.
+No id>=100100, sealed source, renderer or camera output.
+
+Complete ten pairs/cell (40 valid rows), alternating A/B order by selected
+index. Single-episode7200 s ceilings preserve the controller's800 steps.
+Use only our light2/light8 slots, at most two actual8G/600% scopes, who/GPU
+before batches and <=24576 MiB used VRAM/>=10GB disk admission for each job.
+Record every attempt. Confirmed external process/driver/OOM or pre-action
+reset failures may retry the identical pair once, then use the next stable
+reserve with both arms. Do not replace completed policy no-plans, slips,
+place misses, budget failures or action-induced simulation failures. Missing
+official score after policy failure means incomplete panel, not an invented0.
+
+Report n/exclusions, A/B actual mean/sample SD on0–100, headset-tier credits,
+full-task successes and score wins/losses/ties/success flips per cell. Keep
+all earlier candidates/panels separate, no selected pooling or tuning from
+individual fresh-panel failures. Mechanical stopping rule: **B>=7/10 headset
+credits EACH cell**. Separate real-gain gate: pooled B−A>=5 points, score wins
+(>=10-point increase)>=2*losses and>=2 net wins. A real gain authorizes only
+a prospective camera spec with fresh physical held-observation prerequisites;
+no camera dispatch or board change. If the mechanical target fails, retain
+this null and resume pilot work without rerolling this salt.
