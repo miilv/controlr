@@ -87,3 +87,20 @@ physical verifier. A too-low/wide pose must be refused, never exempted. Test
 standard48 and random47 first; screen the other failures only if supported.
 This is an enclosure-clearance test, not a larger hold/slip tolerance. Source
 remains d8387f61 plus a retained probe recipe until production proof.
+
+## Enclosure and actual-support rest extension
+
+The full-opening standard48 probe changes right26 mm pickup drift14.9→6.6 mm
+(clean), followed by1.1 mm staging carry shift. Left26 mm remains loose8.4 mm;
+a subsequent41 mm grasp opened by its nominal width is loose23.9 mm. Extend
+full88 mm opening to the complete cup-mode bank, retaining all native checks.
+
+Also probe an actual-mesh support target for the staging leg only. The current
+bbox rest leaves sparse-headset mesh15–23 mm over the table; random47's release
+falls15.5 mm and tilts11.5 deg (another repeat misses xy by17.6 mm). Set the
+desired root z from the minimum of all transformed mesh vertices plus3 mm
+clearance, rather than empty bbox corners; retain the original release gap,
+full-mesh table tolerance and hand/scene validators. Missing/invalid geometry
+retains the old target. This is a planned pose, never a forced scene pose.
+Compare full-bank opening alone on standard48 and full-bank opening + mesh rest
+on random47; then cross-check any physical improvement. No verifier relaxation.
