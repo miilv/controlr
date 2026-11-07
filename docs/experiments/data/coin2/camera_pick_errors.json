@@ -1,0 +1,239 @@
+{
+ "source": "COIN2: camera disc re-test 1107 (both arms), first edge-pick consume vs physics-replay GT; dev only",
+ "n": 32,
+ "dropped": [
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain3_100001",
+   "step": 130,
+   "yaw_deg": 35.45,
+   "dn_mm": -27.71,
+   "du_mm": 684.9
+  }
+ ],
+ "samples": [
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain1_100000",
+   "step": 61,
+   "yaw_deg": 14.99,
+   "dn_mm": 3.08,
+   "du_mm": 0.91
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain1_100001",
+   "step": 47,
+   "yaw_deg": 3.21,
+   "dn_mm": 0.62,
+   "du_mm": 0.92
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain1_100002",
+   "step": 62,
+   "yaw_deg": 16.58,
+   "dn_mm": -0.83,
+   "du_mm": 3.1
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain1_100003",
+   "step": 57,
+   "yaw_deg": -0.57,
+   "dn_mm": -0.25,
+   "du_mm": -0.02
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain1_100004",
+   "step": 71,
+   "yaw_deg": 9.82,
+   "dn_mm": 10.03,
+   "du_mm": 1.98
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain2_100000",
+   "step": 72,
+   "yaw_deg": -1.63,
+   "dn_mm": -0.8,
+   "du_mm": 0.24
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain2_100002",
+   "step": 63,
+   "yaw_deg": -9.29,
+   "dn_mm": -0.21,
+   "du_mm": 1.22
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain2_100004",
+   "step": 62,
+   "yaw_deg": -1.17,
+   "dn_mm": 4.23,
+   "du_mm": -2.19
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain3_100002",
+   "step": 56,
+   "yaw_deg": 10.06,
+   "dn_mm": 1.28,
+   "du_mm": 1.51
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain3_100003",
+   "step": 60,
+   "yaw_deg": -11.52,
+   "dn_mm": -0.35,
+   "du_mm": 0.29
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain3_100004",
+   "step": 61,
+   "yaw_deg": -11.28,
+   "dn_mm": -1.47,
+   "du_mm": 0.57
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain4_100001",
+   "step": 71,
+   "yaw_deg": -17.17,
+   "dn_mm": 4.09,
+   "du_mm": -1.55
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain4_100002",
+   "step": 60,
+   "yaw_deg": -2.04,
+   "dn_mm": 0.58,
+   "du_mm": 0.17
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain4_100003",
+   "step": 53,
+   "yaw_deg": 1.45,
+   "dn_mm": 1.37,
+   "du_mm": 0.54
+  },
+  {
+   "episode": "c4b_deposit_coin_discretAr1_discgain4_100004",
+   "step": 61,
+   "yaw_deg": -4.62,
+   "dn_mm": -0.37,
+   "du_mm": 0.78
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain1_100000",
+   "step": 57,
+   "yaw_deg": -1.2,
+   "dn_mm": -0.05,
+   "du_mm": 2.46
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain1_100001",
+   "step": 57,
+   "yaw_deg": -0.16,
+   "dn_mm": 0.67,
+   "du_mm": 1.26
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain1_100002",
+   "step": 62,
+   "yaw_deg": 16.57,
+   "dn_mm": -0.43,
+   "du_mm": 3.72
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain1_100003",
+   "step": 57,
+   "yaw_deg": -0.76,
+   "dn_mm": -0.45,
+   "du_mm": -0.27
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain1_100004",
+   "step": 44,
+   "yaw_deg": -1.86,
+   "dn_mm": 1.13,
+   "du_mm": 1.13
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain2_100000",
+   "step": 60,
+   "yaw_deg": 1.44,
+   "dn_mm": -0.89,
+   "du_mm": 0.2
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain2_100002",
+   "step": 64,
+   "yaw_deg": -6.62,
+   "dn_mm": 0.49,
+   "du_mm": 0.88
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain2_100003",
+   "step": 71,
+   "yaw_deg": 1.97,
+   "dn_mm": 2.03,
+   "du_mm": 0.69
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain2_100004",
+   "step": 59,
+   "yaw_deg": -5.29,
+   "dn_mm": -9.21,
+   "du_mm": -12.15
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain3_100000",
+   "step": 64,
+   "yaw_deg": 5.2,
+   "dn_mm": 0.73,
+   "du_mm": 1.59
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain3_100002",
+   "step": 56,
+   "yaw_deg": 7.76,
+   "dn_mm": 1.38,
+   "du_mm": 1.08
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain3_100003",
+   "step": 60,
+   "yaw_deg": -7.82,
+   "dn_mm": -0.26,
+   "du_mm": 0.06
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain3_100004",
+   "step": 61,
+   "yaw_deg": -15.93,
+   "dn_mm": -1.67,
+   "du_mm": 0.26
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain4_100001",
+   "step": 57,
+   "yaw_deg": -0.16,
+   "dn_mm": 0.54,
+   "du_mm": 0.23
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain4_100002",
+   "step": 60,
+   "yaw_deg": -1.3,
+   "dn_mm": 0.73,
+   "du_mm": 0.11
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain4_100003",
+   "step": 53,
+   "yaw_deg": 0.82,
+   "dn_mm": 1.27,
+   "du_mm": 0.39
+  },
+  {
+   "episode": "c4b_deposit_coin_discretBr1_discgain4_100004",
+   "step": 61,
+   "yaw_deg": -1.14,
+   "dn_mm": -0.41,
+   "du_mm": 0.64
+  }
+ ]
+}
