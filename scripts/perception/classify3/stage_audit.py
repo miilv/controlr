@@ -187,7 +187,7 @@ def audit_row(row_dir: str, layout_root: str, replay_dir: str | None) -> dict:
                        "high_retry": "high_retry" in x, "why": x.get("why")})
     phantoms = [b for b in bel0 if b not in gt_of_belief]
     return {"row": os.path.basename(row_dir.rstrip("/")), "task": ep["task"], "layout_id": lid, "score": ep["score"],
-            "replay_score": (rp or {}).get("score"), "steps": ep["steps_used"], "instruction": instr,
+            "replay_score": (rp or {}).get("score"), "steps": ep["steps_used"], "instruction": instr, "target_source": target_source,
             "n_gt": len(gt0), "n_belief0": len(bel0), "found0": sum(r["found0"] for r in inst),
             "cat_ok0": sum(r["cat_ok0"] for r in inst), "exact_ok0": sum(r["exact_ok0"] for r in inst),
             "phantoms0": [(b, bel0[b]["key"]) for b in phantoms], "lifted": sum(bool(r.get("lifted")) for r in inst),

@@ -16,7 +16,6 @@ record (``records.initial``) for a reproduction check. Our slices only (100000-0
 from __future__ import annotations
 
 import argparse
-import glob
 import gzip
 import json
 import os
