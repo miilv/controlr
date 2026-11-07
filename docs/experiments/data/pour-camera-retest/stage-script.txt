@@ -1,0 +1,34 @@
+import dataclasses,datetime,hashlib,json,pathlib,sys
+H=pathlib.Path.home();O=H/'dojo-data/pour-cam';R=O/'retest';P=H/'dojo-integ-c6-066e9c8f';sys.path.insert(0,str(P))
+from dojo.runtime.eval import build_config
+from dojo.simlab.paths import is_our_measurement_id
+def dg(p):
+ p=pathlib.Path(p);return {'path':str(p),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
+assert (R/'prep.done').exists()
+D=json.loads((R/'design.json').read_text());F=json.loads((R/'pre-generation-freeze.json').read_text());S=json.loads((R/'selection.json').read_text());scope=json.loads((R/'scope-proof.json').read_text())
+checks=F['unchanged_dependencies']+scope['common_writer_implementation']+scope['source_read_sites'];assert all(dg(x['path'])['sha256']==x['sha256'] for x in checks)
+old=json.loads((O/'replacement-manifest.json').read_text());oldhash={f['sha256'] for f in old['files']}
+t=' '.join(l for l in (R/'candidate.txt').read_text().splitlines() if not l.startswith('#')).split();base=json.loads(t[t.index('--config')+1]);preset=t[t.index('--preset')+1]
+rows=[];schedule=[];files=[]
+for c in D['cells']:
+ task=c['task'];ids=S['selected'][task];assert ids==sorted(ids) and len(ids)==c['pairs']
+ ld=R/c['block']/'simlab/layouts'/task;raw=json.loads((ld/'raw_index.json').read_text());idx=json.loads((ld/'settled_index.json').read_text())
+ files.extend(dg(p) for p in sorted(ld.glob('*.json')))
+ for i,lid in enumerate(ids):
+  assert is_our_measurement_id(lid) and raw[str(lid)]['status']=='raw ok' and idx[str(lid)]['status']=='ok'
+  for suffix in ['', '.settled']:
+   p=ld/f'{lid}{suffix}.json';md=json.loads(p.read_text())['_simlab'];assert md['id']==lid and md['task']==task and md['seed_salt']=='sha256:'+c['salt_sha256'][:16];assert dg(p)['sha256'] not in oldhash
+  for arm in ('AB' if i%2==0 else 'BA'):
+   cfg={**base,**D[arm+'_overrides']}
+   if task=='pour_liquid_into_cup':cfg['ported_pour_pace']='v1'
+   resolved=dataclasses.asdict(build_config(preset,cfg));assert resolved==scope['resolved'][task][arm]
+   name=f'c6b_{c["slug"]}_pourrt{arm}r1_{lid}';toks=t.copy();toks[toks.index('--config')+1]=json.dumps(cfg,separators=(',',':'));toks=['--repo',str(P)]+toks+['--setenv','AGENTIC_MODEL='+D['model'],'--setenv','DOJO_DATA='+str(R/c['block']),'--task',task,'--renderer','isaac51','--episode-max-minutes','25','--max-minutes','25','--layouts',str(ld/f'{lid}.settled.json')]
+   assert all(not any(ch.isspace() for ch in z) for z in toks);assert toks.count('AGENTIC_MODEL='+D['model'])==1
+   rows.append(name+' '+' '.join(toks));schedule.append({'name':name,'task':task,'role':c['role'],'id':lid,'pair_index':i,'arm':arm,'data':str(R/c['block']),'layout':str(ld/f'{lid}.settled.json'),'runtime':resolved,'model':D['model']})
+assert len(rows)==80 and len({x['name'] for x in schedule})==80
+for i in range(0,80,2):
+ a,b=schedule[i:i+2];assert a['layout']==b['layout'] and {a['arm'],b['arm']}=={'A','B'}
+ if a['task']=='pour_liquid_into_cup':assert a['runtime']==b['runtime'] and a['runtime']['ported_pour_pace']=='v1'
+q=R/'queue-retest.txt';q.write_text('\n'.join(rows)+'\n')
+M={'created_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'code':D['code'],'deployment':str(P),'model':D['model'],'prereg_commit':(R/'prereg-commit.txt').read_text().strip(),'design':dg(R/'design.json'),'pre_generation':dg(R/'pre-generation-freeze.json'),'scope_proof':dg(R/'scope-proof.json'),'selection':dg(R/'selection.json'),'queue':dg(q),'schedule':schedule,'files':files,'selected':S['selected'],'attempts':S['attempts'],'operational_scripts':[dg(R/n) for n in ['prepare.py','freeze.py','stage.py','insert.py','route-monitor.py']],'pairs':40,'camera_rows':80,'retest_number':1,'model_calls_by_preparation':0,'adoption_write_audit':'N/A motion-only by source/resolved settings proof; per-row inventory required; observed count/output differences are not a trigger','supplementary_audit_instrument':D['code'],'single_cup_gate':'identical complete resolved config/skill arguments; every-row zero budget actions and lever writes; no score gate','strong_guard':'Xylophone ordinary score/flip gate'}
+(R/'manifest.json').write_text(json.dumps(M,indent=2)+'\n');print('FROZEN',dg(R/'manifest.json')['sha256'],'80 rows, no old input hashes')

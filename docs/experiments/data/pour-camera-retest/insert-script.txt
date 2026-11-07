@@ -1,0 +1,56 @@
+import datetime,fcntl,hashlib,json,os,pathlib,re,sys
+H=pathlib.Path.home();R=H/'dojo-data/pour-cam/retest';S=H/'dojo-integ-c6-state';Q=S/'queue2.txt'
+def pair(n):
+ m=re.match(r'^(c6b_[^_]+_tie)([AB])([^_]+)_([0-9]{6})(?:(?:[.]|__retry).*)?$',n)
+ if '_tie' in n:assert m,'Unrecognized tie pair '+n
+ return (m[1],m[3],m[4]) if m else None
+def match(n):return '_m2scr' in n or ('match2' in n.lower() and 'scr' in n.lower())
+def locate(lines,started):
+ names=[l.split()[0] for l in lines];protected=[i for i,n in enumerate(names) if pair(n) and pair(n) in started];floor=max(protected,default=-1)+1;ms=[i for i,n in enumerate(names) if match(n)]
+ at=max(ms[-1]+1,floor) if ms else next((i for i in range(floor,len(names)) if pair(names[i]) and pair(names[i]) not in started),len(names))
+ assert not any(pair(n) and pair(n) not in started for n in names[:at]),'Unstarted tie precedes insertion/MATCH2: cannot preserve order and requested priority'
+ return at,protected,ms
+if '--self-test' in sys.argv:
+ t=lambda a,i:f'c6b_imitatesg_tie{a}r1pb1_{i} args\n'
+ ls=[t('B',100001),'c6b_matchpicksg_m2scrAr1_100000 args\n','c6b_matchpicksg_m2scrBr1_100000 args\n',t('A',100002)]
+ assert locate(ls,{pair(t('A',100001).split()[0])})[0]==3
+ assert locate([t('B',100001),t('A',100002)],{pair(t('A',100001).split()[0])})[0]==1
+ assert locate([t('A',100002),t('B',100002)],set())[0]==0
+ assert pair('c6b_imitatesg_tieBr1pb1_100001__retry')==pair(t('A',100001).split()[0])
+ print('PASS MATCH2 ordering, started mate, no-MATCH2 fallback, retry identity');sys.exit()
+def sha(p):return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+M=json.loads((R/'manifest.json').read_text());new=(R/'queue-retest.txt').read_bytes();names={a['name'] for a in M['schedule']};assert len(names)==80 and len(new.splitlines())==80 and sha(R/'queue-retest.txt')==M['queue']['sha256'];assert not (R/'dispatch.json').exists();assert (R/'freeze-commit.txt').exists()
+sys.path.insert(0,M['deployment']);from dojo.simlab.paths import is_our_measurement_id
+for a,l in zip(M['schedule'],new.decode().splitlines()):
+ t=l.split();assert t[0]==a['name'] and t.count('AGENTIC_MODEL='+M['model'])==1 and is_our_measurement_id(a['id']);assert sha(a['layout'])==next(f['sha256'] for f in M['files'] if f['path']==a['layout'])
+with (S/'wave-start.lock').open('a') as admission:
+ fcntl.flock(admission,fcntl.LOCK_EX)
+ with (S/'queue2.txt.lock').open('a') as lock:
+  fcntl.flock(lock,fcntl.LOCK_EX);starts=set();done=set();start_time={};timings=[]
+  for p in S.glob('lane2_heavy*.log'):
+   for l in p.read_text().splitlines():
+    m=re.match(r'^\S+ \[[^]]+\] (start|done) (\S+)',l)
+    if m:
+     (starts if m[1]=='start' else done).add(m[2])
+     if m[1]=='start':start_time[m[2]]=l.split()[0]
+     else:
+      dt=re.search(r'rc=0 lock (\d+) s',l)
+      if dt:timings.append((m[2],int(dt[1])))
+  assert not names.intersection(starts)
+  before=Q.read_bytes();assert not before or before.endswith(b'\n');ls=before.decode().splitlines(keepends=True);assert not names.intersection(l.split()[0] for l in ls)
+  at,protected,ms=locate(ls,{pair(n) for n in starts if pair(n)})
+  after=b''.join(l.encode() for l in ls[:at])+new+b''.join(l.encode() for l in ls[at:]);assert b''.join(l for l in after.splitlines(keepends=True) if l.split()[0].decode() not in names)==before
+  (R/'queue-before.txt').write_bytes(before);tmp=S/'queue2.pour-retest.tmp';tmp.write_bytes(after);os.replace(tmp,Q);(R/'queue-after.txt').write_bytes(after)
+  now=datetime.datetime.now(datetime.timezone.utc)
+  mt=[dt for name,dt in timings if match(name)][-20:];tt=[dt for name,dt in timings if pair(name)][-20:]
+  def duration(name):return sum(mt)/len(mt) if match(name) and mt else sum(tt)/len(tt) if pair(name) and tt else 360 if match(name) else 810
+  active=[]
+  for p in S.glob('job.heavy*'):
+   name=p.read_text().strip()
+   if name in start_time:
+    elapsed=(now-datetime.datetime.fromisoformat(start_time[name].replace('Z','+00:00'))).total_seconds();active.append({'name':name,'estimated_remaining_s':max(0,duration(name)-elapsed)})
+  prefix_s=max((sum(duration(l.split()[0]) for l in ls[:at])+sum(x['estimated_remaining_s'] for x in active))/2,len(ls[:at])*150)
+  block_wall_s=max(19121/2,80*150)
+  eta={'active_jobs':active,'estimated_first_pour_utc':(now+datetime.timedelta(seconds=prefix_s)).isoformat(),'estimated_finish_utc':(now+datetime.timedelta(seconds=prefix_s+block_wall_s)).isoformat(),'estimated_block_wall_s':block_wall_s,'startup_cadence_seconds':150,'prior_match2_mean_s':sum(mt)/len(mt) if mt else None}
+  receipt={'inserted_utc':now.isoformat(),'positions_1_based':[at+1,at+80],'new_rows':80,'existing_rows':len(ls),'queue_sha256_before':hashlib.sha256(before).hexdigest(),'queue_sha256_after':hashlib.sha256(after).hexdigest(),'manifest_sha256':sha(R/'manifest.json'),'prereg_commit':M['prereg_commit'],'freeze_commit':(R/'freeze-commit.txt').read_text().strip(),'preserved_old_bytes_and_relative_order':True,'match2_queued_rows_ahead':[ls[i].split()[0] for i in ms],'match2_started_names':sorted(n for n in starts if match(n)),'match2_done_names':sorted(n for n in done if match(n)),'match2_priority_mode':'after remaining MATCH2 rows' if ms else 'MATCH2 already admitted/drained' if any(match(n) for n in starts) else '20 MATCH2 rows retain priority ahead of POUR; no dummy jobs','protected_started_pair_rows':[ls[i].split()[0] for i in protected],'preserved_prefix_rows':[l.split()[0] for l in ls[:at]],'next_unstarted_tie':ls[at].split()[0] if at<len(ls) else None,'route_checked_rows':80,'model':M['model'],'estimated_block_lane_s':19121,'eta':eta,'eta_note':'Rough timing only: original19121 summed lane seconds plus150-second serialized startup cadence (~3h20 block), then preceding/active work. Admission/caps/retries may delay; not an outcome forecast.'}
+  (R/'dispatch.json').write_text(json.dumps(receipt,indent=2)+'\n');print(json.dumps(receipt,indent=2))
