@@ -96,3 +96,16 @@ profile and screen both full original12 and coverage18 ten/cell again. Admission
 remains>=9/12 original and>=8/10 coverage in each cell. Fresh panel needs a
 separate salt/source registration after that gate; all unused ids remain
 untouched. No change to frozen3866 screen or its null decision.
+
+Standard31 prototype earns20 in304 steps: its14.1 mm nominally loose hold
+passes the unsupported proof, measured carry shifts28.1 mm but the measured
+tail/release leaves the bridge23 mm from the cradle. This is a successful
+physical hang, not a rigid-attachment claim. Standard30's first hold passes
+the proof but its measured attachment has no checked place; it is correctly
+put down rather than carried on the nominal plan. Its remaining attempts
+continue unchanged. To avoid mistaking one rescued site for generality,
+add the two other already-failed independent standard pilots34 and38 as
+separate loaded-proof prototypes, on the freed light2 slot. Preserve30's
+outcome regardless. Any integration will be justified as a measured loaded
+proof, not a guaranteed rescue of30, and must pass the full registered
+original12/coverage10 screen before touching any unused layout.
