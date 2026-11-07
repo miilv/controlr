@@ -1520,13 +1520,69 @@
     },
     "pour_balls_into_vase": {
       "dimension": "Precision",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "58ab5732cd67aaa71ce49aa30e2f9165c0edd450145ac9fabfd13173df4db4af",
+          "official_score": 100.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T23224695ec96Z_pour_balls_into_vase",
+          "steps": 188,
+          "success": true,
+          "task": "pour_balls_into_vase",
+          "wall_s": 44.817744951928034
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "bfb83e9ea66e8c6e2525e492c172d8441d63b6c8d28057b5ac446004de2f5059",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T23224695ec96Z_pour_balls_into_vase",
+          "steps": 183,
+          "success": true,
+          "task": "pour_balls_into_vase",
+          "wall_s": 37.62163792201318
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "0040b955903ef8a510dd6192f13b7daa00b1be944c262025bc421dc430357311",
+          "official_score": 100.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T23224695ec96Z_pour_balls_into_vase",
+          "steps": 201,
+          "success": true,
+          "task": "pour_balls_into_vase",
+          "wall_s": 35.14926693995949
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "49735f70c501555085ad6284b4dcf4025b54a32199f59722791818a90ae4c92a",
+          "official_score": 100.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T23224695ec96Z_pour_balls_into_vase",
+          "steps": 208,
+          "success": true,
+          "task": "pour_balls_into_vase",
+          "wall_s": 36.03597039100714
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "0c1a32cb7294e9806b7fecc74fd8ae75f70c8c7757be9a9461f0b3f92fc3588f",
+          "official_score": 100.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T23224695ec96Z_pour_balls_into_vase",
+          "steps": 253,
+          "success": true,
+          "task": "pour_balls_into_vase",
+          "wall_s": 42.48090401501395
+        }
+      ],
+      "n": 5,
+      "official_score": 100.0,
+      "score_sd": 0.0,
+      "steps": 1033,
+      "successes": 5,
+      "wall_s": 196.1055242199218,
       "weight": 0.025
     },
     "pour_by_language": {
