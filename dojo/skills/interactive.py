@@ -565,9 +565,12 @@ def put_in_open(sk: Skills, label: str, container: str, relay_xy=None, carry: st
                     return r
         return plans
     if far is not None:
-        sk.log(f"[put_in_open] {label}: far side, {far} first (cross-carry, then a table handover)")
+        # the container's arm first with centred grasps only (no extra steps when it can), a table handover by the side
+        # arm when it cannot, or first for phones; G3 100006 (all five of ours on the right): a handover for every
+        # object ran the 5th one out of steps, and the side arm never had a plan straight into the far basket
+        sk.log(f"[put_in_open] {label}: far side ({far})")
         if o.category not in CROSS_TRIES_KEYS:
-            r = transfer([far])                 # the side arm carries it across itself
+            r = transfer(near[:1])
             if not isinstance(r, SkillResult) or r.ok or r.status not in ("ik_fail", "collision"):
                 return r
         giver = far

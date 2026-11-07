@@ -504,9 +504,9 @@ class RuntimeConfig:
     # row, dated by the first: a single read under the demonstrator's arm or its shadow is not a departure) | elim (all but
     # one of the demonstrator's objects read leaving: the last one goes last, by elimination) | persist_elim (both)
     imitate_order: str = "v1"
-    # imitate_carry: v1 | reach (an object on the far side of the table, REACH_MARGIN nearer the other arm, goes by that
-    # arm: across itself, else a table handover first (phones), centred grasps only at long reach; camera 100021 / 100009:
-    # left picks at x = 0.25-0.30 with grasps 45 mm off centre slipped)
+    # imitate_carry: v1 | reach (an object on the far side of the table, REACH_MARGIN nearer the other arm: the
+    # container's arm with centred grasps only, else a table handover by the side arm (phones: the handover first);
+    # camera 100021 / 100009: left picks at x = 0.25-0.30 with grasps 45 mm off centre slipped)
     imitate_carry: str = "v1"
     # imitate_retry: v1 | refind (up to RETRY_TRIES puts per twin while RETRY_MIN_STEPS remain; after a failed put the
     # hands rise before going home, and a belief moved > 40 mm off the twin's start spot is re-checked there through
