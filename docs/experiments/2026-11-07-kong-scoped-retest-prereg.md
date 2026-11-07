@@ -205,3 +205,33 @@ No speed escalation, cherry-picking or n reduction is authorized.
 The gain-cell, guard and decision-rule sections remain unchanged. If the
 imitation demo failure rate exceeds 30% of attempted demo inputs, record the
 input-validity landmine in BACKLOG with numerator/denominator and reasons.
+
+## Preparation freeze (before queue insertion)
+
+All **20 gain / 5 parity / 5 strong** identities are prepared and frozen on
+`ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e`. Gain ids **100050–100069** and
+stack ids **100050–100054** all passed unchanged two-pass settling without
+refill. Imitation ids **100051–100055** pass both settling and standard demo
+validation at 1.25. Rejected **100050** is retained with all four normal order
+tries, the unstable flag and 3/5 supports placed. Demo failure rate **1/6
+(16.7%)** does not exceed the registered 30% BACKLOG threshold.
+
+[Manifest](data/kong-scoped-retest/manifest.json), SHA256
+`844d0ea503d8be6cf3aaf879a711f6eb4144fe813f0e053e7cd0a95a2a360a70`.
+It freezes all attempted raw/settled records, validation indices, five valid
+demos, every failed id/reason, all 60 planned rows and AB/BA order.
+[Shared pins](data/kong-scoped-retest/shared-freeze.json) retain both design
+versions, prereg/amendment commits, deployment source hashes, current package
+parity, catalogue/background/calibration/checkpoint hashes and operational
+scripts. Current packages have `diff={}`; all eleven checked deployment source
+files match the frozen commit. Nine focused scoping tests pass on that exact
+deployment. [Effective-config/Skills snapshots](data/kong-scoped-retest/parity-proof.json)
+match for both guards; the required post-collection proof remains pending.
+[All input selection attempts](data/kong-scoped-retest/selection.json).
+
+The instrument PR is not yet published/merged at this freeze. The registered
+merge-before-first-start rule and pinned fallback are unchanged. The public
+metadata recorder is healthy and will put the applied instrument/merge SHA in
+`~/dojo-data/kong-retest-1107/audit-instrument.json` and the remote dispatch
+receipt before the verdict; it never reads episode outcomes. No re-test row
+has yet been queued, and no camera verdict is made here.
