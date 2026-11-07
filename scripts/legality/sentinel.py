@@ -6,19 +6,16 @@ from pathlib import Path
 import sys
 import threading
 
-from scripts.legality.scan import SCHEMA_NAMES
+from dojo.legality.audit import InstructionRead, InstructionSentinel, SENTINEL_TEXT, TASK_ACCESSORS
+
+SCHEMA_NAMES = TASK_ACCESSORS
+ForbiddenRead = InstructionRead
 
 
-class ForbiddenRead(AssertionError):
-    pass
-
-
-class TaskIdentity:
-    """May cross a metadata boundary, but cannot be inspected or used as a key."""
-    def _read(self, *args, **kwargs):
-        raise ForbiddenRead('task identity was inspected')
-    __str__ = __repr__ = __bool__ = __hash__ = __eq__ = __getitem__ = _read
-    __getattr__ = __iter__ = __len__ = __contains__ = __format__ = _read
+class TaskIdentity(InstructionSentinel):
+    """The shared instruction sentinel, used as identity at the outer runtime seam."""
+    def __new__(cls):
+        return str.__new__(cls, SENTINEL_TEXT)
 
 
 @contextmanager

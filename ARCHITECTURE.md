@@ -739,7 +739,9 @@ The lane accounts for the shared GPU process once and verifies its health around
 
 ### Offline inference legality tooling
 
-`scripts/legality/scan.py` parses the repository without importing inference code.
+`dojo/legality/audit.py` is the engine shared with the partner team;
+`scripts/legality/scan.py` formats its report and applies the CI debt ratchet.
+The engine parses the repository without importing inference code.
 Declared planner, supervisor, runtime, perception and registry roots reach local
 callees, dispatch tables and imported globals; known prompt resources are inventoried
 as input roots. Unresolved calls remain explicit review debt. The separate test-only

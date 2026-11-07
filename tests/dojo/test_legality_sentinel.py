@@ -97,3 +97,19 @@ def test_ported_internal_boundary_currently_leaks_instruction(monkeypatch):
     monkeypatch.setattr(robot, 'eef', lambda: {})
     with pytest.raises(ForbiddenRead):
         robot.cmd_obs({'objects': False})
+
+
+@pytest.mark.parametrize('skill', ['stack_objects', 'arrange'])
+def test_explicit_argument_skills_accept_the_shared_instruction_sentinel(monkeypatch, skill):
+    from dojo.legality.audit import sentinel
+    from dojo.skills.skills import GTProvider, Skills
+    from dojo.skills import library
+    env = _env()
+    sk = Skills(env, GTProvider(env, None, instruction=sentinel()))
+    with instruction_only(monkeypatch) as hits:
+        if skill == 'stack_objects':
+            result = library.stack_objects(sk, ['block_0', 'block_1', 'block_2'])
+        else:
+            result = library.arrange(sk, [('place', 'block_0', 'block_1')])
+    assert not hits
+    assert result is not None
