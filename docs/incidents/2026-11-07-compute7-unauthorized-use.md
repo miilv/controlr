@@ -29,3 +29,11 @@ a STOPPED note was left in `~/dojo-data/rsi-repro`.
 - Allowed boxes as of 7 Nov: compute3 (physics only), compute4, compute6.
 - Cleanup of our files on compute7 is pending Ilia's OK.
 - The yardstick moves to compute4 / compute6 when their camera lanes free up.
+
+**Follow-up (~17:20Z).** Ilia now allows compute7 for partial use, without getting in the way of its desktop user.
+REPRO may resume there under these limits:
+- 1 GPU job at a time (≤ ~16 GB VRAM);
+- a scope of ≤ 8 cores / 16 GB, nice 10, ionice idle;
+- power ≤ 300 W;
+- yield-before-start checks on the user's GPU and CPU use;
+- never touch the desktop session.
