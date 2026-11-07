@@ -681,13 +681,69 @@
     },
     "pick_from_conveyor_by_image": {
       "dimension": "Open",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "7e58b71179ffe4ed59525c90614e346009e41a3de662e0f69fa4ca82d5c67608",
+          "official_score": 0.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T175529693e6fZ_pick_from_conveyor_by_image",
+          "steps": 551,
+          "success": false,
+          "task": "pick_from_conveyor_by_image",
+          "wall_s": 146.9269181600539
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "066d901310f3620c65b84b0fdc7c2953ed7b9fb1b11c576ab9c313f77a41b74a",
+          "official_score": 0.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T175529693e6fZ_pick_from_conveyor_by_image",
+          "steps": 552,
+          "success": false,
+          "task": "pick_from_conveyor_by_image",
+          "wall_s": 164.8487313989317
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "950f1bb7f011ba321048b3c99431a279ba11942fd3bd2630c7c7cd202e15af69",
+          "official_score": 100.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T175529693e6fZ_pick_from_conveyor_by_image",
+          "steps": 393,
+          "success": true,
+          "task": "pick_from_conveyor_by_image",
+          "wall_s": 110.33903872699011
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "3440bb767051e2de044c12abb7bf3bc7e24772363a87eac8906b9c347507c3df",
+          "official_score": 0.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T175529693e6fZ_pick_from_conveyor_by_image",
+          "steps": 551,
+          "success": false,
+          "task": "pick_from_conveyor_by_image",
+          "wall_s": 142.02443788805977
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "e61ded7b2a051a7ed2080612bf72040e4bb3a9533e88adb54f6d5748bd216606",
+          "official_score": 100.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T175529693e6fZ_pick_from_conveyor_by_image",
+          "steps": 256,
+          "success": true,
+          "task": "pick_from_conveyor_by_image",
+          "wall_s": 74.808939791983
+        }
+      ],
+      "n": 5,
+      "official_score": 40.0,
+      "score_sd": 54.772255750516614,
+      "steps": 2303,
+      "successes": 2,
+      "wall_s": 638.9480659660185,
       "weight": 0.025
     },
     "play_Xylophone": {
