@@ -2,7 +2,7 @@
 store_laptop_and_headphones' instruction: "Hang the headphones on the headphone stand, close the laptop, then place it
 into the vertical laptop stand.").
 
-Three stages, each credited on its own by the checker (paired 20 / 80): ``hang_on_hooks`` for the headset (its
+Three physical stages, two paired checker tiers (20 for hang; 80 for close AND upright AND rack): ``hang_on_hooks`` for the headset (its
 ``headband_bridge`` onto the stand's ``support_cradle``), ``holders.swing_closed`` for the laptop's hinge, then the closed
 laptop re-oriented by ``place_oriented``: its body y axis up (the checker's ``is_axis_up(laptop, [0, 1, 0], 10)``), its
 ``bottom`` point down in the rack, its width along the rack's long side.

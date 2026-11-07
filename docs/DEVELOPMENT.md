@@ -719,3 +719,11 @@ For the opt-in egg endpoint-search experiment, use G3
 `test_egg_grasp_height.py` covers unchanged baseline geometry. Its endpoint screen
 must never bypass the subsequent collision and motion planner. Clear the IK cache
 when entering and leaving a scoped joint envelope: cache keys omit joint limits.
+
+`RuntimeConfig.headset_seat` (default `off`; G3 `headset_seat=on`) changes
+cradle hangs only. It retains grasps at least 35 mm wide, adds eight squeeze
+steps before lift, and lowers the measured bridge onto the cradle before
+opening with longer settle pauses. Threaded hooks retain their original pick
+and release behavior. Use with `hang_cradle=straddle` to screen the seating
+change independently of cradle collision feasibility. Missing wide grasps
+refuse the transfer rather than falling back to the slipping narrow pinches.
