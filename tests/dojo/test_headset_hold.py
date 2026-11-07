@@ -135,3 +135,52 @@ def test_loaded_hold_defaults_validation_and_other_transfers_unchanged():
     with pytest.raises(ValueError, match='bad runtime config'):
         RuntimePolicy(RuntimeConfig(headset_hold='invalid'), assets=object())
     assert RuntimePolicy(RuntimeConfig(headset_hold='loaded'), assets=object()).cfg.headset_hold == 'loaded'
+
+
+def test_a_hard_slip_after_the_challenge_still_rejects():
+    sk, pp, raw, _ = fixture()
+    original = sk.verify_pick
+    calls = []
+    def verify(p, before):
+        calls.append(True)
+        if len(calls) == 2:
+            sk.held['left'] = None
+            return SkillResult(False, 'pick', 'grasp_slip', note='31 mm nominal drift')
+        return original(p, before)
+    sk.verify_pick = verify
+    out = headset_hold.loaded_hold(sk, pp, raw, np.zeros(3))
+    assert not out.ok and out.status == 'grasp_slip' and len(calls) == 2
+    assert sk.held['left'] is None
+
+
+@pytest.mark.parametrize('mode,category,prove', [('legacy', 'headset', False), ('loaded', 'mug', False),
+                                               ('loaded', 'headset', True)])
+def test_transfer_proof_is_scoped_and_uses_the_actual_pre_pick_root(monkeypatch, mode, category, prove):
+    from dojo.skills.skills import Skills, PickPlan, PlacePlan
+    obj = SimpleNamespace(category=category, pos=np.array([.1, .2, .8]))
+    world = SimpleNamespace(obj=lambda l: obj)
+    pp = PickPlan('left', object(), object(), np.eye(4), 40, 'item')
+    pl = PlacePlan('left', object(), np.eye(4), 50, 'item')
+    calls = []
+    sk = SimpleNamespace(headset_hold=mode, headset_retry='sites', world=world, last_pick=pp,
+                         refine=None, held={'left':object()}, _record=lambda r:r, refresh=lambda:world)
+    def pick(p):
+        obj.pos = obj.pos + [0, 0, .08]
+        return SkillResult(True, 'pick', 'loose', note='16 mm nominal')
+    def proof(s, p, raw, before):
+        assert s is sk and p is pp
+        np.testing.assert_allclose(before, [.1, .2, .8])
+        calls.append('proof')
+        return SkillResult(True, 'pick', 'ok', note='loaded proof')
+    def place(*a, **kw):
+        calls.append('place')
+        return SkillResult(False, 'place', 'ik_fail', note='native refusal')
+    def regrasp(a):
+        calls.append('put_down')
+        sk.held[a] = None
+        return SkillResult(True, 'regrasp')
+    sk.run_pick, sk.plan_place, sk.regrasp = pick, place, regrasp
+    monkeypatch.setattr(headset_hold, 'loaded_hold', proof)
+    out = Skills.run_transfer(sk, pp, pl)
+    assert calls == (['proof', 'place', 'put_down'] if prove else ['put_down'])
+    assert not out.ok and out.status == ('grasp_unusable' if prove else 'loose')
