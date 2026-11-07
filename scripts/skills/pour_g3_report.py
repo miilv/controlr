@@ -101,6 +101,10 @@ def paired_summary(a_rows, b_rows, ids, task):
     for key, fn in (("successes", lambda r: int(r["success"])),
                     ("clean_successes", lambda r: int(clean_success(r, task)))):
         result[key] = {arm: sum(fn(p[i]) for p in pairs) for i, arm in enumerate(("A", "B"))}
+    result["success_flips"] = dict(Counter(
+        "both" if a["success"] and b["success"] else
+        "B_only" if b["success"] else "A_only" if a["success"] else "neither"
+        for a, b in pairs))
     result["stages"] = {arm: dict(Counter(failure_stage(p[i], task) for p in pairs))
                         for i, arm in enumerate(("A", "B"))}
     result["steps"] = {arm: {"median": statistics.median([p[i]["steps"] for p in pairs]) if pairs else None,

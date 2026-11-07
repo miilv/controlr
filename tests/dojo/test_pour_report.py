@@ -25,6 +25,7 @@ def test_sample_sd_and_missing_pairs_cannot_pass():
     assert r['n'] == 1 and not r['complete'] and r['missing'] == [100081]
     assert F['decision']({'pour_by_language': r})['passes'] is None
     assert r['clean_successes']['B'] == 0  # absent diagnostics are not evidence of clean capture
+    assert r['success_flips'] == {'B_only': 1}
 
 
 def test_duplicate_and_infrastructure_rows():

@@ -590,9 +590,10 @@ class RuntimeConfig:
     # ... the pacing of pour_order's pours (pour_by_language; stream H): v1 (the vendored pour_bottle) | lean
     # (pour_bottle_lean: the tilt-up to 90 deg and the untilt at normal speed, a 12-step drain, no home between pours):
     # ``planner.POUR_PACE``. A single pour (pour_liquid) keeps v1's pace either way | overlap (v1's stages at 0.8 of the
-    # held joint limit, a 12-step drain, the other arm grasping the next bottle during each pour, no homes)
+    # held joint limit, a 12-step drain, the other arm grasping the next bottle during each pour, no homes) |
+    # budget (overlap flow, normal lift/full held-speed untilt, final flow may spend the put-back reserve)
     ported_pour_pace: str = "v1"
-    # Multi-bottle sparse roll profile, optionally with target-row carry waypoints.
+    # off | sparse/via (original v2) | checked (original v5 and its ordered recovery composite).
     ported_pour_profile: str = "off"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,

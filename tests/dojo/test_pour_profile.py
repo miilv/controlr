@@ -31,7 +31,6 @@ def test_checked_uses_strict_wrappers_underlying_profile():
 
 
 def test_diagnostic_boxes_follow_rotated_checker_frame():
-    import numpy as np
     from dojo.skills.pour_diagnostics import box_mask
     q = [2**-.5, 0, 0, 2**-.5]
     vertices = [[-.1, -.02, 0], [.1, .02, .1]]
