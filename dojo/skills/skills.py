@@ -339,6 +339,9 @@ class Skills:
         self.grasp_torso = "off"
         self.stand_offset = "off"
         self.retreat_axis = "off"
+        # ``library.arrange`` (stream ORG2): place_via "off" | "clear" (a place whose transit collides tries via points
+        # out from the fixtures next to its support, then a straight line in: ``torso.clear_vias``)
+        self.place_via = "off"
         self.push_plan = "off"
         # ``library.arrange`` (stream ORG2): "off" | "once" (each failed step tried once more after the others)
         self.arrange_retry = "off"
@@ -1031,7 +1034,7 @@ class Skills:
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
                    blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None,
                    held_read: bool | None = None, purpose: str | None = None, approach_line: bool = False, carry_read: bool = False,
-                   approach_lateral: bool = False, approach_staged: bool = False):
+                   approach_lateral: bool = False, approach_staged: bool = False, approach_vias=()):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``approach_line``: collision-checked Cartesian transit to the hover, preserving the interpolated TCP
         orientation along the carry instead of a joint-space transit. No joint-path fallback.
@@ -1123,7 +1126,9 @@ class Skills:
             from dojo.skills.headset import staged_carry
             transit = ((lambda *a, **kw: staged_carry(self.motion, *a, **kw)) if approach_staged else
                        self.motion.line if approach_line else
-                       self.motion.lateral if approach_lateral else self.motion.to_pose)
+                       self.motion.lateral if approach_lateral else
+                       (lambda a_, q_, T_, *r, **kw: self.motion.via_xy(a_, q_, T_, approach_vias, *r, **kw))
+                       if approach_vias else self.motion.to_pose)
             to_pre = transit(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
                              ignore=(h.label,), **({} if approach_line else {"ease": ease}))
             if approach_line:

@@ -140,3 +140,44 @@ def stand_points(sk, label: str, support: str) -> list[np.ndarray]:
                        [p[0] - disc, p[1] + disc]])
         return min([poly_dist(sq, Q) for Q in others] or [1.0])
     return sorted(pts, key=lambda p: -clearance(p))
+
+
+VIA_NEAR = 0.20          # m: fixtures whose footprint lies within this of the support's centre shape the vias
+
+
+def clear_vias(sk, label: str, support: str) -> list[np.ndarray]:
+    """``Skills.place_via`` "clear": xy offsets (from the place target) for ``Motion.via_xy``: out from each fixture
+    next to the support (along the normal from its footprint's nearest point to the support's centre), and towards the
+    arms' bases, so the held object comes in from its clear side (a stand 4 cm beside a drawer, the carry's joint move
+    swept a 19 cm figurine through the drawer's front corner: "hits drawer", G3 dev 4 of 5 plans)."""
+    from dojo.skills.kinematics import ARMS
+    from dojo.skills.push_plan import _seg_dist, footprint
+    w = sk.world
+    c = np.asarray(w.obj(support).center_w[:2], float)
+    bases = np.mean([sk.kin.base(a)[:2, 3] for a in ARMS], axis=0)
+    b = bases - c
+    b = b / max(float(np.linalg.norm(b)), 1e-9)
+    normals = []
+    for lab, ob in w.objects.items():
+        if lab in (label, support) or float(ob.top_z - ob.bottom_z) < 0.03:
+            continue
+        fp = footprint(ob)
+        d, p_best = 9.0, None
+        for k in range(4):
+            a_, b_ = fp[k], fp[(k + 1) % 4]
+            ab = b_ - a_
+            t = float(np.clip((c - a_) @ ab / max(float(ab @ ab), 1e-12), 0.0, 1.0))
+            q = a_ + t * ab
+            if _seg_dist(c, a_, b_) < d:
+                d, p_best = _seg_dist(c, a_, b_), q
+        if p_best is None or d > VIA_NEAR or d < 1e-6:
+            continue
+        n = c - p_best
+        normals.append((d, n / np.linalg.norm(n)))
+    out = []
+    for _, n in sorted(normals, key=lambda x: x[0]):
+        nb = n + b
+        nb = nb / max(float(np.linalg.norm(nb)), 1e-9)
+        out += [n * 0.08, nb * 0.10, n * 0.14, nb * 0.16]
+    out.append(b * 0.12)
+    return out

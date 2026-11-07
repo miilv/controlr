@@ -2573,7 +2573,12 @@ def _push_planned(sk: Skills, label: str, target_xy, tol: float, seg: float, max
                 plan = seq["first"]
                 push_u, push_step = seq["strokes"][0][0], seq["strokes"][0][1]
                 sk.log(f"[push_plan] {label}: stroke {it}: order {seq['order']}, {len(seq['strokes'])} strokes left")
-        if plan is None:
+            elif not (cover and inside):
+                # no complete sequence: no stroke now (a partial one can strand the object where the rest never plans;
+                # ``arrange_retry`` comes back after the other steps have moved what blocks it)
+                return sk._record(SkillResult(False, "push", "ik_fail", sk.ex.steps_used - n0, last,
+                                              note=f"{label}: no complete push sequence ({gap * 1000:.0f} mm left)"))
+        if plan is None and not seq_on:
             d = target_xy - o.center_w[:2]
             todo = sorted(((abs(float(a @ d)), a * math.copysign(1.0, float(a @ d))) for a in axes),
                           key=lambda x: -x[0])
@@ -2779,6 +2784,11 @@ def arrange(sk: Skills, steps: list) -> dict:
                 kw["place_kw"] = {"pre_h": 0.005, "pre_clear": 0.003}
             if getattr(sk, "arrange_route", "off") == "lateral":
                 kw["place_kw"]["approach_lateral"] = True
+            elif getattr(sk, "place_via", "off") == "clear":
+                from dojo.skills.torso import clear_vias
+                vias = clear_vias(sk, obj, sup)
+                if vias:
+                    kw["place_kw"]["approach_vias"] = vias
             tg, on_mesh = _on_targets(sk, obj, sup)
             r = place_oriented(sk, obj, tg, **kw)
             if on_mesh and not r.ok and r.status in ("ik_fail", "collision") and not r.steps:

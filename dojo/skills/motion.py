@@ -516,6 +516,29 @@ class Motion:
                 return first.then(last)
         return direct
 
+    def via_xy(self, arm: str, q0, T_goal, offsets, *args, **kwargs) -> MoveResult:
+        """Legacy transit; after a collision failure, by way of each xy ``offsets`` point (world, from the goal at the
+        goal's height and orientation) in turn: a transit there, then a checked straight line onto the goal (the last leg
+        moves the held object straight in from its clear side). Stream ORG2 ``Skills.place_via`` "clear". An unreachable
+        endpoint is refused directly; no partial route executes."""
+        direct = self.to_pose(arm, q0, T_goal, *args, **kwargs)
+        if direct.ok or direct.status != "collision":
+            return direct
+        step_rad = args[0] if args else kwargs.get("step_rad", FAST)
+        name = args[1] if len(args) > 1 else kwargs.get("name", "move")
+        for off in offsets:
+            mid = np.asarray(T_goal, float).copy()
+            mid[:2, 3] += np.asarray(off, float)[:2]
+            first = self.to_pose(arm, q0, mid, *args, **kwargs)
+            if not first.ok:
+                continue
+            last = self.line(arm, first.q_end, T_goal, step_rad=min(step_rad, MEDIUM), name=name + "_in",
+                             gripper=kwargs.get("gripper", 1.0), ignore=kwargs.get("ignore", ()),
+                             held=kwargs.get("held"))
+            if last.ok:
+                return first.then(last)
+        return direct
+
     def _via(self, arm, q0, T0, T_goal, z, step_rad, name, gripper, ignore, held, check, ease) -> MoveResult:
         up = T0.copy()
         up[2, 3] = max(z, T0[2, 3])

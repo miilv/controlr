@@ -286,28 +286,41 @@ def stroke_len(left: float, seg: float) -> float:
     return s * OVERSHOOT if s > 0.03 else s
 
 
+SPLITS = (0.4, 0.7)       # fractions of the first axis done before the other axis, then the rest (``plan_sequence``)
+
+
 def plan_sequence(sk, label: str, goal_xy, axes, stroke_fn, seg: float = 0.08, tol: float = 0.012,
                   max_strokes: int = 10):
-    """``push_plan`` "sequence": the stroke sequence to ``goal_xy`` along ``axes`` (two world unit 2-vectors), each
-    axis done in turn, for both axis orders (the one with most to go first, then the other); the object is moved
-    virtually (planning world only) by each planned stroke. Returns {"order", "strokes": [(u, step)], "first": plan}
-    for the first order whose every stroke plans, else None (with ``sk.log`` lines on what blocked)."""
+    """``push_plan`` "sequence": the stroke sequence to ``goal_xy`` along ``axes`` (two world unit 2-vectors), the
+    object moved virtually (planning world only) by each planned stroke. Candidate phase orders, in turn: the axis with
+    most to go first, then the other; the other first; then each order with its first axis split (``SPLITS`` of it, the
+    other axis, the rest of the first: a stroke whose start is blocked by a neighbour at the start pose and by a fixture
+    at the end pose can fit in between). Returns {"order", "strokes": [(u, step, arm)], "first": plan, "why"} for the
+    first candidate whose every stroke plans, else None (``sk.log`` says what blocked)."""
     o = sk.world.obj(label)
     c0 = np.asarray(o.center_w[:2], float)
-    d = np.asarray(goal_xy, float) - c0
+    goal = np.asarray(goal_xy, float)
+    d = goal - c0
     comps = [(float(a @ d), k, np.asarray(a, float)) for k, a in enumerate(axes)]
     order0 = sorted(range(len(comps)), key=lambda k: -abs(comps[k][0]))
-    orders = [order0, list(reversed(order0))] if len(order0) == 2 else [order0]
+    cands = [[(k, 1.0) for k in order0]]
+    if len(order0) == 2:
+        k0, k1 = order0
+        cands.append([(k1, 1.0), (k0, 1.0)])
+        for first, second in ((k0, k1), (k1, k0)):
+            for f in SPLITS:
+                cands.append([(first, f), (second, 1.0), (first, 1.0)])
     saved = o.pos.copy()
     why = []
     try:
-        for order in orders:
+        for cand in cands:
             pos = c0.copy()
-            strokes, first, ok = [], None, True
-            for k in order:
+            strokes, first_plan, ok = [], None, True
+            for k, frac in cand:
                 a = comps[k][2]
+                aim = float(a @ (c0 + frac * d - c0)) if frac < 1.0 else None
                 for _ in range(max_strokes):
-                    left = float(a @ (np.asarray(goal_xy, float) - pos))
+                    left = float(a @ (goal - pos)) if aim is None else aim - float(a @ (pos - c0))
                     if abs(left) <= tol / 2:
                         break
                     u = a * math.copysign(1.0, left)
@@ -315,18 +328,18 @@ def plan_sequence(sk, label: str, goal_xy, axes, stroke_fn, seg: float = 0.08, t
                     o.pos = saved + np.r_[pos - c0, 0.0]
                     p = stroke_fn(sk, o, label, u, step)
                     if p is None:
-                        why.append(f"order {order}: axis {k} at {np.round(pos, 3).tolist()}")
+                        why.append(f"{[(k_, f_) for k_, f_ in cand]}: axis {k} at {np.round(pos, 3).tolist()}")
                         ok = False
                         break
-                    if first is None:
-                        first = p
+                    if first_plan is None:
+                        first_plan = p
                     strokes.append((u, step, p.arm))
                     pos = pos + u * step
                 if not ok:
                     break
-            if ok:
-                return {"order": order, "strokes": strokes, "first": first, "why": why}
+            if ok and strokes:
+                return {"order": [k for k, _ in cand], "strokes": strokes, "first": first_plan, "why": why}
     finally:
         o.pos = saved
-    sk.log(f"[push_plan] {label}: no complete stroke sequence ({'; '.join(why)[:200]})")
+    sk.log(f"[push_plan] {label}: no complete stroke sequence ({'; '.join(why)[:240]})")
     return None

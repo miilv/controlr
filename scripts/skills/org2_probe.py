@@ -115,7 +115,11 @@ def probe_place(sk, label="garage", support="cube_cushion", place_kw=None) -> di
     L.container_obstacle(sk, support)
     t0 = time.perf_counter()
     tg = L.on_targets(sk, label, support)
-    r = sk.plan_transfer(label, tg, ignore=(support,), place_kw=place_kw or {"pre_h": 0.04})
+    place_kw = dict(place_kw or {"pre_h": 0.04})
+    if getattr(sk, "place_via", "off") == "clear":
+        from dojo.skills.torso import clear_vias
+        place_kw["approach_vias"] = clear_vias(sk, label, support)
+    r = sk.plan_transfer(label, tg, ignore=(support,), place_kw=place_kw)
     res = {"targets": len(tg), "s": round(time.perf_counter() - t0, 1)}
     if isinstance(r, SkillResult):
         res.update(status=r.status, note=r.note[:300])

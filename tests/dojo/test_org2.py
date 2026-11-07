@@ -14,7 +14,8 @@ from dojo.skills.g3 import SKILL_ATTRS
 from dojo.skills.kinematics import TIP_BEYOND_TCP
 
 SWITCHES = {"push_contact": ("off", "pair"), "push_plan": ("off", "sequence"), "arrange_retry": ("off", "once"),
-            "grasp_torso": ("off", "on"), "stand_offset": ("off", "base"), "retreat_axis": ("off", "on")}
+            "grasp_torso": ("off", "on"), "stand_offset": ("off", "base"), "retreat_axis": ("off", "on"),
+            "place_via": ("off", "clear")}
 
 
 @pytest.mark.parametrize("name,values", sorted(SWITCHES.items()))
@@ -164,6 +165,35 @@ def test_plan_sequence_takes_the_order_whose_every_stroke_plans():
     assert np.all(np.abs(moved - goal) <= 0.012)
     assert PP.plan_sequence(sk, "kb", goal, [np.array([1.0, 0.0]), np.array([0.0, 1.0])],
                             lambda *a: None) is None
+
+
+def test_plan_sequence_splits_an_axis_around_a_blocked_stroke():
+    o = _Obj(pos=np.zeros(3))
+    sk = SimpleNamespace(world=SimpleNamespace(obj=lambda lab: o), log=lambda m: None)
+
+    def fn(sk_, ob, lab, u, step):
+        # x strokes fit only between a neighbour at the start (y < 0.04) and a fixture at the end (y > 0.14)
+        if abs(u[0]) > 0.5 and not (0.04 <= ob.pos[1] <= 0.14):
+            return None
+        return SimpleNamespace(arm="left")
+    goal = np.array([0.10, 0.18])
+    seq = PP.plan_sequence(sk, "kb", goal, [np.array([1.0, 0.0]), np.array([0.0, 1.0])], fn)
+    assert seq is not None and seq["order"] == [1, 0, 1]
+    ys = [float(u[1]) for u, _, _ in seq["strokes"]]
+    assert ys[0] == 1.0 and any(abs(u[0]) == 1.0 for u, _, _ in seq["strokes"])
+    moved = sum(np.asarray(u) * s for u, s, _ in seq["strokes"])
+    assert np.all(np.abs(moved - goal) <= 0.012)
+    np.testing.assert_allclose(o.pos, 0.0)
+
+
+def test_planned_push_without_a_sequence_makes_no_stroke(monkeypatch):
+    env, sk = _kb_world()
+    sk.push_contact, sk.push_plan = "pair", "sequence"
+    monkeypatch.setattr(PP, "plan_sequence", lambda *a, **k: None)
+    strokes = []
+    monkeypatch.setattr(PP, "pair_stroke", lambda *a, **k: strokes.append(1))
+    r = library.push_to(sk, "kb", sk.world.obj("frame").center_w[:2], support="frame")
+    assert not r.ok and r.status == "ik_fail" and "no complete push sequence" in r.note and not strokes
 
 
 def test_stroke_len_cuts_long_strokes():
@@ -378,3 +408,42 @@ def test_escape_home_is_checked_and_rises_first_when_needed():
     sk.motion = SimpleNamespace(joint=lambda *a, **k: MoveResult("collision", "left", []),
                                 line=lambda *a, **k: MoveResult("collision", "left", []))
     assert PP.escape_home(sk, "left") is None
+
+
+def test_clear_vias_point_out_from_the_fixture_and_towards_the_arms():
+    stand = _obj([-0.15, 0.1, 0.765], [0.05, 0.05, 0.0001])
+    drawer = _obj([-0.365, 0.15, 0.88], [0.35, 0.27, 0.227])
+    fig = _figurine((-0.3, -0.1))
+    objs = {"fig": fig, "stand": stand, "drawer": drawer}
+    from dojo.skills.kinematics import X5Kin
+    sk = SimpleNamespace(world=SimpleNamespace(obj=lambda l: objs[l], objects=objs), kin=X5Kin())
+    vias = torso.clear_vias(sk, "fig", "stand")
+    assert vias and vias[0][0] > 0 and abs(vias[0][1]) < 1e-9        # +x: away from the drawer's +x face
+    assert vias[-1][1] < 0                                              # the last: towards the arms
+    objs.pop("drawer")
+    assert len(torso.clear_vias(sk, "fig", "stand")) == 1
+
+
+def test_via_xy_tries_offsets_only_after_a_collision():
+    from dojo.skills.motion import Motion, MoveResult, Segment
+    m = Motion.__new__(Motion)
+    seg = [Segment(np.stack([np.zeros(6), np.ones(6) * 0.01]), 0.03)]
+    calls = []
+
+    def to_pose(arm, q, T, *a, **kw):
+        calls.append(("to_pose", np.round(T[:2, 3], 3).tolist()))
+        if len(calls) == 1:
+            return MoveResult("collision", arm, [])
+        return MoveResult("reached", arm, seg)
+
+    def line(arm, q, T, **kw):
+        calls.append(("line", np.round(T[:2, 3], 3).tolist()))
+        return MoveResult("reached", arm, seg)
+    m.to_pose, m.line = to_pose, line
+    T = np.eye(4)
+    r = m.via_xy("left", np.zeros(6), T, [np.array([0.08, 0.0])], 0.05, "place_approach", gripper=0.0, held=None)
+    assert r.ok and [c[0] for c in calls] == ["to_pose", "to_pose", "line"]
+    assert calls[1][1] == [0.08, 0.0] and calls[2][1] == [0.0, 0.0]
+    calls.clear()
+    m.to_pose = lambda arm, q, T, *a, **kw: calls.append(1) or MoveResult("ik_fail", arm, [])
+    assert not m.via_xy("left", np.zeros(6), T, [np.array([0.08, 0.0])]).ok and len(calls) == 1
