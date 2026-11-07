@@ -89,3 +89,55 @@ def test_legacy_pick_keeps_its_original_planner_arguments(monkeypatch):
     result = I.pick_from_belt(sk, "target", np.array([0.004, 0.0]))
     assert result.status == "ik_fail"
     assert calls == [dict(lift=0.125, ignore=(), arms=None, pull=0.0, skip_methods=())]
+
+
+@pytest.mark.parametrize("reachable", [False, True])
+def test_failed_or_lost_carry_never_opens_the_gripper(monkeypatch, reachable):
+    from dojo.skills import basket_first as B
+    from dojo.skills.motion import MoveResult
+    from dojo.skills.skills import Held
+
+    vertices = np.array(
+        [[x, y, z] for x in (-0.02, 0.02) for y in (-0.02, 0.02) for z in (-0.02, 0.02)]
+    )
+    asset = NS(
+        bbox_min=np.array([-0.1, -0.1, -0.1]),
+        bbox_max=np.array([0.1, 0.1, 0.1]),
+        mesh=(vertices, []),
+    )
+    container = NS(
+        asset=asset, pos=np.zeros(3), R=np.eye(3), center_w=np.zeros(3), bottom_z=0.0
+    )
+    target = NS(
+        asset=asset,
+        pos=np.array([0.3, 0.0, 0.2]),
+        center_w=np.array([0.3, 0.0, 0.2]),
+        bottom_z=0.18,
+    )
+    world = NS(obj=lambda name: {"basket": container, "target": target}[name])
+    h = Held("target", np.eye(4), None)
+    executed = []
+    sk = NS(
+        refresh=lambda: world,
+        held={"left": h},
+        log=lambda _: None,
+        kin=NS(base=lambda _: np.eye(4), tcp=lambda *args: np.eye(4)),
+        ex=NS(
+            q={"left": np.zeros(6)},
+            run=lambda plans, name: executed.append((name, plans)),
+        ),
+        motion=NS(
+            to_pose=lambda *args, **kwargs: MoveResult(
+                "reached" if reachable else "ik_fail", "left"
+            )
+        ),
+    )
+    monkeypatch.setattr(B.G, "box_rim_z", lambda _: 0.1)
+    result = B.drop_center(sk, "left", "target", "basket", ("conveyor",))
+    assert not result.ok
+    assert result.status == ("grasp_slip" if reachable else "no_plan")
+    assert sk.held["left"] is h
+    # The only allowed executed operation is transit; opening must remain unreachable.
+    assert [name for name, _ in executed] == (["basket drop"] if reachable else [])
+    for _, plans in executed:
+        assert all(op[0] != "grip" for plan in plans.values() for op in plan.ops)

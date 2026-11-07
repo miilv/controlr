@@ -6,6 +6,8 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [BYIMG lift-first](2026-11-07-byimg-g3-r2.md) | Can a level raised basket support catching and loading? | Fresh 10 pairs: 10→20, 1/10→2/10 success, 2 wins/1 loss; one net win fails gate; independent 14-pair retest registered |
+| 2026-11-07 | [BYIMG fresh retest](2026-11-07-byimg-g3-r2-retest.md) | Does the unchanged positive lift-first bundle generalize? | Once-only independent retest registered; no camera dispatch |
 | 2026-11-07 | [BYIMG G3](2026-11-07-byimg-g3.md) | Does a braced, re-aimed hook lift the loaded basket? | Ten fresh settled v15 pairs: 0±0→0±0, 0/10 successes both, 0 wins/0 losses; rejected, no camera jobs |
 | 2026-11-07 | [key-scoped-prereg](2026-11-07-key-scoped-prereg.md) | Can insert_key-only handover/lean retain gain without charger harm? | 40 cx rows dispatched on compute6; 10 gain / 5 charger / 5 stack pairs; one lead-authorized final refill; no verdict |
 | 2026-11-06 | [egg2-reach-g3](2026-11-06-egg2-reach-g3.md) | Can practical-workspace orientation search raise the egg ceiling? | Ten pairs: 23.5→17.5, 0/10→0/10 success, 0 score wins/4 losses; stays off |
