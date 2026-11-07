@@ -12,6 +12,7 @@
   merely checking <100100 admits Mikhail's slices and integ refuses them before
   an episode. Gate generation and dispatch explicitly; retain infra refusals
   ([POUR amendment](experiments/2026-11-07-pour-camera-prereg.md)).
+  KONG also prepared refused ids; its 60 rows were removed before any start.
 
 - [ ] **Preserve agentic transport retry telemetry.** `OmniChat` drops
   `LLMResult.attempts` / `http_status` when building `ChatReply`, so logical

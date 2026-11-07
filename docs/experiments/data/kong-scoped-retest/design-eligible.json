@@ -1,0 +1,132 @@
+{
+  "experiment": "kong-scoped-retest-1107",
+  "rules_commit": "43c1801d7d19428a2a476724722c0a0edc51401b",
+  "deployment": "/home/robotics/dojo-integ-c6-kong-ffb2c151",
+  "code": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+  "baseline_candidate": "scripts/dojo/queues/2026-11-06-candidate.txt",
+  "baseline_candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "agentic_model": "claude/claude-sonnet-5-5",
+  "A_overrides": {
+    "watch_relocate": false,
+    "watch_relocate_task": ""
+  },
+  "B_overrides": {
+    "watch_relocate": false,
+    "watch_relocate_task": "make_kong"
+  },
+  "block": "kong-scoped-retest-eligible",
+  "salt": "kong-scoped-retest-eligible-20261107-0a5495833a42acc6b37f50426c3c4cae3ce155a466c61f4c897fad0cbba7f4b9",
+  "salt_sha256": "8ee55262d8806828ef6678fa99e77ea07898bc5e85d544f3977dcf3d8083ad24",
+  "candidate_start": 100000,
+  "candidate_end": 100029,
+  "cells": [
+    {
+      "task": "make_kong",
+      "role": "gain",
+      "pairs": 20,
+      "candidate_ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004,
+        100005,
+        100006,
+        100007,
+        100008,
+        100009,
+        100020,
+        100021,
+        100022,
+        100023,
+        100024,
+        100025,
+        100026,
+        100027,
+        100028,
+        100029
+      ]
+    },
+    {
+      "task": "imitate_sorting_sequence",
+      "role": "parity_guard",
+      "pairs": 5,
+      "candidate_ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004,
+        100005,
+        100006,
+        100007,
+        100008,
+        100009
+      ]
+    },
+    {
+      "task": "stack_blocks",
+      "role": "strong_guard",
+      "pairs": 5,
+      "candidate_ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004,
+        100005,
+        100006,
+        100007,
+        100008,
+        100009,
+        100020,
+        100021,
+        100022,
+        100023,
+        100024,
+        100025,
+        100026,
+        100027,
+        100028,
+        100029
+      ]
+    }
+  ],
+  "demo_speed": 1.25,
+  "repeat": 1,
+  "episode_cap_minutes": 25,
+  "pair_order": "AB on even id, BA on odd id; task order gain, parity, strong",
+  "selection": "gain/stack: first n two-pass stable inputs ascending; imitate: first five ascending passing BOTH two-pass stability and unchanged standard demo validation, input validity only; retain all failures",
+  "queue": "append-only tail after all existing rows under queue2.txt.lock",
+  "demo_eligibility_amendment": {
+    "lead_authorized": true,
+    "speed": 1.25,
+    "first_failed_id": 100050,
+    "reason": "unstable; 3/5 supports placed after all four standard order tries",
+    "backlog_demo_failure_rate_threshold": 0.3
+  },
+  "eligible_ids": [
+    100000,
+    100001,
+    100002,
+    100003,
+    100004,
+    100005,
+    100006,
+    100007,
+    100008,
+    100009,
+    100020,
+    100021,
+    100022,
+    100023,
+    100024,
+    100025,
+    100026,
+    100027,
+    100028,
+    100029
+  ],
+  "audit_instrument_commit": "77b4571907f6ce49eec11c0685db8f0c7ba05d64",
+  "supersedes_refused_manifest": "844d0ea503d8be6cf3aaf879a711f6eb4144fe813f0e053e7cd0a95a2a360a70"
+}

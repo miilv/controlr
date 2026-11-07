@@ -285,3 +285,41 @@ precommitted merge/start cutoff, never by outcomes; the final applied pin must
 be included with the later verdict. Nearest-GT results remain supplementary
 under the registered conditional instrument rule. No camera outcome was read
 for this dispatch and no verdict/adoption/default change is made.
+
+## Lead protocol correction — eligible rendered ids, before replacement collection
+
+At 10:41Z the lead removed all 60 refused-id rows under the queue lock to
+`compute6:~/dojo-data/pour-cam/held-refused-ids-1041.txt`. None started;
+**no KONG re-test camera outcome exists**. The old 100050–69 preparation and
+receipts above remain historical only and are superseded by this amendment.
+Those ids are Mikhail's D-C10a slice and integ refuses them rendered (rc=2).
+
+Regenerate every cell under a **new salt**, frozen in
+[the eligible design](data/kong-scoped-retest/design-eligible.json):
+`kong-scoped-retest-eligible-20261107-0a5495833a42acc6b37f50426c3c4cae3ce155a466c61f4c897fad0cbba7f4b9`. Literal UTF-8 salt SHA256:
+`8ee55262d8806828ef6678fa99e77ea07898bc5e85d544f3977dcf3d8083ad24`.
+Private replacement root: `compute6:~/dojo-data/kong-retest-eligible-1107/`.
+No refused layout or demo is reused. Freshness is the new salt; the positive
+rendered allowlist is `dojo.simlab.paths.OUR_MEASUREMENT_SLICES` only.
+
+- make_kong: exactly 20 pairs, ids **100000–09 and 100020–29**.
+- imitation parity: the first five ids ascending within **100000–09** passing
+  BOTH unchanged two-pass presettle and standard demo validation at **1.25**.
+- stack strong: first five ascending stable ids in the eligible allowlist.
+
+All failures/attempts remain in the replacement manifest. No tolerance,
+validation, camera policy, sample-size, guard or refined decision-rule change.
+The >30% demo-failure BACKLOG rule remains. A shortage of eligible valid inputs
+blocks launch rather than borrowing from another slice.
+
+**Instrument:** #417 merged at 07:51:39Z, before any re-test start. The primary
+identity-association instrument is now fixed to full merge commit
+`77b4571907f6ce49eec11c0685db8f0c7ba05d64`.
+Nearest-GT remains supplementary; the camera deployment stays the same #410/#411
+`ffb2c151` deployment, with Sonnet explicitly pinned in every arm.
+
+The prep script must refuse any candidate/selected/rendered id outside
+`is_our_measurement_id` before generating or staging it. Recheck the allowlist
+when constructing and appending rows. Append the replacement 60 rows at the
+queue END under `queue2.txt.lock`, preserving all existing bytes and priorities.
+Freeze a new manifest and publish replacement positions, hashes and ETA.
