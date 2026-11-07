@@ -275,3 +275,29 @@ make_kong under scoping has been positive in every test so far: +20 at n = 15 hi
 +20 Sonnet. **KONG scoped gets its one fresh-layout re-test under the refined rule**: new layouts, 20 make_kong pairs,
 imitate as a parity guard, stack_blocks as the strong guard. It is queued on compute6 after the tie block. Peg's one
 re-test is used up; a mechanism study (offline, no LLM calls) decides whether a new lever follows.
+
+## Lead, 7 Nov ~08:00Z: audit instrument fixed (#417); peg stays NOT ADOPTED
+
+#417 fixes two instrument bugs that TOY found (journal 2026-11-07-dojo-peg-mechanism):
+- held-pose writes logged a stale, pre-sync `before` pose that included the arm's transport;
+- the audit took the tracked object as the nearest GT in the label group, which misassigns multi-instance labels.
+
+The threshold and metric are unchanged.
+
+Supplementary re-scores with the fixed instrument, which change no registered verdict:
+
+| writer | harmful / helpful / neutral |
+|---|---|
+| peg B `held_pose` | 0 / 13 / 134 (was 22 / 11 / 114) |
+| KONG Sonnet `watch_relocate` | 0 / 18 / 11 (was 2 / 16 / 11) |
+| peg `perception`, harmful A / B | 49 / 50 |
+| KONG `perception`, harmful A / B | 10 / 12 |
+
+**peg_held_read stays NOT ADOPTED.** Its prereg uses the raw-count gate, which still fails by one perception write
+even with the fixed instrument. Adopting it would need both the fixed instrument and the prospective refined gate
+applied retroactively to data collected under the old registration. The value at stake is about +0.18 Average points,
+which does not justify that. The hover-only transactional read TOY proposed would remove the show-time reads, so it is
+a different lever. It is a candidate for a fresh A/B under the refined gates when a camera slot frees up; see BACKLOG.
+
+The KONG scoped re-test (prereg 2026-11-07-kong-scoped-retest) starts after #417 merged, so its registered audit uses
+the fixed instrument.

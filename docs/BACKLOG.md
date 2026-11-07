@@ -1094,8 +1094,15 @@
   so the ring was let go tilted on the top (G3 `--mode-b`, 2 mm belief offsets: 0.6 / 0.6 / 0.1). Pegs now pass
   `guard_lag` 1.2 mm / `guard_seated` 1.5 mm and retry a piece left tilted. The real fix is a held-object or peg
   measurement at the hover, like plug_in_charger's.
-  Candidate `peg_held_read` requests the existing held-pose protocol with a 0.5 mm gate; camera adoption remains open
+  Candidate `peg_held_read` requests the existing held-pose protocol with a 0.5 mm gate
   ([TOY diagnosis](journal/2026-11-05-dojo-toy-held-hover.md), [pre-registration](experiments/2026-11-05-toy-held-read-ab.md)).
+  It ran two camera tests: +6 in the wave, then +8 with flips 5/2 on its fresh re-test. It is NOT ADOPTED: the
+  registered raw-count write gate fails, and the one re-test is used up (journal 2026-11-06-ab-wave-verdicts, lead
+  note of 7 Nov 08:00Z).
+  - Next lever: a **hover-only transactional read** ([mechanism](journal/2026-11-07-dojo-peg-mechanism.md)). It
+    drops the show-time reads, whose "harmful" writes were instrument artefacts (#417).
+  - It needs a fresh camera A/B under the refined gates: about 20 play_stacking_toy pairs plus guards, roughly
+    330 Claude calls.
   GPU validation is blocked by the compute3 driver outage. KitLogWatch omitted the CUDA-unavailable failure while
   the environment ran software PhysX; require hardware/startup-log checks before accepting those rows as G3 evidence.
   - Seated blind (v4.6), a ring pushed 30-50 mm down the peg on a predicted pose binds and tilts: 0/5, 0.30. v4.7 threads
