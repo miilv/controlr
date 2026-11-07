@@ -159,3 +159,51 @@ pass failed. If the key second-pass failure rate is much higher than other
 cells, record the preparation landmine in BACKLOG. Freeze the selected panel
 and manifest on main before appending rows. This amendment and its salts must
 also reach main before generating the two new blocks.
+
+## Amended panel freeze — before camera dispatch
+
+The lead amendment reached main at `96965dc2` before the two additional key
+blocks were generated. Both are now prepared with unchanged two-pass checks.
+The final panel restores **all 10 key pairs**, selecting disc-key2: 100000, 100001, 100003; disc-keyrefill1: 100000, 100001; disc-keyrefill2: 100000, 100001, 100003, 100004; disc-keyrefill3: 100002.
+The exact identities and AB/BA order are in the manifest and row file. Other cells retain
+their original frozen inputs. No camera outcome or transcript was read.
+
+| block | prepared | stable | failed | failure rate | second-pass failures |
+|---|---:|---:|---:|---:|---:|
+| disc-gain1 | 5 | 5 | 0 | 0% | 0 |
+| disc-gain2 | 5 | 5 | 0 | 0% | 0 |
+| disc-gain3 | 5 | 5 | 0 | 0% | 0 |
+| disc-gain4 | 5 | 5 | 0 | 0% | 0 |
+| disc-gainrefill1 | 0 | — | — | not prepared; reserved raw only | — |
+| disc-key1 | 5 | 0 | 5 | 100% | 5 |
+| disc-key2 | 5 | 3 | 2 | 40% | 2 |
+| disc-keyrefill1 | 5 | 2 | 3 | 60% | 3 |
+| disc-ttt1 | 5 | 5 | 0 | 0% | 0 |
+| disc-ttt2 | 5 | 5 | 0 | 0% | 0 |
+| disc-tttrefill1 | 0 | — | — | not prepared; reserved raw only | — |
+| disc-stack1 | 5 | 5 | 0 | 0% | 0 |
+| disc-stack2 | 5 | 5 | 0 | 0% | 0 |
+| disc-stackrefill1 | 0 | — | — | not prepared; reserved raw only | — |
+| disc-keyrefill2 | 5 | 4 | 1 | 20% | 1 |
+| disc-keyrefill3 | 5 | 3 | 2 | 40% | 2 |
+
+Every rejection above occurred in the second pass. Key failures total 13/25
+(52%); other prepared cells total 0/40 (0%). This is a preparation-selection
+landmine, not evidence about controller performance. Added the corresponding
+item to [BACKLOG](../BACKLOG.md). All rejected inputs and indices are retained;
+no tolerance changes, raw fallbacks or extra blocks were used.
+
+[Final manifest](data/coin-disc-retest-1107/manifest.json) SHA256:
+`9eea63ddebf016dcfd71b1c9f21cd7169dad8de14c0868de6a6a64e76153947d`.
+[Final 100 rows](data/coin-disc-retest-1107/rows.txt) SHA256:
+`90acca0d52de076720b85c6291d2af7d6b493aef4e51bd8a8eb06d5cc5f2951e`.
+The manifest is complete, selecting 50 pairs (20 gain, 10 per original guard),
+with raw/loaded/index and candidate asset hashes, complete effective A/B
+configs and all 80 generated raw records, including unused reserves.
+All **100/100** rows explicitly pin `AGENTIC_MODEL=claude/claude-sonnet-5-5`;
+only disc_hold_evidence differs between resolved arms. Reused deployment
+`416a2a0374e06628350816a019862caf5156e730` remains clean and contains #382.
+The previous preparation-only freeze and non-dispatch receipt are retained
+as history and superseded by this complete freeze. Projected spend remains
+433 logical Claude calls; actual before dispatch: zero calls and zero tokens.
+This complete freeze must be on main before any row is appended.

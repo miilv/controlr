@@ -6,6 +6,14 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Account for insert_key's high second-pass presettle rejection rate.**
+  Raw records can pass the initial settle yet fail after settled poses are written
+  back and reloaded. Track failure rates by task/block and budget prospective
+  stability-only refills; never silently relax tolerances or reduce camera n.
+  Diagnose the preparation path separately from controller outcomes before
+  changing generation or settling semantics
+  ([COIN preparation](experiments/2026-11-07-coin-disc-retest-prereg.md)).
+
 - [ ] **Account for reset-rejected attempts before retrying or scoring camera A/Bs.**
   `eval` can report `n=0, unstable=1` without an episode JSONL; the lane retries
   every no-row job and the episode-only collector then omits the original.
