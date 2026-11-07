@@ -1,0 +1,82 @@
+{
+ "100000": {
+  "dn_mm": 1.38,
+  "du_mm": 1.08,
+  "episode": "c4b_deposit_coin_discretBr1_discgain3_100002",
+  "sample": 25,
+  "step": 56,
+  "yaw_deg": 7.76
+ },
+ "100001": {
+  "dn_mm": -0.45,
+  "du_mm": -0.27,
+  "episode": "c4b_deposit_coin_discretBr1_discgain1_100003",
+  "sample": 18,
+  "step": 57,
+  "yaw_deg": -0.76
+ },
+ "100002": {
+  "dn_mm": 10.03,
+  "du_mm": 1.98,
+  "episode": "c4b_deposit_coin_discretAr1_discgain1_100004",
+  "sample": 4,
+  "step": 71,
+  "yaw_deg": 9.82
+ },
+ "100003": {
+  "dn_mm": 0.67,
+  "du_mm": 1.26,
+  "episode": "c4b_deposit_coin_discretBr1_discgain1_100001",
+  "sample": 16,
+  "step": 57,
+  "yaw_deg": -0.16
+ },
+ "100004": {
+  "dn_mm": 0.54,
+  "du_mm": 0.23,
+  "episode": "c4b_deposit_coin_discretBr1_discgain4_100001",
+  "sample": 28,
+  "step": 57,
+  "yaw_deg": -0.16
+ },
+ "100005": {
+  "dn_mm": 4.23,
+  "du_mm": -2.19,
+  "episode": "c4b_deposit_coin_discretAr1_discgain2_100004",
+  "sample": 7,
+  "step": 62,
+  "yaw_deg": -1.17
+ },
+ "100006": {
+  "dn_mm": 3.08,
+  "du_mm": 0.91,
+  "episode": "c4b_deposit_coin_discretAr1_discgain1_100000",
+  "sample": 0,
+  "step": 61,
+  "yaw_deg": 14.99
+ },
+ "100007": {
+  "dn_mm": 1.13,
+  "du_mm": 1.13,
+  "episode": "c4b_deposit_coin_discretBr1_discgain1_100004",
+  "sample": 19,
+  "step": 44,
+  "yaw_deg": -1.86
+ },
+ "100008": {
+  "dn_mm": -0.45,
+  "du_mm": -0.27,
+  "episode": "c4b_deposit_coin_discretBr1_discgain1_100003",
+  "sample": 18,
+  "step": 57,
+  "yaw_deg": -0.76
+ },
+ "100009": {
+  "dn_mm": 0.73,
+  "du_mm": 0.11,
+  "episode": "c4b_deposit_coin_discretBr1_discgain4_100002",
+  "sample": 29,
+  "step": 60,
+  "yaw_deg": -1.3
+ }
+}

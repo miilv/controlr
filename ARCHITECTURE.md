@@ -506,6 +506,18 @@ cannot resolve the disc's thickness is unknown; other held evidence retains its
 normal interpretation. The existing `held_thin` switch applies the same guard to
 all unresolved thin objects. Neither switch measures a pose or guarantees a grasp.
 
+### Thin-disc contact sequence
+
+`dojo.skills.coin_contact` holds default-off switches for a thin disc standing in a fixed holder (a coin in a stand),
+used by `precision.disc_into_slot`. `disc_align=walls` squeezes the holder's walls with open pads at several wrist
+yaws and fits the official jaw value (one finger's travel: V-shaped in the yaw error, linear in the offset along the
+closing axis); a bracketed fit rewrites the coin and holder through `provider.set_pose` (logged `belief_write`,
+writer `wall_probe`). The holder is a fixed Geometry object, so the squeeze moves nothing. `disc_snap` closes on the
+walls and rises with the jaws closing, so the pads shut on the coin where the fingertips clear the walls.
+`disc_lift`, `disc_seat` and `disc_release` slow the shallow hold, re-seat the coin against the table and let go in
+stages; `disc_reserve` gates a pick on the steps left. The skill is chosen by object geometry or by the
+`insert_into(disc_contact=...)` argument, never by task name (one fixed system across tasks).
+
 ### Belief-object free-space routing
 
 Dojo RuntimeConfig.plan_world defaults to table (legacy routing, retaining its
