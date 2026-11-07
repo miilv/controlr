@@ -424,3 +424,11 @@ hand/table collisions. Source504daaef plus retained recipe; all other slow
 enclosure/rest flags unchanged, including wide priority off for isolation.
 Only this pilot first; cross-check other shapes if physically supported.
 The ongoing registered screen remains unchanged and completes in full.
+
+Wide-first standard31 earns20 after rejecting8.6/11.8/13.3 mm loose wide
+pickups; a fourth41 mm lift passes5.2 mm and carries10.5 mm before a genuine
+hang17 mm from the frame. Random47 is unchanged0: its feasible full plans
+already fall back to narrow cups. Cross-check wide-first on standard66, whose
+off-priority screen tried only narrow cups (14.0/10.9/10.5/15.1 mm loose).
+Keep original verifiers and the same four-attempt budget. This is still a
+pilot probe, not a changed final candidate or rerun of a fresh-panel failure.
