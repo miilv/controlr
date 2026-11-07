@@ -162,3 +162,38 @@ Static deployment `code.model` remains stale Luna and is not route evidence.
 Per-pair scores, per-row model proof, raw source hashes and spend are retained
 in [the snapshot](../experiments/data/key-scoped/verdict.json) and
 `compute6:~/dojo-data/key-1107/`. No further run is authorized by this verdict.
+
+## peg re-test: `peg_held_read=on`, fresh salted panel — CAMERA PASS; NOT ADOPTED (write audit fails)
+
+Uses exactly the pre-7-Nov registration's success-flip gate; the later
+score-win refinement is supplementary only. Final arm completed at 06:03:17Z.
+[Full verdict, route/spend evidence and audit](../experiments/2026-11-06-peg-waist-retest-prereg.md#peg-re-test-camera-verdict-7-november).
+
+| cell | pairs | A pooled | B pooled | Δ | B-only wins | A-only losses | successes A / B |
+|---|---|---|---|---|---|---|---|
+| play_stacking_toy (gain) | 20 | 55.5 | 63.5 | +8.0 | 5 | 2 | 3 / 6 |
+| stack_blocks (guard) | 10 | 100.0 | 100.0 | 0.0 | 0 | 0 | 10 / 10 |
+| insert_tubes (guard) | 10 | 82.0 | 82.0 | 0.0 | 0 | 0 | 7 / 7 |
+
+- **Camera gate passed:** +8 >= +5; success flips 5 >= 2×2, net 3 >= 2;
+  both guards pass. Supplementary >=10-point score wins/losses: gain 7/4,
+  guards 0/0 each. These do not change the registered verdict.
+- Sample SD A/B: gain 23.73/28.52, blocks 0/0, tubes 28.98/28.98.
+  Paired bootstrap gain 95% CI **[−6.0, +22.5] points** (10,000 paired-layout
+  resamples, seed 0).
+- **Integrity:** all 80 arms rc 0, complete 20/10/10 pairs, actual Sonnet
+  model verified in every call log and report. No infra exclusions/retries
+  or time caps; 19 included parsing errors, with recovered HTTP retry counts
+  unobservable. Frozen effective configs and loaded-layout hashes match.
+- **Spend:** **331 logical Claude calls**; **5,022,186 prompt / 313,569
+  completion / 188,655 reasoning / 3,989,714 cache-read tokens**. Reasoning
+  and cache are subsets, not additions. No new audit/verdict LLM calls.
+- **No adoption:** the required write audit has excess harmful held-pose
+  writes, A 0 / B 22. Its full coverage and per-writer counts are recorded in the
+  linked verdict. No candidate or default changed. The camera-only candidate
+  delta would be exactly `--config.peg_held_read: off → on`; the failed write
+  gate prevents promoting it. This consumes the once-only fresh-layout re-test.
+
+Waist is excluded from this analysis and remains a separate verdict request.
+
+Peg audit completion: **80/80 trajectories, 1,696/1,696 writes**, zero uncertain/missing frames; 80/80 terminal scores and 532/532 live grasp probes agree. The full per-writer harmful/helpful/neutral counts and separate z metrics are in the linked prereg verdict and [audit snapshot](../experiments/data/peg-retest/audit-summary.json).
