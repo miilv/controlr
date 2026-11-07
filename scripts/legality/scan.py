@@ -249,12 +249,15 @@ def declared_entries(root):
 
 
 def gate(findings, allowlist, previous=None):
-    allowed = set(allowlist)
+    budgets = allowlist if isinstance(allowlist, dict) else dict(Counter(allowlist))
+    counts = Counter(f.key for f in findings)
     problems = []
-    if previous is not None and allowed - set(previous):
-        problems.append('allowlist grew relative to base')
+    if previous is not None:
+        old = previous if isinstance(previous, dict) else dict(Counter(previous))
+        if any(n > old.get(k, 0) for k, n in budgets.items()):
+            problems.append('allowlist grew relative to base')
     for f in findings:
-        if f.key not in allowed or f.file.startswith(GENERAL) or any(
+        if counts[f.key] > budgets.get(f.key, 0) or f.file.startswith(GENERAL) or any(
                 e.replace('.', '/').startswith(GENERAL) for e in f.entry.split(';')):
             problems.append(f'{f.file}:{f.line} {f.entry} {f.category}: {f.evidence}')
     return problems

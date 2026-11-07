@@ -1063,7 +1063,7 @@ The report-only CI job uploads all findings. A separate ratchet rejects new find
 against `scripts/legality/allowlist.json`, and rejects additions to that file relative
 to the PR base. The initial baseline is bootstrapped only where the base has no file.
 Exemptions are hashes of file, symbol, category and exact source evidence, independent
-of line numbers. They are historical debt, never a certificate of board eligibility.
+of line numbers, with an occurrence budget per hash. Neither keys nor budgets may grow. They are historical debt, never a certificate of board eligibility.
 Remove exemptions as code is retired; do not regenerate or expand the baseline to
 make CI green. A changed source line needs to eliminate the finding. The general
 system directories `dojo/general/`, `dojo/skills/general/`,

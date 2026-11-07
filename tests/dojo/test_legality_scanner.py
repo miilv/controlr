@@ -54,3 +54,12 @@ def test_long_strings_and_prompt_resources_are_scanned(tmp_path):
     (tmp_path / 'dojo/manual.md').write_text('A very long instruction: ' + 'ordinary text ' * 20 + 'make_kong checker 0.035\n')
     found = Scanner(tmp_path, ['make_kong']).scan(['file:dojo/manual.md'])
     assert {'task_name', 'checker', 'checker_tolerance'} <= {f.category for f in found}
+
+
+def test_exemption_occurrence_budgets_cannot_grow():
+    from scripts.legality.scan import Finding
+    a = Finding('dojo/old.py', 1, 'old', 'task_name', 'make_kong', 'old')
+    b = Finding('dojo/old.py', 2, 'old', 'task_name', 'make_kong', 'old')
+    assert gate([a, b], {a.key: 1})
+    assert gate([], {a.key: 2}, {a.key: 1})
+    assert not gate([a], {a.key: 1}, {a.key: 2})
