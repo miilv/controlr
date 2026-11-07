@@ -158,3 +158,18 @@ def test_insert_into_takes_disc_contact_and_no_task_name_reaches_the_switches():
     assert inspect.signature(library.insert_into).parameters["disc_contact"].default is None
     src = inspect.getsource(CC)
     assert "deposit_coin" not in src.split('"""', 2)[2]          # no task-name key below the module docstring
+
+
+def test_panel_offsets_are_deterministic_and_follow_the_coin_frame():
+    import importlib.util
+    import pathlib
+    spec = importlib.util.spec_from_file_location("coin2_panel_offsets", pathlib.Path(__file__).resolve().parents[2]
+                                                  / "scripts" / "skills" / "coin2_panel_offsets.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    lay = {"Rigid": {"coin": [{"label": "coin0", "default_pos": [0, 0, 0.78], "default_ori": [0.7071, 0.7071, 0, 0]}]}}
+    samples = [{"yaw_deg": 7.0, "dn_mm": 2.0, "du_mm": 0.0}, {"yaw_deg": -3.0, "dn_mm": 0.0, "du_mm": 1.0}]
+    a, meta = m.offsets_for("s", 100000, lay, samples)
+    b, _ = m.offsets_for("s", 100000, lay, samples)
+    assert a == b and a["coin0"] == a["vertical_coin_stand"] and a["coin0"][2] == samples[meta["sample"]]["yaw_deg"]
+    assert abs(math.hypot(a["coin0"][0], a["coin0"][1]) * 1000 - 2.0 * (meta["sample"] == 0) - 1.0 * (meta["sample"] == 1)) < 1e-6
