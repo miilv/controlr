@@ -1,0 +1,2866 @@
+{
+  "selected": {
+    "make_kong": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004,
+      100005,
+      100006,
+      100007,
+      100008,
+      100009,
+      100020,
+      100021,
+      100022,
+      100023,
+      100024,
+      100025,
+      100026,
+      100027,
+      100028,
+      100029
+    ],
+    "imitate_sorting_sequence": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004
+    ],
+    "stack_blocks": [
+      100000,
+      100001,
+      100002,
+      100003,
+      100004
+    ]
+  },
+  "attempts": {
+    "make_kong": [
+      {
+        "id": 100000,
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 27.3
+      },
+      {
+        "id": 100001,
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 18.5
+      },
+      {
+        "id": 100002,
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 16.6
+      },
+      {
+        "id": 100003,
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 16.1
+      },
+      {
+        "id": 100004,
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 16.4
+      },
+      {
+        "id": 100005,
+        "from": "100005.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 18.5
+      },
+      {
+        "id": 100006,
+        "from": "100006.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 16.1
+      },
+      {
+        "id": 100007,
+        "from": "100007.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 18.2
+      },
+      {
+        "id": 100008,
+        "from": "100008.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 17.6
+      },
+      {
+        "id": 100009,
+        "from": "100009.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 18.1
+      },
+      {
+        "id": 100020,
+        "from": "100020.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 15.4
+      },
+      {
+        "id": 100021,
+        "from": "100021.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 16.9
+      },
+      {
+        "id": 100022,
+        "from": "100022.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 23.3
+      },
+      {
+        "id": 100023,
+        "from": "100023.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 22.7
+      },
+      {
+        "id": 100024,
+        "from": "100024.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 16.7
+      },
+      {
+        "id": 100025,
+        "from": "100025.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 16.0
+      },
+      {
+        "id": 100026,
+        "from": "100026.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 19.6
+      },
+      {
+        "id": 100027,
+        "from": "100027.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 18.8
+      },
+      {
+        "id": 100028,
+        "from": "100028.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 16.2
+      },
+      {
+        "id": 100029,
+        "from": "100029.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.92,
+        "pass1_drift_deg": 1.46,
+        "pass2_top": [
+          [
+            "other0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "other2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 22,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.006,
+        "passes": 2,
+        "status": "ok",
+        "s": 15.7
+      }
+    ],
+    "imitate_sorting_sequence": [
+      {
+        "id": 100000,
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "aim0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "t1",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.004,
+        "pass2_drift_deg": 0.003,
+        "passes": 2,
+        "status": "ok",
+        "s": 17.7
+      },
+      {
+        "id": 100001,
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "t2",
+            0.18,
+            "Rigid"
+          ],
+          [
+            "aim0",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.176,
+        "pass2_drift_deg": 0.386,
+        "passes": 2,
+        "status": "ok",
+        "s": 17.6
+      },
+      {
+        "id": 100002,
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.94,
+        "pass1_drift_deg": 1.73,
+        "pass2_top": [
+          [
+            "t3",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "aim3",
+            0.01,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.009,
+        "pass2_drift_deg": 0.009,
+        "passes": 2,
+        "status": "ok",
+        "s": 18.2
+      },
+      {
+        "id": 100003,
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 3.29,
+        "pass1_drift_deg": 6.63,
+        "pass2_top": [
+          [
+            "t2",
+            0.05,
+            "Rigid"
+          ],
+          [
+            "aim2",
+            0.02,
+            "Rigid"
+          ],
+          [
+            "aim3",
+            0.01,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.046,
+        "pass2_drift_deg": 0.227,
+        "passes": 2,
+        "status": "ok",
+        "s": 15.9
+      },
+      {
+        "id": 100004,
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 1.01,
+        "pass1_drift_deg": 1.73,
+        "pass2_top": [
+          [
+            "aim0",
+            0.04,
+            "Rigid"
+          ],
+          [
+            "t0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "t1",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 10,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.04,
+        "pass2_drift_deg": 0.348,
+        "passes": 2,
+        "status": "ok",
+        "s": 22.2
+      }
+    ],
+    "stack_blocks": [
+      {
+        "id": 100000,
+        "from": "100000.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.15,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.001,
+        "pass2_drift_deg": 0.004,
+        "passes": 2,
+        "status": "ok",
+        "s": 6.3
+      },
+      {
+        "id": 100001,
+        "from": "100001.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.21,
+        "pass1_drift_deg": 0.49,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.0,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.3
+      },
+      {
+        "id": 100002,
+        "from": "100002.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.21,
+        "pass1_drift_deg": 0.49,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.0,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 8.7
+      },
+      {
+        "id": 100003,
+        "from": "100003.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 0.04,
+        "pass1_drift_deg": 0.14,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.002,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.7
+      },
+      {
+        "id": 100004,
+        "from": "100004.json",
+        "pass1_robodojo_stable": true,
+        "pass1_drift_mm": 4.79,
+        "pass1_drift_deg": 0.49,
+        "pass2_top": [
+          [
+            "block_0",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_1",
+            0.0,
+            "Rigid"
+          ],
+          [
+            "block_2",
+            0.0,
+            "Rigid"
+          ]
+        ],
+        "objects_written": 3,
+        "pass2_robodojo_stable": true,
+        "pass2_drift_mm": 0.001,
+        "pass2_drift_deg": 0.001,
+        "passes": 2,
+        "status": "ok",
+        "s": 7.9
+      }
+    ]
+  },
+  "demo_attempts": {
+    "100000": {
+      "from": "100000.settled.json",
+      "attempt": 0,
+      "speed": 1.25,
+      "order": [
+        2,
+        1,
+        4,
+        3,
+        0
+      ],
+      "objects": {
+        "aim2": {
+          "category": "toy_car",
+          "idx": 3,
+          "shape": "mesh",
+          "width_cm": 5.0,
+          "height_cm": 3.7
+        },
+        "aim1": {
+          "category": "phone",
+          "idx": 0,
+          "shape": "mesh",
+          "width_cm": 4.8,
+          "height_cm": 2.2
+        },
+        "aim4": {
+          "category": "garage",
+          "idx": 14,
+          "shape": "mesh",
+          "width_cm": 6.5,
+          "height_cm": 5.6
+        },
+        "aim3": {
+          "category": "action_camera",
+          "idx": 1,
+          "shape": "mesh",
+          "width_cm": 3.3,
+          "height_cm": 4.8
+        },
+        "aim0": {
+          "category": "watch",
+          "idx": 0,
+          "shape": "mesh",
+          "width_cm": 4.8,
+          "height_cm": 3.2
+        }
+      },
+      "status": "ok",
+      "substeps": 8046,
+      "segments": [
+        {
+          "name": "pre aim2",
+          "steps": 135,
+          "straight": false,
+          "yaw_deg": 95.0
+        },
+        {
+          "name": "grasp aim2",
+          "steps": 68,
+          "straight": true,
+          "yaw_deg": 95.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim2",
+          "steps": 148,
+          "straight": true,
+          "yaw_deg": 95.0
+        },
+        {
+          "name": "over basket1 with aim2",
+          "steps": 303,
+          "straight": false,
+          "yaw_deg": 95.0
+        },
+        {
+          "name": "lower aim2",
+          "steps": 69,
+          "straight": true,
+          "yaw_deg": 95.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim2",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 95.0
+        },
+        {
+          "name": "pre aim1",
+          "steps": 322,
+          "straight": false,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "grasp aim1",
+          "steps": 96,
+          "straight": true,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim1",
+          "steps": 288,
+          "straight": true,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "over basket1 with aim1",
+          "steps": 164,
+          "straight": false,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "lower aim1",
+          "steps": 42,
+          "straight": true,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim1",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "pre aim4",
+          "steps": 179,
+          "straight": false,
+          "yaw_deg": 50.0
+        },
+        {
+          "name": "grasp aim4",
+          "steps": 171,
+          "straight": true,
+          "yaw_deg": 50.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim4",
+          "steps": 412,
+          "straight": true,
+          "yaw_deg": 50.0
+        },
+        {
+          "name": "over basket1 with aim4",
+          "steps": 608,
+          "straight": false,
+          "yaw_deg": 50.0
+        },
+        {
+          "name": "lower aim4",
+          "steps": 836,
+          "straight": true,
+          "yaw_deg": 50.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim4",
+          "steps": 46,
+          "straight": true,
+          "yaw_deg": 50.0
+        },
+        {
+          "name": "pre aim3",
+          "steps": 226,
+          "straight": false,
+          "yaw_deg": 60.0
+        },
+        {
+          "name": "grasp aim3",
+          "steps": 198,
+          "straight": true,
+          "yaw_deg": 60.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim3",
+          "steps": 365,
+          "straight": true,
+          "yaw_deg": 60.0
+        },
+        {
+          "name": "over basket1 with aim3",
+          "steps": 261,
+          "straight": false,
+          "yaw_deg": 60.0
+        },
+        {
+          "name": "lower aim3",
+          "steps": 63,
+          "straight": true,
+          "yaw_deg": 60.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim3",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 60.0
+        },
+        {
+          "name": "pre aim0",
+          "steps": 98,
+          "straight": false,
+          "yaw_deg": 30.0
+        },
+        {
+          "name": "grasp aim0",
+          "steps": 332,
+          "straight": true,
+          "yaw_deg": 30.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim0",
+          "steps": 314,
+          "straight": true,
+          "yaw_deg": 30.0
+        },
+        {
+          "name": "over basket1 with aim0",
+          "steps": 124,
+          "straight": false,
+          "yaw_deg": 30.0
+        },
+        {
+          "name": "lower aim0",
+          "steps": 41,
+          "straight": true,
+          "yaw_deg": 30.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim0",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 30.0
+        },
+        {
+          "name": "home",
+          "steps": 727
+        }
+      ],
+      "validation": {
+        "ok": true,
+        "unstable": false,
+        "aim_in_basket1": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "t_moved_mm": {
+          "t0": 0.0,
+          "t1": 0.0,
+          "t2": 0.0,
+          "t3": 0.0,
+          "t4": 0.0
+        },
+        "aims": {
+          "aim0": {
+            "lifted_cm": 13.7,
+            "from_basket1_cm": [
+              0.1,
+              0.7,
+              1.6
+            ]
+          },
+          "aim1": {
+            "lifted_cm": 12.8,
+            "from_basket1_cm": [
+              -3.7,
+              -3.0,
+              -0.8
+            ]
+          },
+          "aim2": {
+            "lifted_cm": 13.9,
+            "from_basket1_cm": [
+              -0.3,
+              0.7,
+              -1.0
+            ]
+          },
+          "aim3": {
+            "lifted_cm": 20.0,
+            "from_basket1_cm": [
+              -0.2,
+              4.7,
+              0.6
+            ]
+          },
+          "aim4": {
+            "lifted_cm": 17.9,
+            "from_basket1_cm": [
+              -0.7,
+              -8.4,
+              0.1
+            ]
+          }
+        },
+        "env_steps": 865,
+        "ended_early": false,
+        "support_checked": true
+      },
+      "attempts": [
+        {
+          "order": [
+            2,
+            1,
+            4,
+            3,
+            0
+          ],
+          "status": "ok",
+          "in_basket1": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ],
+      "s": 113.6
+    },
+    "100001": {
+      "from": "100001.settled.json",
+      "attempt": 3,
+      "speed": 1.25,
+      "order": [
+        2,
+        0,
+        1,
+        3,
+        4
+      ],
+      "objects": {
+        "aim2": {
+          "category": "toy_car",
+          "idx": 4,
+          "shape": "mesh",
+          "width_cm": 3.9,
+          "height_cm": 3.2
+        },
+        "aim0": {
+          "category": "phone",
+          "idx": 0,
+          "shape": "mesh",
+          "width_cm": 4.8,
+          "height_cm": 2.2
+        },
+        "aim1": {
+          "category": "watch",
+          "idx": 0,
+          "shape": "mesh",
+          "width_cm": 4.8,
+          "height_cm": 3.2
+        },
+        "aim3": {
+          "category": "action_camera",
+          "idx": 1,
+          "shape": "mesh",
+          "width_cm": 3.2,
+          "height_cm": 4.8
+        },
+        "aim4": {
+          "category": "garage",
+          "idx": 14,
+          "shape": "mesh",
+          "width_cm": 6.4,
+          "height_cm": 5.6
+        }
+      },
+      "status": "ok",
+      "substeps": 7126,
+      "segments": [
+        {
+          "name": "pre aim2",
+          "steps": 73,
+          "straight": false,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "grasp aim2",
+          "steps": 69,
+          "straight": true,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim2",
+          "steps": 134,
+          "straight": true,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "over basket1 with aim2",
+          "steps": 346,
+          "straight": false,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "lower aim2",
+          "steps": 42,
+          "straight": true,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim2",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "pre aim0",
+          "steps": 678,
+          "straight": false,
+          "yaw_deg": 20.0
+        },
+        {
+          "name": "grasp aim0",
+          "steps": 46,
+          "straight": true,
+          "yaw_deg": 20.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim0",
+          "steps": 104,
+          "straight": true,
+          "yaw_deg": 20.0
+        },
+        {
+          "name": "over basket1 with aim0",
+          "steps": 147,
+          "straight": false,
+          "yaw_deg": 20.0
+        },
+        {
+          "name": "lower aim0",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 20.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim0",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 20.0
+        },
+        {
+          "name": "pre aim1",
+          "steps": 498,
+          "straight": false,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "grasp aim1",
+          "steps": 130,
+          "straight": true,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim1",
+          "steps": 288,
+          "straight": true,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "over basket1 with aim1",
+          "steps": 139,
+          "straight": false,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "lower aim1",
+          "steps": 50,
+          "straight": true,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim1",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "pre aim3",
+          "steps": 200,
+          "straight": false,
+          "yaw_deg": 15.0
+        },
+        {
+          "name": "grasp aim3",
+          "steps": 138,
+          "straight": true,
+          "yaw_deg": 15.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim3",
+          "steps": 268,
+          "straight": true,
+          "yaw_deg": 15.0
+        },
+        {
+          "name": "over basket1 with aim3",
+          "steps": 856,
+          "straight": false,
+          "yaw_deg": 15.0
+        },
+        {
+          "name": "lower aim3",
+          "steps": 67,
+          "straight": true,
+          "yaw_deg": 15.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim3",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 15.0
+        },
+        {
+          "name": "pre aim4",
+          "steps": 189,
+          "straight": false,
+          "yaw_deg": 10.0
+        },
+        {
+          "name": "grasp aim4",
+          "steps": 109,
+          "straight": true,
+          "yaw_deg": 10.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim4",
+          "steps": 219,
+          "straight": true,
+          "yaw_deg": 10.0
+        },
+        {
+          "name": "over basket1 with aim4",
+          "steps": 285,
+          "straight": false,
+          "yaw_deg": 10.0
+        },
+        {
+          "name": "lower aim4",
+          "steps": 78,
+          "straight": true,
+          "yaw_deg": 10.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim4",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 10.0
+        },
+        {
+          "name": "home",
+          "steps": 483
+        }
+      ],
+      "validation": {
+        "ok": true,
+        "unstable": false,
+        "aim_in_basket1": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "t_moved_mm": {
+          "t0": 0.0,
+          "t1": 0.0,
+          "t2": 3.1,
+          "t3": 0.0,
+          "t4": 0.0
+        },
+        "aims": {
+          "aim0": {
+            "lifted_cm": 12.3,
+            "from_basket1_cm": [
+              -7.4,
+              2.8,
+              -0.8
+            ]
+          },
+          "aim1": {
+            "lifted_cm": 13.9,
+            "from_basket1_cm": [
+              5.2,
+              0.1,
+              -1.6
+            ]
+          },
+          "aim2": {
+            "lifted_cm": 13.3,
+            "from_basket1_cm": [
+              -0.7,
+              3.8,
+              -0.9
+            ]
+          },
+          "aim3": {
+            "lifted_cm": 14.6,
+            "from_basket1_cm": [
+              2.8,
+              5.3,
+              -0.7
+            ]
+          },
+          "aim4": {
+            "lifted_cm": 14.9,
+            "from_basket1_cm": [
+              0.6,
+              0.2,
+              3.0
+            ]
+          }
+        },
+        "env_steps": 773,
+        "ended_early": false,
+        "support_checked": true
+      },
+      "attempts": [
+        {
+          "order": [
+            4,
+            0,
+            3,
+            1,
+            2
+          ],
+          "status": "dropped: validation",
+          "in_basket1": [
+            1.0,
+            1.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "order": [
+            3,
+            2,
+            0,
+            4,
+            1
+          ],
+          "status": "too long: 916 env steps",
+          "in_basket1": null
+        },
+        {
+          "order": [
+            1,
+            0,
+            4,
+            3,
+            2
+          ],
+          "status": "dropped: validation",
+          "in_basket1": [
+            0.0,
+            1.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "order": [
+            2,
+            0,
+            1,
+            3,
+            4
+          ],
+          "status": "ok",
+          "in_basket1": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ],
+      "s": 226.4
+    },
+    "100002": {
+      "from": "100002.settled.json",
+      "attempt": 1,
+      "speed": 1.25,
+      "order": [
+        1,
+        2,
+        4,
+        3,
+        0
+      ],
+      "objects": {
+        "aim1": {
+          "category": "action_camera",
+          "idx": 0,
+          "shape": "mesh",
+          "width_cm": 3.6,
+          "height_cm": 4.6
+        },
+        "aim2": {
+          "category": "toy_car",
+          "idx": 0,
+          "shape": "mesh",
+          "width_cm": 4.5,
+          "height_cm": 4.3
+        },
+        "aim4": {
+          "category": "watch",
+          "idx": 1,
+          "shape": "mesh",
+          "width_cm": 5.7,
+          "height_cm": 3.4
+        },
+        "aim3": {
+          "category": "phone",
+          "idx": 0,
+          "shape": "mesh",
+          "width_cm": 4.8,
+          "height_cm": 2.2
+        },
+        "aim0": {
+          "category": "garage",
+          "idx": 15,
+          "shape": "mesh",
+          "width_cm": 6.5,
+          "height_cm": 6.0
+        }
+      },
+      "status": "ok",
+      "substeps": 8941,
+      "segments": [
+        {
+          "name": "pre aim1",
+          "steps": 312,
+          "straight": false,
+          "yaw_deg": 115.0
+        },
+        {
+          "name": "grasp aim1",
+          "steps": 270,
+          "straight": true,
+          "yaw_deg": 115.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim1",
+          "steps": 336,
+          "straight": true,
+          "yaw_deg": 115.0
+        },
+        {
+          "name": "over basket1 with aim1",
+          "steps": 130,
+          "straight": false,
+          "yaw_deg": 115.0
+        },
+        {
+          "name": "lower aim1",
+          "steps": 63,
+          "straight": true,
+          "yaw_deg": 115.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim1",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 115.0
+        },
+        {
+          "name": "pre aim2",
+          "steps": 169,
+          "straight": false,
+          "yaw_deg": 120.0
+        },
+        {
+          "name": "grasp aim2",
+          "steps": 140,
+          "straight": true,
+          "yaw_deg": 120.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim2",
+          "steps": 235,
+          "straight": true,
+          "yaw_deg": 120.0
+        },
+        {
+          "name": "over basket1 with aim2",
+          "steps": 219,
+          "straight": false,
+          "yaw_deg": 120.0
+        },
+        {
+          "name": "lower aim2",
+          "steps": 65,
+          "straight": true,
+          "yaw_deg": 120.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim2",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 120.0
+        },
+        {
+          "name": "pre aim4",
+          "steps": 206,
+          "straight": false,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "grasp aim4",
+          "steps": 89,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim4",
+          "steps": 450,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "over basket1 with aim4",
+          "steps": 1034,
+          "straight": false,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "lower aim4",
+          "steps": 521,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim4",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "pre aim3",
+          "steps": 146,
+          "straight": false,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "grasp aim3",
+          "steps": 59,
+          "straight": true,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim3",
+          "steps": 140,
+          "straight": true,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "over basket1 with aim3",
+          "steps": 132,
+          "straight": false,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "lower aim3",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim3",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "pre aim0",
+          "steps": 397,
+          "straight": false,
+          "yaw_deg": 90.0
+        },
+        {
+          "name": "grasp aim0",
+          "steps": 124,
+          "straight": true,
+          "yaw_deg": 90.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim0",
+          "steps": 1012,
+          "straight": true,
+          "yaw_deg": 90.0
+        },
+        {
+          "name": "over basket1 with aim0",
+          "steps": 384,
+          "straight": false,
+          "yaw_deg": 90.0
+        },
+        {
+          "name": "lower aim0",
+          "steps": 50,
+          "straight": true,
+          "yaw_deg": 90.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim0",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 90.0
+        },
+        {
+          "name": "home",
+          "steps": 768
+        }
+      ],
+      "validation": {
+        "ok": true,
+        "unstable": false,
+        "aim_in_basket1": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "t_moved_mm": {
+          "t0": 0.1,
+          "t1": 0.0,
+          "t2": 0.0,
+          "t3": 0.0,
+          "t4": 0.0
+        },
+        "aims": {
+          "aim0": {
+            "lifted_cm": 15.5,
+            "from_basket1_cm": [
+              -1.0,
+              -10.3,
+              0.2
+            ]
+          },
+          "aim1": {
+            "lifted_cm": 15.0,
+            "from_basket1_cm": [
+              1.4,
+              -4.5,
+              -1.1
+            ]
+          },
+          "aim2": {
+            "lifted_cm": 14.4,
+            "from_basket1_cm": [
+              0.4,
+              3.5,
+              -0.5
+            ]
+          },
+          "aim3": {
+            "lifted_cm": 12.5,
+            "from_basket1_cm": [
+              -5.9,
+              -7.3,
+              -0.5
+            ]
+          },
+          "aim4": {
+            "lifted_cm": 20.7,
+            "from_basket1_cm": [
+              3.3,
+              0.4,
+              0.3
+            ]
+          }
+        },
+        "env_steps": 955,
+        "ended_early": false,
+        "support_checked": true
+      },
+      "attempts": [
+        {
+          "order": [
+            1,
+            4,
+            0,
+            2,
+            3
+          ],
+          "status": "too long: 1073 env steps",
+          "in_basket1": null
+        },
+        {
+          "order": [
+            1,
+            2,
+            4,
+            3,
+            0
+          ],
+          "status": "ok",
+          "in_basket1": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ],
+      "s": 86.5
+    },
+    "100003": {
+      "from": "100003.settled.json",
+      "attempt": 1,
+      "speed": 1.25,
+      "order": [
+        1,
+        4,
+        2,
+        3,
+        0
+      ],
+      "objects": {
+        "aim1": {
+          "category": "toy_car",
+          "idx": 0,
+          "shape": "mesh",
+          "width_cm": 4.6,
+          "height_cm": 4.3
+        },
+        "aim4": {
+          "category": "watch",
+          "idx": 1,
+          "shape": "mesh",
+          "width_cm": 5.7,
+          "height_cm": 3.4
+        },
+        "aim2": {
+          "category": "action_camera",
+          "idx": 2,
+          "shape": "mesh",
+          "width_cm": 2.8,
+          "height_cm": 5.4
+        },
+        "aim3": {
+          "category": "phone",
+          "idx": 0,
+          "shape": "mesh",
+          "width_cm": 4.9,
+          "height_cm": 2.2
+        },
+        "aim0": {
+          "category": "garage",
+          "idx": 14,
+          "shape": "mesh",
+          "width_cm": 6.4,
+          "height_cm": 5.6
+        }
+      },
+      "status": "ok",
+      "substeps": 7185,
+      "segments": [
+        {
+          "name": "pre aim1",
+          "steps": 229,
+          "straight": false,
+          "yaw_deg": 140.0
+        },
+        {
+          "name": "grasp aim1",
+          "steps": 372,
+          "straight": true,
+          "yaw_deg": 140.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim1",
+          "steps": 337,
+          "straight": true,
+          "yaw_deg": 140.0
+        },
+        {
+          "name": "over basket1 with aim1",
+          "steps": 109,
+          "straight": false,
+          "yaw_deg": 140.0
+        },
+        {
+          "name": "lower aim1",
+          "steps": 51,
+          "straight": true,
+          "yaw_deg": 140.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim1",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 140.0
+        },
+        {
+          "name": "pre aim4",
+          "steps": 112,
+          "straight": false,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "grasp aim4",
+          "steps": 265,
+          "straight": true,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim4",
+          "steps": 271,
+          "straight": true,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "over basket1 with aim4",
+          "steps": 144,
+          "straight": false,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "lower aim4",
+          "steps": 44,
+          "straight": true,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim4",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 135.0
+        },
+        {
+          "name": "pre aim2",
+          "steps": 153,
+          "straight": false,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "grasp aim2",
+          "steps": 134,
+          "straight": true,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim2",
+          "steps": 234,
+          "straight": true,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "over basket1 with aim2",
+          "steps": 147,
+          "straight": false,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "lower aim2",
+          "steps": 80,
+          "straight": true,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim2",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 160.0
+        },
+        {
+          "name": "pre aim3",
+          "steps": 89,
+          "straight": false,
+          "yaw_deg": 110.0
+        },
+        {
+          "name": "grasp aim3",
+          "steps": 70,
+          "straight": true,
+          "yaw_deg": 110.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim3",
+          "steps": 155,
+          "straight": true,
+          "yaw_deg": 110.0
+        },
+        {
+          "name": "over basket1 with aim3",
+          "steps": 219,
+          "straight": false,
+          "yaw_deg": 110.0
+        },
+        {
+          "name": "lower aim3",
+          "steps": 222,
+          "straight": true,
+          "yaw_deg": 110.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim3",
+          "steps": 147,
+          "straight": true,
+          "yaw_deg": 110.0
+        },
+        {
+          "name": "pre aim0",
+          "steps": 239,
+          "straight": false,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "grasp aim0",
+          "steps": 146,
+          "straight": true,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim0",
+          "steps": 373,
+          "straight": true,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "over basket1 with aim0",
+          "steps": 763,
+          "straight": false,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "lower aim0",
+          "steps": 52,
+          "straight": true,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim0",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 25.0
+        },
+        {
+          "name": "home",
+          "steps": 618
+        }
+      ],
+      "validation": {
+        "ok": true,
+        "unstable": false,
+        "aim_in_basket1": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "t_moved_mm": {
+          "t0": 0.0,
+          "t1": 0.0,
+          "t2": 0.7,
+          "t3": 0.0,
+          "t4": 0.0
+        },
+        "aims": {
+          "aim0": {
+            "lifted_cm": 16.9,
+            "from_basket1_cm": [
+              -3.1,
+              1.9,
+              3.3
+            ]
+          },
+          "aim1": {
+            "lifted_cm": 12.8,
+            "from_basket1_cm": [
+              -0.2,
+              0.5,
+              -0.7
+            ]
+          },
+          "aim2": {
+            "lifted_cm": 14.8,
+            "from_basket1_cm": [
+              3.1,
+              -0.7,
+              -1.2
+            ]
+          },
+          "aim3": {
+            "lifted_cm": 13.0,
+            "from_basket1_cm": [
+              5.3,
+              -1.8,
+              2.4
+            ]
+          },
+          "aim4": {
+            "lifted_cm": 14.0,
+            "from_basket1_cm": [
+              -4.9,
+              5.5,
+              -1.2
+            ]
+          }
+        },
+        "env_steps": 779,
+        "ended_early": false,
+        "support_checked": true
+      },
+      "attempts": [
+        {
+          "order": [
+            3,
+            4,
+            0,
+            1,
+            2
+          ],
+          "status": "dropped: validation",
+          "in_basket1": [
+            1.0,
+            1.0,
+            0.0,
+            1.0,
+            1.0
+          ]
+        },
+        {
+          "order": [
+            1,
+            4,
+            2,
+            3,
+            0
+          ],
+          "status": "ok",
+          "in_basket1": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ],
+      "s": 137.3
+    },
+    "100004": {
+      "from": "100004.settled.json",
+      "attempt": 1,
+      "speed": 1.25,
+      "order": [
+        3,
+        0,
+        1,
+        2,
+        4
+      ],
+      "objects": {
+        "aim3": {
+          "category": "toy_car",
+          "idx": 1,
+          "shape": "mesh",
+          "width_cm": 5.5,
+          "height_cm": 3.9
+        },
+        "aim0": {
+          "category": "action_camera",
+          "idx": 2,
+          "shape": "mesh",
+          "width_cm": 2.7,
+          "height_cm": 5.4
+        },
+        "aim1": {
+          "category": "phone",
+          "idx": 0,
+          "shape": "mesh",
+          "width_cm": 4.9,
+          "height_cm": 2.2
+        },
+        "aim2": {
+          "category": "watch",
+          "idx": 2,
+          "shape": "mesh",
+          "width_cm": 4.7,
+          "height_cm": 3.3
+        },
+        "aim4": {
+          "category": "garage",
+          "idx": 15,
+          "shape": "mesh",
+          "width_cm": 6.4,
+          "height_cm": 6.0
+        }
+      },
+      "status": "ok",
+      "substeps": 8187,
+      "segments": [
+        {
+          "name": "pre aim3",
+          "steps": 362,
+          "straight": false,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "grasp aim3",
+          "steps": 174,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim3",
+          "steps": 591,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "over basket1 with aim3",
+          "steps": 1083,
+          "straight": false,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "lower aim3",
+          "steps": 69,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim3",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "pre aim0",
+          "steps": 228,
+          "straight": false,
+          "yaw_deg": 0.0
+        },
+        {
+          "name": "grasp aim0",
+          "steps": 355,
+          "straight": true,
+          "yaw_deg": 0.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim0",
+          "steps": 306,
+          "straight": true,
+          "yaw_deg": 0.0
+        },
+        {
+          "name": "over basket1 with aim0",
+          "steps": 115,
+          "straight": false,
+          "yaw_deg": 0.0
+        },
+        {
+          "name": "lower aim0",
+          "steps": 58,
+          "straight": true,
+          "yaw_deg": 0.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim0",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 0.0
+        },
+        {
+          "name": "pre aim1",
+          "steps": 245,
+          "straight": false,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "grasp aim1",
+          "steps": 125,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim1",
+          "steps": 183,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "over basket1 with aim1",
+          "steps": 88,
+          "straight": false,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "lower aim1",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim1",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 40.0
+        },
+        {
+          "name": "pre aim2",
+          "steps": 582,
+          "straight": false,
+          "yaw_deg": 130.0
+        },
+        {
+          "name": "grasp aim2",
+          "steps": 80,
+          "straight": true,
+          "yaw_deg": 130.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim2",
+          "steps": 186,
+          "straight": true,
+          "yaw_deg": 130.0
+        },
+        {
+          "name": "over basket1 with aim2",
+          "steps": 243,
+          "straight": false,
+          "yaw_deg": 130.0
+        },
+        {
+          "name": "lower aim2",
+          "steps": 69,
+          "straight": true,
+          "yaw_deg": 130.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim2",
+          "steps": 40,
+          "straight": true,
+          "yaw_deg": 130.0
+        },
+        {
+          "name": "pre aim4",
+          "steps": 261,
+          "straight": false,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "grasp aim4",
+          "steps": 95,
+          "straight": true,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "close",
+          "steps": 180
+        },
+        {
+          "name": "lift aim4",
+          "steps": 192,
+          "straight": true,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "over basket1 with aim4",
+          "steps": 363,
+          "straight": false,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "lower aim4",
+          "steps": 92,
+          "straight": true,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "open",
+          "steps": 70
+        },
+        {
+          "name": "clear basket1 after aim4",
+          "steps": 43,
+          "straight": true,
+          "yaw_deg": 100.0
+        },
+        {
+          "name": "home",
+          "steps": 549
+        }
+      ],
+      "validation": {
+        "ok": true,
+        "unstable": false,
+        "aim_in_basket1": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "t_moved_mm": {
+          "t0": 0.0,
+          "t1": 0.0,
+          "t2": 0.0,
+          "t3": 0.0,
+          "t4": 0.0
+        },
+        "aims": {
+          "aim0": {
+            "lifted_cm": 15.1,
+            "from_basket1_cm": [
+              -6.4,
+              -0.8,
+              2.5
+            ]
+          },
+          "aim1": {
+            "lifted_cm": 12.5,
+            "from_basket1_cm": [
+              -1.5,
+              -8.3,
+              -0.5
+            ]
+          },
+          "aim2": {
+            "lifted_cm": 13.7,
+            "from_basket1_cm": [
+              0.1,
+              0.2,
+              1.8
+            ]
+          },
+          "aim3": {
+            "lifted_cm": 14.2,
+            "from_basket1_cm": [
+              0.5,
+              0.0,
+              -0.9
+            ]
+          },
+          "aim4": {
+            "lifted_cm": 14.9,
+            "from_basket1_cm": [
+              2.4,
+              -9.7,
+              0.1
+            ]
+          }
+        },
+        "env_steps": 879,
+        "ended_early": false,
+        "support_checked": true
+      },
+      "attempts": [
+        {
+          "order": [
+            1,
+            4,
+            3,
+            2,
+            0
+          ],
+          "status": "too long: 992 env steps",
+          "in_basket1": null
+        },
+        {
+          "order": [
+            3,
+            0,
+            1,
+            2,
+            4
+          ],
+          "status": "ok",
+          "in_basket1": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+          ]
+        }
+      ],
+      "s": 74.5
+    }
+  },
+  "demo_failed_ids": [],
+  "demo_failure_rate": 0.0
+}

@@ -323,3 +323,24 @@ The prep script must refuse any candidate/selected/rendered id outside
 when constructing and appending rows. Append the replacement 60 rows at the
 queue END under `queue2.txt.lock`, preserving all existing bytes and priorities.
 Freeze a new manifest and publish replacement positions, hashes and ETA.
+
+## Replacement preparation freeze — rendered-eligible panel
+
+All 30 selected inputs pass: kong **100000–09 and 100020–29**; imitation and
+stack **100000–100004** each. All five imitation demos pass standard validation
+at **1.25**. No input id was rejected; all standard order attempts, including
+any failed order before a valid demo, are retained. Demo-input failure rate
+**0/5**. No settling tolerances, validation or decision gates changed.
+
+[Replacement manifest](data/kong-scoped-retest/eligible/manifest.json), SHA256
+`8b3a0dc168c8637f8adb1f161b04cdcfe89dbb9e5e851eb8a605fdaf58d1a3fd`. [Shared pins](data/kong-scoped-retest/eligible/shared-freeze.json),
+[all selection attempts](data/kong-scoped-retest/eligible/selection.json),
+[parity snapshots](data/kong-scoped-retest/eligible/parity-proof.json).
+The [prep script](data/kong-scoped-retest/eligible/prep-script.txt) checks the
+positive `is_our_measurement_id` allowlist before every generation batch and
+selected panel. Its direct refusal check accepts the four eligible slice
+boundaries and rejects 100010, 100030, 100050, 100099 and 100100. Staging and
+append independently recheck every id. Every one of the 60 staged rows pins
+Sonnet and the unchanged camera deployment. #417 identity instrument is fixed
+at `77b4571907f6ce49eec11c0685db8f0c7ba05d64`;
+nearest-GT is supplementary. No camera outcome has been read.
