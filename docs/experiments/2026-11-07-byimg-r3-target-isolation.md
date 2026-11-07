@@ -24,3 +24,14 @@ interception; these ten inputs are excluded from the final paired panel.
 Source prefix: `af7ec47b`. A later change to transfer/loaded-lift code does not
 change this prefix. Runs use the shared compute3 light locks, admission checks,
 8G/600% scopes, at most two jobs, physics only and zero model calls.
+
+## Frozen-prefix confirmation registration
+
+After the spent-layout component screens, validate frozen source `fab6ca6a`
+once on ten additional fresh raw v15 draws 100090–100099, variant **21**, salt
+`byimg-r3-frozen-target-confirm-20261107`. Same >75 mm immediately and after
+10-action hold criterion, no loading, no tuning from these outcomes. Report
+this independent n/N separately from the original 5/10 screen and from the
+full-task settled panel. A first launch specified invalid variant 29 and was
+refused during generation before writing any input or running an episode;
+variant 21 is fixed here before outcomes. The task panel's variant 19 is valid.
