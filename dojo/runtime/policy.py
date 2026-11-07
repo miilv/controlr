@@ -570,6 +570,18 @@ class RuntimeConfig:
     # taker inserts the coin with its planned in-hand pose) | on (the taker's insertion asks for the in-hand read at the
     # pre-insert hover; with held_pose "request" that is the only place that reads). 5.1 rb 100006: 11 mm off, jammed
     disc_handover_read: str = "off"
+    # deposit_coin's contact sequence (COIN2, ``dojo.skills.coin_contact``; G3 ``--skill-attr``), all "off" = today:
+    # disc_align "walls" (squeeze the holder's walls, read the strict-v2 official jaw value at three yaws, rewrite the
+    # coin + holder plane; needs the official key), disc_snap "on" (close on the walls, rise, the pads close onto the coin
+    # as the fingertips clear them), disc_lift "shallow" (4 mm per step lift, slow carry), disc_seat "table" (press the
+    # held coin onto the table, deeper into the pads), disc_release "staged" (in-hand read at the hover, release in
+    # stages), disc_reserve "on" (a pick starts only with 80 / 150 steps left, same-arm / cross-arm)
+    disc_align: str = "off"
+    disc_snap: str = "off"
+    disc_lift: str = "off"
+    disc_seat: str = "off"
+    disc_release: str = "off"
+    disc_reserve: str = "off"
     # belt tracking (``RuntimeProvider._track``): off (today: an unmatched track is dropped only after 6 reads with the
     # arms still, else extrapolated on) | on (a track no read matched for ``track_window`` steps expires whatever the
     # arms do, is never extrapolated past that, and a same-asset ghost predicted near a newcomer retires). Misha's G5
@@ -810,7 +822,10 @@ class RuntimePolicy:
                 or self.cfg.belt_first_phase not in ("off", "on")
                 or self.cfg.belt_target not in ("off", "match")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
-                or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
+                or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.disc_align not in ("off", "walls")
+                or self.cfg.disc_snap not in ("off", "on") or self.cfg.disc_lift not in ("off", "shallow")
+                or self.cfg.disc_seat not in ("off", "table") or self.cfg.disc_release not in ("off", "staged")
+                or self.cfg.disc_reserve not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
                 or self.cfg.held_thin not in ("off", "on")
                 or self.cfg.disc_hold_evidence not in ("off", "on")
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
@@ -1180,6 +1195,8 @@ class RuntimePolicy:
             sk_.belt_first_phase = cfg.belt_first_phase
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
             sk_.disc_handover_read = cfg.disc_handover_read
+            sk_.disc_align, sk_.disc_snap, sk_.disc_lift = cfg.disc_align, cfg.disc_snap, cfg.disc_lift
+            sk_.disc_seat, sk_.disc_release, sk_.disc_reserve = cfg.disc_seat, cfg.disc_release, cfg.disc_reserve
             sk_.kong_draw_read = cfg.kong_draw_read
             sk_.peg_base_refine = cfg.peg_base_refine
             sk_.peg_stuck_confirm = cfg.peg_stuck_confirm

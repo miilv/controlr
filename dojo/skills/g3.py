@@ -95,6 +95,30 @@ class OffsetBeliefProvider:
                 o.pos = o.pos + np.r_[d[:2], 0.0]
         return w
 
+    def set_pose(self, label: str, pos, quat, writer: str = "") -> bool:
+        """A skill's measurement rewrites ``label``'s belief (``coin_contact.wall_probe``): the offset becomes the one
+        that puts the believed pose there (yaw about the vertical through the bbox centre, then xy), so later refreshes
+        keep it. A label without an offset gets one. Dev log in ``self.writes``."""
+        from dojo.skills.geometry import quat_to_R
+        w = self.base.refresh({})
+        if label not in w.objects:
+            return False
+        o = w.objects[label]
+        R_gt, R_new = o.R, quat_to_R(np.asarray(quat, float))
+        yaw = lambda R: math.atan2(float(R[1, 0]), float(R[0, 0]))
+        dyaw = math.degrees(math.atan2(math.sin(yaw(R_new) - yaw(R_gt)), math.cos(yaw(R_new) - yaw(R_gt))))
+        c, s_ = math.cos(math.radians(dyaw)), math.sin(math.radians(dyaw))
+        Rz = np.array([[c, -s_, 0.0], [s_, c, 0.0], [0.0, 0.0, 1.0]])
+        cw = R_gt @ o.asset.center + o.pos
+        p_rot = cw - (Rz @ R_gt) @ o.asset.center
+        dxy = np.asarray(pos, float)[:2] - p_rot[:2]
+        before = self.offsets.get(label)
+        self.offsets[label] = np.array([float(dxy[0]), float(dxy[1]), dyaw])
+        self.writes = getattr(self, "writes", []) + [{"label": label, "writer": writer,
+                                                      "offset_before": None if before is None else before.tolist(),
+                                                      "offset_after": self.offsets[label].tolist()}]
+        return True
+
 
 LOOK_READ_NOISE = (0.0004, 0.8)       # m, deg: 5.1's keyhole read from the wrist 15 cm over a lock (median xy / yaw,
                                       # 25 dev layouts; Perception-2, experiments/2026-10-27-keyhole-yaw)
@@ -219,6 +243,8 @@ SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "lo
                "ported_classify": ("v3b", "p1", "p2"),
                "belt_container": ("off", "on"), "belt_container_tilts": ("25,40", "0,15,25", "40,50"),
                "belt_deposit": ("off", "on"), "belt_lift": ("off", "braced_hook"), "belt_first": ("off", "on"), "belt_first_recover": ("off", "on"), "belt_first_phase": ("off", "on"), "belt_target": ("off", "match"), "belt_confirm_zone": ("off", "on", "uncertain"), "disc_handover_read": ("off", "on"),
+               "disc_align": ("off", "walls"), "disc_snap": ("off", "on"), "disc_lift": ("off", "shallow"),
+               "disc_seat": ("off", "table"), "disc_release": ("off", "staged"), "disc_reserve": ("off", "on"),
                "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on"),
                "belt_waist_first": ("off", "on"),
                "belt_ref": ("off", "tracked", "similar"), "belt_veto": ("off", "evidence"),
@@ -385,6 +411,8 @@ def run_episode(run, task: str, layout: dict, assets, out_dir: Path, log=print, 
     rec["category"] = classify(res_j, reward, hist)
     if getattr(sk, "ported_runs", None):                 # stream P: the adapter's calls of each ported skill (tail)
         rec["ported"] = sk.ported_runs
+    if getattr(sk, "wall_probes", None):                 # COIN2: disc_align's wall squeezes (readings, fit, writes)
+        rec["wall_probes"] = sk.wall_probes
     infra = watch.since()
     if infra:
         # the episode measured the infrastructure, not the skill: out of every summary (``write_summary``)
