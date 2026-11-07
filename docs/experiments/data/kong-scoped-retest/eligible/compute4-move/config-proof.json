@@ -1,0 +1,1082 @@
+[
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100000",
+    "destination_name": "c4b_makekongsg_kongreAr1_100000",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100000,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100000",
+    "destination_name": "c4b_makekongsg_kongreBr1_100000",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100000,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100001",
+    "destination_name": "c4b_makekongsg_kongreBr1_100001",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100001,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100001",
+    "destination_name": "c4b_makekongsg_kongreAr1_100001",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100001,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100002",
+    "destination_name": "c4b_makekongsg_kongreAr1_100002",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100002,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100002",
+    "destination_name": "c4b_makekongsg_kongreBr1_100002",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100002,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100003",
+    "destination_name": "c4b_makekongsg_kongreBr1_100003",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100003,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100003",
+    "destination_name": "c4b_makekongsg_kongreAr1_100003",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100003,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100004",
+    "destination_name": "c4b_makekongsg_kongreAr1_100004",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100004,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100004",
+    "destination_name": "c4b_makekongsg_kongreBr1_100004",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100004,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100005",
+    "destination_name": "c4b_makekongsg_kongreBr1_100005",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100005,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100005",
+    "destination_name": "c4b_makekongsg_kongreAr1_100005",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100005,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100006",
+    "destination_name": "c4b_makekongsg_kongreAr1_100006",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100006,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100006",
+    "destination_name": "c4b_makekongsg_kongreBr1_100006",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100006,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100007",
+    "destination_name": "c4b_makekongsg_kongreBr1_100007",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100007,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100007",
+    "destination_name": "c4b_makekongsg_kongreAr1_100007",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100007,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100008",
+    "destination_name": "c4b_makekongsg_kongreAr1_100008",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100008,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100008",
+    "destination_name": "c4b_makekongsg_kongreBr1_100008",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100008,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100009",
+    "destination_name": "c4b_makekongsg_kongreBr1_100009",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100009,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100009",
+    "destination_name": "c4b_makekongsg_kongreAr1_100009",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100009,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100020",
+    "destination_name": "c4b_makekongsg_kongreAr1_100020",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100020,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100020",
+    "destination_name": "c4b_makekongsg_kongreBr1_100020",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100020,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100021",
+    "destination_name": "c4b_makekongsg_kongreBr1_100021",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100021,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100021",
+    "destination_name": "c4b_makekongsg_kongreAr1_100021",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100021,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100022",
+    "destination_name": "c4b_makekongsg_kongreAr1_100022",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100022,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100022",
+    "destination_name": "c4b_makekongsg_kongreBr1_100022",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100022,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100023",
+    "destination_name": "c4b_makekongsg_kongreBr1_100023",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100023,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100023",
+    "destination_name": "c4b_makekongsg_kongreAr1_100023",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100023,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100024",
+    "destination_name": "c4b_makekongsg_kongreAr1_100024",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100024,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100024",
+    "destination_name": "c4b_makekongsg_kongreBr1_100024",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100024,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100025",
+    "destination_name": "c4b_makekongsg_kongreBr1_100025",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100025,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100025",
+    "destination_name": "c4b_makekongsg_kongreAr1_100025",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100025,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100026",
+    "destination_name": "c4b_makekongsg_kongreAr1_100026",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100026,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100026",
+    "destination_name": "c4b_makekongsg_kongreBr1_100026",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100026,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100027",
+    "destination_name": "c4b_makekongsg_kongreBr1_100027",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100027,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100027",
+    "destination_name": "c4b_makekongsg_kongreAr1_100027",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100027,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100028",
+    "destination_name": "c4b_makekongsg_kongreAr1_100028",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100028,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100028",
+    "destination_name": "c4b_makekongsg_kongreBr1_100028",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100028,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreBr1_100029",
+    "destination_name": "c4b_makekongsg_kongreBr1_100029",
+    "task": "make_kong",
+    "arm": "B",
+    "id": 100029,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_makekongsg_kongreAr1_100029",
+    "destination_name": "c4b_makekongsg_kongreAr1_100029",
+    "task": "make_kong",
+    "arm": "A",
+    "id": 100029,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_imitatesg_kongreAr1_100000",
+    "destination_name": "c4b_imitatesg_kongreAr1_100000",
+    "task": "imitate_sorting_sequence",
+    "arm": "A",
+    "id": 100000,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_imitatesg_kongreBr1_100000",
+    "destination_name": "c4b_imitatesg_kongreBr1_100000",
+    "task": "imitate_sorting_sequence",
+    "arm": "B",
+    "id": 100000,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_imitatesg_kongreBr1_100001",
+    "destination_name": "c4b_imitatesg_kongreBr1_100001",
+    "task": "imitate_sorting_sequence",
+    "arm": "B",
+    "id": 100001,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_imitatesg_kongreAr1_100001",
+    "destination_name": "c4b_imitatesg_kongreAr1_100001",
+    "task": "imitate_sorting_sequence",
+    "arm": "A",
+    "id": 100001,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_imitatesg_kongreAr1_100002",
+    "destination_name": "c4b_imitatesg_kongreAr1_100002",
+    "task": "imitate_sorting_sequence",
+    "arm": "A",
+    "id": 100002,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_imitatesg_kongreBr1_100002",
+    "destination_name": "c4b_imitatesg_kongreBr1_100002",
+    "task": "imitate_sorting_sequence",
+    "arm": "B",
+    "id": 100002,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_imitatesg_kongreBr1_100003",
+    "destination_name": "c4b_imitatesg_kongreBr1_100003",
+    "task": "imitate_sorting_sequence",
+    "arm": "B",
+    "id": 100003,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_imitatesg_kongreAr1_100003",
+    "destination_name": "c4b_imitatesg_kongreAr1_100003",
+    "task": "imitate_sorting_sequence",
+    "arm": "A",
+    "id": 100003,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_imitatesg_kongreAr1_100004",
+    "destination_name": "c4b_imitatesg_kongreAr1_100004",
+    "task": "imitate_sorting_sequence",
+    "arm": "A",
+    "id": 100004,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_imitatesg_kongreBr1_100004",
+    "destination_name": "c4b_imitatesg_kongreBr1_100004",
+    "task": "imitate_sorting_sequence",
+    "arm": "B",
+    "id": 100004,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_stackblockssg_kongreAr1_100000",
+    "destination_name": "c4b_stackblockssg_kongreAr1_100000",
+    "task": "stack_blocks",
+    "arm": "A",
+    "id": 100000,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_stackblockssg_kongreBr1_100000",
+    "destination_name": "c4b_stackblockssg_kongreBr1_100000",
+    "task": "stack_blocks",
+    "arm": "B",
+    "id": 100000,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_stackblockssg_kongreBr1_100001",
+    "destination_name": "c4b_stackblockssg_kongreBr1_100001",
+    "task": "stack_blocks",
+    "arm": "B",
+    "id": 100001,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_stackblockssg_kongreAr1_100001",
+    "destination_name": "c4b_stackblockssg_kongreAr1_100001",
+    "task": "stack_blocks",
+    "arm": "A",
+    "id": 100001,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_stackblockssg_kongreAr1_100002",
+    "destination_name": "c4b_stackblockssg_kongreAr1_100002",
+    "task": "stack_blocks",
+    "arm": "A",
+    "id": 100002,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_stackblockssg_kongreBr1_100002",
+    "destination_name": "c4b_stackblockssg_kongreBr1_100002",
+    "task": "stack_blocks",
+    "arm": "B",
+    "id": 100002,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_stackblockssg_kongreBr1_100003",
+    "destination_name": "c4b_stackblockssg_kongreBr1_100003",
+    "task": "stack_blocks",
+    "arm": "B",
+    "id": 100003,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  },
+  {
+    "source_name": "c6b_stackblockssg_kongreAr1_100003",
+    "destination_name": "c4b_stackblockssg_kongreAr1_100003",
+    "task": "stack_blocks",
+    "arm": "A",
+    "id": 100003,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_stackblockssg_kongreAr1_100004",
+    "destination_name": "c4b_stackblockssg_kongreAr1_100004",
+    "task": "stack_blocks",
+    "arm": "A",
+    "id": 100004,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "56826d4dbbe3dfe5df13bb449ca51f1a225da1402407f1f05d1488e5a9dffdfc"
+  },
+  {
+    "source_name": "c6b_stackblockssg_kongreBr1_100004",
+    "destination_name": "c4b_stackblockssg_kongreBr1_100004",
+    "task": "stack_blocks",
+    "arm": "B",
+    "id": 100004,
+    "frozen_fields_equal": true,
+    "new_inactive_fields": {
+      "belt_lift": "off",
+      "belt_first": "off",
+      "belt_first_recover": "off",
+      "belt_first_phase": "off",
+      "belt_target": "off",
+      "key_scope_task": "",
+      "ported_pour_profile": "off"
+    },
+    "canonical_runtime_sha256": "3e637d918b932c55ded3d9a36fb867acc2e54e06c95f98b9de854fc455035f1b"
+  }
+]
