@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [pour-g3](2026-11-07-pour-g3.md) | Can port parity and pacing make language pouring work in physics-only G3? | Fresh main baseline 0/10, 0 ±0 points; eight budget / two slip failures; exploratory pilots running, paired panel not registered |
 | 2026-11-06 | [seg-v2n-camera-ab-endbox](2026-11-06-seg-v2n-camera-ab-endbox.md) | Does additive v2n improve fresh variant camera pairs? | Pending: 57/70 pairs at cutoff; guards tied, pour 50→40 provisionally; one unscored reset retry needs adjudication. **Final, 70/70 pairs: DOES NOT PASS** (pooled bootstrap 95 % [−10.5, +6.7]; 4/5 gain cells identical between arms, pour_random −10; journal 2026-11-06-ab-wave-verdicts) |
 | 2026-11-07 | [coin-disc-retest-prereg](2026-11-07-coin-disc-retest-prereg.md) | Once-only disc evidence re-test on fresh salted layouts | 100 Sonnet rows dispatched on compute4 at positions 116–215; 20 gain + 10 pairs per original guard; no verdict |
 | 2026-11-07 | [key-scoped-prereg](2026-11-07-key-scoped-prereg.md) | Can insert_key-only handover/lean retain gain without charger harm? | Candidate Sonnet: key 23.5→23.5, 1 score win/1 loss; both guards equal; does not pass; no adoption |

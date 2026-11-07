@@ -869,6 +869,8 @@
   the candidate; stream H, journals
   2026-10-29-dojo-h95-pour-lean and -pour-overlap; `ported_pour_pace` "overlap", G3 5/10, successes end at 682-747 of
   800; camera mode adds 42-46 look steps).
+  - Compare the v1 port with the original strict wrapper's v5 and its adaptive ordered composite;
+    [POUR G3 study](experiments/2026-11-07-pour-g3.md) separates budget, fluid capture and upright-edge checks.
   - Bottle orders that cannot alternate arms (right, centre, left) get no hand-over and run out of steps.
   - A companion of the centre bottle is unsafe between both bowls. A collision-aware companion check (the pouring
     bottle's swept volume, not a fixed 0.20 m around the bowl) could allow more hand-overs.
