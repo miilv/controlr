@@ -23683,7 +23683,7 @@
     }
   },
   "infra_refusals_excluded": 0,
-  "write_gate": "N/A motion-only by source/settings/inventory proof, supplementary audit never gated",
+  "write_gate": "N/A motion-only by source/settings/inventory proof",
   "source_code": "066e9c8f34c727d9bbfdfa1c219e7c6a78366a45",
   "route_verified_rows": 80,
   "last_done_utc": "2026-11-07T19:28:48Z",
@@ -23699,7 +23699,7 @@
   "adopted": false,
   "candidate_fields_changed": [],
   "verdict": "REGISTERED PERFORMANCE GATE PASS / NOT ADOPTED",
-  "supplementary_audit_status": "running; non-gating",
+  "supplementary_audit_status": "completed; diagnostics only, no gate",
   "adoption_review": {
     "hard_rule_source": "docs/journal/2026-11-07-general-system-rule.md",
     "hard_rule_sha256": "baf5c043b2740bf379fb5dc437975f6ad122dbe1240904f1fc4abd5dae8ebc9c",
@@ -23718,5 +23718,970 @@
       "Express completion/return reserves as physical postconditions and safe motion budget, not checker knowledge or evaluator termination",
       "Validate integrated general path on fresh layouts and varied single/multi-pour instructions before adoption"
     ]
-  }
+  },
+  "write_audit": {
+    "completed_utc": "2026-11-07T21:11:01.246379+00:00",
+    "instrument": "066e9c8f34c727d9bbfdfa1c219e7c6a78366a45",
+    "expected_writes": 109,
+    "audited_writes": 104,
+    "exact_step_writes": 104,
+    "uncertain": 0,
+    "association": {
+      "policy": "first-pick-v1",
+      "missing_body_geometry": [],
+      "writes": 104,
+      "nearest_fallback": 10,
+      "sources": {
+        "initial_tight": 91,
+        "nearest_fallback": 10,
+        "write_tight": 2,
+        "grasp_probe": 1
+      }
+    },
+    "writers": [
+      {
+        "task": "play_Xylophone",
+        "arm": "A",
+        "writer": "perception",
+        "writes": 4,
+        "harmful": 1,
+        "helpful": 2,
+        "neutral": 1,
+        "uncertain": 0,
+        "harmful_rate": 0.25,
+        "median_delta_abs_z_mm": 0.0,
+        "max_delta_abs_z_mm": 0.0
+      },
+      {
+        "task": "play_Xylophone",
+        "arm": "B",
+        "writer": "perception",
+        "writes": 3,
+        "harmful": 0,
+        "helpful": 3,
+        "neutral": 0,
+        "uncertain": 0,
+        "harmful_rate": 0.0,
+        "median_delta_abs_z_mm": 0.0,
+        "max_delta_abs_z_mm": 0.0
+      },
+      {
+        "task": "pour_by_language",
+        "arm": "A",
+        "writer": "perception",
+        "writes": 43,
+        "harmful": 4,
+        "helpful": 30,
+        "neutral": 9,
+        "uncertain": 0,
+        "harmful_rate": 0.09302325581395349,
+        "median_delta_abs_z_mm": 0.0,
+        "max_delta_abs_z_mm": 0.2
+      },
+      {
+        "task": "pour_by_language",
+        "arm": "A",
+        "writer": "predicted",
+        "writes": 2,
+        "harmful": 1,
+        "helpful": 1,
+        "neutral": 0,
+        "uncertain": 0,
+        "harmful_rate": 0.5,
+        "median_delta_abs_z_mm": 21.749999999999996,
+        "max_delta_abs_z_mm": 22.6
+      },
+      {
+        "task": "pour_by_language",
+        "arm": "B",
+        "writer": "perception",
+        "writes": 33,
+        "harmful": 2,
+        "helpful": 20,
+        "neutral": 11,
+        "uncertain": 0,
+        "harmful_rate": 0.06060606060606061,
+        "median_delta_abs_z_mm": 0.0,
+        "max_delta_abs_z_mm": 0.2
+      },
+      {
+        "task": "pour_by_language",
+        "arm": "B",
+        "writer": "predicted",
+        "writes": 7,
+        "harmful": 1,
+        "helpful": 6,
+        "neutral": 0,
+        "uncertain": 0,
+        "harmful_rate": 0.14285714285714285,
+        "median_delta_abs_z_mm": 2.6,
+        "max_delta_abs_z_mm": 37.8
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "arm": "A",
+        "writer": "predicted",
+        "writes": 5,
+        "harmful": 2,
+        "helpful": 3,
+        "neutral": 0,
+        "uncertain": 0,
+        "harmful_rate": 0.4,
+        "median_delta_abs_z_mm": 6.4,
+        "max_delta_abs_z_mm": 106.50000000000001
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "arm": "B",
+        "writer": "perception",
+        "writes": 1,
+        "harmful": 0,
+        "helpful": 1,
+        "neutral": 0,
+        "uncertain": 0,
+        "harmful_rate": 0.0,
+        "median_delta_abs_z_mm": -39.3,
+        "max_delta_abs_z_mm": -39.3
+      },
+      {
+        "task": "pour_liquid_into_cup",
+        "arm": "B",
+        "writer": "predicted",
+        "writes": 6,
+        "harmful": 2,
+        "helpful": 4,
+        "neutral": 0,
+        "uncertain": 0,
+        "harmful_rate": 0.3333333333333333,
+        "median_delta_abs_z_mm": 8.599999999999998,
+        "max_delta_abs_z_mm": 106.4
+      }
+    ],
+    "gain_writer_rates": [
+      {
+        "writer": "perception",
+        "A_writes": 43,
+        "B_writes": 33,
+        "A_harmful": 4,
+        "B_harmful": 2,
+        "B_helpful": 20
+      },
+      {
+        "writer": "predicted",
+        "A_writes": 2,
+        "B_writes": 7,
+        "A_harmful": 1,
+        "B_harmful": 1,
+        "B_helpful": 6
+      }
+    ],
+    "replays": [
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100000",
+        "prefix_actions": 798,
+        "stopped_at": 798,
+        "stable": true,
+        "sha256": "45fbd55ec256d26063acd9bf94647ebfaf8849b73fb64dc77187d0e3247155a1",
+        "probe_closes": 3,
+        "probe_agree_2mm": 3,
+        "probe_worst_mm": 1.6
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100000",
+        "prefix_actions": 323,
+        "stopped_at": 323,
+        "stable": true,
+        "sha256": "ef8df44bc908377dde8d0c6097211bd0a8f4b2a139e49b36bfd23cfea80df6e1",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100001",
+        "prefix_actions": 308,
+        "stopped_at": 308,
+        "stable": true,
+        "sha256": "9366a397a69874a3d67cd059e5fca6e7ede36ca2f6d4765ea7ae1b4ca30feb8b",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100001",
+        "prefix_actions": 375,
+        "stopped_at": 375,
+        "stable": true,
+        "sha256": "1e42b556ec017300260c2bcf72dca87737139fcc80f040ebc2b10516e59e71f4",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100002",
+        "prefix_actions": 746,
+        "stopped_at": 746,
+        "stable": true,
+        "sha256": "753f3b51ba7bdb8b3482b01617937d18e26c9a4bed6ae5a382a612ef2c843c8f",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100002",
+        "prefix_actions": 316,
+        "stopped_at": 316,
+        "stable": true,
+        "sha256": "752b47aa7621b40488a243e1e42500e22e8c9b31b63d3f78f343f817ea2ae742",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100003",
+        "prefix_actions": 525,
+        "stopped_at": 525,
+        "stable": true,
+        "sha256": "b1aa939b0608aaccc673675617b88cee4d89431f21eac3655d1e2ee4051bf3e6",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100003",
+        "prefix_actions": 737,
+        "stopped_at": 737,
+        "stable": true,
+        "sha256": "dd2cc638ae5ef6c986e06d69ec5e37b64f42fea459c58770783faa8e508cb9a1",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100004",
+        "prefix_actions": 364,
+        "stopped_at": 364,
+        "stable": true,
+        "sha256": "75f9a6e40ea6cc648249abd0022fde3d0b21af53fc3e9d258e50d47806222cad",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100004",
+        "prefix_actions": 318,
+        "stopped_at": 318,
+        "stable": true,
+        "sha256": "4e2632d1f80280921a2c7b02ff0615ca4a8f7a8118deba61874028ed000f2b60",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100005",
+        "prefix_actions": 316,
+        "stopped_at": 316,
+        "stable": true,
+        "sha256": "36277f871e04d02cb0ddb102ef967c320d1c7dbacb82f83d9b78dcf0aa38e832",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100005",
+        "prefix_actions": 746,
+        "stopped_at": 746,
+        "stable": true,
+        "sha256": "c1a6b7641a7bd3704ab43f7f0b1b9c2ef0f3053e142f9b0cf0bc14c5b0ae4c36",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100006",
+        "prefix_actions": 369,
+        "stopped_at": 369,
+        "stable": true,
+        "sha256": "94d2b78517c17e2fdcf74951a0815e545f0c096bdd3cc3591c85ea8e5de2f63a",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100006",
+        "prefix_actions": 14,
+        "stopped_at": 14,
+        "stable": true,
+        "sha256": "c5b4e499d08870db770b3302d4665f514f338d8b4e02e55fd2684ce668c49399",
+        "probe_closes": 0,
+        "probe_agree_2mm": 0,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100007",
+        "prefix_actions": 713,
+        "stopped_at": 713,
+        "stable": true,
+        "sha256": "0670924b8e298275a5720f40c09e4aae245391c3c59f0cfb220ee2abc49a522b",
+        "probe_closes": 3,
+        "probe_agree_2mm": 3,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100007",
+        "prefix_actions": 372,
+        "stopped_at": 372,
+        "stable": true,
+        "sha256": "8c22d2e916aa338833a12f165ec5510e346af2963628d483d21eea9459567e28",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100008",
+        "prefix_actions": 787,
+        "stopped_at": 787,
+        "stable": true,
+        "sha256": "59f483f114be04f4fa6298319e6bbcb9bbcb858bfbc12596b23206518afa2db3",
+        "probe_closes": 3,
+        "probe_agree_2mm": 3,
+        "probe_worst_mm": 0.6
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100008",
+        "prefix_actions": 321,
+        "stopped_at": 321,
+        "stable": true,
+        "sha256": "c95b2865c0b6c34fef0e74e79732aa1c9d491aebc0849c8d83627a93c2987e74",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100020",
+        "prefix_actions": 737,
+        "stopped_at": 737,
+        "stable": true,
+        "sha256": "6552c102d0525ac74c804592ddbb542204d27bc9335d4e3072217ebf435e4ee4",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100021",
+        "prefix_actions": 401,
+        "stopped_at": 401,
+        "stable": true,
+        "sha256": "9cbf8e727a3207ad486de3113dad5d35acdfcd23528735d7e8851d38c472a5b9",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 1.4
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100021",
+        "prefix_actions": 793,
+        "stopped_at": 793,
+        "stable": true,
+        "sha256": "ef8199ce9998f669212c830875e8338b6050314b45f256f8dfc29e7f4f1e62f4",
+        "probe_closes": 3,
+        "probe_agree_2mm": 3,
+        "probe_worst_mm": 0.8
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100022",
+        "prefix_actions": 384,
+        "stopped_at": 384,
+        "stable": true,
+        "sha256": "5cf2aa44ac6240fa581d9ebf62cc778c0bcf5dfcb08fa0ce2d039c894e09be6d",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100022",
+        "prefix_actions": 459,
+        "stopped_at": 459,
+        "stable": true,
+        "sha256": "b323a484ffe2ab69d5c339797eef2a880ed313f1dd01cc00f5c859cffc47d842",
+        "probe_closes": 3,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 2.4
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100023",
+        "prefix_actions": 598,
+        "stopped_at": 598,
+        "stable": true,
+        "sha256": "3b5371deccaff7d1547e80be8147cb80e22d09f86ba441d466e7dbe9e48520ed",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100024",
+        "prefix_actions": 740,
+        "stopped_at": 740,
+        "stable": true,
+        "sha256": "e0db9bc4857d398e43497e18c8e87969dfa18616cae13656d11db27efe0b692a",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100024",
+        "prefix_actions": 620,
+        "stopped_at": 620,
+        "stable": true,
+        "sha256": "128a5a5b768575bcf6496eb7d335b93832e5cd0acc759b6e7bd7df253770d8e3",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100025",
+        "prefix_actions": 767,
+        "stopped_at": 727,
+        "stable": true,
+        "sha256": "6ccfa709694cdc898d37916b32e075975451306cbc94fe1b0cc86922c1c11e7f",
+        "probe_closes": 3,
+        "probe_agree_2mm": 3,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100025",
+        "prefix_actions": 729,
+        "stopped_at": 729,
+        "stable": true,
+        "sha256": "4d61de845e74987b3094fbfcd782d8a23629ecb503edf0863a2b3832094114e0",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100026",
+        "prefix_actions": 727,
+        "stopped_at": 727,
+        "stable": true,
+        "sha256": "260d839149ad5b3f09e2e02b61de749ec0dbc08938f9ede208b32a6645de518c",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100026",
+        "prefix_actions": 798,
+        "stopped_at": 798,
+        "stable": true,
+        "sha256": "50eef5aa2ce13fc20c0cd97091656f77874a2de4d3496fd839cdf3474c83722d",
+        "probe_closes": 3,
+        "probe_agree_2mm": 3,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100027",
+        "prefix_actions": 591,
+        "stopped_at": 591,
+        "stable": true,
+        "sha256": "d6a3851d8c0746f298b22cf6111ac1a4d51298d15a8e17b365106dd173961bce",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.1
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100027",
+        "prefix_actions": 388,
+        "stopped_at": 388,
+        "stable": true,
+        "sha256": "2f8414364459d7a216508a0f04034c219517d8c10488c8e10c132419482aa89c",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100028",
+        "prefix_actions": 716,
+        "stopped_at": 716,
+        "stable": true,
+        "sha256": "f2efd68236a1161d27f007c2bbdcfbe99d73bae73622ea9f2b05908632a5e05f",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.4
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100028",
+        "prefix_actions": 469,
+        "stopped_at": 469,
+        "stable": true,
+        "sha256": "d5f16c14acb5be0e64f7bebc811e4e58dd750a30b85108aff082df126693d339",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100029",
+        "prefix_actions": 310,
+        "stopped_at": 310,
+        "stable": true,
+        "sha256": "331d5ca2f7bb94a1e9f9523a1cfd33f17cc62ec71d4c8118c9d98822d7e547c2",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourlangsg_pourrtAr1_100029",
+        "prefix_actions": 725,
+        "stopped_at": 725,
+        "stable": true,
+        "sha256": "07de9ddb0ff54d6d951c6ccc66e227c962c227c23ac886dc59464156b8678e1e",
+        "probe_closes": 2,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtAr1_100001",
+        "prefix_actions": 190,
+        "stopped_at": 190,
+        "stable": true,
+        "sha256": "e55c2dde37dc74ba9d95caf70f2be2cf67421e68f1557c0b1a613bcc52a1f9c6",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtBr1_100002",
+        "prefix_actions": 386,
+        "stopped_at": 386,
+        "stable": true,
+        "sha256": "607380b9beb68f79a1a0039bfeb1afce42ec439263b9c83cbdaf7c17e833390d",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.2
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtAr1_100002",
+        "prefix_actions": 386,
+        "stopped_at": 386,
+        "stable": true,
+        "sha256": "83267e50d74b9f290e8c98f36e200d0f92135c3758f94138e29d3401573eb5cc",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.1
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtAr1_100003",
+        "prefix_actions": 380,
+        "stopped_at": 380,
+        "stable": true,
+        "sha256": "118ad2a39b7f8d1683a53aaece25308a26d217e104fb94dfe5b1d4af9935b8f5",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.5
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtBr1_100003",
+        "prefix_actions": 381,
+        "stopped_at": 381,
+        "stable": true,
+        "sha256": "3bc297ec966077d54c89eb4ef057d1147e81ca5d8769969400633a9addcf21a9",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 1.3
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtAr1_100004",
+        "prefix_actions": 389,
+        "stopped_at": 371,
+        "stable": true,
+        "sha256": "69b91a78eaa04cc2cde5eb0b22c5c612c46b9aa6fef59f8058c3015b2b510ec4",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.7
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtAr1_100005",
+        "prefix_actions": 397,
+        "stopped_at": 397,
+        "stable": true,
+        "sha256": "c2dd396c01d2ebdedb2e8f0fd38ed93212489755d7ff696f48bcd45c94b7ceaf",
+        "probe_closes": 1,
+        "probe_agree_2mm": 0,
+        "probe_worst_mm": 10.4
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtBr1_100005",
+        "prefix_actions": 397,
+        "stopped_at": 397,
+        "stable": true,
+        "sha256": "d6ccbcd6da0c2c0da3eba8cc2a3e99df453df5f59cebb9acf15e7a3c9843210c",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.4
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtAr1_100007",
+        "prefix_actions": 386,
+        "stopped_at": 363,
+        "stable": true,
+        "sha256": "605113920fb70b2978f0d4b304fe23ad3073abafa693b1b25a5e2db9d206c762",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.2
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtBr1_100008",
+        "prefix_actions": 381,
+        "stopped_at": 381,
+        "stable": true,
+        "sha256": "b9766e5d6c34e02e58f67c0ce26eb08d94cbdae5b79c622f4e94c20d5e905e97",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.2
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtBr1_100020",
+        "prefix_actions": 386,
+        "stopped_at": 367,
+        "stable": true,
+        "sha256": "8d28feea8c05b662e41c20a1eec0a74a1286142d50872a93967c1717fc96046a",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.7
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtAr1_100021",
+        "prefix_actions": 394,
+        "stopped_at": 375,
+        "stable": true,
+        "sha256": "7019c1b94158458cf1905c05c389eb50cc1660d77dae9d5205d38d68b8395cd8",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.2
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtBr1_100021",
+        "prefix_actions": 394,
+        "stopped_at": 394,
+        "stable": true,
+        "sha256": "06fe7cfe066f7c982bbeb9df27eb363c5d1503bdd72482870c45c043e6ddac38",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.1
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtBr1_100022",
+        "prefix_actions": 376,
+        "stopped_at": 376,
+        "stable": true,
+        "sha256": "9d766568a82d27734fd41d552b5e10ffa99f60c21cb97f1fad5a0182c4e53e08",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtAr1_100022",
+        "prefix_actions": 378,
+        "stopped_at": 378,
+        "stable": true,
+        "sha256": "ba9cdda22bc27b9681fb72e1cba49a0d5ffcfabf78cf2f2ecca4c4e9913a5a30",
+        "probe_closes": 1,
+        "probe_agree_2mm": 1,
+        "probe_worst_mm": 0.4
+      },
+      {
+        "name": "c6b_xylophonesg_pourrtAr1_100003",
+        "prefix_actions": 14,
+        "stopped_at": 14,
+        "stable": true,
+        "sha256": "300a867efc2added9036be86453abb68ec2295c4ebe3361dde87792b490ee6b3",
+        "probe_closes": 0,
+        "probe_agree_2mm": 0,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_xylophonesg_pourrtBr1_100003",
+        "prefix_actions": 14,
+        "stopped_at": 14,
+        "stable": true,
+        "sha256": "35fca3b5d06f3577e0058ee00551f14dac56ce5a273b3ae5a8cb7a7eaeb5e260",
+        "probe_closes": 0,
+        "probe_agree_2mm": 0,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_xylophonesg_pourrtAr1_100005",
+        "prefix_actions": 14,
+        "stopped_at": 14,
+        "stable": true,
+        "sha256": "897d9e62199aa2678086b93b636445a1856ddd7cf62908f1de46fa6aacf3ca00",
+        "probe_closes": 0,
+        "probe_agree_2mm": 0,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_xylophonesg_pourrtBr1_100005",
+        "prefix_actions": 14,
+        "stopped_at": 14,
+        "stable": true,
+        "sha256": "3fd6c851fb591c641c2a15af9045e6796a6466dad2758a1727bf3a5d67bd36cc",
+        "probe_closes": 0,
+        "probe_agree_2mm": 0,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_xylophonesg_pourrtAr1_100008",
+        "prefix_actions": 14,
+        "stopped_at": 14,
+        "stable": true,
+        "sha256": "4ab8b90cbd0858b9c50b3a67cdca4381fecef28d047a787f153caab4b071f2d1",
+        "probe_closes": 0,
+        "probe_agree_2mm": 0,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_xylophonesg_pourrtAr1_100009",
+        "prefix_actions": 14,
+        "stopped_at": 14,
+        "stable": true,
+        "sha256": "26ce9ed74d463565cc0dafabc8b3fd4aa68a2b2ef35dd4b65c973c1af746c529",
+        "probe_closes": 0,
+        "probe_agree_2mm": 0,
+        "probe_worst_mm": 0.0
+      },
+      {
+        "name": "c6b_xylophonesg_pourrtBr1_100009",
+        "prefix_actions": 14,
+        "stopped_at": 14,
+        "stable": true,
+        "sha256": "ecddc4f2881696bb3921e0e4e0d000152af9fa9c67f1fb3f8a1acdf4f2addf80",
+        "probe_closes": 0,
+        "probe_agree_2mm": 0,
+        "probe_worst_mm": 0.0
+      }
+    ],
+    "replay_prefixes": 58,
+    "stable_prefixes": 58,
+    "probe_closes": 81,
+    "probe_agree_2mm": 79,
+    "worst_probe_mm": 10.4,
+    "method": "Identical action prefixes through final write, exact write/consumer/gripper frames, original full reports/actions for persistent identity, 2mm 3D threshold. Full episode reward matching is not tested by truncated prefixes; live close-probe fidelity is reported.",
+    "ledger_coverage_complete": false,
+    "supplementary_only": true,
+    "gated": false,
+    "unscored_writes": [
+      {
+        "run": "c6b_pourlangsg_pourrtBr1_100025",
+        "task": "pour_by_language",
+        "arm": "B",
+        "writer": "perception",
+        "step": 767,
+        "label": "bottle_1",
+        "before": [
+          -0.0003,
+          -0.00217,
+          0.82497
+        ],
+        "after": [
+          0.00387,
+          0.00886,
+          0.82511
+        ],
+        "q_before": [
+          0.99999,
+          0.0021,
+          -0.0029,
+          0.0001
+        ],
+        "q_after": [
+          0.99847,
+          0.00226,
+          -0.00278,
+          0.05523
+        ],
+        "requested_last_write": 767,
+        "replay_ended_at": 727,
+        "replay_stopped_at": 727,
+        "last_frame": 727,
+        "write_frame_present": false,
+        "replay_score": 1.0,
+        "stable": true
+      },
+      {
+        "run": "c6b_pourliquidsg_pourrtAr1_100004",
+        "task": "pour_liquid_into_cup",
+        "arm": "A",
+        "writer": "predicted",
+        "step": 389,
+        "label": "bottle",
+        "before": [
+          0.24645,
+          -0.05194,
+          0.82498
+        ],
+        "after": [
+          0.19351,
+          -0.07544,
+          0.90657
+        ],
+        "q_before": [
+          0.99999,
+          0.0026,
+          -0.0026,
+          -0.0001
+        ],
+        "q_after": [
+          0.86422,
+          0.00166,
+          -0.50311,
+          0.00117
+        ],
+        "requested_last_write": 389,
+        "replay_ended_at": 371,
+        "replay_stopped_at": 371,
+        "last_frame": 371,
+        "write_frame_present": false,
+        "replay_score": 1.0,
+        "stable": true
+      },
+      {
+        "run": "c6b_pourliquidsg_pourrtAr1_100007",
+        "task": "pour_liquid_into_cup",
+        "arm": "A",
+        "writer": "predicted",
+        "step": 386,
+        "label": "bottle",
+        "before": [
+          0.16061,
+          0.0169,
+          0.82498
+        ],
+        "after": [
+          0.12769,
+          -0.00417,
+          0.90657
+        ],
+        "q_before": [
+          0.99999,
+          0.0026,
+          -0.0026,
+          -0.0001
+        ],
+        "q_after": [
+          0.86415,
+          0.00196,
+          -0.50322,
+          0.00155
+        ],
+        "requested_last_write": 386,
+        "replay_ended_at": 363,
+        "replay_stopped_at": 363,
+        "last_frame": 363,
+        "write_frame_present": false,
+        "replay_score": 1.0,
+        "stable": true
+      },
+      {
+        "run": "c6b_pourliquidsg_pourrtBr1_100020",
+        "task": "pour_liquid_into_cup",
+        "arm": "B",
+        "writer": "predicted",
+        "step": 386,
+        "label": "bottle",
+        "before": [
+          0.21391,
+          -0.02355,
+          0.82498
+        ],
+        "after": [
+          0.1827,
+          -0.07743,
+          0.90659
+        ],
+        "q_before": [
+          0.99999,
+          0.0026,
+          -0.0026,
+          -0.0001
+        ],
+        "q_after": [
+          0.86419,
+          0.00209,
+          -0.50316,
+          0.00145
+        ],
+        "requested_last_write": 386,
+        "replay_ended_at": 367,
+        "replay_stopped_at": 367,
+        "last_frame": 367,
+        "write_frame_present": false,
+        "replay_score": 1.0,
+        "stable": true
+      },
+      {
+        "run": "c6b_pourliquidsg_pourrtAr1_100021",
+        "task": "pour_liquid_into_cup",
+        "arm": "A",
+        "writer": "predicted",
+        "step": 394,
+        "label": "bottle",
+        "before": [
+          0.27098,
+          0.00238,
+          0.82498
+        ],
+        "after": [
+          0.12238,
+          -0.04746,
+          0.90659
+        ],
+        "q_before": [
+          0.99999,
+          0.0026,
+          -0.0026,
+          -0.0001
+        ],
+        "q_after": [
+          0.86424,
+          0.00208,
+          -0.50308,
+          0.00153
+        ],
+        "requested_last_write": 394,
+        "replay_ended_at": 375,
+        "replay_stopped_at": 375,
+        "last_frame": 375,
+        "write_frame_present": false,
+        "replay_score": 1.0,
+        "stable": true
+      }
+    ],
+    "requested_prefix_actions": 25099,
+    "executed_prefix_actions": 24980,
+    "unscored_reason": "Frozen replay terminated on its own success before five original write steps; --back 0 omits missing exact frames. They are unscored, not neutral or uncertain, and not excluded camera rows.",
+    "fidelity_exceptions": [
+      {
+        "name": "c6b_pourlangsg_pourrtBr1_100022",
+        "prefix_actions": 459,
+        "stopped_at": 459,
+        "stable": true,
+        "sha256": "b323a484ffe2ab69d5c339797eef2a880ed313f1dd01cc00f5c859cffc47d842",
+        "probe_closes": 3,
+        "probe_agree_2mm": 2,
+        "probe_worst_mm": 2.4
+      },
+      {
+        "name": "c6b_pourliquidsg_pourrtAr1_100005",
+        "prefix_actions": 397,
+        "stopped_at": 397,
+        "stable": true,
+        "sha256": "c2dd396c01d2ebdedb2e8f0fd38ed93212489755d7ff696f48bcd45c94b7ceaf",
+        "probe_closes": 1,
+        "probe_agree_2mm": 0,
+        "probe_worst_mm": 10.4
+      }
+    ],
+    "identity_coverage_note": "Frozen first-pick-v1 source counts are grasp_probe=1, initial_tight=91, nearest_fallback=10, write_tight=2. Initial-tight matches are provisional; nearest fallback is disclosed. Exact frames alone do not establish full first-physical-pick identity anchoring. No harmlessness certificate or adoption clearance is inferred.",
+    "qualification_note": "Supplementary only under the registered motion-only scope. No harmful-rate, raw-count, identity, uncertainty or fidelity result gates this performance verdict. General-system integration remains required."
+  },
+  "verdict_computed_utc": "2026-11-07T21:11:01.246379+00:00",
+  "analysis_model_calls": 0,
+  "dispatch_evidence": "dispatch-hardrule-evidence.json"
 }

@@ -1,0 +1,21 @@
+import collections,gzip,json,pathlib,sys
+H=pathlib.Path.home();R=H/'dojo-data/pour-cam/retest';P=pathlib.Path(sys.argv[1]);sys.path.insert(0,str(P))
+ns={};exec((R/'prepare.py').read_text().split("assert (P/")[0],ns);run=ns['run'];child_env=ns['child_env']
+ledger=[json.loads(l) for l in (R/'writer-ledger.jsonl').read_text().splitlines()];last={}
+for w in ledger:last[w['run']]=max(last.get(w['run'],0),w['step'])
+J=[];prefix=R/'audit-prefix-actions';prefix.mkdir(exist_ok=True)
+for j in map(json.loads,(R/'audit-jobs.jsonl').read_text().splitlines()):
+ base=j['name'].rsplit('_',1)[0]
+ if base not in last:continue
+ a=json.load(gzip.open(j['actions'],'rt'));p=prefix/(j['name']+'.json.gz');a['actions']=a['actions'][:last[base]]
+ with gzip.open(p,'wt') as f:json.dump(a,f)
+ j['original_actions']=j['actions'];j['actions']=str(p);j['snapshot_steps']=[k for k in j['snapshot_steps'] if k<=last[base]];j['stop_at_last_write']=last[base];J.append(j)
+f=R/'audit-prefix-jobs.jsonl';f.write_text(''.join(json.dumps(j)+'\n' for j in J));print('AUDIT',len(J),'replay prefixes',len(ledger),'writes',sum(j['stop_at_last_write'] for j in J),'physics actions',flush=True)
+for task in dict.fromkeys(j['task'] for j in J):
+ env=child_env({'DOJO_DATA':str(R/'audit-data'),'SIMLAB_GPU':'0','TMPDIR':str(R/'tmp'),'PYTHONDONTWRITEBYTECODE':'1'})
+ run('camera_audit_'+task,['-u','scripts/perception/m95_replay.py','--task',task,'--jobs',str(f),'--out-dir',str(R/'audit-replays'),'--every','1000000','--full'],env)
+# Frozen score instrument reads original reports/actions; only matched identical action prefixes supplied GT.
+m=json.loads((R/'manifest.json').read_text());paths=[str(H/'dojo-data/integ-c6/runs2'/x['name']) for x in m['schedule']]
+env=child_env({'DOJO_DATA':str(R/'audit-data'),'SIMLAB_GPU':'0','TMPDIR':str(R/'tmp'),'PYTHONDONTWRITEBYTECODE':'1'})
+run('camera_write_score',['scripts/perception/m95_score.py','audit',*paths,'--replays',str(R/'audit-replays'),'--out',str(R/'audit-scored'),'--back','0','--by','task,arm'],env)
+(R/'camera-audit.done').touch()

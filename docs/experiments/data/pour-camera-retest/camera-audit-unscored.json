@@ -1,0 +1,187 @@
+[
+  {
+    "run": "c6b_pourlangsg_pourrtBr1_100025",
+    "task": "pour_by_language",
+    "arm": "B",
+    "writer": "perception",
+    "step": 767,
+    "label": "bottle_1",
+    "before": [
+      -0.0003,
+      -0.00217,
+      0.82497
+    ],
+    "after": [
+      0.00387,
+      0.00886,
+      0.82511
+    ],
+    "q_before": [
+      0.99999,
+      0.0021,
+      -0.0029,
+      0.0001
+    ],
+    "q_after": [
+      0.99847,
+      0.00226,
+      -0.00278,
+      0.05523
+    ],
+    "requested_last_write": 767,
+    "replay_ended_at": 727,
+    "replay_stopped_at": 727,
+    "last_frame": 727,
+    "write_frame_present": false,
+    "replay_score": 1.0,
+    "stable": true
+  },
+  {
+    "run": "c6b_pourliquidsg_pourrtAr1_100004",
+    "task": "pour_liquid_into_cup",
+    "arm": "A",
+    "writer": "predicted",
+    "step": 389,
+    "label": "bottle",
+    "before": [
+      0.24645,
+      -0.05194,
+      0.82498
+    ],
+    "after": [
+      0.19351,
+      -0.07544,
+      0.90657
+    ],
+    "q_before": [
+      0.99999,
+      0.0026,
+      -0.0026,
+      -0.0001
+    ],
+    "q_after": [
+      0.86422,
+      0.00166,
+      -0.50311,
+      0.00117
+    ],
+    "requested_last_write": 389,
+    "replay_ended_at": 371,
+    "replay_stopped_at": 371,
+    "last_frame": 371,
+    "write_frame_present": false,
+    "replay_score": 1.0,
+    "stable": true
+  },
+  {
+    "run": "c6b_pourliquidsg_pourrtAr1_100007",
+    "task": "pour_liquid_into_cup",
+    "arm": "A",
+    "writer": "predicted",
+    "step": 386,
+    "label": "bottle",
+    "before": [
+      0.16061,
+      0.0169,
+      0.82498
+    ],
+    "after": [
+      0.12769,
+      -0.00417,
+      0.90657
+    ],
+    "q_before": [
+      0.99999,
+      0.0026,
+      -0.0026,
+      -0.0001
+    ],
+    "q_after": [
+      0.86415,
+      0.00196,
+      -0.50322,
+      0.00155
+    ],
+    "requested_last_write": 386,
+    "replay_ended_at": 363,
+    "replay_stopped_at": 363,
+    "last_frame": 363,
+    "write_frame_present": false,
+    "replay_score": 1.0,
+    "stable": true
+  },
+  {
+    "run": "c6b_pourliquidsg_pourrtBr1_100020",
+    "task": "pour_liquid_into_cup",
+    "arm": "B",
+    "writer": "predicted",
+    "step": 386,
+    "label": "bottle",
+    "before": [
+      0.21391,
+      -0.02355,
+      0.82498
+    ],
+    "after": [
+      0.1827,
+      -0.07743,
+      0.90659
+    ],
+    "q_before": [
+      0.99999,
+      0.0026,
+      -0.0026,
+      -0.0001
+    ],
+    "q_after": [
+      0.86419,
+      0.00209,
+      -0.50316,
+      0.00145
+    ],
+    "requested_last_write": 386,
+    "replay_ended_at": 367,
+    "replay_stopped_at": 367,
+    "last_frame": 367,
+    "write_frame_present": false,
+    "replay_score": 1.0,
+    "stable": true
+  },
+  {
+    "run": "c6b_pourliquidsg_pourrtAr1_100021",
+    "task": "pour_liquid_into_cup",
+    "arm": "A",
+    "writer": "predicted",
+    "step": 394,
+    "label": "bottle",
+    "before": [
+      0.27098,
+      0.00238,
+      0.82498
+    ],
+    "after": [
+      0.12238,
+      -0.04746,
+      0.90659
+    ],
+    "q_before": [
+      0.99999,
+      0.0026,
+      -0.0026,
+      -0.0001
+    ],
+    "q_after": [
+      0.86424,
+      0.00208,
+      -0.50308,
+      0.00153
+    ],
+    "requested_last_write": 394,
+    "replay_ended_at": 375,
+    "replay_stopped_at": 375,
+    "last_frame": 375,
+    "write_frame_present": false,
+    "replay_score": 1.0,
+    "stable": true
+  }
+]

@@ -430,7 +430,12 @@ Once-only fresh salted re-test; full 20 gain + 10 pairs per original guard.
   [−20,60]/[0,30] (10,000 paired resamples,seed0).
 - Write gate **N/A by motion-only source/settings/inventory proof**. Ordinary
   writer counts differ without creating a trigger. The #417 supplementary
-  identity audit is running109 writes/58 prefixes, never a gate.
+  identity audit scored **104/109 writes**, 104 exact-step frames,
+  0 uncertain among scored writes; five unscored after replay early success;
+  58/58 stable prefixes. Close-probe fidelity 79/81
+  within 2 mm, worst 10.4 mm; association sources grasp_probe=1, initial_tight=91, nearest_fallback=10, write_tight=2.
+  Full per-writer counts/z and identity/fidelity limitations are in the prereg;
+  none gates this motion-only lever.
 - All80 rc0; actual Sonnet call/transcript routes verified; no reruns/exclusions
   or wall caps. Last valid arm 2026-11-07T19:28:48Z. Spend: **441 logical Claude calls; 6,237,897 prompt / 396,222 completion / 223,445 reasoning / 5,095,108 cache-read tokens**.
   Reasoning/cache are subsets;48 no-JSON error entries retained; recovered HTTP
@@ -439,7 +444,9 @@ Once-only fresh salted re-test; full 20 gain + 10 pairs per original guard.
   with no common input hashes. RSI's task-keyed fixed programs are not board-legal.
 - Under the **general-system HARD RULE**, budget is a reusable physical pour
   parameter candidate, but the tested exactly-three-clause/route-only dispatch
-  is task-specialized. It cannot be adopted as-is. It needs a model-planner-selected
+  is task-specialized (40/40 actual language reports use pour_in_order plus
+  task-named pour_by_language catalogue vocabulary). It cannot be adopted as-is.
+  It needs a model-planner-selected
   general pour skill/arbitrary composition in one shared library/perception,
   physical completion/return criteria and fresh integrated validation.
 
