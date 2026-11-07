@@ -1,0 +1,153 @@
+{
+  "stream": "ORG2-CAM",
+  "code": "83887dae2ee50d582520b60d13191279a5a58f32",
+  "deployment": "/home/robotics/dojo-integ-c6-83887dae",
+  "model": "claude/claude-sonnet-5-5",
+  "baseline_candidate": "scripts/dojo/queues/2026-11-06-candidate.txt",
+  "baseline_candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "candidate_robotics_sha256": "f52fe25b8f5931a9a0ac78aea3a5349e1b171f7fe7275e00352e45d87975b1ca",
+  "overrides": {
+    "A": {},
+    "B": {
+      "push_contact": "pair",
+      "push_plan": "sequence",
+      "push_goal": "clear",
+      "arrange_retry": "once",
+      "place_surface": "mesh",
+      "grasp_torso": "on",
+      "stand_offset": "base",
+      "retreat_axis": "on",
+      "plan_world": "objects",
+      "place_via": "clear",
+      "slip_avoid": "on"
+    }
+  },
+  "cells": {
+    "organize_table": {
+      "role": "gain",
+      "ids": [
+        100000,
+        100003,
+        100004,
+        100005,
+        100006,
+        100007,
+        100009,
+        100021,
+        100023,
+        100024,
+        100025,
+        100026
+      ]
+    },
+    "arrange_largest_number": {
+      "role": "guard",
+      "ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004,
+        100005,
+        100006,
+        100007,
+        100008,
+        100009
+      ]
+    },
+    "arrange_largest_number_random": {
+      "role": "guard",
+      "ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004,
+        100005,
+        100006,
+        100007,
+        100008,
+        100009
+      ]
+    },
+    "store_tools_in_toolbox": {
+      "role": "guard",
+      "ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004,
+        100005,
+        100006,
+        100007,
+        100008,
+        100009
+      ]
+    },
+    "fill_pen_holder": {
+      "role": "guard",
+      "ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004,
+        100005,
+        100006,
+        100007,
+        100008,
+        100009
+      ]
+    },
+    "insert_key": {
+      "role": "guard",
+      "ids": [
+        100003,
+        100004,
+        100005,
+        100007,
+        100009,
+        100020,
+        100022,
+        100024,
+        100025,
+        100026
+      ]
+    },
+    "classify_objects": {
+      "role": "guard",
+      "ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004,
+        100005,
+        100006,
+        100007,
+        100008,
+        100009
+      ]
+    },
+    "build_tower": {
+      "role": "strong_guard",
+      "ids": [
+        100000,
+        100001,
+        100002,
+        100003,
+        100004,
+        100005,
+        100006,
+        100007,
+        100008,
+        100009
+      ]
+    }
+  },
+  "salt": "org2-cam-20261107-b5e37b4b7f230e7873ba6daa18ff1778",
+  "prep_design_sha256": "5ac41e00800d0de48343dc21ca8364bdd90b26022518f9d2a5198ec65bd6486f",
+  "order": "per id the two arms back to back, AB on even ordinals, BA on odd",
+  "repeats_per_arm": 1
+}

@@ -97,3 +97,17 @@ Claude route has its own weekly limit (incident 2026-10-27).
 
 REPRO on our canonical 100000-04 (camera, fixed programs): organize_table 85.0, 3/5 successes. Different layouts;
 context, not a gate.
+
+## Receipt (written after the queue write; nothing above was changed)
+
+- Pre-registration commit on main: `4b2aa45f` (before generation of the camera inputs' staging and before the write).
+- Inputs: [selection](data/org2-camera/selection.json) — organize_table 12 ids (15 of 20 settled ok), insert_key 10 (11
+  of 20 ok, both refill blocks used), the other six cells 10 of 10 from 100000-09; 0 model calls in prep (compute3
+  light7, one job). Block copied to compute6 and verified file by file: 195 files ([block.sha256](data/org2-camera/block.sha256)).
+- Every row constructs a `RuntimeConfig` on the deployment's venv; one distinct config per arm; resolved B - A = the
+  eleven registered fields. Route `claude/claude-sonnet-5-5` on all 164 rows.
+- [dispatch.json](data/org2-camera/dispatch.json): inserted 2026-11-07T20:26:07Z, **positions 82-245** of 245, after
+  all 81 existing rows (IMIT2 block), appended at the end; queue SHA256 before `f1f62e94…` / after `8c6ec76d…`; new
+  rows `cdd572ca…` ([queue-org2.txt](data/org2-camera/queue-org2.txt)); manifest `0a15c5c5…`
+  ([manifest.json](data/org2-camera/manifest.json)). Rough estimate: start ~03:07Z, finish ~10:42Z on 8 Nov (two
+  lanes; admission, retries and power drains can delay).
