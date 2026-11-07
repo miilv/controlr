@@ -68,3 +68,22 @@ place or table tolerance. Legacy modes keep their exact prior budgets/filters.
 First screen the four failed pilot records, then all new pilots plus the
 original seven/cell if supported. Any final bundle/source and fresh panel
 must be registered separately before generation. No camera or model calls.
+
+## Full-opening enclosure probe before new actions
+
+Source d8387f61 first probes remain zero: standard48 repeats26 mm loose grips
+then a bad third site knocks the object off the table; random47 tries18/19 mm
+cup sites, all loose/slipped. Do not interpret more attempts as a solution.
+The original standard48 diagnostic shows an earlier mechanism: while g=0.629
+(~47.9 mm commanded open gap), descent moves the object from z0.8056 to0.8215
+before closure. TCP target error is only0.03 mm/0.004 deg; this is approach
+contact, not failed IK. During closure the relative root moves another11 mm.
+The nominal26 mm visual-mesh slice is insufficient opening clearance for this
+cup's physical envelope (asset depth88.78 mm; exact collider section not measured).
+
+Probe **full88 mm opening** for narrow cup proposals, via existing Grasp.clear_w.
+Keep the same TCP, closure, native finger/table/scene validators and original
+physical verifier. A too-low/wide pose must be refused, never exempted. Test
+standard48 and random47 first; screen the other failures only if supported.
+This is an enclosure-clearance test, not a larger hold/slip tolerance. Source
+remains d8387f61 plus a retained probe recipe until production proof.
