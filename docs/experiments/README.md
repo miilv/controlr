@@ -6,6 +6,9 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [BYIMG lift-first](2026-11-07-byimg-g3-r2.md) | Can a level raised basket support catching and loading? | Fresh 10 pairs: 10→20, 1/10→2/10 success, 2 wins/1 loss; released-target replay confirmed; gate fails |
+| 2026-11-07 | [BYIMG fresh retest](2026-11-07-byimg-g3-r2-retest.md) | Does the unchanged positive lift-first bundle generalize? | 14 fresh pairs: 14.29→21.43, 2/14→3/14 success, 2 wins/1 loss; gate fails; stays off |
+| 2026-11-07 | [BYIMG G3](2026-11-07-byimg-g3.md) | Does a braced, re-aimed hook lift the loaded basket? | Ten fresh settled v15 pairs: 0±0→0±0, 0/10 successes both, 0 wins/0 losses; rejected, no camera jobs |
 | 2026-11-06 | [seg-v2n-camera-ab-endbox](2026-11-06-seg-v2n-camera-ab-endbox.md) | Does additive v2n improve fresh variant camera pairs? | Pending: 57/70 pairs at cutoff; guards tied, pour 50→40 provisionally; one unscored reset retry needs adjudication. **Final, 70/70 pairs: DOES NOT PASS** (pooled bootstrap 95 % [−10.5, +6.7]; 4/5 gain cells identical between arms, pour_random −10; journal 2026-11-06-ab-wave-verdicts) |
 | 2026-11-07 | [coin-disc-retest-prereg](2026-11-07-coin-disc-retest-prereg.md) | Once-only disc evidence re-test on fresh salted layouts | 100 Sonnet rows dispatched on compute4 at positions 116–215; 20 gain + 10 pairs per original guard; no verdict |
 | 2026-11-07 | [key-scoped-prereg](2026-11-07-key-scoped-prereg.md) | Can insert_key-only handover/lean retain gain without charger harm? | Candidate Sonnet: key 23.5→23.5, 1 score win/1 loss; both guards equal; does not pass; no adoption |
