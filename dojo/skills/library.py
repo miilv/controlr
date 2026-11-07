@@ -2549,7 +2549,7 @@ def _push_planned(sk: Skills, label: str, target_xy, tol: float, seg: float, max
 
     def stroke_fn(sk_, o_, lab_, u_, s_):
         return PP.pair_stroke(sk_, o_, lab_, u_, s_) if pc == "pair" else _push_stroke(sk_, o_, lab_, u_, s_)
-    last, stuck = None, 0
+    last, stuck, gain = None, 0, None
     for it in range(max_iter):
         w = sk.refresh()
         o = w.obj(label)
@@ -2570,7 +2570,9 @@ def _push_planned(sk: Skills, label: str, target_xy, tol: float, seg: float, max
         axes = PP.support_axes(sup) if (pc == "pair" and sup is not None) else PP.body_axes(o)
         plan = None
         if seq_on:
-            seq = PP.plan_sequence(sk, label, target_xy, axes, stroke_fn, seg=seg, tol=tol)
+            yaw_a = PP.aligned_yaw(o, sup) if (pc == "pair" and sup is not None) else None
+            seq = PP.plan_sequence(sk, label, target_xy, axes, stroke_fn, seg=seg, tol=tol, gain=gain,
+                                   path_ok=PP.path_clear(sk, label, support, yaw_a))
             if seq is not None:
                 plan = seq["first"]
                 push_u, push_step = seq["strokes"][0][0], seq["strokes"][0][1]
@@ -2587,7 +2589,7 @@ def _push_planned(sk: Skills, label: str, target_xy, tol: float, seg: float, max
             for comp, u in todo:
                 if comp < tol / 2:
                     continue
-                step = PP.stroke_len(comp, seg)
+                step = PP.stroke_len(comp, seg, gain)
                 plan = stroke_fn(sk, o, label, u, step)
                 if plan is not None:
                     push_u, push_step = u, step
@@ -2608,7 +2610,9 @@ def _push_planned(sk: Skills, label: str, target_xy, tol: float, seg: float, max
         T_x = o.T.copy()
         T_x[:2, 3] += np.asarray(push_u, float) * push_step
         sk.confirm_moved(label, T_x, "push")
-        moved = float(np.linalg.norm(sk.refresh().obj(label).center_w[:2] - before))
+        after = sk.refresh().obj(label).center_w[:2]
+        moved = float(np.linalg.norm(after - before))
+        gain = PP.update_gain(gain, float((after - before) @ np.asarray(push_u, float)), float(push_step))
         stuck = stuck + 1 if moved < 0.003 else 0
         if stuck >= 2:
             break

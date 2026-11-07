@@ -161,8 +161,7 @@ def test_plan_sequence_takes_the_order_whose_every_stroke_plans():
     assert seq is not None and seq["order"] == [0, 1]   # x first: the y-first order left no x stroke
     assert seq["strokes"][0][0][0] == 1.0
     np.testing.assert_allclose(o.pos, 0.0)              # the planning world is restored
-    moved = sum(np.asarray(u) * s for u, s, _ in seq["strokes"])
-    assert np.all(np.abs(moved - goal) <= 0.012)
+    assert np.all(np.abs(seq["end"] - goal) <= 0.012)
     assert PP.plan_sequence(sk, "kb", goal, [np.array([1.0, 0.0]), np.array([0.0, 1.0])],
                             lambda *a: None) is None
 
@@ -181,8 +180,7 @@ def test_plan_sequence_splits_an_axis_around_a_blocked_stroke():
     assert seq is not None and seq["order"] == [1, 0, 1]
     ys = [float(u[1]) for u, _, _ in seq["strokes"]]
     assert ys[0] == 1.0 and any(abs(u[0]) == 1.0 for u, _, _ in seq["strokes"])
-    moved = sum(np.asarray(u) * s for u, s, _ in seq["strokes"])
-    assert np.all(np.abs(moved - goal) <= 0.012)
+    assert np.all(np.abs(seq["end"] - goal) <= 0.012)
     np.testing.assert_allclose(o.pos, 0.0)
 
 
@@ -199,6 +197,22 @@ def test_planned_push_without_a_sequence_makes_no_stroke(monkeypatch):
 def test_stroke_len_cuts_long_strokes():
     assert PP.stroke_len(0.2, 0.08) == pytest.approx(0.08 * PP.OVERSHOOT)
     assert PP.stroke_len(0.01, 0.08) == pytest.approx(0.013)
+    assert PP.stroke_len(0.05, 0.08, gain=1.35) == pytest.approx(0.053 / 1.35)
+    assert PP.stroke_len(0.2, 0.08, gain=0.5) == pytest.approx(0.08)            # clipped to the stroke limit
+
+
+def test_update_gain_blends_and_ignores_short_strokes():
+    assert PP.update_gain(None, 0.092, 0.068) == pytest.approx(0.092 / 0.068)
+    assert PP.update_gain(1.0, 0.092, 0.068) == pytest.approx(0.5 * (1.0 + 0.092 / 0.068))
+    assert PP.update_gain(1.2, 0.01, 0.015) == 1.2 and PP.update_gain(None, -0.01, 0.05) is None
+
+
+def test_path_clear_blocks_a_sweep_into_a_raised_neighbour():
+    mat = dict(label="mat", category="mousemat", category_idx=0, type="Geometry", pos=[0.48, 0.0, 0.7686],
+               quat=[1, 0, 0, 0], half=[0.096, 0.12, 0.0037])
+    env, sk = _kb_world([mat])
+    ok = PP.path_clear(sk, "kb", "frame", 0.0)
+    assert ok(np.array([0.10, -0.18])) and not ok(np.array([0.25, -0.05]))
 
 
 def test_push_to_legacy_path_without_switches(monkeypatch):

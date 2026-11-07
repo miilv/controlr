@@ -280,23 +280,63 @@ def escape_home(sk, arm: str):
     return None
 
 
-def stroke_len(left: float, seg: float) -> float:
-    """The next stroke's length for ``left`` metres still to go along its axis."""
+GAIN_PRIOR = 1.0 / OVERSHOOT     # object travel / hand travel before any stroke was measured
+GAIN_RANGE = (0.6, 1.6)
+PATH_MARGIN = 0.005               # m: the pushed object's footprint keeps this from other objects along a planned path
+
+
+def stroke_len(left: float, seg: float, gain: float | None = None) -> float:
+    """The next stroke's hand travel for ``left`` metres still to go along its axis. ``gain`` (object travel per hand
+    travel, measured on the strokes so far; ``update_gain``) scales long strokes; without one the prior ``OVERSHOOT``."""
     s = min(seg, left + 0.003)
-    return s * OVERSHOOT if s > 0.03 else s
+    if s <= 0.03:
+        return s
+    g = GAIN_PRIOR if gain is None else float(np.clip(gain, *GAIN_RANGE))
+    return min(seg, s / g)
+
+
+def update_gain(gain: float | None, moved_along: float, hand: float) -> float | None:
+    """Running estimate of object travel per hand travel (strokes of at least 20 mm; a 50/50 blend with the previous)."""
+    if hand < 0.02 or moved_along <= 0.0:
+        return gain
+    g = float(np.clip(moved_along / hand, *GAIN_RANGE))
+    return g if gain is None else 0.5 * (gain + g)
+
+
+def path_clear(sk, label: str, support: str | None, yaw: float | None = None):
+    """A ``plan_sequence`` path test: the object's footprint at a virtual centre stays ``PATH_MARGIN`` from every other
+    object's footprint (the support, held objects and flat markers under 3 mm excepted). Objects it already touches at
+    the start are not held against it (it cannot get away from them in one step anyway)."""
+    w = sk.world
+    o = w.obj(label)
+    held = set(getattr(sk, "held", {}).values()) if isinstance(getattr(sk, "held", None), dict) else set()
+    others = []
+    for lab, ob in w.objects.items():
+        if lab in (label, support) or lab in held or float(ob.top_z - ob.bottom_z) < 0.003:
+            continue
+        others.append((lab, footprint(ob)))
+    fp0 = footprint(o, yaw=yaw)
+    others = [(lab, Q) for lab, Q in others if poly_dist(fp0, Q) > PATH_MARGIN]
+
+    def ok(centre) -> bool:
+        fp = footprint(o, centre=centre, yaw=yaw)
+        return all(poly_dist(fp, Q) > PATH_MARGIN for _, Q in others)
+    return ok
 
 
 SPLITS = (0.4, 0.7)       # fractions of the first axis done before the other axis, then the rest (``plan_sequence``)
 
 
 def plan_sequence(sk, label: str, goal_xy, axes, stroke_fn, seg: float = 0.08, tol: float = 0.012,
-                  max_strokes: int = 10):
+                  max_strokes: int = 10, gain: float | None = None, path_ok=None):
     """``push_plan`` "sequence": the stroke sequence to ``goal_xy`` along ``axes`` (two world unit 2-vectors), the
     object moved virtually (planning world only) by each planned stroke. Candidate phase orders, in turn: the axis with
     most to go first, then the other; the other first; then each order with its first axis split (``SPLITS`` of it, the
     other axis, the rest of the first: a stroke whose start is blocked by a neighbour at the start pose and by a fixture
     at the end pose can fit in between). Returns {"order", "strokes": [(u, step, arm)], "first": plan, "why"} for the
-    first candidate whose every stroke plans, else None (``sk.log`` says what blocked)."""
+    first candidate whose every stroke plans, else None (``sk.log`` says what blocked). ``gain``: object travel per hand
+    travel (``stroke_len``); ``path_ok(centre_xy) -> bool``: every intermediate object position must pass it
+    (``path_clear``)."""
     o = sk.world.obj(label)
     c0 = np.asarray(o.center_w[:2], float)
     goal = np.asarray(goal_xy, float)
@@ -324,7 +364,13 @@ def plan_sequence(sk, label: str, goal_xy, axes, stroke_fn, seg: float = 0.08, t
                     if abs(left) <= tol / 2:
                         break
                     u = a * math.copysign(1.0, left)
-                    step = stroke_len(abs(left), seg)
+                    step = stroke_len(abs(left), seg, gain)
+                    moved = step * (GAIN_PRIOR if gain is None else float(np.clip(gain, *GAIN_RANGE)))
+                    moved = min(moved, abs(left)) if step > 0.03 else step
+                    if path_ok is not None and not path_ok(pos + u * moved):
+                        why.append(f"{[(k_, f_) for k_, f_ in cand]}: path along axis {k} at {np.round(pos, 3).tolist()}")
+                        ok = False
+                        break
                     o.pos = saved + np.r_[pos - c0, 0.0]
                     p = stroke_fn(sk, o, label, u, step)
                     if p is None:
@@ -334,11 +380,12 @@ def plan_sequence(sk, label: str, goal_xy, axes, stroke_fn, seg: float = 0.08, t
                     if first_plan is None:
                         first_plan = p
                     strokes.append((u, step, p.arm))
-                    pos = pos + u * step
+                    pos = pos + u * moved
                 if not ok:
                     break
             if ok and strokes:
-                return {"order": [k for k, _ in cand], "strokes": strokes, "first": first_plan, "why": why}
+                return {"order": [k for k, _ in cand], "strokes": strokes, "first": first_plan, "why": why,
+                        "end": pos}
     finally:
         o.pos = saved
     sk.log(f"[push_plan] {label}: no complete stroke sequence ({'; '.join(why)[:240]})")
