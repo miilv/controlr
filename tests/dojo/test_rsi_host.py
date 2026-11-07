@@ -212,6 +212,6 @@ def test_suffix_keeps_native_positions_and_first_pass_results(host):
     assert manager.seed_info[5] == 100005
     policy, command, env = R.commands(host, 'deposit_coin', host.state / 'layouts', 5, 12345,
                                       host.state / 'out', start_position=5)
-    assert command[2].endswith('/client.py') and env['RSI_START_POSITION'] == '5'
+    assert command[2].endswith('/client.py') and env['EVAL_NUM'] == '5'
     with pytest.raises(ValueError, match='desktop permission'):
         R.run(host, 'deposit_coin', host.state / 'layouts', 5, 'yardstick-remaining', start_position=5)

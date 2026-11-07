@@ -49,8 +49,7 @@ def commands(host: Host, task: str, layouts: Path, count: int, port: int, out: P
               '--policy_server_url', f'ws://127.0.0.1:{port}', '--additional_info', 'rsi_yardstick',
               '--seed', '0', '--host', '127.0.0.1', '--headless']
     env = host.env() | dict(SIMLAB_DEV_LAYOUTS=str(layouts), EVAL_NUM=str(count),
-                           PYRUALEAN_RESULT_DIR=str(out / 'episodes'), ROBODOJO_RUN_ID=out.name.split('_')[0],
-                           RSI_START_POSITION=str(start_position))
+                           PYRUALEAN_RESULT_DIR=str(out / 'episodes'), ROBODOJO_RUN_ID=out.name.split('_')[0])
     return policy, client, env
 
 

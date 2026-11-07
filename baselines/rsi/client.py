@@ -5,8 +5,6 @@ prefix positions complete, so native SeedManager draws stay at positions 5–9.
 """
 from __future__ import annotations
 
-import os
-
 
 def exclude_prefix(seed_manager_class, start: int) -> None:
     if start != 5:
@@ -27,7 +25,7 @@ def main() -> None:
     def patch(root):
         original(root)
         from env.seed_manager import seed_manager as sm
-        exclude_prefix(sm.SeedManager, int(os.environ['RSI_START_POSITION']))
+        exclude_prefix(sm.SeedManager, 5)
 
     dev_eval.patch_seed_manager = patch
     dev_eval.main()
