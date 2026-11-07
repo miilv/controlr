@@ -560,13 +560,69 @@
     },
     "hang_mugs_random": {
       "dimension": "Generalization",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "58d6b423008acae23a481f42b9eccba9e337db7a336bb23ef71f8a45f383a560",
+          "official_score": 40.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T194555f80392Z_hang_mugs_random",
+          "steps": 681,
+          "success": false,
+          "task": "hang_mugs_random",
+          "wall_s": 234.0665303140413
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "893bb65f7c2c851cbfeb099d2244ab098a44eaa9d600cbf80399150f71ee75fc",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T194555f80392Z_hang_mugs_random",
+          "steps": 536,
+          "success": true,
+          "task": "hang_mugs_random",
+          "wall_s": 222.91573401889764
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "e474bd7792ba57f9ca6139044ca1579afbdc0d114eae49d624b925efb637fee4",
+          "official_score": 15.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T194555f80392Z_hang_mugs_random",
+          "steps": 673,
+          "success": false,
+          "task": "hang_mugs_random",
+          "wall_s": 246.5143768740818
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "ffe195a7b0bc60466123506e29406ca7c7b8433ec8d990cf805119fd1cc30443",
+          "official_score": 15.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T194555f80392Z_hang_mugs_random",
+          "steps": 687,
+          "success": false,
+          "task": "hang_mugs_random",
+          "wall_s": 359.271822005976
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "1cc0c5780a057afdc5cc27fac77d5931a82c50bd4ec705eaf268a705abc4b05d",
+          "official_score": 100.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T194555f80392Z_hang_mugs_random",
+          "steps": 509,
+          "success": true,
+          "task": "hang_mugs_random",
+          "wall_s": 162.07714517205022
+        }
+      ],
+      "n": 5,
+      "official_score": 54.0,
+      "score_sd": 43.2145808726638,
+      "steps": 3086,
+      "successes": 2,
+      "wall_s": 1224.845608385047,
       "weight": 0.008333333333333333
     },
     "imitate_sorting_sequence": {
