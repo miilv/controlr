@@ -152,18 +152,21 @@
   - The camera rows' "all placed but 0" is understood: std 100003 is an arm going home knocking the end-slot doll over
     (`row_home_clear` off: net 0 on the 3 changed seeds); `_random` 100002 is a doll held 48 deg tilted and toppled at
     the release (held state).
-- [ ] **dojo laptop follow-up: retain the headset during reorientation.** Fresh salted G3 panel
-  ([report](experiments/2026-11-07-laptop-g3.md)): default-off `headset_seat` earns 20 headset
-  points on 1/10 layouts in each cell vs 0/10 controls (mean 0→2, SD 6.32, one score win each).
-  Below the gain gate; no camera advancement. Wide lifts can hold, but carry shifts ~90–110 mm;
-  narrowing the candidate set plus slower carry/seated release does not give a reliable hold.
-  Closing the lid alone earns no credit; the laptop 80-point tier remains blocked on a physical pick.
+- [ ] **dojo laptop follow-up: generalize the headset hold across shapes.** Default-off
+  staged rotation/carry and denser wide pinches produce paired G3 gains; a conservative full-mesh
+  held-table guard removes false refusals from empty headset OBB corners. The latest
+  [mesh-table panel](experiments/2026-11-07-laptop-g3-round2c.md) has 9/10 standard and 5/10 random
+  headset credits (A 0/10 and 2/10); random reliability remains open. Earlier independent panels
+  are retained separately; no selected pooling. A pilot's ~98 mm carry loss is stand contact during
+  reorientation, reduced to ~1 mm by turning before translation. Wide curved-cup and thin-band
+  holds can still slip. Camera spec is blocked; no camera dispatch or board change.
+  Closing the lid alone earns no credit; the laptop 80-point conjunction still needs a physical pick.
 - [ ] **dojo skills: store_laptop: the headset hang plans now; its hold and the laptop's pick do not** (journal
   2026-10-29-dojo-newskill-hang, store_laptop sections).
   - Done: `hang_cradle` "straddle" (#345) lets the held headset straddle the stand's top, so the hang plans in 16 of
     20 dev rows. G3: 1-2 of 10 rows reach the 0.2 tier.
-  - Still open, the headset: the 24-26 mm band pinches slip; 37-43 mm antipodal pinches hold but the headset slides off
-    the cradle after the release.
+  - Headset follow-up is tracked above: some wide pinches now survive the full carry and seated release;
+    thin-band and curved-cup holds remain shape dependent.
   - Still open, the laptop stage (80 %), on `wip/store-laptop` (route "store_laptop", off):
     - the checker frames (`artgeom.checker_point`: a base-link functional frame on its link);
     - posed geometry (`Skills.artic_geom` "measured": the lid turned shut);
@@ -172,6 +175,10 @@
     in every G3 attempt (rises 0 mm or falls off the stand). Tried and parked: sliding it to overhang the stand (press
     drags tip it off the stand in 10/20 rows; after a slide no overhang pinch pairs). Left: a two-arm lift, or a pick
     with the lid still open (journal 2026-10-29-dojo-newskill-hang, "the overhang grasp").
+    A [numeric tray/rack study](experiments/2026-11-07-laptop-g3-round2.md) finds both supported
+    tray targets obstructed by the stand, and 0/348 left versus 4/504 right upright IK endpoints.
+    The four right endpoints pass native scene checks: rack reach is not globally impossible.
+    A fixture-supported pivot or two-arm clearance mechanism remains unproven; no laptop panel.
 - [ ] **dojo infra (landmine): a box's perception catalogue can silently miss assets.** `task_map()` drops every
   label whose candidates have no `geom.npz` (one warning in `perception_service.log`), so camera rows of that task
   run perception-blind and end `perception_gross` in seconds. compute4's `~/dojo-perception-data/catalog` lacked W's

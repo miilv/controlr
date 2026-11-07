@@ -8,12 +8,13 @@ file. Compute3's current Isaac 5.1 renderer is incompatible; physics-only G3
 cannot qualify it. A compatible rendering host must be assigned separately by
 the lead, with the same box class for both arms. No compute4 access is implied.
 
-Mechanical source is `473d64cf`, with later tests/docs-only commits permitted.
+The latest screened mechanical source is `18e70412`. A final qualifying source
+and complete bundle must be pinned before dispatch; this candidate remains blocked.
 Before any dispatch, retain exact source, baseline board-candidate config,
 perception/model/asset/calibration pins and hashes in a manifest. Reuse the
 lead-pinned board candidate in A unchanged; neither this spec nor the PR
 changes its selection. No unresolved config pin may be filled from outcomes.
-The G3 reliability/paired result in [round 2b](2026-11-07-laptop-g3-round2b.md)
+The G3 reliability/paired result in [round 2c](2026-11-07-laptop-g3-round2c.md)
 must qualify first. If it does not, this registration stays blocked.
 
 B changes only the runtime skill bundle:
@@ -23,6 +24,7 @@ hang_cradle: straddle
 headset_seat: 'on'
 headset_carry: staged
 headset_grasp: dense
+headset_table: mesh
 ```
 
 A retains all baseline values. No store_laptop route, perception refinement,
