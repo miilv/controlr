@@ -78,3 +78,31 @@ def test_deterministic_order_and_no_input_mutation(catalog):
 def test_below_processor_floor_and_invalid_threshold_rejected(value):
     with pytest.raises(ValueError):
         gm.GeneralMaskConfig(sam_threshold=value)
+
+
+def test_local_text_uses_the_existing_sam_wire_handler():
+    from dojo.perception.sam_masks import LocalSam, pack
+    mask = np.ones((4, 5), np.uint8)
+    model = Mock()
+    model.handle.return_value = {'masks': [(*pack(mask), .9, 'egg')]}
+    sam = LocalSam(['sam3'], M=model)
+    result = sam.text(np.zeros((4, 5, 3), np.uint8), ['egg'], .2, model='sam3')
+    assert np.array_equal(result[0].mask, mask)
+    request = model.handle.call_args.args[0]
+    assert request['model'] == 'sam3' and request['thr'] == .2 and request['op'] == 'text'
+
+
+def test_metric_matches_historical_reference_without_feeding_it_to_predictor():
+    import importlib.util
+    from pathlib import Path
+    from dojo.perception.seg_twin import Det
+    root = Path(__file__).resolve().parents[2] / 'scripts/perception/sam'
+    modules = []
+    for name in ['general_eval', 'task_prompt_eval']:
+        spec = importlib.util.spec_from_file_location(name, root / (name+'.py'))
+        module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module); modules.append(module)
+    codes = np.zeros((20, 20), np.uint16); codes[:8, :8] = 1; codes[10:18, 10:18] = 2
+    objects = [{'type':'Rigid','category':'pen','category_idx':i,'label':str(i),'clutter':False} for i in range(2)]
+    phantom = np.zeros_like(codes, np.uint8); phantom[:5, 13:18] = 1
+    dets = [Det((codes==1).astype(np.uint8), 'Rigid/pen/00000', .9), Det(phantom, '', .8)]
+    assert modules[0].score(dets, codes, objects) == modules[1].score(dets, codes, objects)

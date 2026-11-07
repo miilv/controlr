@@ -172,7 +172,7 @@ class SamClient:
 
 
 class LocalSam:
-    """The server's models in this process, with ``SamClient``'s ``points`` interface (offline evals: one GPU process
+    """The server's models in this process, with ``SamClient``'s text/points interface (offline evals: one GPU process
     for SAM + DINOv2 + renders, no socket). ``models``: e.g. ["sam2.1_small"]."""
 
     def __init__(self, models: list[str], M=None):
