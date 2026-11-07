@@ -35,4 +35,32 @@ PR #414 draft and unmerged for the lead. The two light lanes, admission gates,
 
 ## Results
 
-Pending registered independent retest.
+[Exact inputs/hashes and all 28 episode records](2026-11-07-byimg-g3-r2-retest-results.json).
+Fourteen stable pairs, no exclusions or replacements, same frozen source.
+
+A: **14.29 ±36.31**, **2/14 successes**. B: **21.43 ±42.58**, **3/14 successes**
+(sample SD in score points). Score and success pair wins/losses/ties:
+**2/1/11**. B rescues 100042/48, loses A's 100027, and both succeed on 100044.
+The **+7.14-point** mean gain again passes the mean bound but fails the
+**two-net-win** bound. The once-only independent retest therefore **does not
+pass**. No third retest, camera A/B specification, camera dispatch or candidate
+adoption follows.
+
+A's failures: nine lift, three target-pick endings. B's failures: five target
+picks, five carry/drop endings, one complete motion chain that still scores
+zero. Three B episodes achieve full native checker score. Thus basket-first
+has a physical scoring chain, but target acquisition/retention and release
+stability remain unresolved; do not infer success from a skill's `ok` alone.
+
+Median steps A 186 / B 211.5; maxima 311 / 384 of 700. Episode skill wall totals
+355.4 / 390.3 s, planning 87.3 / 67.9 s; boot/reset time is additional. No
+unstable episodes, missing meshes, infrastructure failures or budget exhaustion.
+Shared-box wall times are descriptive, not a latency benchmark.
+
+Across both registered blocks, **descriptive only**: A **12.50 ±33.78**,
+3/24 successes; B **20.83 ±41.49**, 5/24; 4 wins / 2 losses / 18 ties.
+The pooled total is not substituted for the pre-registered independent gate.
+This is a small, consistently positive development signal, not camera adoption.
+
+All new behavior remains default-off and PR #414 remains draft/unmerged for
+the lead. Model calls/tokens/spend: **0/0/$0**.

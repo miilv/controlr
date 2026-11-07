@@ -330,8 +330,17 @@
   0/10 vs 0/10, two lift endings rise 5.2/0.7 mm. The wall pinch is not a fixed brace.
   Isolated opposite-wall grasps (80 candidates) all fail IK; a farther drag slips instead of bringing
   that wall in reach. Need a restraint/support that physically holds, then re-screen on fresh layouts.
-  Belt-relative frozen records advance phase again during reset; preserve authored belt phase in a
-  future settling protocol rather than comparing their absolute rate to old raw-v15 screens.
+  Round 2 now removes total belt travel relative to authored poses. A controlled +205 mm phase test
+  reduces target picks 9/10→6/10 and creates four no-intercept endings: stop/drag time advances riders
+  beyond the occupied-arm window, and the basket also blocks candidate paths. Preserve native phase;
+  do not compare absolute rates to the old phase-advanced snapshot panel.
+  [Lift-first](experiments/2026-11-07-byimg-g3-r2.md) sustains a level elevated basket with a downstream
+  end-wall pinch and measured attachment correction. Fresh pairs improve 1/10→2/10 and independent
+  retest 2/14→3/14, each 2 wins/1 loss: both fail the two-net-win gate. One exact replay succeeds after
+  explicit release (81.8 mm target lift, 37.1 mm bottom gap). This is a real scoring chain, not a reliable
+  general solution. Carry retention and partial target lifts now bind; all new switches remain off.
+  No camera spec/jobs or board change. A future lever needs grasp-family/retry and carry-path evidence
+  on fresh layouts, rather than another unchanged-bundle retest.
 - [ ] **dojo skills: pick_from_conveyor_by_image, the basket lifted level with the target in it** (stream C, parked;
   journal/2026-10-29-dojo-conveyor-deposit.md). The checker wants the target on the basket's bottom 8 cm above its
   start. A rim pinch holds the basket 40 deg tilted. `belt_deposit` (default off) stops it on the belt, drags it toward

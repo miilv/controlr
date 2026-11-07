@@ -105,3 +105,40 @@ A on 100016. B ends at target pick (3), carry/drop (4), basket intercept (1).
 The mean improves, but one net win fails the registered two-net-win condition.
 A once-only independent 14-pair retest is registered in a separate report;
 no tuning from these paired inputs enters it. All new behavior stays off.
+
+Provenance detail: the first clean-code smoke ran from the working tree that
+became db52accf, before updating `.deployed_commit`; its metadata still stamps
+656ed40c. Do not treat that smoke stamp as immutable source evidence. Both
+registered panels stamp the correct frozen db52accf source. A final PR-head
+smoke will be recorded separately. The 177 vs 179 step prototype difference
+also includes G3's normal seed handling, not independent replication.
+
+CI initially did not queue because the branch conflicted with newer main's
+experiment index. Closing/reopening the draft did not fix that. Merged current
+main (docs-only changes) and retained both BYIMG rows and newer owner verdicts;
+CI now starts. No measured deployment or experiment input was changed by the
+merge. The PR remains draft/unmerged.
+
+Independent retest complete, unchanged source: **14.29 ±36.31 → 21.43 ±42.58**,
+2/14→3/14 success, **2 wins / 1 loss / 11 ties**. Again one net win fails the
+registered gate. No camera spec/dispatch, third retest or adoption. Descriptive
+24-pair total is 12.50→20.83 (3/24→5/24), 4 wins/2 losses; not substituted for
+the independent decision. Exact inputs and all rows are in the retest artifact.
+
+The controlled +205 mm phase study completes all twenty episodes: target picks
+9/10→6/10 at 125 mm, 8/10→6/10 at 150 mm, four no-intercept endings in both
+shifted profiles. Native-phase 125 mm has no no-intercept ending. Median target
+x after stop moves −0.780→−0.337 m because drag delay adds more travel. Native
+search reports basket/table/IK rejects; don't reduce all failures to arm choice.
+
+Exact-action replay reproduces primary B successes at steps 254/304. The latter
+is after explicit opening: target-origin rise 81.8 mm, bottom gap 37.1 mm. The
+former latches while closed (rise 88.1 mm, gap 33.3 mm). This corrects the earlier
+blanket description of placement success as pre-open. No post-terminal stability
+is claimed. There is a released-target scoring chain; generalization remains weak.
+
+Full local implementation suite: **2068 passed, 191 skipped, 16m35s**. The two
+subsequently added refusal test cases also pass in the final focused 18-test run.
+Main merged only documentation; runtime code is the frozen measurement code.
+CI on the merge head is running. All BYIMG GPU processes have exited normally;
+private footprint is 41 MB deployment + 7 MB data. No other process was touched.

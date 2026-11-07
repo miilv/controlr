@@ -10066,6 +10066,102 @@
       "bottom": 0.7722737621834868
      }
     }
+   },
+   {
+    "seed": 100023,
+    "pull": 0.2,
+    "stable": true,
+    "result": {
+     "ok": false,
+     "stage": "target carry/drop",
+     "note": "target lost before release"
+    },
+    "log": [
+     "[belt] v [4.0, -0.0] mm/step; the picture shows Rigid/correction_tape/00000: ['target']",
+     "[belt] basket: right intercept at +31 steps (wall -y 8 mm at -0.3 tilt 25), wait 5, approach 18",
+     "[belt] lift basket 44 mm more (pulled 0 cm in)",
+     "[skill] belt_pick right ok steps=43 basket rose 93 mm",
+     "[basket-first] {\"status\": \"reached\", \"bottom\": 0.8643610902747492, \"tilt\": 7.942766240484934}",
+     "[belt] target: left intercept at +25 steps (axis 1 tilt 40), wait 0, approach 17",
+     "[skill] belt_pick left ok steps=42 target rose 122 mm",
+     {
+      "kind": "rise_plan",
+      "status": "reached",
+      "goal": [
+       [
+        -0.6320843518360948,
+        0.18188021805409454,
+        0.7532522541914755,
+        -0.46885695056858034
+       ],
+       [
+        0.11682270846284132,
+        0.9833206865740417,
+        -0.13940187281009409,
+        -0.18779289446649372
+       ],
+       [
+        -0.7660429667788551,
+        -0.00011677392951719989,
+        -0.642789358509068,
+        1.0632010868220965
+       ],
+       [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+       ]
+      ],
+      "object": [
+       -0.5750502943992615,
+       -0.020346447825431824,
+       0.8928053975105286
+      ],
+      "rim": 0.9645258567160382
+     },
+     {
+      "kind": "after_rise",
+      "pos": [
+       -0.4691806733608246,
+       -0.18808767199516296,
+       1.043197751045227
+      ],
+      "bottom": 0.9704098524151318,
+      "relative_shift": 0.0035992243322243178
+     },
+     "[basket-first] {\"drop_xy_error\": 0.09542276181950153, \"target_bottom\": 0.8920728045516327, \"basket_bottom\": 0.7523969463331169}"
+    ],
+    "reward": {
+     "success": false,
+     "success_flag": true,
+     "ended": false,
+     "stages_left": 1,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 195,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "score": 0.0,
+    "final": {
+     "basket": {
+      "pos": [
+       0.06681010872125626,
+       -0.16970360279083252,
+       0.9049257040023804
+      ],
+      "bottom": 0.7523969463331169
+     },
+     "target": {
+      "pos": [
+       -0.01061706431210041,
+       -0.11369241029024124,
+       0.9636585712432861
+      ],
+      "bottom": 0.8920728045516327
+     }
+    }
    }
   ],
   "basketleft": [
@@ -16262,6 +16358,2762 @@
     ],
     "servo": []
    }
+  ],
+  "phase_shift": [
+   {
+    "seed": 100000,
+    "mode": "stop125",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 41,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 124 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 30,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.383137047290802,
+      0.06510836631059647,
+      0.7864923477172852
+     ],
+     "basket": [
+      -0.05109900236129761,
+      -0.1023026704788208,
+      0.8756470680236816
+     ]
+    },
+    "end": [
+     -0.2547664940357208,
+     0.06620252877473831,
+     0.9103268384933472
+    ],
+    "steps": 153,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 1, approach 16",
+     "[belt] dragged basket by [-222.0, -121.0, 0.0] mm: now [-0.051, -0.102, 0.875]",
+     "[belt] basket stopped at [-0.051, -0.102, 0.875]",
+     "[skill] belt_stop right ok steps=30 basket stopped",
+     "[belt] target: left intercept at +25 steps (axis 0 tilt 25), wait 1, approach 16",
+     "[skill] belt_pick left ok steps=41 target rose 124 mm"
+    ],
+    "collision_rejects": {},
+    "ik_rejects": {
+     "left": 2
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.3152,
+       0.0651,
+       0.8464
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.3152,
+       0.0651,
+       0.8464
+      ]
+     ]
+    ],
+    "wall_s": 10.772285890998319
+   },
+   {
+    "seed": 100000,
+    "mode": "stop150",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 41,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 149 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 30,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.383137047290802,
+      0.06510836631059647,
+      0.7864923477172852
+     ],
+     "basket": [
+      -0.05109900236129761,
+      -0.1023026704788208,
+      0.8756470680236816
+     ]
+    },
+    "end": [
+     -0.2547721862792969,
+     0.06608881801366806,
+     0.935293972492218
+    ],
+    "steps": 154,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 1, approach 16",
+     "[belt] dragged basket by [-222.0, -121.0, 0.0] mm: now [-0.051, -0.102, 0.875]",
+     "[belt] basket stopped at [-0.051, -0.102, 0.875]",
+     "[skill] belt_stop right ok steps=30 basket stopped",
+     "[belt] target: left intercept at +25 steps (axis 0 tilt 25), wait 1, approach 16",
+     "[skill] belt_pick left ok steps=41 target rose 149 mm"
+    ],
+    "collision_rejects": {},
+    "ik_rejects": {
+     "left": 2
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.3152,
+       0.0651,
+       0.8464
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.3152,
+       0.0651,
+       0.8464
+      ]
+     ]
+    ],
+    "wall_s": 12.05293650800013
+   },
+   {
+    "seed": 100001,
+    "mode": "stop125",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": false,
+     "skill": "belt_pick",
+     "status": "ik_fail",
+     "steps": 0,
+     "arm": null,
+     "expected": {},
+     "measured": {},
+     "note": "no intercept for target"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 28,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.10094188153743744,
+      0.05556834489107132,
+      0.7693842649459839
+     ],
+     "basket": [
+      -0.06100991740822792,
+      -0.10096250474452972,
+      0.8895171880722046
+     ]
+    },
+    "end": [
+     -0.10094188153743744,
+     0.05556834489107132,
+     0.7693842649459839
+    ],
+    "steps": 184,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 3, approach 14",
+     "[belt] dragged basket by [-541.0, -123.0, 0.0] mm: now [-0.061, -0.101, 0.889]",
+     "[belt] basket stopped at [-0.061, -0.101, 0.889]",
+     "[skill] belt_stop right ok steps=28 basket stopped"
+    ],
+    "collision_rejects": {
+     "link at table z=0.768": 9,
+     "hits basket": 24,
+     "link at table z=0.771": 9
+    },
+    "ik_rejects": {
+     "left": 1001
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.033,
+       0.0556,
+       0.8372
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.033,
+       0.0556,
+       0.8372
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.033,
+       0.0556,
+       0.8414
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.033,
+       0.0556,
+       0.8414
+      ]
+     ],
+     [
+      "left",
+      [
+       0.031,
+       0.0556,
+       0.8373
+      ]
+     ],
+     [
+      "left",
+      [
+       0.031,
+       0.0556,
+       0.8373
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.009,
+       0.0556,
+       0.8372
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.009,
+       0.0556,
+       0.8372
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.009,
+       0.0556,
+       0.8414
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.009,
+       0.0556,
+       0.8414
+      ]
+     ],
+     [
+      "left",
+      [
+       0.055,
+       0.0556,
+       0.8136
+      ]
+     ],
+     [
+      "left",
+      [
+       0.055,
+       0.0556,
+       0.8136
+      ]
+     ]
+    ],
+    "wall_s": 16.957614244005526
+   },
+   {
+    "seed": 100001,
+    "mode": "stop150",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": false,
+     "skill": "belt_pick",
+     "status": "ik_fail",
+     "steps": 0,
+     "arm": null,
+     "expected": {},
+     "measured": {},
+     "note": "no intercept for target"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 28,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.10094188153743744,
+      0.05556834489107132,
+      0.7693842649459839
+     ],
+     "basket": [
+      -0.06100991740822792,
+      -0.10096250474452972,
+      0.8895171880722046
+     ]
+    },
+    "end": [
+     -0.10094188153743744,
+     0.05556834489107132,
+     0.7693842649459839
+    ],
+    "steps": 184,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 3, approach 14",
+     "[belt] dragged basket by [-541.0, -123.0, 0.0] mm: now [-0.061, -0.101, 0.889]",
+     "[belt] basket stopped at [-0.061, -0.101, 0.889]",
+     "[skill] belt_stop right ok steps=28 basket stopped"
+    ],
+    "collision_rejects": {
+     "link at table z=0.768": 9,
+     "hits basket": 23,
+     "link at table z=0.771": 9
+    },
+    "ik_rejects": {
+     "left": 1002
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.033,
+       0.0556,
+       0.8372
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.033,
+       0.0556,
+       0.8372
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.033,
+       0.0556,
+       0.8414
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.033,
+       0.0556,
+       0.8414
+      ]
+     ],
+     [
+      "left",
+      [
+       0.031,
+       0.0556,
+       0.8436
+      ]
+     ],
+     [
+      "left",
+      [
+       0.031,
+       0.0556,
+       0.8436
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.009,
+       0.0556,
+       0.8372
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.009,
+       0.0556,
+       0.8372
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.009,
+       0.0556,
+       0.8414
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.009,
+       0.0556,
+       0.8414
+      ]
+     ],
+     [
+      "left",
+      [
+       0.055,
+       0.0556,
+       0.8136
+      ]
+     ],
+     [
+      "left",
+      [
+       0.055,
+       0.0556,
+       0.8136
+      ]
+     ]
+    ],
+    "wall_s": 20.2488460290042
+   },
+   {
+    "seed": 100002,
+    "mode": "stop125",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": false,
+     "skill": "belt_pick",
+     "status": "ik_fail",
+     "steps": 0,
+     "arm": null,
+     "expected": {},
+     "measured": {},
+     "note": "no intercept for target"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 28,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.048642393201589584,
+      0.0793386846780777,
+      0.7616503238677979
+     ],
+     "basket": [
+      -0.02166486158967018,
+      -0.11043837666511536,
+      0.8822405934333801
+     ]
+    },
+    "end": [
+     -0.048642393201589584,
+     0.0793386846780777,
+     0.7616503238677979
+    ],
+    "steps": 164,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 3, approach 14",
+     "[belt] dragged basket by [-447.0, -153.0, 0.0] mm: now [-0.022, -0.111, 0.882]",
+     "[belt] basket stopped at [-0.022, -0.111, 0.882]",
+     "[skill] belt_stop right ok steps=28 basket stopped"
+    ],
+    "collision_rejects": {
+     "link at table z=0.776": 24,
+     "link at table z=0.772": 9,
+     "hits basket": 26
+    },
+    "ik_rejects": {
+     "left": 1275
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       0.0014,
+       0.0686,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0014,
+       0.0686,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0014,
+       0.0686,
+       0.8421
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0014,
+       0.0686,
+       0.8421
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0654,
+       0.0686,
+       0.8974
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0654,
+       0.0686,
+       0.8974
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0254,
+       0.0686,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0254,
+       0.0686,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0254,
+       0.0686,
+       0.8421
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0254,
+       0.0686,
+       0.8421
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0894,
+       0.0686,
+       0.8737
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0894,
+       0.0686,
+       0.8737
+      ]
+     ]
+    ],
+    "wall_s": 18.521270344004733
+   },
+   {
+    "seed": 100002,
+    "mode": "stop150",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": false,
+     "skill": "belt_pick",
+     "status": "ik_fail",
+     "steps": 0,
+     "arm": null,
+     "expected": {},
+     "measured": {},
+     "note": "no intercept for target"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 28,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.048642393201589584,
+      0.0793386846780777,
+      0.7616503238677979
+     ],
+     "basket": [
+      -0.02166486158967018,
+      -0.11043837666511536,
+      0.8822405934333801
+     ]
+    },
+    "end": [
+     -0.048642393201589584,
+     0.0793386846780777,
+     0.7616503238677979
+    ],
+    "steps": 164,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 3, approach 14",
+     "[belt] dragged basket by [-447.0, -153.0, 0.0] mm: now [-0.022, -0.111, 0.882]",
+     "[belt] basket stopped at [-0.022, -0.111, 0.882]",
+     "[skill] belt_stop right ok steps=28 basket stopped"
+    ],
+    "collision_rejects": {
+     "link at table z=0.776": 24,
+     "link at table z=0.772": 9,
+     "hits basket": 26
+    },
+    "ik_rejects": {
+     "left": 1275
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       0.0014,
+       0.0686,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0014,
+       0.0686,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0014,
+       0.0686,
+       0.8421
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0014,
+       0.0686,
+       0.8421
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0654,
+       0.0686,
+       0.9043
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0654,
+       0.0686,
+       0.9043
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0254,
+       0.0686,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0254,
+       0.0686,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0254,
+       0.0686,
+       0.8421
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0254,
+       0.0686,
+       0.8421
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0894,
+       0.0686,
+       0.8743
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0894,
+       0.0686,
+       0.8743
+      ]
+     ]
+    ],
+    "wall_s": 15.630870105000213
+   },
+   {
+    "seed": 100003,
+    "mode": "stop125",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 42,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 127 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 29,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.29027414321899414,
+      0.03874044492840767,
+      0.8176510334014893
+     ],
+     "basket": [
+      -0.07235927879810333,
+      -0.10013910382986069,
+      0.8725200891494751
+     ]
+    },
+    "end": [
+     -0.15466979146003723,
+     0.05644097924232483,
+     0.9450430870056152
+    ],
+    "steps": 161,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 15), wait 2, approach 15",
+     "[belt] dragged basket by [-224.0, -178.0, 0.0] mm: now [-0.073, -0.1, 0.872]",
+     "[belt] basket stopped at [-0.073, -0.1, 0.872]",
+     "[skill] belt_stop right ok steps=29 basket stopped",
+     "[belt] target: left intercept at +25 steps (waist h 0.60 head 49 pitch 0), wait 0, approach 17",
+     "[belt] re-read: shifted the track by [-6.1, 2.0, 0.0] mm",
+     "[skill] belt_pick left ok steps=42 target rose 127 mm"
+    ],
+    "collision_rejects": {
+     "hits basket": 4,
+     "palm at table z=0.765": 1
+    },
+    "ik_rejects": {
+     "left": 576
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ]
+    ],
+    "wall_s": 17.94169245600642
+   },
+   {
+    "seed": 100003,
+    "mode": "stop150",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 42,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 153 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 29,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.29027414321899414,
+      0.03874044492840767,
+      0.8176510334014893
+     ],
+     "basket": [
+      -0.07235927879810333,
+      -0.10013910382986069,
+      0.8725200891494751
+     ]
+    },
+    "end": [
+     -0.154718816280365,
+     0.056138765066862106,
+     0.970219612121582
+    ],
+    "steps": 161,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 15), wait 2, approach 15",
+     "[belt] dragged basket by [-224.0, -178.0, 0.0] mm: now [-0.073, -0.1, 0.872]",
+     "[belt] basket stopped at [-0.073, -0.1, 0.872]",
+     "[skill] belt_stop right ok steps=29 basket stopped",
+     "[belt] target: left intercept at +25 steps (waist h 0.60 head 49 pitch 0), wait 0, approach 17",
+     "[belt] re-read: shifted the track by [-6.1, 2.0, 0.0] mm",
+     "[skill] belt_pick left ok steps=42 target rose 153 mm"
+    ],
+    "collision_rejects": {
+     "hits basket": 4,
+     "palm at table z=0.765": 1
+    },
+    "ik_rejects": {
+     "left": 576
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2259,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.2019,
+       0.0566,
+       0.9333
+      ]
+     ]
+    ],
+    "wall_s": 13.92161328200018
+   },
+   {
+    "seed": 100004,
+    "mode": "stop125",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 40,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 125 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 30,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.5451093316078186,
+      0.09493598341941833,
+      0.7626279592514038
+     ],
+     "basket": [
+      -0.07039583474397659,
+      -0.100053571164608,
+      0.8721893429756165
+     ]
+    },
+    "end": [
+     -0.41212624311447144,
+     0.09466452896595001,
+     0.8874905109405518
+    ],
+    "steps": 144,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 15), wait 1, approach 16",
+     "[belt] dragged basket by [-153.0, -154.0, 0.0] mm: now [-0.071, -0.1, 0.872]",
+     "[belt] basket stopped at [-0.071, -0.1, 0.872]",
+     "[skill] belt_stop right ok steps=30 basket stopped",
+     "[belt] target: left intercept at +25 steps (waist h 0.45 head 114 pitch 20), wait 2, approach 15",
+     "[skill] belt_pick left ok steps=40 target rose 125 mm"
+    ],
+    "collision_rejects": {
+     "hits object1": 2,
+     "palm at table z=0.762": 1
+    },
+    "ik_rejects": {
+     "left": 740
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.4796,
+       0.0704,
+       0.9235
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4796,
+       0.0704,
+       0.9235
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4472,
+       0.0875,
+       0.9234
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4472,
+       0.0875,
+       0.9234
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.3904,
+       0.0617,
+       0.9648
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.3904,
+       0.0617,
+       0.9648
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4561,
+       0.0615,
+       0.9236
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4561,
+       0.0615,
+       0.9236
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4556,
+       0.0704,
+       0.9235
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4556,
+       0.0704,
+       0.9235
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4232,
+       0.0875,
+       0.9234
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4232,
+       0.0875,
+       0.9234
+      ]
+     ]
+    ],
+    "wall_s": 19.527379353006836
+   },
+   {
+    "seed": 100004,
+    "mode": "stop150",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 40,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 150 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 30,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.5451093316078186,
+      0.09493598341941833,
+      0.7626279592514038
+     ],
+     "basket": [
+      -0.07039583474397659,
+      -0.100053571164608,
+      0.8721893429756165
+     ]
+    },
+    "end": [
+     -0.41248613595962524,
+     0.0952606126666069,
+     0.9126238822937012
+    ],
+    "steps": 144,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 15), wait 1, approach 16",
+     "[belt] dragged basket by [-153.0, -154.0, 0.0] mm: now [-0.071, -0.1, 0.872]",
+     "[belt] basket stopped at [-0.071, -0.1, 0.872]",
+     "[skill] belt_stop right ok steps=30 basket stopped",
+     "[belt] target: left intercept at +25 steps (waist h 0.45 head 114 pitch 20), wait 2, approach 15",
+     "[skill] belt_pick left ok steps=40 target rose 150 mm"
+    ],
+    "collision_rejects": {
+     "hits object1": 2,
+     "palm at table z=0.762": 1
+    },
+    "ik_rejects": {
+     "left": 726
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.4796,
+       0.0704,
+       0.9235
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4796,
+       0.0704,
+       0.9235
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4472,
+       0.0875,
+       0.9234
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4472,
+       0.0875,
+       0.9234
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4561,
+       0.0615,
+       0.9236
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4561,
+       0.0615,
+       0.9236
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4556,
+       0.0704,
+       0.9235
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4556,
+       0.0704,
+       0.9235
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4232,
+       0.0875,
+       0.9234
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4232,
+       0.0875,
+       0.9234
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4321,
+       0.0615,
+       0.9236
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4321,
+       0.0615,
+       0.9236
+      ]
+     ]
+    ],
+    "wall_s": 16.71660125500057
+   },
+   {
+    "seed": 100005,
+    "mode": "stop125",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 41,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 124 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 27,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.5361666083335876,
+      0.01463574729859829,
+      0.7865115404129028
+     ],
+     "basket": [
+      0.02214236930012703,
+      -0.145641028881073,
+      0.9291239976882935
+     ]
+    },
+    "end": [
+     -0.4076487720012665,
+     0.016402531415224075,
+     0.9103159308433533
+    ],
+    "steps": 209,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 4, approach 13",
+     "[belt] dragged basket by [-469.0, -99.0, 0.0] mm: now [0.022, -0.146, 0.929]",
+     "[belt] basket stopped at [0.022, -0.146, 0.929]",
+     "[skill] belt_stop right ok steps=27 basket stopped",
+     "[belt] target: left intercept at +25 steps (axis 0 tilt 25), wait 1, approach 16",
+     "[skill] belt_pick left ok steps=41 target rose 124 mm"
+    ],
+    "collision_rejects": {},
+    "ik_rejects": {
+     "left": 2
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.4682,
+       0.0147,
+       0.8464
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4682,
+       0.0147,
+       0.8464
+      ]
+     ]
+    ],
+    "wall_s": 14.464396782001131
+   },
+   {
+    "seed": 100005,
+    "mode": "stop150",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 41,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 149 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 27,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.5361666083335876,
+      0.01463574729859829,
+      0.7865115404129028
+     ],
+     "basket": [
+      0.02214236930012703,
+      -0.145641028881073,
+      0.9291239976882935
+     ]
+    },
+    "end": [
+     -0.4076562821865082,
+     0.016325073316693306,
+     0.9352680444717407
+    ],
+    "steps": 210,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 4, approach 13",
+     "[belt] dragged basket by [-469.0, -99.0, 0.0] mm: now [0.022, -0.146, 0.929]",
+     "[belt] basket stopped at [0.022, -0.146, 0.929]",
+     "[skill] belt_stop right ok steps=27 basket stopped",
+     "[belt] target: left intercept at +25 steps (axis 0 tilt 25), wait 1, approach 16",
+     "[skill] belt_pick left ok steps=41 target rose 149 mm"
+    ],
+    "collision_rejects": {},
+    "ik_rejects": {
+     "left": 2
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.4682,
+       0.0147,
+       0.8464
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4682,
+       0.0147,
+       0.8464
+      ]
+     ]
+    ],
+    "wall_s": 27.20554816898948
+   },
+   {
+    "seed": 100006,
+    "mode": "stop125",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 44,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 125 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 31,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.6550585031509399,
+      0.07980509102344513,
+      0.7616370916366577
+     ],
+     "basket": [
+      -0.054121628403663635,
+      -0.10044045001268387,
+      0.8808078169822693
+     ]
+    },
+    "end": [
+     -0.47179266810417175,
+     0.08087275177240372,
+     0.8870829343795776
+    ],
+    "steps": 153,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 15), wait 0, approach 17",
+     "[belt] dragged basket by [-132.0, -155.0, 0.0] mm: now [-0.054, -0.101, 0.881]",
+     "[belt] basket stopped at [-0.054, -0.101, 0.881]",
+     "[skill] belt_stop right ok steps=31 basket stopped",
+     "[belt] target: left intercept at +37 steps (axis 0 tilt 40), wait 10, approach 19",
+     "[skill] belt_pick left ok steps=44 target rose 125 mm"
+    ],
+    "collision_rejects": {},
+    "ik_rejects": {
+     "left": 16
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8422
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8422
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8444
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8444
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8422
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8422
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8444
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8444
+      ]
+     ]
+    ],
+    "wall_s": 17.63963651099766
+   },
+   {
+    "seed": 100006,
+    "mode": "stop150",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 44,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 150 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 31,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.6550585031509399,
+      0.07980509102344513,
+      0.7616370916366577
+     ],
+     "basket": [
+      -0.054121628403663635,
+      -0.10044045001268387,
+      0.8808078169822693
+     ]
+    },
+    "end": [
+     -0.4717346429824829,
+     0.08080297708511353,
+     0.9120206832885742
+    ],
+    "steps": 153,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 15), wait 0, approach 17",
+     "[belt] dragged basket by [-132.0, -155.0, 0.0] mm: now [-0.054, -0.101, 0.881]",
+     "[belt] basket stopped at [-0.054, -0.101, 0.881]",
+     "[skill] belt_stop right ok steps=31 basket stopped",
+     "[belt] target: left intercept at +37 steps (axis 0 tilt 40), wait 10, approach 19",
+     "[skill] belt_pick left ok steps=44 target rose 150 mm"
+    ],
+    "collision_rejects": {},
+    "ik_rejects": {
+     "left": 16
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8422
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8422
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8444
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5981,
+       0.0621,
+       0.8444
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8379
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8422
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8422
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8444
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.5741,
+       0.0621,
+       0.8444
+      ]
+     ]
+    ],
+    "wall_s": 19.563017484993907
+   },
+   {
+    "seed": 100007,
+    "mode": "stop125",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": false,
+     "skill": "belt_pick",
+     "status": "ik_fail",
+     "steps": 0,
+     "arm": null,
+     "expected": {},
+     "measured": {},
+     "note": "no intercept for target"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 29,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      0.06676486879587173,
+      0.07986444234848022,
+      0.7743575572967529
+     ],
+     "basket": [
+      -0.003189065493643284,
+      -0.11948802322149277,
+      0.9133462905883789
+     ]
+    },
+    "end": [
+     0.06676486879587173,
+     0.07986444234848022,
+     0.7743575572967529
+    ],
+    "steps": 184,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 2, approach 15",
+     "[belt] dragged basket by [-529.0, -163.0, 0.0] mm: now [-0.003, -0.12, 0.913]",
+     "[belt] basket stopped at [-0.003, -0.12, 0.913]",
+     "[skill] belt_stop right ok steps=29 basket stopped"
+    ],
+    "collision_rejects": {
+     "link at table z=0.769": 5,
+     "hits basket": 4,
+     "link at table z=0.777": 3
+    },
+    "ik_rejects": {
+     "left": 1708
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8387
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8387
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8429
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8429
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8452
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8452
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8387
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8387
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8429
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8429
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8452
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8452
+      ]
+     ]
+    ],
+    "wall_s": 27.681534090996138
+   },
+   {
+    "seed": 100007,
+    "mode": "stop150",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": false,
+     "skill": "belt_pick",
+     "status": "ik_fail",
+     "steps": 0,
+     "arm": null,
+     "expected": {},
+     "measured": {},
+     "note": "no intercept for target"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 29,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      0.06676486879587173,
+      0.07986444234848022,
+      0.7743575572967529
+     ],
+     "basket": [
+      -0.003189065493643284,
+      -0.11948802322149277,
+      0.9133462905883789
+     ]
+    },
+    "end": [
+     0.06676486879587173,
+     0.07986444234848022,
+     0.7743575572967529
+    ],
+    "steps": 184,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 2, approach 15",
+     "[belt] dragged basket by [-529.0, -163.0, 0.0] mm: now [-0.003, -0.12, 0.913]",
+     "[belt] basket stopped at [-0.003, -0.12, 0.913]",
+     "[skill] belt_stop right ok steps=29 basket stopped"
+    ],
+    "collision_rejects": {
+     "link at table z=0.769": 5,
+     "hits basket": 2,
+     "link at table z=0.777": 3
+    },
+    "ik_rejects": {
+     "left": 1710
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8387
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8387
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8429
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8429
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8452
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1347,
+       0.08,
+       0.8452
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8387
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8387
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8429
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8429
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8452
+      ]
+     ],
+     [
+      "left",
+      [
+       0.1587,
+       0.08,
+       0.8452
+      ]
+     ]
+    ],
+    "wall_s": 23.169001574002323
+   },
+   {
+    "seed": 100008,
+    "mode": "stop125",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": false,
+     "skill": "belt_pick",
+     "status": "ik_fail",
+     "steps": 0,
+     "arm": null,
+     "expected": {},
+     "measured": {},
+     "note": "no intercept for target"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 28,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.1464003324508667,
+      0.10251305997371674,
+      0.780913233757019
+     ],
+     "basket": [
+      -0.028912819921970367,
+      -0.10796353220939636,
+      0.8765514492988586
+     ]
+    },
+    "end": [
+     -0.1464003324508667,
+     0.10251305997371674,
+     0.780913233757019
+    ],
+    "steps": 161,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 3, approach 14",
+     "[belt] dragged basket by [-439.0, -142.0, 0.0] mm: now [-0.029, -0.108, 0.876]",
+     "[belt] basket stopped at [-0.029, -0.108, 0.876]",
+     "[skill] belt_stop right ok steps=28 basket stopped"
+    ],
+    "collision_rejects": {
+     "link at table z=0.779": 31,
+     "link at table z=0.773": 27,
+     "hits basket": 48,
+     "palm at table z=0.755": 11
+    },
+    "ik_rejects": {
+     "left": 1589
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.0785,
+       0.1025,
+       0.8409
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0785,
+       0.1025,
+       0.8409
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0785,
+       0.1025,
+       0.8451
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0785,
+       0.1025,
+       0.8451
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0145,
+       0.1026,
+       0.8529
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0145,
+       0.1026,
+       0.8529
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0545,
+       0.1025,
+       0.8409
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0545,
+       0.1025,
+       0.8409
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0545,
+       0.1025,
+       0.8451
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0545,
+       0.1025,
+       0.8451
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0095,
+       0.1026,
+       0.8292
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0095,
+       0.1026,
+       0.8292
+      ]
+     ]
+    ],
+    "wall_s": 21.306121414003428
+   },
+   {
+    "seed": 100008,
+    "mode": "stop150",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": false,
+     "skill": "belt_pick",
+     "status": "ik_fail",
+     "steps": 0,
+     "arm": null,
+     "expected": {},
+     "measured": {},
+     "note": "no intercept for target"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 28,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.1464003324508667,
+      0.10251305997371674,
+      0.780913233757019
+     ],
+     "basket": [
+      -0.028912819921970367,
+      -0.10796353220939636,
+      0.8765514492988586
+     ]
+    },
+    "end": [
+     -0.1464003324508667,
+     0.10251305997371674,
+     0.780913233757019
+    ],
+    "steps": 161,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 3, approach 14",
+     "[belt] dragged basket by [-439.0, -142.0, 0.0] mm: now [-0.029, -0.108, 0.876]",
+     "[belt] basket stopped at [-0.029, -0.108, 0.876]",
+     "[skill] belt_stop right ok steps=28 basket stopped"
+    ],
+    "collision_rejects": {
+     "link at table z=0.779": 31,
+     "link at table z=0.773": 27,
+     "hits basket": 45,
+     "palm at table z=0.755": 11
+    },
+    "ik_rejects": {
+     "left": 1592
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.0785,
+       0.1025,
+       0.8409
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0785,
+       0.1025,
+       0.8409
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0785,
+       0.1025,
+       0.8451
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0785,
+       0.1025,
+       0.8451
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0145,
+       0.1026,
+       0.8473
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0145,
+       0.1026,
+       0.8473
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0545,
+       0.1025,
+       0.8409
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0545,
+       0.1025,
+       0.8409
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0545,
+       0.1025,
+       0.8451
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.0545,
+       0.1025,
+       0.8451
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0095,
+       0.1026,
+       0.8323
+      ]
+     ],
+     [
+      "left",
+      [
+       0.0095,
+       0.1026,
+       0.8323
+      ]
+     ]
+    ],
+    "wall_s": 22.67628579000302
+   },
+   {
+    "seed": 100009,
+    "mode": "stop125",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 42,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 124 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 30,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.5002744197845459,
+      0.08031380921602249,
+      0.7864723801612854
+     ],
+     "basket": [
+      -0.04372018948197365,
+      -0.10453038662672043,
+      0.8769668936729431
+     ]
+    },
+    "end": [
+     -0.37195366621017456,
+     0.08090539276599884,
+     0.9103491306304932
+    ],
+    "steps": 153,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 1, approach 16",
+     "[belt] dragged basket by [-213.0, -127.0, 0.0] mm: now [-0.044, -0.105, 0.877]",
+     "[belt] basket stopped at [-0.044, -0.105, 0.877]",
+     "[skill] belt_stop right ok steps=30 basket stopped",
+     "[belt] target: left intercept at +25 steps (axis 0 tilt 25), wait 0, approach 17",
+     "[skill] belt_pick left ok steps=42 target rose 124 mm"
+    ],
+    "collision_rejects": {},
+    "ik_rejects": {
+     "left": 2
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.4323,
+       0.0803,
+       0.8464
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4323,
+       0.0803,
+       0.8464
+      ]
+     ]
+    ],
+    "wall_s": 16.052245487997425
+   },
+   {
+    "seed": 100009,
+    "mode": "stop150",
+    "phase_shift_m": 0.205,
+    "stable": true,
+    "result": {
+     "ok": true,
+     "skill": "belt_pick",
+     "status": "ok",
+     "steps": 42,
+     "arm": "left",
+     "expected": {},
+     "measured": {},
+     "note": "target rose 149 mm"
+    },
+    "stop": {
+     "ok": true,
+     "skill": "belt_stop",
+     "status": "ok",
+     "steps": 30,
+     "arm": "right",
+     "expected": {},
+     "measured": {},
+     "note": "basket stopped"
+    },
+    "start": {
+     "target": [
+      -0.5002744197845459,
+      0.08031380921602249,
+      0.7864723801612854
+     ],
+     "basket": [
+      -0.04372018948197365,
+      -0.10453038662672043,
+      0.8769668936729431
+     ]
+    },
+    "end": [
+     -0.37193483114242554,
+     0.08069120347499847,
+     0.9351320266723633
+    ],
+    "steps": 153,
+    "log": [
+     "[belt] stop basket: right at +25 steps (wall -x 5 mm at +0.0 tilt 0), wait 1, approach 16",
+     "[belt] dragged basket by [-213.0, -127.0, 0.0] mm: now [-0.044, -0.105, 0.877]",
+     "[belt] basket stopped at [-0.044, -0.105, 0.877]",
+     "[skill] belt_stop right ok steps=30 basket stopped",
+     "[belt] target: left intercept at +25 steps (axis 0 tilt 25), wait 0, approach 17",
+     "[skill] belt_pick left ok steps=42 target rose 149 mm"
+    ],
+    "collision_rejects": {},
+    "ik_rejects": {
+     "left": 2
+    },
+    "ik_examples": [
+     [
+      "left",
+      [
+       -0.4323,
+       0.0803,
+       0.8464
+      ]
+     ],
+     [
+      "left",
+      [
+       -0.4323,
+       0.0803,
+       0.8464
+      ]
+     ]
+    ],
+    "wall_s": 14.848951758991461
+   }
+  ],
+  "latch_replay": [
+   {
+    "seed": 100012,
+    "stable": true,
+    "initial_target_z": 0.7860797643661499,
+    "frames": [],
+    "first_latch": {
+     "step": 254,
+     "reward": {
+      "success": true,
+      "success_flag": true,
+      "ended": true,
+      "stages_left": 0,
+      "final_left": 0,
+      "queries": [],
+      "steps_used": 254,
+      "step_lim": 700,
+      "unstable": false
+     },
+     "basket": [
+      0.06978574395179749,
+      -0.173892542719841,
+      0.9612707495689392
+     ],
+     "basket_bottom": 0.8176994430660925,
+     "target": [
+      0.10428094863891602,
+      -0.15268711745738983,
+      0.8742020726203918
+     ],
+     "target_bottom": 0.8510270807346395,
+     "gap": 0.03332763766854696,
+     "target_lift_from_load": 0.08812230825424194,
+     "grippers": {
+      "left": 0.0,
+      "right": 0.0
+     }
+    },
+    "end": {
+     "success": true,
+     "success_flag": true,
+     "ended": true,
+     "stages_left": 0,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 254,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "score": 1.0
+   },
+   {
+    "seed": 100017,
+    "stable": true,
+    "initial_target_z": 0.822205662727356,
+    "frames": [],
+    "first_latch": {
+     "step": 304,
+     "reward": {
+      "success": true,
+      "success_flag": true,
+      "ended": true,
+      "stages_left": 0,
+      "final_left": 0,
+      "queries": [],
+      "steps_used": 304,
+      "step_lim": 700,
+      "unstable": false
+     },
+     "basket": [
+      0.05451318621635437,
+      -0.16975656151771545,
+      0.9769172668457031
+     ],
+     "basket_bottom": 0.8390549173146329,
+     "target": [
+      0.11881665885448456,
+      -0.26011034846305847,
+      0.9040069580078125
+     ],
+     "target_bottom": 0.8761156959342554,
+     "gap": 0.037060778619622536,
+     "target_lift_from_load": 0.08180129528045654,
+     "grippers": {
+      "left": 1.0,
+      "right": 0.0
+     }
+    },
+    "end": {
+     "success": true,
+     "success_flag": true,
+     "ended": true,
+     "stages_left": 0,
+     "final_left": 0,
+     "queries": [],
+     "steps_used": 304,
+     "step_lim": 700,
+     "unstable": false
+    },
+    "score": 1.0
+   }
   ]
  },
  "sources": {
@@ -16301,6 +19153,10 @@
    "sha256": "afb767e8dd8c29eb6cf44985b58bd2005419591ef381199f497e846a7cb693bf",
    "text": "import json,time,gc,math\nfrom pathlib import Path\nimport numpy as np\nfrom dojo.simlab import paths\nfrom dojo.simlab.runner import RoboDojoRunner\nfrom dojo.skills.skills import Skills,GTProvider\nfrom dojo.skills.env import RunnerEnv\nfrom dojo.skills.world import AssetDB\nfrom dojo.skills import interactive as I\nout=paths.DATA/'central';out.mkdir(parents=True,exist_ok=True)\nr=RoboDojoRunner('pick_from_conveyor_by_image',physics_only=True,need_planner=False,workdir=str(out/'work'));assets=AssetDB(paths.OBJECTS)\norig=I._intercept_search\n\ndef central(sk,label,o,v3,rel,arms,t_min,t_max,n_desc,n_close,h_pre,lift,ignore,pull):\n speed=float(np.linalg.norm(v3));u=v3/speed\n best=None\n for arm in arms:\n  # Search while the object centre crosses this arm's comfortable lateral span.\n  base=sk.kin.base(arm)[:3,3];s=float((base-o.pos)@u)\n  lo=max(t_min,int(math.ceil((s-.16)/speed)));hi=min(t_max,int(math.floor((s+.16)/speed)))\n  if hi<=lo:continue\n  p=orig(sk,label,o,v3,rel,[arm],lo,hi,n_desc,n_close,h_pre,lift,ignore,pull)\n  if p is not None and (best is None or p[1]<best[1]):best=p\n return best\nI._intercept_search=central\nfor seed in range(100000,100010):\n lay=json.loads((paths.LAYOUTS/'pick_from_conveyor_by_image'/f'{seed}.json').read_text())\n for mode in ('central','central_measured'):\n  info=r.load(lay);e=RunnerEnv(r);logs=[];sk=Skills(e,GTProvider(e,assets),reserve=30,log=logs.append)\n  if mode.endswith('measured'):sk.joint_limits='measured'\n  sk.belt_waist_first='on'\n  v=I.belt_velocity(sk,['target','basket','object1','object2','object3']);tries=[];skip=set()\n  for attempt in range(2):\n   result=I.pick_from_belt(sk,'target',v,lift=.125,arms=['left'],ignore=('conveyor',),skip_methods=tuple(skip));tries.append(vars(result))\n   if result.ok:break\n   if result.status=='grasp_slip' and getattr(sk,'notes_belt_method',None):skip.add(sk.notes_belt_method)\n   sk.home(arms=['left'],gripper=1.);sk.held['left']=None;v=I.belt_velocity(sk,['target'],steps=2)\n  rec=dict(seed=seed,mode=mode,stable=info['stable'],ok=result.ok,tries=tries,steps=sk.ex.steps_used,log=logs,\n   joint_error=(sk.ex.q['left']-sk.refresh().arms['left'].q).tolist(),asset=sk.world.obj('target').asset.key)\n  with (out/'rows.jsonl').open('a') as f:f.write(json.dumps(rec,default=str)+'\\n')\n  print('CENTRAL',rec,flush=True);del sk;gc.collect()\nr.close()\n"
   },
+  "byimg_r2_retest_generate.py": {
+   "sha256": "b87b6a9297443a9d23e15461d9a9788b1f1fb8e63e88856654ede21697f81330",
+   "text": "import json\nfrom dojo.simlab import paths\nfrom dojo.simlab.gen_layouts import generate\np=paths.LAYOUTS/'pick_from_conveyor_by_image'\nfor i in [*range(100024,100030),*range(100042,100050)]:\n d=generate('pick_from_conveyor_by_image',i,variant=13,seed_salt='byimg-r2-once-retest-20261107')\n (p/f'{i}.json').write_text(json.dumps(d,indent=1))\nprint('generated 14 fresh variant13 retest draws')\n"
+  },
   "byimg_r2_generate.py": {
    "sha256": "9c5126ff9fd472f2ab36d7eca9494e7e83ba88d1a03d0bd70a02109ac646437f",
    "text": "import json\nfrom dojo.simlab import paths\nfrom dojo.simlab.gen_layouts import generate\np=paths.LAYOUTS/'pick_from_conveyor_by_image';p.mkdir(parents=True,exist_ok=True)\nfor i in [*range(100000,100010),100022,100023]:\n d=generate('pick_from_conveyor_by_image',i,variant=9,seed_salt='byimg-r2-isolation-20261107')\n (p/f'{i}.json').write_text(json.dumps(d,indent=1))\nprint('generated 12 fresh variant9 isolation/probe draws')\n"
@@ -16312,6 +19168,10 @@
   "byimg_r2_panel_generate.py": {
    "sha256": "52288f3b66a3c29aeb8560c9823c42154940e9901cb50283d3f7f56098986d4b",
    "text": "import json\nfrom dojo.simlab import paths\nfrom dojo.simlab.gen_layouts import generate\np=paths.LAYOUTS/'pick_from_conveyor_by_image';p.mkdir(parents=True,exist_ok=True)\nfor i in range(100010,100020):\n d=generate('pick_from_conveyor_by_image',i,variant=11,seed_salt='byimg-r2-panel-native-20261107')\n (p/f'{i}.json').write_text(json.dumps(d,indent=1))\nprint('generated 10 fresh v15 variant11 native-phase panel draws')\n"
+  },
+  "byimg_r2_phaseprobe.py": {
+   "sha256": "733f42133effe8a395905cb6d48658c4f7fa1a8b18becd22994aa0391fd8e6bc",
+   "text": "import json,time,gc\nfrom collections import Counter\nfrom pathlib import Path\nimport numpy as np\nfrom dojo.simlab import paths\nfrom dojo.simlab.runner import RoboDojoRunner\nfrom dojo.skills.skills import Skills,GTProvider\nfrom dojo.skills.env import RunnerEnv\nfrom dojo.skills.world import AssetDB\nfrom dojo.skills import interactive as I\n\nout=paths.DATA/'phase_shift';out.mkdir(parents=True,exist_ok=True)\nr=RoboDojoRunner('pick_from_conveyor_by_image',physics_only=True,need_planner=False,workdir=str(out/'work'))\nassets=AssetDB(paths.OBJECTS)\nfor seed in range(100000,100010):\n lay=json.loads((paths.LAYOUTS/'pick_from_conveyor_by_image'/f'{seed}.json').read_text())\n from dojo.simlab.layout import iter_objects\n for typ,cat,obj in iter_objects(lay):\n  if typ=='Rigid':obj['default_pos'][0]+=.205\n for mode in ('stop125','stop150'):\n  info=r.load(lay);env=RunnerEnv(r);logs=[]\n  sk=Skills(env,GTProvider(env,assets),reserve=30,log=logs.append)\n  z0=float(sk.world.obj('target').pos[2]);t=time.monotonic();coll=Counter();failik=Counter();fails=[]\n  v=I.belt_velocity(sk,['target','basket','object1','object2','object3'])\n  stop=None\n  if mode.startswith('stop'):\n   sk.belt_container='on';sk.belt_deposit='on'\n   stop=I._stop_on_belt(sk,'basket',v,'right',('conveyor',))\n  w=sk.refresh();start={l:w.obj(l).pos.tolist() for l in ('target','basket')}\n  cc=sk.coll.check\n  def check(*args,**kwargs):\n   ok,why=cc(*args,**kwargs)\n   if not ok:coll[str(why)]+=1\n   return ok,why\n  sk.coll.check=check\n  ik=sk.kin.ik\n  def solve(arm,T,*args,**kwargs):\n   res=ik(arm,T,*args,**kwargs)\n   if not res.ok:\n    failik[arm]+=1\n    if len(fails)<12:fails.append([arm,np.round(T[:3,3],4).tolist()])\n   return res\n  sk.kin.ik=solve\n  result=I.pick_from_belt(sk,'target',v,lift=.150 if mode.endswith('150') else .125,\n                          arms=None if mode=='both125' else ['left'],ignore=('conveyor',))\n  rec=dict(seed=seed,mode=mode,phase_shift_m=.205,stable=info['stable'],result=vars(result),stop=vars(stop) if stop else None,\n    start=start,end=sk.refresh().obj('target').pos.tolist(),steps=sk.ex.steps_used,log=logs,\n    collision_rejects=dict(coll),ik_rejects=dict(failik),ik_examples=fails,wall_s=time.monotonic()-t)\n  with (out/'rows.jsonl').open('a') as f:f.write(json.dumps(rec,default=str)+'\\n')\n  print('ISOLATE',seed,mode,result.ok,result.note,dict(coll),flush=True)\n  sk.close() if hasattr(sk,'close') else None\n  del sk;gc.collect()\nr.close()\n"
   },
   "byimg_r2_endwallchain_fixed.py": {
    "sha256": "39171cb0c3d0c0df67712a4674682b731fc9dd13ecab759697a64762129ece1b",
@@ -16336,6 +19196,10 @@
   "byimg_r2_rimvariants.py": {
    "sha256": "5540a5d4f5d4e2852083cd5c891d160fd95608806edf4067583332fb62caaa8c",
    "text": "import json,math,gc\nfrom pathlib import Path\nimport numpy as np\nfrom dojo.simlab import paths\nfrom dojo.simlab.runner import RoboDojoRunner\nfrom dojo.skills.env import RunnerEnv\nfrom dojo.skills.skills import Skills,GTProvider\nfrom dojo.skills.world import AssetDB\nfrom dojo.skills import interactive as I,grasps as G\nfrom dojo.skills.geometry import inv_T\nfrom dojo.skills.executor import ArmPlan\nfrom dojo.skills.motion import SLOW\nout=paths.DATA/'rimvariants';out.mkdir(parents=True,exist_ok=True)\nr=RoboDojoRunner('pick_from_conveyor_by_image',physics_only=True,need_planner=False,workdir=str(out/'work'));assets=AssetDB(paths.OBJECTS)\norig=I.plan_intercept\nprofile={}\ndef intercept(sk,label,v,**kw):\n if label!='basket':return orig(sk,label,v,**kw)\n o=sk.world.obj(label);u=np.r_[v/np.linalg.norm(v),0.]\n gs=G.box_rim_grasps(o,sk.kin,'right',depth=profile['depth'],fracs=(-.3,-.1,0.,.1,.3),tilts=(profile['tilt'],))\n # Downstream end wall, not the robot-side wall: choose its middle first.\n gs=[g for g in gs if (g.T[:2,3]-o.center_w[:2])@u[:2]>.10]\n gs.sort(key=lambda g:abs(float((g.T[:2,3]-o.center_w[:2])@np.array([-u[1],u[0]]))))\n rel={'right':[(g,g.T[:3,3]-o.pos,I.UP) for g in gs]}\n return I._intercept_search(sk,label,o,np.r_[v,0.],rel,['right'],25,600,8,5,.06,kw.get('lift',.1),kw.get('ignore',()),kw.get('pull',.1))\nI.plan_intercept=intercept\nfor seed in (100022,100023):\n lay=json.loads((paths.LAYOUTS/'pick_from_conveyor_by_image'/f'{seed}.json').read_text())\n for depth,tilt in ((.012,0.),(.012,25.),(.012,40.),(.012,55.),(.025,0.),(.025,25.),(.025,40.),(.025,55.),(.04,0.),(.04,25.),(.04,40.),(.04,55.)):\n  profile.update(depth=depth,tilt=tilt);info=r.load(lay);e=RunnerEnv(r);logs=[];sk=Skills(e,GTProvider(e,assets),reserve=30,log=logs.append);sk.joint_limits='measured';sk.belt_container='on'\n  o=sk.world.obj('basket');R0=o.R.copy();localbottom=float((np.asarray(o.asset.mesh[0])@R0.T)[:,2].min());z0=o.bottom_z\n  v=I.belt_velocity(sk,['basket','target']);pick=I.pick_from_belt(sk,'basket',v,lift=.10,pull=.10,min_rise=.015,arms=['right'],ignore=('conveyor',))\n  rec=dict(seed=seed,depth=depth,tilt=tilt,pick=vars(pick),log=logs,servo=[])\n  if pick.ok:\n   for _ in range(2):\n    w=sk.refresh();o=w.obj('basket');rel=inv_T(sk.kin.tcp('right',w.arms['right'].q))@o.T\n    target=o.T.copy();target[:3,:3]=R0;target[:3,3]=[.05,-.18,.88-localbottom];T=target@inv_T(rel)\n    mv=sk.motion.to_pose('right',sk.ex.q['right'],T,SLOW,'level',gripper=0.,check=False)\n    if mv.ok:sk.ex.run({'right':ArmPlan('right',sk.ex.q['right'].copy(),0.).move(mv).hold(12)},name='level')\n    o=sk.refresh().obj('basket');rec['servo'].append(dict(status=mv.status,bottom=o.bottom_z,rise=o.bottom_z-z0,pos=o.pos.tolist(),tilt=float(np.degrees(np.arccos(np.clip(o.R[2,2],-1,1)))),jerr=(sk.ex.q['right']-sk.world.arms['right'].q).tolist()))\n    if o.bottom_z>z0+.08 and o.R[2,2]>.95:\n     sk.ex.hold(25);o=sk.refresh().obj('basket');rec['stable_hold']=dict(bottom=o.bottom_z,rise=o.bottom_z-z0,pos=o.pos.tolist(),tilt=float(np.degrees(np.arccos(np.clip(o.R[2,2],-1,1)))));break\n  with (out/'rows.jsonl').open('a') as f:f.write(json.dumps(rec,default=str)+'\\n')\n  print('RIM_VARIANT',rec,flush=True);del sk;gc.collect()\nr.close()\n"
+  },
+  "byimg_r2_latch_replay.py": {
+   "sha256": "4d8fbdc33e7b724a055116000397c029fba425b26532ad422eac2f62bddbbf42",
+   "text": "\"\"\"Read-only grader/geometry diagnosis while replaying exact recorded actions.\"\"\"\nimport gzip,json\nfrom pathlib import Path\nfrom dojo.simlab import paths\nfrom dojo.simlab.runner import RoboDojoRunner\nfrom dojo.simlab.motion import Trajectory\nfrom dojo.skills.env import RunnerEnv\nfrom dojo.skills.skills import GTProvider\nfrom dojo.skills.world import AssetDB\nout=paths.DATA/'latch_replay';out.mkdir(parents=True,exist_ok=True)\nr=RoboDojoRunner('pick_from_conveyor_by_image',physics_only=True,need_planner=False,workdir=str(out/'work'));assets=AssetDB(paths.OBJECTS)\nfor seed in (100012,100017):\n d=json.loads((paths.LAYOUTS/'pick_from_conveyor_by_image'/f'{seed}.settled.json').read_text());d['_simlab']['seed']=seed\n info=r.load(d);e=RunnerEnv(r);provider=GTProvider(e,assets);initial=provider.refresh();z0=initial.obj('target').pos[2]\n trajectory=Trajectory.from_json(json.loads(gzip.open(paths.DATA/'pairB'/f'pick_from_conveyor_by_image_{seed}_actions.json.gz','rt').read()))\n record=dict(seed=seed,stable=info['stable'],initial_target_z=float(z0),frames=[])\n first=False\n for j,action in enumerate(trajectory.actions):\n  e.step(action);reward=r.reward()\n  if reward['stages_left']==0 and not first:\n   first=True;w=provider.refresh();b=w.obj('basket');t=w.obj('target');record['first_latch']=dict(step=j+1,reward=reward,basket=b.pos.tolist(),basket_bottom=b.bottom_z,target=t.pos.tolist(),target_bottom=t.bottom_z,gap=t.bottom_z-b.bottom_z,target_lift_from_load=float(t.pos[2]-z0),grippers={a:float(action[f'{a}_ee_joint_state'][0]) for a in ('left','right')})\n  if reward['ended']:break\n record['end']=r.reward();record['score']=r.score()\n with (out/'rows.jsonl').open('a') as f:f.write(json.dumps(record,default=str)+'\\n')\n print('LATCH_REPLAY',record,flush=True)\nr.close()\n"
   },
   "byimg_r2_slowdrop22.py": {
    "sha256": "5387c5535f62a2f34fd0233f14b8839ad56dbb5ea207f976207a1e6df3ec2f6a",
