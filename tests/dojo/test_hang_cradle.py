@@ -67,6 +67,7 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
     def fake_transfer(lab, targets, **kw):
         if kw.get("place_kw") is not None:
             seen.setdefault("carry", kw["place_kw"]["approach_rad"])
+        seen.setdefault("staged", (kw.get("place_kw") or {}).get("approach_staged", False))
         seen.setdefault("pick_kw", kw.get("pick_kw"))
         candidates = kw["grasps"]("left")
         seen.setdefault("widths", [g.width for g in candidates])
@@ -89,6 +90,7 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
                              coll=SimpleNamespace(include=set(), parts={}, held_skip={}), plan_transfer=fake_transfer,
                              bank=lambda: None, held={"left": None, "right": None})
         L.hang_on_hooks(sk, ["headset"], "stand", "support_cradle", "headband_bridge")
+        assert seen["staged"] is False
         assert seen["pick_kw"] == ({"squeeze": 8} if seat == "on" else None)
         assert seen["widths"] == ([0.04] if seat == "on" else [0.025, 0.04])
         assert seen["carry"] == L.HANG_CARRY * (0.5 if seat == "on" else 1.0)

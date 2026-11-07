@@ -3645,7 +3645,9 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                                                          if g.method not in slipped.get(o.label, ())
                                                          and (not seat or g.width >= HANG_WIDE_W)]),
                                  **({"pick_kw": {"squeeze": 8}} if seat else {}),
-                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": carry_rad, "purpose": "hang"}, q_start=q_start,
+                                 place_kw={"pre_h": 0.03, "release": False, "approach_rad": carry_rad, "purpose": "hang",
+                                           **({"approach_staged": True} if not thread and
+                                              getattr(sk, "headset_carry", "legacy") == "staged" else {})}, q_start=q_start,
                                  lift_to_pre=high)
             if isinstance(r, SkillResult) and not re.search(r"[1-9]\d* grasp-place pairs", r.note):
                 no_pairs.add((fi, turn))

@@ -202,7 +202,7 @@ class FrozenGarmentProvider:
 SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "low"), "push_approach": ("off", "tilted"),
                "plan_profile": ("legacy", "recover"), "plan_capture": ("off", "requests"), "plan_solver": ("routes", "curobo"), "plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
                "arrange_order": ("near", "big_first", "push_big_first"), "push_stroke": ("face", "press"),
-               "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"), "headset_seat": ("off", "on"),
+               "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"), "headset_seat": ("off", "on"), "headset_carry": ("legacy", "staged"),
                "hang_half_turn": ("off", "on"),
                "hang_handle_grasp": ("off", "on"),
                "hang_carry_slow": ("off", "on"),

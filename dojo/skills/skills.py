@@ -370,6 +370,7 @@ class Skills:
         # ``library.hang_on_hooks`` (stream N): grasps >= HANG_WIDE_W planned first (off = today)
         self.hang_wide = False
         self.headset_seat = "off"
+        self.headset_carry = "legacy"
         # Opposite handle orientation about its upward axis, after original candidates.
         self.hang_half_turn = False
         self.hang_handle_grasp = False
@@ -997,7 +998,7 @@ class Skills:
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
                    blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None,
                    held_read: bool | None = None, purpose: str | None = None, approach_line: bool = False, carry_read: bool = False,
-                   approach_lateral: bool = False):
+                   approach_lateral: bool = False, approach_staged: bool = False):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``approach_line``: collision-checked Cartesian transit to the hover, preserving the interpolated TCP
         orientation along the carry instead of a joint-space transit. No joint-path fallback.
@@ -1086,7 +1087,9 @@ class Skills:
                                              * o.asset.extents + o.asset.bbox_min).T).T + T_obj[:3, 3]
                 lift = max(pre_h, sup_top + pre_clear - float(corners[:, 2].min()))
             T_pre[2, 3] += release_gap + lift
-            transit = (self.motion.line if approach_line else
+            from dojo.skills.headset import staged_carry
+            transit = ((lambda *a, **kw: staged_carry(self.motion, *a, **kw)) if approach_staged else
+                       self.motion.line if approach_line else
                        self.motion.lateral if approach_lateral else self.motion.to_pose)
             to_pre = transit(arm, q0, T_pre, approach_rad, "place_approach", gripper=CLOSED, held=h.box,
                              ignore=(h.label,), **({} if approach_line else {"ease": ease}))
