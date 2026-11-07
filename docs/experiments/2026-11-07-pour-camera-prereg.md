@@ -304,3 +304,34 @@ Freeze updated input/row manifest and hashes on main before queuing 22 rows.
 Under admission then queue locks insert after remaining POUR rows, immediately
 before the first eligible unstarted tie, preserving any started tie's mate and
 all existing row bytes/order. Record positions and before/after queue hashes.
+
+### Verified refusal ledger
+
+[Attempt metadata](data/pour-camera/refused-attempt-metadata.json) establishes
+**nine**, rather than the lead's initially reported seven, infrastructure
+refusals: A, A retry, B, B retry for each of 100010 and 100011, plus A for
+100012. Every attempt has rc=2 and its own log containing the rendered-ownership
+refusal; none reached an episode. All nine are excluded from outcomes. The
+lead's held file remains unchanged on compute6, including all KONG rows.
+This correction uses only START/DONE/refusal metadata, not controller scores.
+
+### Replacement freeze before dispatch
+
+Preparation completed at **10:57:34 UTC**: all ten language ids 100020–29 and
+single-cup 100020 passed raw-check and default two-pass settling, with no failed
+replacement or refill. Preparation made zero model calls. The original failed
+single-cup settle and every offslice input/attempt remain retained.
+
+The [updated manifest](data/pour-camera/replacement-manifest.json) SHA256 is
+`78bcfec5af4071ff069a2ba01b4fc7151dbf0d09a513ebab7ef13ffee2e8dd44`. It chains the immutable original manifest, the
+[replacement selection](data/pour-camera/replacement-selection.json), all raw/
+settled/validation hashes including retained original records, refusal ledger,
+held-queue hash and exact [22 rows](data/pour-camera/queue-replacements.txt).
+Its effective schedule remains 40 pairs /80 rows, all in our slices; eleven
+original offslice pairs are superseded mechanically. Both arms' model/skill/
+perception/config tokens are identical to their original row except name and
+loaded path. All 22 rows explicitly pin Sonnet 5.5; pair order is preserved.
+Frozen controller/native source, candidate, packages and shared assets rehash
+unchanged. [Staging](data/pour-camera/replacement-stage-script.txt) and
+[insertion](data/pour-camera/replacement-insert-script.txt) are frozen here.
+The updated manifest is committed to main before any replacement row is queued.

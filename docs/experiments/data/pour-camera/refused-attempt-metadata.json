@@ -1,0 +1,126 @@
+{
+  "classification": "infrastructure ownership refusal before episode; excluded from outcomes",
+  "records": [
+    {
+      "name": "c6b_pourlangsg_pourcamAr1_100012",
+      "start": "2026-11-07T10:41:00Z",
+      "lane": "heavy1",
+      "done": "2026-11-07T10:41:15Z",
+      "rc": 2,
+      "seconds": 75,
+      "log_sha256": "2f7ae16a3e98f11921ed21613006ceafb69d95ffa01d1c0eecc33bc159b85b97",
+      "ownership_refusal_present": true,
+      "refusal_lines": [
+        "[integ] /home/robotics/dojo-data/pour-cam/pourlangsg/simlab/layouts/pour_by_language/100012.settled.json: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused"
+      ]
+    },
+    {
+      "name": "c6b_pourlangsg_pourcamAr1_100010",
+      "start": "2026-11-07T10:37:58Z",
+      "lane": "heavy2",
+      "done": "2026-11-07T10:38:13Z",
+      "rc": 2,
+      "seconds": 15,
+      "log_sha256": "ff507aa5ca0f9b876f10e0113bcd30ba0c124e405b8dab7a260c52f115c28294",
+      "ownership_refusal_present": true,
+      "refusal_lines": [
+        "[integ] /home/robotics/dojo-data/pour-cam/pourlangsg/simlab/layouts/pour_by_language/100010.settled.json: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused"
+      ]
+    },
+    {
+      "name": "c6b_pourlangsg_pourcamAr1_100010__retry",
+      "start": "2026-11-07T10:38:13Z",
+      "lane": "heavy2",
+      "done": "2026-11-07T10:38:28Z",
+      "rc": 2,
+      "seconds": 15,
+      "log_sha256": "ff507aa5ca0f9b876f10e0113bcd30ba0c124e405b8dab7a260c52f115c28294",
+      "ownership_refusal_present": true,
+      "refusal_lines": [
+        "[integ] /home/robotics/dojo-data/pour-cam/pourlangsg/simlab/layouts/pour_by_language/100010.settled.json: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused"
+      ]
+    },
+    {
+      "name": "c6b_pourlangsg_pourcamBr1_100010",
+      "start": "2026-11-07T10:38:28Z",
+      "lane": "heavy2",
+      "done": "2026-11-07T10:38:44Z",
+      "rc": 2,
+      "seconds": 16,
+      "log_sha256": "ff507aa5ca0f9b876f10e0113bcd30ba0c124e405b8dab7a260c52f115c28294",
+      "ownership_refusal_present": true,
+      "refusal_lines": [
+        "[integ] /home/robotics/dojo-data/pour-cam/pourlangsg/simlab/layouts/pour_by_language/100010.settled.json: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused"
+      ]
+    },
+    {
+      "name": "c6b_pourlangsg_pourcamBr1_100010__retry",
+      "start": "2026-11-07T10:38:44Z",
+      "lane": "heavy2",
+      "done": "2026-11-07T10:38:59Z",
+      "rc": 2,
+      "seconds": 15,
+      "log_sha256": "ff507aa5ca0f9b876f10e0113bcd30ba0c124e405b8dab7a260c52f115c28294",
+      "ownership_refusal_present": true,
+      "refusal_lines": [
+        "[integ] /home/robotics/dojo-data/pour-cam/pourlangsg/simlab/layouts/pour_by_language/100010.settled.json: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused"
+      ]
+    },
+    {
+      "name": "c6b_pourlangsg_pourcamBr1_100011",
+      "start": "2026-11-07T10:38:59Z",
+      "lane": "heavy2",
+      "done": "2026-11-07T10:39:14Z",
+      "rc": 2,
+      "seconds": 15,
+      "log_sha256": "4532917b1ebbcb7d29de269f7774f41605cd15fced2c89eb70fca8fdc0caa60a",
+      "ownership_refusal_present": true,
+      "refusal_lines": [
+        "[integ] /home/robotics/dojo-data/pour-cam/pourlangsg/simlab/layouts/pour_by_language/100011.settled.json: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused"
+      ]
+    },
+    {
+      "name": "c6b_pourlangsg_pourcamBr1_100011__retry",
+      "start": "2026-11-07T10:39:15Z",
+      "lane": "heavy2",
+      "done": "2026-11-07T10:39:30Z",
+      "rc": 2,
+      "seconds": 16,
+      "log_sha256": "4532917b1ebbcb7d29de269f7774f41605cd15fced2c89eb70fca8fdc0caa60a",
+      "ownership_refusal_present": true,
+      "refusal_lines": [
+        "[integ] /home/robotics/dojo-data/pour-cam/pourlangsg/simlab/layouts/pour_by_language/100011.settled.json: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused"
+      ]
+    },
+    {
+      "name": "c6b_pourlangsg_pourcamAr1_100011",
+      "start": "2026-11-07T10:39:30Z",
+      "lane": "heavy2",
+      "done": "2026-11-07T10:39:45Z",
+      "rc": 2,
+      "seconds": 15,
+      "log_sha256": "4532917b1ebbcb7d29de269f7774f41605cd15fced2c89eb70fca8fdc0caa60a",
+      "ownership_refusal_present": true,
+      "refusal_lines": [
+        "[integ] /home/robotics/dojo-data/pour-cam/pourlangsg/simlab/layouts/pour_by_language/100011.settled.json: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused"
+      ]
+    },
+    {
+      "name": "c6b_pourlangsg_pourcamAr1_100011__retry",
+      "start": "2026-11-07T10:39:45Z",
+      "lane": "heavy2",
+      "done": "2026-11-07T10:40:00Z",
+      "rc": 2,
+      "seconds": 15,
+      "log_sha256": "4532917b1ebbcb7d29de269f7774f41605cd15fced2c89eb70fca8fdc0caa60a",
+      "ownership_refusal_present": true,
+      "refusal_lines": [
+        "[integ] /home/robotics/dojo-data/pour-cam/pourlangsg/simlab/layouts/pour_by_language/100011.settled.json: not ours to run rendered / proxy (D-C10a: 100010-19, 100050-99, >= 100100): refused"
+      ]
+    }
+  ],
+  "lead_reported_count": 7,
+  "metadata_only": true,
+  "verified_count": 9,
+  "discrepancy": "Lead reported seven; exact lane START/DONE metadata and ownership refusal logs show nine, all excluded. Four attempts each for ids 100010/100011, one for 100012."
+}

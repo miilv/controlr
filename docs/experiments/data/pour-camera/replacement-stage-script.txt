@@ -1,0 +1,32 @@
+import copy,datetime,hashlib,json,pathlib,sys
+H=pathlib.Path.home();R=H/'dojo-data/pour-cam';P=H/'dojo-integ-c6-066e9c8f';sys.path.insert(0,str(P))
+from dojo.simlab.paths import is_our_measurement_id
+assert (R/'replacement-prep.done').exists()
+def dg(p):
+ p=pathlib.Path(p);return {'path':str(p),'bytes':p.stat().st_size,'sha256':hashlib.sha256(p.read_bytes()).hexdigest()}
+F=json.loads((R/'pre-generation-freeze.json').read_text())
+checks=F['source_files']+F['shared_assets']['weights']+F['shared_assets']['backgrounds']+[F['shared_assets']['catalogue_index']]+[F[k] for k in ['candidate_original','candidate_mapped','packages','requirements']]
+assert all(dg(x['path'])['sha256']==x['sha256'] for x in checks), 'Frozen source/native/assets drift'
+old=json.loads((R/'manifest.json').read_text());D=json.loads((R/'replacement-design.json').read_text());S=json.loads((R/'replacement-selection.json').read_text());lines={l.split()[0]:l for l in (R/'queue-pour-camera.txt').read_text().splitlines()}
+selected=S['selected'];assert len(selected['pour_by_language'])==10 and len(selected['pour_liquid_into_cup'])==1
+mapping={('pour_by_language',i):j for i,j in zip(range(100010,100020),selected['pour_by_language'])};mapping[('pour_liquid_into_cup',100010)]=selected['pour_liquid_into_cup'][0]
+rows=[];new=[];effective=[];files={}
+for a in old['schedule']:
+ key=(a['task'],a['id'])
+ if key not in mapping:effective.append(a);continue
+ b=copy.deepcopy(a);i=mapping[key];assert is_our_measurement_id(i);b['id']=i;b['name']=a['name'].replace(str(a['id']),str(i));b['layout']=a['layout'].replace(str(a['id']),str(i));b['replaces']=a['name']
+ p=pathlib.Path(b['layout']);raw=p.with_name(str(i)+'.json');idx=json.loads((p.parent/'settled_index.json').read_text());ri=json.loads((p.parent/'raw_index.json').read_text());assert idx[str(i)]['status']=='ok' and ri[str(i)]['status']=='raw ok'
+ c=next(c for c in D['cells'] if c['task']==b['task'])
+ for f in [p,raw]:
+  md=json.loads(f.read_text())['_simlab'];assert md['id']==i and md['seed_salt']=='sha256:'+c['salt_sha256'][:16]
+ t=lines[a['name']].split();t[0]=b['name'];t[t.index('--layouts')+1]=b['layout'];assert t.count('AGENTIC_MODEL='+D['model'])==1
+ cfg=json.loads(t[t.index('--config')+1]);assert cfg['ported_pour_pace']==('v1' if b['arm']=='A' else 'budget')
+ rows.append(' '.join(t));new.append(b);effective.append(b)
+assert len(rows)==22 and len(effective)==80 and all(is_our_measurement_id(x['id']) for x in effective)
+for i in range(0,22,2):
+ a,b=new[i:i+2];assert a['layout']==b['layout'] and {a['arm'],b['arm']}=={'A','B'}
+q=R/'queue-replacements.txt';q.write_text('\n'.join(rows)+'\n')
+for c in json.loads((R/'design.json').read_text())['cells']:
+ for p in sorted((R/c['block']/'simlab/layouts'/c['task']).glob('*.json')):files[str(p)]=dg(p)
+m={'created_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'code':old['code'],'deployment':old['deployment'],'model':old['model'],'original_manifest':dg(R/'manifest.json'),'amendment_commit':(R/'replacement-amendment-commit.txt').read_text().strip(),'design':dg(R/'replacement-design.json'),'selection':dg(R/'replacement-selection.json'),'refusals':dg(R/'refused-attempt-metadata.json'),'held_refused_queue':dg(R/'held-refused-ids-1041.txt'),'queue':dg(q),'schedule':effective,'replacement_schedule':new,'files':list(files.values()),'operational_scripts':[dg(R/n) for n in ['prepare.py','replacement-prepare.py','replacement-stage.py','replacement-insert.py','replacement-route-monitor.py']],'panel_pairs':40,'replacement_pairs':11,'replacement_rows':22,'disclosure':'Lead saw original 100000–09 lane outcomes during diagnosis. Mechanical ownership-only shift; original salts/recipe/gates unchanged; validity-only selection.','refusal_attempts_excluded':json.loads((R/'refused-attempt-metadata.json').read_text())['verified_count'],'preparation_model_calls':0}
+(R/'replacement-manifest.json').write_text(json.dumps(m,indent=2)+'\n');print('REPLACEMENT MANIFEST',dg(R/'replacement-manifest.json')['sha256'])
