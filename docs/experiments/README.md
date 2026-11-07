@@ -6,7 +6,6 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
-| 2026-11-07 | [pour-g3](2026-11-07-pour-g3.md) | Can port parity and pacing make language pouring work in physics-only G3? | Fresh 10 pairs: language 0/10→5/10 full (official +54; full-only +50); single-cup 6/10→10/10; both gates pass, camera spec parked |
 | 2026-11-07 | [kong-scoped-retest-prereg](2026-11-07-kong-scoped-retest-prereg.md) | Does scoped kong relocation pass its one fresh-layout re-test under refined audit/parity gates? | Preregistered: 20 kong + 5 imitation parity + 5 stack strong pairs; Sonnet; append after tie; no adoption |
 | 2026-11-07 | [BYIMG lift-first](2026-11-07-byimg-g3-r2.md) | Can a level raised basket support catching and loading? | Fresh 10 pairs: 10→20, 1/10→2/10 success, 2 wins/1 loss; released-target replay confirmed; gate fails |
 | 2026-11-07 | [BYIMG fresh retest](2026-11-07-byimg-g3-r2-retest.md) | Does the unchanged positive lift-first bundle generalize? | 14 fresh pairs: 14.29→21.43, 2/14→3/14 success, 2 wins/1 loss; gate fails; stays off |
@@ -17,6 +16,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 | 2026-11-06 | [egg2-reach-g3](2026-11-06-egg2-reach-g3.md) | Can practical-workspace orientation search raise the egg ceiling? | Ten pairs: 23.5→17.5, 0/10→0/10 success, 0 score wins/4 losses; stays off |
 | 2026-11-07 | [kong-scoped-relocate-prereg](2026-11-07-kong-scoped-relocate-prereg.md) | Can task-scoped relocation retain kong gain without imitate harm? | Sonnet primary: kong 40→60, score W/L 2/0; imitate −16 and raw write gate fail; 40/40 arms audited; Luna separately supplementary; no adoption |
 | 2026-11-06 | [ORG reach approaches](2026-11-06-org-skill-ceiling.md) | Can lower hovers and tilted face pushes raise organize score? | Ten dev pairs 42.5→47.5, 3 wins/1 loss, 0 successes; defaults off; parked score-based camera registration |
+| 2026-11-07 | [pour-g3](2026-11-07-pour-g3.md) | Can port parity and pacing make language pouring work in physics-only G3? | Fresh 10 pairs: language 0/10→5/10 full (official +54; full-only +50); single-cup 6/10→10/10; both gates pass, camera spec parked |
 | 2026-11-06 | [PLAN recovery paired G3](2026-11-06-plan-recover-g3.md) | Do recovered object routes improve ten-pair skill panels? | Tools 77.5→75; stack 100→100; HANG 67.5→58; sweep 20→0; pilots do not generalize; defaults off, no new camera dispatch |
 | 2026-11-06 | [plan-coverage-round2](2026-11-06-plan-coverage-round2.md) | Can typed failures and bounded recovery activate object planning? | Six two-layout pilots: final tools fallback 12.9%, egg 87.0%; gate fails, no new score A/B; stage-count diagnostic and scene-free IK evidence |
 | 2026-11-06 | [pen-conditional-g3](2026-11-06-pen-conditional-g3.md) | Can geometry retain PEN gains without baseline regressions? | 20 pairs: 14.75→20.75, 7 up/0 down; original 34 retained; added five all ties |
