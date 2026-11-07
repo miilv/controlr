@@ -278,3 +278,26 @@ old pilot cannot erase them. This truncated development screen is not a
 paired panel and will be reported at actual n, not the originally planned12.
 Cross-check the same slow recipe on standard45 and random49 in addition to
 standard48. No final layout is opened/generated under this amendment.
+
+## Broader independent development coverage registration
+
+Before the last fresh paired panel, generate an additional independent pilot
+bank under `~/dojo-data/laptop/coverage18`: numeric training ids100030–44,
+v15 variant18, salt `laptop-round2e-coverage18-2026-11-07-88c48b74`, both
+cells. These reuse numeric pilot ids in a separate namespace with new draws;
+they are **not** fresh never-used ids and must never be presented as the final
+paired panel. Do not overwrite any prior raw/settled record. Select first ten
+stable ascending per cell, with later records only stability reserves. Preserve
+all raw files, settled index and selected hashes before policy outcomes.
+
+Source **fb39b381** (includes current main) mirrors the opt-in slower lift.
+Condition further production screening on the cross-shape slow probes before
+spending the broader bank: straddle/on/staged/cups/mesh/mesh_center/sites plus
+headset_lift=slow, unchanged800-step limit, full native checks and physical
+verification. Screen the original12 pilots/cell and this10/cell independent
+bank; report them separately at actual n. Development outcomes may diagnose
+and improve the mechanism, but final ids100000–14 remain untouched.
+
+No final-panel generation or paired candidate selection is authorized by
+this development registration. Same two light slots, scopes and admission
+gates; zero model calls and no camera jobs/board change.
