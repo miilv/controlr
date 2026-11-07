@@ -10,6 +10,11 @@
 5. **`sources/*.md`** for any user source you care about, then **`landscape/*.md`** for depth. Each note ends with a fact-check section; inline `[corrected: …]` marks override the body text.
 6. **`CRITIQUE.md`** to see what was challenged. The verdicts are in REPORT §10.
 
+## RoboDojo teardowns
+
+- [PyRUA-Lean online agent](robodojo-teardown/pyrua-lean.md) — runtime, geometry primitives and online control.
+- [PyRUA-RSI fixed programs](robodojo-teardown/pyrua-rsi.md) — evaluation wiring, compliance audit, per-cell mechanisms and integration requirements.
+
 ## Files and directories
 
 | Path | Contents |
