@@ -929,8 +929,34 @@ replays match_and_pick's decision (first object, speed, the match it would take)
 record + logged reads, robot at home, stub pick); its GT is the layout moved along the belt, for scoring only.
 `scripts/skills/match2_g3_job.sh` runs one scoped compute3 physics job on light3 / light4.
 
-### Internal RSI yardstick launcher
+### Offline SAM task-prompt comparison
 
+`scripts/perception/sam/collect_task_frames.py ROOT` exports existing `c4b_` /
+`c6b_` frame-zero look captures as a tar stream without writing to the source.
+It reads only dev IDs 100000–09 and 100020–24, excluding the historical v2b
+training range. GT comes from the exact `layout` path in each episode manifest,
+including salted inputs; a same-numbered standard layout is insufficient.
+Loaded raw and settled inputs are marked separately. `--phase-look` exports
+a small pre-grasp survey panel; report its unchanged-object-pose assumption
+separately from frame-zero evidence.
+
+`task_prompt_eval.py prepare ROOT` uses `seg_twin.gt_code_map` on CPU Mesa
+(`PYOPENGL_PLATFORM=egl`, Mesa vendor, `LIBGL_ALWAYS_SOFTWARE=1`,
+`EGL_DEVICE_ID=1` on compute3). `pred ROOT --out ROWS --model sam3|sam3.1
+--checkpoint CKPT --weights V2B --classes CLASSES` runs the paired component
+comparison. SAM3.1 takes the original multiplex safetensors, constructs its
+text detector without the unused tracker, and checks checkpoint compatibility.
+Use an 8 GiB / 600% systemd scope on shared compute3, one model arm at a time.
+Inference checks the 24 GiB-used admission ceiling and 10 GiB disk floor and
+caps its CUDA allocator at 30% of device capacity. Store caches under the
+experiment directory, not a shared package environment.
+
+`task_prompt_summary.py ROWS... --out DIR` emits summary, frame and instance
+CSVs. Prompt categories are distinct from asset identities: ambiguous category
+sets are not correct class reads. Union de-duplication retains v2b identities
+first and adds disjoint SAM masks at IoU <=0.5. This is an offline component
+comparison, not a runtime proposer or an end-to-end task-score evaluation.
+### Internal RSI yardstick launcher
 `baselines/rsi/` measures the external fixed-program baseline on our hashed
 inputs through the official eval client; its programs never enter policy code.
 All host/state/lane/lock paths are explicit arguments. The desktop profile

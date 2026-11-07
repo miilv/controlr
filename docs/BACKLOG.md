@@ -6,6 +6,11 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Task-prompt masks need an asset identity/pose gate.** SAM semantic labels
+  cannot replace catalogue IDs. Prototype only behind a default-off task-bank
+  flag, preserve base v2b identity during union de-duplication, honor SAM API
+  minima below the current server's 0.3 processor floor, and measure phantoms
+  before any camera A/B ([SAMBAKE](experiments/2026-11-07-sam3-task-prompts.md)).
 - [ ] **Persist token usage for agentic held-look calls.** `held_look_impl`
   counts logical calls and records their model, but discards each response's
   token usage before writing `calls.jsonl`. Preserve summed prompt/completion/

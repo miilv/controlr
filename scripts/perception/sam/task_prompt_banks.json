@@ -1,0 +1,3441 @@
+{
+  "classify_objects": {
+    "phrases": [
+      "toy car",
+      "red race car",
+      "yellow toy tank",
+      "light blue toy car",
+      "wooden toy car",
+      "yellow toy bus",
+      "black rectangular device",
+      "black camera",
+      "black rectangular object",
+      "small black box",
+      "pen",
+      "black pen",
+      "white pen",
+      "watch",
+      "smartwatch",
+      "silver bracelet",
+      "green wristwatch",
+      "plush toy",
+      "stuffed animal",
+      "doll",
+      "rabbit doll"
+    ],
+    "source": "research/robodojo-teardown/pyrua-rsi.md \u00a78",
+    "api_min": 0.2,
+    "catalogue_labels": {
+      "rigid0": [
+        "action_camera",
+        "garage",
+        "pen",
+        "toy_car",
+        "watch"
+      ],
+      "basket0": [
+        "basket"
+      ],
+      "basket1": [
+        "basket"
+      ],
+      "basket2": [
+        "basket"
+      ]
+    },
+    "mapping": {
+      "toy car": {
+        "categories": [
+          "toy_car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "red race car": {
+        "categories": [
+          "toy_car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "yellow toy tank": {
+        "categories": [
+          "toy_car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "light blue toy car": {
+        "categories": [
+          "toy_car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "wooden toy car": {
+        "categories": [
+          "toy_car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "yellow toy bus": {
+        "categories": [
+          "toy_car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "black rectangular device": {
+        "categories": [
+          "action_camera"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "black camera": {
+        "categories": [
+          "action_camera"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "black rectangular object": {
+        "categories": [
+          "action_camera"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "small black box": {
+        "categories": [
+          "action_camera"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "pen": {
+        "categories": [
+          "pen"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "black pen": {
+        "categories": [
+          "pen"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "white pen": {
+        "categories": [
+          "pen"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "watch": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "smartwatch": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "silver bracelet": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "green wristwatch": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "plush toy": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "stuffed animal": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "doll": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "rabbit doll": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      }
+    }
+  },
+  "classify_objects_by_language": {
+    "phrases": [
+      "toy car",
+      "red toy car",
+      "yellow toy car",
+      "green toy car",
+      "white toy car",
+      "toy van",
+      "upside down toy car",
+      "watch",
+      "wristwatch",
+      "black watch",
+      "silver watch",
+      "silver ring",
+      "white watch",
+      "wooden toy",
+      "wooden animal toy",
+      "wooden lion toy",
+      "white toy horse",
+      "yellow wooden toy",
+      "wooden rabbit",
+      "brown wooden animal toy",
+      "pepper",
+      "red pepper",
+      "green pepper",
+      "yellow pepper",
+      "chocolate bar",
+      "purple chocolate bar",
+      "red chocolate bar",
+      "white chocolate bar",
+      "gold chocolate bar",
+      "candy bar"
+    ],
+    "source": "research/robodojo-teardown/pyrua-rsi.md \u00a78",
+    "api_min": 0.2,
+    "catalogue_labels": {
+      "rigid0": [
+        "car",
+        "chocolate_bar",
+        "pepper",
+        "watch",
+        "wooden_toy"
+      ],
+      "basket0": [
+        "basket"
+      ],
+      "basket1": [
+        "basket"
+      ],
+      "basket2": [
+        "basket"
+      ]
+    },
+    "mapping": {
+      "toy car": {
+        "categories": [
+          "car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "red toy car": {
+        "categories": [
+          "car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "yellow toy car": {
+        "categories": [
+          "car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "green toy car": {
+        "categories": [
+          "car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "white toy car": {
+        "categories": [
+          "car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "toy van": {
+        "categories": [
+          "car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "upside down toy car": {
+        "categories": [
+          "car"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "watch": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "wristwatch": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "black watch": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "silver watch": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "silver ring": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "white watch": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "wooden toy": {
+        "categories": [
+          "wooden_toy"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "wooden animal toy": {
+        "categories": [
+          "wooden_toy"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "wooden lion toy": {
+        "categories": [
+          "wooden_toy"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "white toy horse": {
+        "categories": [],
+        "labels": []
+      },
+      "yellow wooden toy": {
+        "categories": [
+          "wooden_toy"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "wooden rabbit": {
+        "categories": [
+          "garage"
+        ],
+        "labels": []
+      },
+      "brown wooden animal toy": {
+        "categories": [
+          "wooden_toy"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "pepper": {
+        "categories": [
+          "pepper"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "red pepper": {
+        "categories": [
+          "pepper"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "green pepper": {
+        "categories": [
+          "pepper"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "yellow pepper": {
+        "categories": [
+          "pepper"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "chocolate bar": {
+        "categories": [
+          "chocolate_bar"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "purple chocolate bar": {
+        "categories": [
+          "chocolate_bar"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "red chocolate bar": {
+        "categories": [
+          "chocolate_bar"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "white chocolate bar": {
+        "categories": [
+          "chocolate_bar"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      },
+      "gold chocolate bar": {
+        "categories": [
+          "coin"
+        ],
+        "labels": []
+      },
+      "candy bar": {
+        "categories": [
+          "chocolate_bar"
+        ],
+        "labels": [
+          "rigid0"
+        ]
+      }
+    }
+  },
+  "deposit_coin": {
+    "phrases": [
+      "pink piggy bank",
+      "pink pig",
+      "piggy bank",
+      "small gold object",
+      "small golden object",
+      "the gold and white object",
+      "gold coin"
+    ],
+    "source": "research/robodojo-teardown/pyrua-rsi.md \u00a78",
+    "api_min": 0.2,
+    "catalogue_labels": {
+      "coin0": [
+        "coin"
+      ],
+      "vertical_coin_stand": [
+        "vertical_coin_stand"
+      ],
+      "piggy_bank": [
+        "piggy_bank"
+      ]
+    },
+    "mapping": {
+      "pink piggy bank": {
+        "categories": [
+          "piggy_bank"
+        ],
+        "labels": [
+          "piggy_bank"
+        ]
+      },
+      "pink pig": {
+        "categories": [
+          "piggy_bank"
+        ],
+        "labels": [
+          "piggy_bank"
+        ]
+      },
+      "piggy bank": {
+        "categories": [
+          "piggy_bank"
+        ],
+        "labels": [
+          "piggy_bank"
+        ]
+      },
+      "small gold object": {
+        "categories": [
+          "coin"
+        ],
+        "labels": [
+          "coin0"
+        ]
+      },
+      "small golden object": {
+        "categories": [
+          "coin"
+        ],
+        "labels": [
+          "coin0"
+        ]
+      },
+      "the gold and white object": {
+        "categories": [
+          "coin"
+        ],
+        "labels": [
+          "coin0"
+        ]
+      },
+      "gold coin": {
+        "categories": [
+          "coin"
+        ],
+        "labels": [
+          "coin0"
+        ]
+      }
+    }
+  },
+  "fill_egg_holder": {
+    "phrases": [
+      "egg",
+      "brown egg",
+      "oval beige egg",
+      "woven basket",
+      "basket",
+      "white egg holder"
+    ],
+    "source": "research/robodojo-teardown/pyrua-rsi.md \u00a78",
+    "api_min": 0.2,
+    "catalogue_labels": {
+      "target0": [
+        "egg"
+      ],
+      "target1": [
+        "egg"
+      ],
+      "target2": [
+        "egg"
+      ],
+      "target3": [
+        "egg"
+      ],
+      "egg_basket": [
+        "egg_basket"
+      ],
+      "egg_holder": [
+        "egg_holder"
+      ]
+    },
+    "mapping": {
+      "egg": {
+        "categories": [
+          "egg"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      },
+      "brown egg": {
+        "categories": [
+          "egg"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      },
+      "oval beige egg": {
+        "categories": [
+          "egg"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      },
+      "woven basket": {
+        "categories": [
+          "egg_basket"
+        ],
+        "labels": [
+          "egg_basket"
+        ]
+      },
+      "basket": {
+        "categories": [
+          "egg_basket"
+        ],
+        "labels": [
+          "egg_basket"
+        ]
+      },
+      "white egg holder": {
+        "categories": [
+          "egg_holder"
+        ],
+        "labels": [
+          "egg_holder"
+        ]
+      }
+    }
+  },
+  "fill_pen_holder": {
+    "phrases": [
+      "pen holder",
+      "orange container",
+      "orange hexagonal cup",
+      "pencil cup",
+      "orange pen holder",
+      "white pen",
+      "black pen",
+      "black and gold pen",
+      "light blue highlighter",
+      "purple marker",
+      "purple highlighter",
+      "highlighter",
+      "marker",
+      "pen"
+    ],
+    "source": "research/robodojo-teardown/pyrua-rsi.md \u00a78",
+    "api_min": 0.2,
+    "catalogue_labels": {
+      "target0": [
+        "pen"
+      ],
+      "target1": [
+        "pen"
+      ],
+      "target2": [
+        "oil_pen"
+      ],
+      "target3": [
+        "oil_pen"
+      ],
+      "pen_holder": [
+        "pen_holder"
+      ]
+    },
+    "mapping": {
+      "pen holder": {
+        "categories": [
+          "pen_holder"
+        ],
+        "labels": [
+          "pen_holder"
+        ]
+      },
+      "orange container": {
+        "categories": [
+          "pen_holder"
+        ],
+        "labels": [
+          "pen_holder"
+        ]
+      },
+      "orange hexagonal cup": {
+        "categories": [
+          "pen_holder"
+        ],
+        "labels": [
+          "pen_holder"
+        ]
+      },
+      "pencil cup": {
+        "categories": [
+          "pen_holder"
+        ],
+        "labels": [
+          "pen_holder"
+        ]
+      },
+      "orange pen holder": {
+        "categories": [
+          "pen_holder"
+        ],
+        "labels": [
+          "pen_holder"
+        ]
+      },
+      "white pen": {
+        "categories": [
+          "pen",
+          "oil_pen"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      },
+      "black pen": {
+        "categories": [
+          "pen",
+          "oil_pen"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      },
+      "black and gold pen": {
+        "categories": [
+          "pen",
+          "oil_pen"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      },
+      "light blue highlighter": {
+        "categories": [
+          "pen",
+          "oil_pen"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      },
+      "purple marker": {
+        "categories": [
+          "pen",
+          "oil_pen"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      },
+      "purple highlighter": {
+        "categories": [
+          "pen",
+          "oil_pen"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      },
+      "highlighter": {
+        "categories": [
+          "pen",
+          "oil_pen"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      },
+      "marker": {
+        "categories": [
+          "pen",
+          "oil_pen"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      },
+      "pen": {
+        "categories": [
+          "pen",
+          "oil_pen"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "target2",
+          "target3"
+        ]
+      }
+    }
+  },
+  "imitate_sorting_sequence": {
+    "phrases": [
+      "toy car",
+      "toy vehicle",
+      "small toy tank",
+      "black action camera",
+      "small black camera",
+      "gopro camera",
+      "mobile phone",
+      "cell phone",
+      "blue nokia phone",
+      "wristwatch",
+      "watch strap",
+      "watch",
+      "plush toy doll",
+      "stuffed animal toy",
+      "toy rabbit"
+    ],
+    "source": "research/robodojo-teardown/pyrua-rsi.md \u00a78",
+    "api_min": 0.25,
+    "catalogue_labels": {
+      "t0": [
+        "action_camera",
+        "garage",
+        "phone",
+        "toy_car",
+        "watch"
+      ],
+      "t1": [
+        "action_camera",
+        "garage",
+        "phone",
+        "toy_car",
+        "watch"
+      ],
+      "t2": [
+        "action_camera",
+        "garage",
+        "phone",
+        "toy_car",
+        "watch"
+      ],
+      "t3": [
+        "action_camera",
+        "garage",
+        "phone",
+        "toy_car",
+        "watch"
+      ],
+      "t4": [
+        "action_camera",
+        "garage",
+        "phone",
+        "toy_car",
+        "watch"
+      ],
+      "aim0": [
+        "action_camera",
+        "garage",
+        "phone",
+        "toy_car",
+        "watch"
+      ],
+      "aim1": [
+        "action_camera",
+        "garage",
+        "phone",
+        "toy_car",
+        "watch"
+      ],
+      "aim2": [
+        "action_camera",
+        "garage",
+        "phone",
+        "toy_car",
+        "watch"
+      ],
+      "aim3": [
+        "action_camera",
+        "garage",
+        "phone",
+        "toy_car",
+        "watch"
+      ],
+      "aim4": [
+        "action_camera",
+        "garage",
+        "phone",
+        "toy_car",
+        "watch"
+      ],
+      "basket0": [
+        "basket"
+      ],
+      "basket1": [
+        "basket"
+      ]
+    },
+    "mapping": {
+      "toy car": {
+        "categories": [
+          "toy_car"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "toy vehicle": {
+        "categories": [
+          "toy_car"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "small toy tank": {
+        "categories": [
+          "toy_car"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "black action camera": {
+        "categories": [
+          "action_camera"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "small black camera": {
+        "categories": [
+          "action_camera"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "gopro camera": {
+        "categories": [
+          "action_camera"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "mobile phone": {
+        "categories": [
+          "phone"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "cell phone": {
+        "categories": [
+          "phone"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "blue nokia phone": {
+        "categories": [
+          "phone"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "wristwatch": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "watch strap": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "watch": {
+        "categories": [
+          "watch"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "plush toy doll": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "stuffed animal toy": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      },
+      "toy rabbit": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "t0",
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "aim0",
+          "aim1",
+          "aim2",
+          "aim3",
+          "aim4"
+        ]
+      }
+    }
+  },
+  "match_and_pick_from_conveyor": {
+    "phrases": [
+      "bright green oval toy with a screen",
+      "green handheld game console",
+      "blue mobile phone",
+      "smartphone",
+      "mobile phone lying flat",
+      "white cup with black speckles",
+      "paper cup",
+      "blue and silver Red Bull can",
+      "drink can",
+      "black DSLR camera",
+      "black camera",
+      "ninja figurine on a black base",
+      "action figure",
+      "green rattle",
+      "green baby rattle",
+      "brown headphones",
+      "headphones",
+      "white bowl with black radial stripes",
+      "white bowl",
+      "handbag",
+      "bag"
+    ],
+    "source": "research/robodojo-teardown/pyrua-rsi.md \u00a78",
+    "api_min": 0.05,
+    "catalogue_labels": {
+      "target0": [
+        "bag",
+        "bottle",
+        "camera",
+        "game_machine",
+        "garage",
+        "headset",
+        "ice_cream",
+        "phone",
+        "plate",
+        "puppet"
+      ],
+      "target1": [
+        "bag",
+        "bottle",
+        "camera",
+        "game_machine",
+        "garage",
+        "headset",
+        "ice_cream",
+        "phone",
+        "plate",
+        "puppet"
+      ],
+      "other0": [
+        "bag",
+        "bottle",
+        "camera",
+        "game_machine",
+        "garage",
+        "headset",
+        "ice_cream",
+        "phone",
+        "plate",
+        "puppet"
+      ],
+      "other1": [
+        "bag",
+        "bottle",
+        "camera",
+        "game_machine",
+        "garage",
+        "headset",
+        "ice_cream",
+        "phone",
+        "plate",
+        "puppet"
+      ],
+      "other2": [
+        "bag",
+        "bottle",
+        "camera",
+        "game_machine",
+        "garage",
+        "headset",
+        "ice_cream",
+        "phone",
+        "plate",
+        "puppet"
+      ],
+      "conveyor": [
+        "conveyor"
+      ]
+    },
+    "mapping": {
+      "bright green oval toy with a screen": {
+        "categories": [
+          "game_machine"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "green handheld game console": {
+        "categories": [
+          "game_machine"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "blue mobile phone": {
+        "categories": [
+          "phone"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "smartphone": {
+        "categories": [
+          "phone"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "mobile phone lying flat": {
+        "categories": [
+          "phone"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "white cup with black speckles": {
+        "categories": [
+          "ice_cream"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "paper cup": {
+        "categories": [
+          "ice_cream"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "blue and silver Red Bull can": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "drink can": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "black DSLR camera": {
+        "categories": [
+          "camera"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "black camera": {
+        "categories": [
+          "camera"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "ninja figurine on a black base": {
+        "categories": [
+          "figurine"
+        ],
+        "labels": []
+      },
+      "action figure": {
+        "categories": [
+          "puppet"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "green rattle": {
+        "categories": [
+          "puppet"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "green baby rattle": {
+        "categories": [
+          "puppet"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "brown headphones": {
+        "categories": [
+          "phone"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "headphones": {
+        "categories": [
+          "phone"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "white bowl with black radial stripes": {
+        "categories": [
+          "plate"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "white bowl": {
+        "categories": [
+          "plate"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "handbag": {
+        "categories": [
+          "bag"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      },
+      "bag": {
+        "categories": [
+          "bag"
+        ],
+        "labels": [
+          "target0",
+          "target1",
+          "other0",
+          "other1",
+          "other2"
+        ]
+      }
+    }
+  },
+  "organize_table": {
+    "phrases": [
+      "the round base of the figurine",
+      "figurine base",
+      "circular base",
+      "mouse",
+      "computer mouse",
+      "wireless mouse",
+      "gaming mouse",
+      "black rectangular mouse mat",
+      "black mouse pad",
+      "mouse pad",
+      "mouse mat",
+      "figurine",
+      "small statue",
+      "toy figure",
+      "green cactus toy",
+      "cactus in a pot",
+      "alarm clock",
+      "white alarm clock",
+      "beige box",
+      "white box",
+      "small white box",
+      "keyboard",
+      "white computer keyboard",
+      "computer keyboard"
+    ],
+    "source": "research/robodojo-teardown/pyrua-rsi.md \u00a78",
+    "api_min": 0.2,
+    "catalogue_labels": {
+      "mouse": [
+        "mouse"
+      ],
+      "alarm": [
+        "alarm"
+      ],
+      "keyboard": [
+        "keyboard"
+      ],
+      "garage": [
+        "garage"
+      ],
+      "drawer": [
+        "drawer"
+      ],
+      "cube_cushion": [
+        "cube_cushion"
+      ],
+      "monitor": [
+        "monitor"
+      ],
+      "mousemat": [
+        "mousemat"
+      ],
+      "frame": [
+        "frame"
+      ]
+    },
+    "mapping": {
+      "the round base of the figurine": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "garage"
+        ]
+      },
+      "figurine base": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "garage"
+        ]
+      },
+      "circular base": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "garage"
+        ]
+      },
+      "mouse": {
+        "categories": [
+          "mouse"
+        ],
+        "labels": [
+          "mouse"
+        ]
+      },
+      "computer mouse": {
+        "categories": [
+          "mouse"
+        ],
+        "labels": [
+          "mouse"
+        ]
+      },
+      "wireless mouse": {
+        "categories": [
+          "mouse"
+        ],
+        "labels": [
+          "mouse"
+        ]
+      },
+      "gaming mouse": {
+        "categories": [
+          "mouse"
+        ],
+        "labels": [
+          "mouse"
+        ]
+      },
+      "black rectangular mouse mat": {
+        "categories": [
+          "mousemat"
+        ],
+        "labels": [
+          "mousemat"
+        ]
+      },
+      "black mouse pad": {
+        "categories": [
+          "mousemat"
+        ],
+        "labels": [
+          "mousemat"
+        ]
+      },
+      "mouse pad": {
+        "categories": [
+          "mousemat"
+        ],
+        "labels": [
+          "mousemat"
+        ]
+      },
+      "mouse mat": {
+        "categories": [
+          "mousemat"
+        ],
+        "labels": [
+          "mousemat"
+        ]
+      },
+      "figurine": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "garage"
+        ]
+      },
+      "small statue": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "garage"
+        ]
+      },
+      "toy figure": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "garage"
+        ]
+      },
+      "green cactus toy": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "garage"
+        ]
+      },
+      "cactus in a pot": {
+        "categories": [
+          "garage"
+        ],
+        "labels": [
+          "garage"
+        ]
+      },
+      "alarm clock": {
+        "categories": [
+          "alarm"
+        ],
+        "labels": [
+          "alarm"
+        ]
+      },
+      "white alarm clock": {
+        "categories": [
+          "alarm"
+        ],
+        "labels": [
+          "alarm"
+        ]
+      },
+      "beige box": {
+        "categories": [
+          "alarm"
+        ],
+        "labels": [
+          "alarm"
+        ]
+      },
+      "white box": {
+        "categories": [
+          "alarm"
+        ],
+        "labels": [
+          "alarm"
+        ]
+      },
+      "small white box": {
+        "categories": [
+          "alarm"
+        ],
+        "labels": [
+          "alarm"
+        ]
+      },
+      "keyboard": {
+        "categories": [
+          "keyboard"
+        ],
+        "labels": [
+          "keyboard"
+        ]
+      },
+      "white computer keyboard": {
+        "categories": [
+          "keyboard"
+        ],
+        "labels": [
+          "keyboard"
+        ]
+      },
+      "computer keyboard": {
+        "categories": [
+          "keyboard"
+        ],
+        "labels": [
+          "keyboard"
+        ]
+      }
+    }
+  },
+  "pick_from_conveyor_by_image": {
+    "phrases": [
+      "blue toy race car",
+      "red toy race car",
+      "aerosol spray can",
+      "correction tape",
+      "small doll figurine",
+      "golden donut",
+      "paper cup",
+      "glue stick",
+      "cup noodles",
+      "black remote control",
+      "white remote control",
+      "small cloth sachet bag",
+      "plush toy dog",
+      "white vegetable peeler",
+      "purple yogurt cup",
+      "white air conditioner remote control",
+      "white correction tape dispenser",
+      "light blue basket"
+    ],
+    "source": "research/robodojo-teardown/pyrua-rsi.md \u00a78",
+    "api_min": 0.2,
+    "catalogue_labels": {
+      "basket": [
+        "basket_grasp"
+      ],
+      "target": [
+        "can",
+        "car",
+        "correction_tape",
+        "cup",
+        "donut",
+        "figurine",
+        "glue",
+        "noodles",
+        "peeler",
+        "remote",
+        "sachet",
+        "toy",
+        "yogurt"
+      ],
+      "object1": [
+        "can",
+        "car",
+        "correction_tape",
+        "cup",
+        "donut",
+        "figurine",
+        "glue",
+        "noodles",
+        "peeler",
+        "remote",
+        "sachet",
+        "toy",
+        "yogurt"
+      ],
+      "object2": [
+        "can",
+        "car",
+        "correction_tape",
+        "cup",
+        "donut",
+        "figurine",
+        "glue",
+        "noodles",
+        "peeler",
+        "remote",
+        "sachet",
+        "toy",
+        "yogurt"
+      ],
+      "object3": [
+        "can",
+        "car",
+        "correction_tape",
+        "cup",
+        "donut",
+        "figurine",
+        "glue",
+        "noodles",
+        "peeler",
+        "remote",
+        "sachet",
+        "toy",
+        "yogurt"
+      ],
+      "photo": [
+        "photo"
+      ],
+      "conveyor": [
+        "conveyor"
+      ]
+    },
+    "mapping": {
+      "blue toy race car": {
+        "categories": [
+          "car"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "red toy race car": {
+        "categories": [
+          "car"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "aerosol spray can": {
+        "categories": [
+          "can"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "correction tape": {
+        "categories": [
+          "correction_tape"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "small doll figurine": {
+        "categories": [
+          "figurine"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "golden donut": {
+        "categories": [
+          "coin"
+        ],
+        "labels": []
+      },
+      "paper cup": {
+        "categories": [
+          "cup"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "glue stick": {
+        "categories": [
+          "glue"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "cup noodles": {
+        "categories": [
+          "noodles"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "black remote control": {
+        "categories": [
+          "remote"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "white remote control": {
+        "categories": [
+          "remote"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "small cloth sachet bag": {
+        "categories": [
+          "sachet"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "plush toy dog": {
+        "categories": [
+          "toy"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "white vegetable peeler": {
+        "categories": [
+          "peeler"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "purple yogurt cup": {
+        "categories": [
+          "yogurt"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "white air conditioner remote control": {
+        "categories": [
+          "remote"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "white correction tape dispenser": {
+        "categories": [
+          "correction_tape"
+        ],
+        "labels": [
+          "target",
+          "object1",
+          "object2",
+          "object3"
+        ]
+      },
+      "light blue basket": {
+        "categories": [
+          "basket_grasp"
+        ],
+        "labels": [
+          "basket"
+        ]
+      }
+    }
+  },
+  "pour_by_language": {
+    "phrases": [
+      "red bottle",
+      "red bowl",
+      "orange bottle",
+      "orange bowl",
+      "yellow bottle",
+      "yellow bowl",
+      "green bottle",
+      "green bowl",
+      "blue bottle",
+      "blue bowl",
+      "purple bottle",
+      "purple bowl",
+      "pink bottle",
+      "pink bowl",
+      "white bottle",
+      "white bowl",
+      "black bottle",
+      "black bowl"
+    ],
+    "source": "research/robodojo-teardown/pyrua-rsi.md \u00a78",
+    "api_min": 0.2,
+    "catalogue_labels": {
+      "bottle_0": [
+        "wine_bottle"
+      ],
+      "bottle_1": [
+        "wine_bottle"
+      ],
+      "bottle_2": [
+        "wine_bottle"
+      ],
+      "bowl_0": [
+        "wine_bowl"
+      ],
+      "bowl_1": [
+        "wine_bowl"
+      ],
+      "bowl_2": [
+        "wine_bowl"
+      ],
+      "wine_0": [
+        "wuliangye"
+      ],
+      "wine_1": [
+        "wuliangye"
+      ],
+      "wine_2": [
+        "wuliangye"
+      ]
+    },
+    "mapping": {
+      "red bottle": {
+        "categories": [
+          "wine_bottle"
+        ],
+        "labels": [
+          "bottle_0",
+          "bottle_1",
+          "bottle_2"
+        ]
+      },
+      "red bowl": {
+        "categories": [
+          "wine_bowl"
+        ],
+        "labels": [
+          "bowl_0",
+          "bowl_1",
+          "bowl_2"
+        ]
+      },
+      "orange bottle": {
+        "categories": [
+          "wine_bottle"
+        ],
+        "labels": [
+          "bottle_0",
+          "bottle_1",
+          "bottle_2"
+        ]
+      },
+      "orange bowl": {
+        "categories": [
+          "wine_bowl"
+        ],
+        "labels": [
+          "bowl_0",
+          "bowl_1",
+          "bowl_2"
+        ]
+      },
+      "yellow bottle": {
+        "categories": [
+          "wine_bottle"
+        ],
+        "labels": [
+          "bottle_0",
+          "bottle_1",
+          "bottle_2"
+        ]
+      },
+      "yellow bowl": {
+        "categories": [
+          "wine_bowl"
+        ],
+        "labels": [
+          "bowl_0",
+          "bowl_1",
+          "bowl_2"
+        ]
+      },
+      "green bottle": {
+        "categories": [
+          "wine_bottle"
+        ],
+        "labels": [
+          "bottle_0",
+          "bottle_1",
+          "bottle_2"
+        ]
+      },
+      "green bowl": {
+        "categories": [
+          "wine_bowl"
+        ],
+        "labels": [
+          "bowl_0",
+          "bowl_1",
+          "bowl_2"
+        ]
+      },
+      "blue bottle": {
+        "categories": [
+          "wine_bottle"
+        ],
+        "labels": [
+          "bottle_0",
+          "bottle_1",
+          "bottle_2"
+        ]
+      },
+      "blue bowl": {
+        "categories": [
+          "wine_bowl"
+        ],
+        "labels": [
+          "bowl_0",
+          "bowl_1",
+          "bowl_2"
+        ]
+      },
+      "purple bottle": {
+        "categories": [
+          "wine_bottle"
+        ],
+        "labels": [
+          "bottle_0",
+          "bottle_1",
+          "bottle_2"
+        ]
+      },
+      "purple bowl": {
+        "categories": [
+          "wine_bowl"
+        ],
+        "labels": [
+          "bowl_0",
+          "bowl_1",
+          "bowl_2"
+        ]
+      },
+      "pink bottle": {
+        "categories": [
+          "wine_bottle"
+        ],
+        "labels": [
+          "bottle_0",
+          "bottle_1",
+          "bottle_2"
+        ]
+      },
+      "pink bowl": {
+        "categories": [
+          "wine_bowl"
+        ],
+        "labels": [
+          "bowl_0",
+          "bowl_1",
+          "bowl_2"
+        ]
+      },
+      "white bottle": {
+        "categories": [
+          "wine_bottle"
+        ],
+        "labels": [
+          "bottle_0",
+          "bottle_1",
+          "bottle_2"
+        ]
+      },
+      "white bowl": {
+        "categories": [
+          "wine_bowl"
+        ],
+        "labels": [
+          "bowl_0",
+          "bowl_1",
+          "bowl_2"
+        ]
+      },
+      "black bottle": {
+        "categories": [
+          "wine_bottle"
+        ],
+        "labels": [
+          "bottle_0",
+          "bottle_1",
+          "bottle_2"
+        ]
+      },
+      "black bowl": {
+        "categories": [
+          "wine_bowl"
+        ],
+        "labels": [
+          "bowl_0",
+          "bowl_1",
+          "bowl_2"
+        ]
+      }
+    }
+  },
+  "put_bottles_into_dustbin": {
+    "phrases": [
+      "bottle",
+      "white bottle",
+      "pink bottle",
+      "green bottle",
+      "yellow bottle",
+      "pale yellow bottle",
+      "blue and white bottle",
+      "cola bottle with red label",
+      "black bottle",
+      "beige bottle",
+      "small white bottle",
+      "large white bottle",
+      "white bottle lying on the table",
+      "bottle lying on its side",
+      "plastic bottle",
+      "the bottle",
+      "a bottle",
+      "bottle on the table",
+      "the bottle on the table",
+      "one bottle",
+      "the white bottle",
+      "a white bottle",
+      "white bottle on the table",
+      "the white bottle on the table",
+      "one white bottle",
+      "the pink bottle",
+      "a pink bottle",
+      "pink bottle on the table",
+      "the pink bottle on the table",
+      "one pink bottle",
+      "the green bottle",
+      "a green bottle",
+      "green bottle on the table",
+      "the green bottle on the table",
+      "one green bottle",
+      "the yellow bottle",
+      "a yellow bottle",
+      "yellow bottle on the table",
+      "the yellow bottle on the table",
+      "one yellow bottle",
+      "the pale yellow bottle",
+      "a pale yellow bottle",
+      "pale yellow bottle on the table",
+      "the pale yellow bottle on the table",
+      "one pale yellow bottle",
+      "the blue and white bottle",
+      "a blue and white bottle",
+      "blue and white bottle on the table",
+      "the blue and white bottle on the table",
+      "one blue and white bottle",
+      "the cola bottle with red label",
+      "a cola bottle with red label",
+      "cola bottle with red label on the table",
+      "the cola bottle with red label on the table",
+      "one cola bottle with red label",
+      "the black bottle",
+      "a black bottle",
+      "black bottle on the table",
+      "the black bottle on the table",
+      "one black bottle",
+      "the beige bottle",
+      "a beige bottle",
+      "beige bottle on the table",
+      "the beige bottle on the table",
+      "one beige bottle",
+      "the small white bottle",
+      "a small white bottle",
+      "small white bottle on the table",
+      "the small white bottle on the table",
+      "one small white bottle",
+      "the large white bottle",
+      "a large white bottle",
+      "large white bottle on the table",
+      "the large white bottle on the table",
+      "one large white bottle",
+      "the white bottle lying on the table",
+      "a white bottle lying on the table",
+      "white bottle lying on the table on the table",
+      "the white bottle lying on the table on the table",
+      "one white bottle lying on the table",
+      "the bottle lying on its side",
+      "a bottle lying on its side",
+      "bottle lying on its side on the table",
+      "the bottle lying on its side on the table",
+      "one bottle lying on its side",
+      "the plastic bottle",
+      "a plastic bottle",
+      "plastic bottle on the table",
+      "the plastic bottle on the table",
+      "one plastic bottle"
+    ],
+    "source": "research/robodojo-teardown/pyrua-rsi.md \u00a78",
+    "api_min": 0.2,
+    "catalogue_labels": {
+      "bottle0": [
+        "bottle"
+      ],
+      "bottle1": [
+        "bottle"
+      ],
+      "bottle2": [
+        "bottle"
+      ],
+      "bottle3": [
+        "bottle"
+      ],
+      "dustbin": [
+        "dustbin"
+      ]
+    },
+    "mapping": {
+      "bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "pink bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "green bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "yellow bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "pale yellow bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "blue and white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "cola bottle with red label": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "black bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "beige bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "small white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "large white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "white bottle lying on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "bottle lying on its side": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "plastic bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "white bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the white bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the pink bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a pink bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "pink bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the pink bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one pink bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the green bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a green bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "green bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the green bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one green bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the yellow bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a yellow bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "yellow bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the yellow bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one yellow bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the pale yellow bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a pale yellow bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "pale yellow bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the pale yellow bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one pale yellow bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the blue and white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a blue and white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "blue and white bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the blue and white bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one blue and white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the cola bottle with red label": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a cola bottle with red label": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "cola bottle with red label on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the cola bottle with red label on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one cola bottle with red label": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the black bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a black bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "black bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the black bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one black bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the beige bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a beige bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "beige bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the beige bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one beige bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the small white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a small white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "small white bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the small white bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one small white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the large white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a large white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "large white bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the large white bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one large white bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the white bottle lying on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a white bottle lying on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "white bottle lying on the table on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the white bottle lying on the table on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one white bottle lying on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the bottle lying on its side": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a bottle lying on its side": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "bottle lying on its side on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the bottle lying on its side on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one bottle lying on its side": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the plastic bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "a plastic bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "plastic bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "the plastic bottle on the table": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      },
+      "one plastic bottle": {
+        "categories": [
+          "bottle"
+        ],
+        "labels": [
+          "bottle0",
+          "bottle1",
+          "bottle2",
+          "bottle3"
+        ]
+      }
+    }
+  }
+}

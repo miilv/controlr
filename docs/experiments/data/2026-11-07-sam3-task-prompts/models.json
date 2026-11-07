@@ -1,0 +1,20 @@
+{
+  "final-sam3.jsonl": {
+    "checkpoint_sha256": "9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e",
+    "peak_allocated_gb": 5.411099136,
+    "peak_reserved_gb": 6.031409152,
+    "torch": "2.9.1+cu128"
+  },
+  "belt-final-sam3.jsonl": {
+    "checkpoint_sha256": "9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e",
+    "peak_allocated_gb": 5.403360768,
+    "peak_reserved_gb": 5.656018944,
+    "torch": "2.9.1+cu128"
+  },
+  "remainder-sam3.1.jsonl": {
+    "checkpoint_sha256": "9ba99c92703c2e8b4f47de2d34a539bb8e18923049e238b780d70dbe6368eb03",
+    "peak_allocated_gb": 5.71429376,
+    "peak_reserved_gb": 5.968494592,
+    "torch": "2.9.1+cu128"
+  }
+}
