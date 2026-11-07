@@ -73,8 +73,8 @@
   "why": "unresolved call isinstance",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "0201091d393422bec463c496223c75139943d290d4c7bc8bf494d12caeb1acb5": {
   "file": "dojo/skills/coin_contact.py",
@@ -227,8 +227,8 @@
   "why": "unresolved call importlib.util.spec_from_file_location",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "05f65c3b319bbdab9f0d7088580a8ff191e4fd579086186b7ffc09d6b789eb83": {
   "file": "dojo/skills/coin_contact.py",
@@ -447,8 +447,8 @@
   "why": "unresolved call parks.append",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "0fc9df3bf5cd31f3245d443965b9dc612d7eeaadcf43a7028b10cd74ee357a91": {
   "file": "dojo/runtime/policy.py",
@@ -601,8 +601,8 @@
   "why": "unresolved call importlib.util.module_from_spec",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "146576e4705ff5f73dfa4d69ae9e642c5e7a949a20011710fe695e330d237593": {
   "file": "dojo/perception/general_masks.py",
@@ -656,8 +656,8 @@
   "why": "unresolved call os.path.abspath",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "16fbd6554fa5acf78fec7786caf30cb19da6f8af06ab30a41f6f0aa5de3791a3": {
   "file": "dojo/perception/general_masks.py",
@@ -1085,8 +1085,8 @@
   "why": "unresolved call isinstance",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "26f57eff94dd24e6cf16e4c4242bc0592d6864087e90d2ff7c8094b7a578912a": {
   "file": "dojo/skills/interactive.py",
@@ -1294,8 +1294,8 @@
   "why": "unresolved call os.getpid",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "2c0a8a0c35773a1cb7f4e52ef925e0c49df062df696e2856e0eb06f8006ba54b": {
   "file": "dojo/skills/push_plan.py",
@@ -1690,8 +1690,8 @@
   "why": "dynamic code loader importlib.util.spec_from_file_location",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: file-loaded dependency is explicitly rooted but loader resolution is not a generality proof. Sort still loads p2 and its instruction-reading dependencies; not eligible for clean adoption.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: file-loaded dependency is explicitly rooted but loader resolution is not a generality proof. Sort still loads p2 and its instruction-reading dependencies; not eligible for clean adoption.",
+  "disposition": "blocked"
  },
  "3c16afebf35c1c67a0975f083582d3f7a5541765909f916aea746f2f9d6aaac8": {
   "file": "dojo/perception/general_masks.py",
@@ -1778,8 +1778,8 @@
   "why": "unresolved call isinstance",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "3e31c032a70edb753fac28ec751bb34066c058cee737f3d764c5a08c87e51bd1": {
   "file": "dojo/perception/general_masks.py",
@@ -1899,8 +1899,8 @@
   "why": "unresolved call np.asarray",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "40b6df4bc83522336260b6439d073a09648b6cd63b2650d59839499089186942": {
   "file": "dojo/skills/push_plan.py",
@@ -2977,8 +2977,8 @@
   "why": "unresolved call os.path.join",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "619c64d8e8e46992cd854165483d5811a8fbb08f598c90b9ac7b96e80c905c38": {
   "file": "dojo/skills/planner.py",
@@ -2988,8 +2988,8 @@
   "why": "unresolved call getattr",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "61e798e31d96ee32fbf49f8322151c15c97102a085208eaebf8ccbf4665dcd3b": {
   "file": "dojo/perception/base_refit.py",
@@ -3593,8 +3593,8 @@
   "why": "unresolved call os.path.dirname",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "79738460b2ec72f7d79d990f0dfb2733bac5bb5b6e8f7d915bc32fd7af181e66": {
   "file": "dojo/skills/coin_contact.py",
@@ -3890,8 +3890,8 @@
   "why": "unresolved call run0",
   "count": 2,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "808ce02775fe192c2fed6dbf160d535951f55265d030be661bc684b973619fc9": {
   "file": "dojo/skills/interactive.py",
@@ -3945,8 +3945,8 @@
   "why": "unresolved call park",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "81f3a6093f95c83c13d017a23a350d887b77861ca2358402a8e6a32ccefa2915": {
   "file": "dojo/skills/torso.py",
@@ -4033,8 +4033,8 @@
   "why": "unresolved call r.setdefault",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "86501704dc2534773d9189928bdd662010bf49a140211dae23f20e538fe77c8c": {
   "file": "dojo/perception/general_filters.py",
@@ -4451,8 +4451,8 @@
   "why": "unresolved call np.asarray",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "91b071f7a084e743fb2d329ba717971692328896b1642cffa2061b65be3548cb": {
   "file": "dojo/perception/general_filters.py",
@@ -4649,8 +4649,8 @@
   "why": "unresolved call run",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "9667800bfaaeb8ae5a782d0b63484517a0766bc5ceae6cd4305569827c11bc6e": {
   "file": "dojo/perception/general_masks.py",
@@ -4759,8 +4759,8 @@
   "why": "unresolved call load_v3",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "9ac3cc40db9e49d927d467c7d3fde947d84f7dd62fdd42fe570a95db1f558e3b": {
   "file": "dojo/skills/torso.py",
@@ -4880,8 +4880,8 @@
   "why": "unresolved call V3.home_safe",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "9ee36cd7fcb1f006f4b78b2569d680023865135a26c9ca772953fe810d91b7a8": {
   "file": "dojo/skills/torso.py",
@@ -5111,8 +5111,8 @@
   "why": "unresolved call bool",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "a4a02b7e84a5d5be7bcbe64075d41ec5c1f2f24120542bc7ed62160f49676726": {
   "file": "dojo/skills/push_plan.py",
@@ -5573,8 +5573,8 @@
   "why": "unresolved call isinstance",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "b5be6e9487693f2c3c7a762c6f16ede29d8abf14d442e0ab08b2bef646229f86": {
   "file": "dojo/skills/push_plan.py",
@@ -6068,8 +6068,8 @@
   "why": "unresolved call any",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "c4d4e626ac142746fc855cd2e7e7a0ea2a8442deb6a2ea7166c56a552a4096e7": {
   "file": "dojo/perception/general_masks.py",
@@ -6288,8 +6288,8 @@
   "why": "unresolved call spec.loader.exec_module",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "cb22b2c92bfd735535c83b7965de8a101a07da93eb105cdce50d1b025755d867": {
   "file": "dojo/perception/general_filters.py",
@@ -6475,8 +6475,8 @@
   "why": "unresolved call bool",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "d1f2267c73d690e8c6f9c54e73d94db14fe3bad5d49fbf758a9ea01fc85ac304": {
   "file": "dojo/perception/general_filters.py",
@@ -7399,8 +7399,8 @@
   "why": "unresolved call isinstance",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "ef5145110eb2494bbf6427c02326604e903a360a55d9b8e5bfe74c67042e7eb1": {
   "file": "dojo/skills/interactive.py",
@@ -7454,8 +7454,8 @@
   "why": "unresolved call time.time_ns",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "f13e456a720672aac1bddef382551b4a8e89319ee0f87a52dbe47762ec79ab82": {
   "file": "dojo/skills/torso.py",
@@ -7641,8 +7641,8 @@
   "why": "unresolved call park",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: static resolution stops at this exact call; external numerical operations and callbacks remain unproven. Review required before promotion, not a forbidden-read assertion.",
+  "disposition": "blocked"
  },
  "f440ff6f39a7e17d27de08821500130c509b2374e9f3d929705d03461315ca97": {
   "file": "dojo/perception/general_filters.py",
@@ -7971,8 +7971,8 @@
   "why": "dynamic code loader spec.loader.exec_module",
   "count": 1,
   "subsystem": "sort integration",
-  "reason": "sort integration: file-loaded dependency is explicitly rooted but loader resolution is not a generality proof. Sort still loads p2 and its instruction-reading dependencies; not eligible for clean adoption.",
-  "disposition": "review required"
+  "reason": "Component blocked: the wrapper delegates to instruction-reading p2 and inherits the internal observation leak; explicit arguments must replace that boundary. sort integration: file-loaded dependency is explicitly rooted but loader resolution is not a generality proof. Sort still loads p2 and its instruction-reading dependencies; not eligible for clean adoption.",
+  "disposition": "blocked"
  },
  "fd1e334cb986ccbbff57d22d11ce405305c18a177899782429e99d362e8f17e0": {
   "file": "dojo/skills/coin_contact.py",
