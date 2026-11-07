@@ -1057,6 +1057,24 @@ requires the complete panel, checks the rerun v2b reference and evaluates the
 prospectively frozen all-cell harm gates. Historical task-bank scores are references
 only. An offline gate failure prohibits camera dispatch for that configuration.
 
+The smaller offline probe uses `general_prompts.instruction_prompts`: instruction
+phrases plus the same three generic prompts for every episode, without a catalogue
+prompt sweep. `general_filters.FilterConfig` defines uniform multiview, support,
+size, v2b-agreement and score checks. Mask pairing uses geometry across all pairs;
+there is no task/identity/label-conditioned pair pruning. Size lookup alone uses
+category/name/extents from every asset in the shared catalogue. Unknown labels use
+the whole-catalogue size envelope. No task config, checker or placement prior enters.
+
+The recorded RGB panel has no measured depth. Triangulated centroid-depth silhouette
+bounds are support/size proxies; unknown geometry fails closed when those checks
+are enabled. These checks must not be presented as measured physical contact.
+`general_r2_eval.py` retains raw masks and all 32 filter combinations, reusing one
+owned SAM socket server and measuring two clients and prompt-count scaling. Timing
+charges the required peer views for geometry; CPU postprocessing and dependency
+costs cannot be omitted to meet a frame deadline. `general_r2_summary.py` applies
+the frozen all-cell harm gates and hard latency maxima, retaining each filter's
+recall cost. These modules add no runtime activation or changed episode defaults.
+
 ### Task-scoped SAM camera proposals and shared service
 
 **Diagnostic-only; prohibited for a board candidate.** `sam_task_routes` and

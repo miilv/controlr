@@ -22,7 +22,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import numpy as np
-from scipy.spatial.transform import Rotation
 
 W, H = 640, 480
 USD_TO_CV = np.diag([1.0, -1.0, -1.0])
@@ -38,11 +37,15 @@ TABLE_Z = 0.765  # table top: default_pos z 0.74 + half of the 0.05 thickness sc
 
 
 def quat_wxyz_to_R(q) -> np.ndarray:
+    from scipy.spatial.transform import Rotation
+
     q = np.asarray(q, dtype=float)
     return Rotation.from_quat([q[1], q[2], q[3], q[0]]).as_matrix()
 
 
 def R_to_quat_wxyz(R) -> np.ndarray:
+    from scipy.spatial.transform import Rotation
+
     x, y, z, w = Rotation.from_matrix(R).as_quat()
     q = np.array([w, x, y, z])
     return q if q[0] >= 0 else -q
@@ -61,6 +64,8 @@ def T_to_pose(T) -> np.ndarray:
 
 def euler_xyz_deg(e) -> np.ndarray:
     """RoboDojo's ``euler_angles_to_quat(..., degrees=True)`` default: intrinsic XYZ."""
+    from scipy.spatial.transform import Rotation
+
     return Rotation.from_euler("XYZ", e, degrees=True).as_matrix()
 
 
