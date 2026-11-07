@@ -6,6 +6,14 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **General all-catalogue SAM union floods the proposer with unmatched masks.**
+  The task-free 615-label inventory raises recall but fails every recorded camera/phase
+  phantom guard: 11 to 2,378 masks across 180 views. Organize and imitate account for
+  the largest increases. Requests contain 616–622 prompts and take 27.53s median on
+  shared compute3. Keep this component offline; any smaller inventory or post-filter
+  must be generic and uniform, prospectively frozen and evaluated across all cells.
+  Do not restore task banks ([complete evidence](experiments/2026-11-07-samint-general.md)).
+
 - [ ] **fill_egg_holder has a high native settle-failure rate.** SAMINT's first
   fresh registered salt rejected **13/20 (65%)** under unchanged two-pass presettle:
   eggs fell to the floor or remained in motion. All attempts are retained. The lead
@@ -18,18 +26,20 @@
 - [ ] **Per-vocabulary SAM exclusion must cover explain-away candidates.**
   `RuntimePolicy._explain_vocabulary` calls the estimator on each candidate before
   choosing the final vocabulary. A final inactive route is not a zero-SAM-request
-  proof. Audit all `vocab_explain.candidates` against the frozen route map for the
-  SAMINT parity guards; any active candidate blocks parity qualification. A future
-  planner/registry caller must supply the canonical perception key explicitly.
+  proof in the historical diagnostic route. These task-keyed SAMINT panels are
+  cancelled for board dispatch; do not revive them through a planner/registry key.
+  The general proposer accepts no vocabulary selector. This warning remains relevant
+  only when reproducing the prohibited diagnostic path.
 
 
-- [ ] **Task-prompt masks need an asset identity/pose gate.** SAM semantic labels
-  cannot replace catalogue IDs. Prototype only behind a default-off task-bank
-  flag, preserve base v2b identity during union de-duplication, honor SAM API
-  minima below the current server's 0.3 processor floor, and measure phantoms
-  before any camera A/B ([SAMBAKE](experiments/2026-11-07-sam3-task-prompts.md)).
-Default-off routing/shared service implemented by [SAMINT](journal/2026-11-07-samint.md);
-  keep this item open until the parked camera identity/pose audits qualify the lever.
+- [ ] **General SAM masks need identity/pose and harmful-write gates.** SAM
+  semantic labels cannot replace catalogue IDs. Preserve base v2b identities during
+  union de-duplication and measure unmatched proposals before camera work. Historical
+  task-bank routes remain default-off and diagnostic-only; they cannot qualify for
+  board adoption. Only one general instruction/catalogue path with uniform thresholds
+  can proceed to fresh camera identity/pose and per-writer audits after its offline
+  guards pass ([SAMBAKE](experiments/2026-11-07-sam3-task-prompts.md)). The legacy
+  task-prior fitter still requires a separate general-system architecture change.
 
 - [ ] **Persist token usage for agentic held-look calls.** `held_look_impl`
   counts logical calls and records their model, but discards each response's
