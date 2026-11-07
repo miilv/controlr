@@ -25,6 +25,8 @@ RoboDojo farm with `scripts/dojo/rd_farm.sh`, then register the upstream
 - `run_task.sh TASK LAYOUT_ROOT N [smoke|yardstick]`: credential-free runtime,
   one owned GPU slot, power admission gate, official-client scores, pid files
   and cleanup. There is no robot-harness dependency or sealed-data access.
+- `collect.sh`: companion to a running batch; verifies the frozen inputs and
+  atomically writes `per_cell.json` only after all 540 scored rows are present.
 - `summarize.py LAYOUT_ROOT RUN...`: post-run official verdicts, per-episode
   input hash, success/score/steps/wall and per-cell spread. Missing random
   cells remain missing. Average uses `dojo.scoreboard.board.cells` weights.
