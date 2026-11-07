@@ -1,0 +1,21 @@
+{
+  "proposal_counts": {
+    "sam_proposals": 1456,
+    "without_geometry": 772,
+    "multiview_rejected": 772,
+    "multiview_rejected_with_geometry": 0,
+    "support_rejected": 1145,
+    "support_rejected_with_geometry": 373,
+    "size_rejected": 839,
+    "size_rejected_with_geometry": 67,
+    "agreement_rejected": 830,
+    "agreement_rejected_with_geometry": 337,
+    "score_rejected": 652,
+    "score_rejected_with_geometry": 233
+  },
+  "geometry_cpu_p50_s": 0.02699129850952886,
+  "geometry_cpu_max_s": 0.05467485499684699,
+  "all_combination_harm_types": {
+    "['phantoms_increase>=0.5/image_and_2_total']": 178
+  }
+}

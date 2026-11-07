@@ -1,0 +1,20 @@
+{
+  "utc": "2026-11-07T20:05:08.182673+00:00",
+  "host": "compute4",
+  "decision": "ROUND2_NO_QUALIFIED_COMBINATION_NO_DISPATCH",
+  "queue_sha256": "25ac88c410a641dd5699e2cb76e4911d4b6aebc798e4438f41aaa899d0e321a2",
+  "queue_nonempty_rows": 120,
+  "SAMINT_rows_added": 0,
+  "queue_reordered_by_SAMINT": false,
+  "STOP_present": true,
+  "STOP_inode": 49320090,
+  "STOP_mtime_ns": 1794067916204827049,
+  "STOP_modified_by_SAMINT": false,
+  "compute4_GPU_processes_started_by_SAMINT": 0,
+  "LLM_calls": 0,
+  "camera_manifest": "NOT_CREATED",
+  "egg_refill_draws": 0,
+  "closest_filter": "score>=0.5",
+  "closest_harm_groups": 12,
+  "qualified_combinations": 0
+}

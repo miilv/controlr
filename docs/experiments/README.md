@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [SAMINT round 2](2026-11-07-samint-r2.md) ([prereg](2026-11-07-samint-r2-prereg.md)) | Can small instruction-only prompts and uniform filters retain recall without phantoms? | NOT QUALIFIED: all 32 combinations / 180 views; closest score floor raises recall 68.5→89.6%, phantoms 11→78 and 12 harm groups; latency passes; zero LLM calls, no queue |
 | 2026-11-07 | [ORG2 camera prereg](2026-11-07-org2-camera-prereg.md) | Do the ORG2 general capabilities raise organize_table's camera score without costing the seven cells they reach? | Registered before queueing on compute6: 12 gain + 7 x 10 camera-gated guard pairs (164 rows, <= 492 Sonnet calls); no parity guards (`plan_world` reaches every cell); write audit N/A by writer inventory; verdict later |
 | 2026-11-07 | [ORG2 G3](2026-11-07-org2-g3.md) | Do general (task-blind, default-off) push / torso-grasp / stand / release capabilities close organize_table's gap to the RSI yardstick (85.0 on 100000-04)? | Registered fresh panel 18 pairs: 36.1 -> 58.3 (+22.2), 12W/2L/4T, successes 0 -> 2: rule passes, bar not reached (B CI 47-69). Alarm 2 -> 13, keyboard 2 -> 8, figure 0 -> 3; wide-shouldered figures limit B. Base refit null (14 harmful / 1 helpful). 0 LLM calls |
 | 2026-11-07 | [ORG2 G3 prereg](2026-11-07-org2-g3-prereg.md) | Fresh paired G3 panel of the ORG2 bundle | Registered before any panel episode; result in the ORG2 G3 report |

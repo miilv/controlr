@@ -1,0 +1,94 @@
+{
+  "utc": "2026-11-07T20:10:19.771171+00:00",
+  "decision": "NOT_QUALIFIED_NO_CAMERA_DISPATCH",
+  "registered_main": "bbbe53b4",
+  "measured_source": "68cc25e817f84c948cd460d3f7dd898083c0eac8",
+  "implementation_merge": "3539749a409cb56fb8895bb99d58750c8059291c",
+  "CI": "https://github.com/miilv/controlr/actions/runs/42408715063",
+  "PR": "https://github.com/miilv/controlr/pull/433",
+  "full_local_suite": {
+    "passed": 2643,
+    "skipped": 41
+  },
+  "clean_minimal_focused_tests": 21,
+  "additional_camera_checks": 4,
+  "records": 5940,
+  "views": 180,
+  "combinations": 32,
+  "input_layout_clusters": 54,
+  "baseline_reference_differences": 0,
+  "closest": "score>=0.5",
+  "closest_harm_groups": 12,
+  "qualified_combinations": 0,
+  "LLM_calls": 0,
+  "parent_exit_code": 0,
+  "SAM_checkpoint_sha256_verified_before_load": "9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e",
+  "uncompressed_records_sha256": "f93560581c6d449980dce512e0a6b9d67796ccecee209a436b9c53d9c2d768e4",
+  "files": {
+    "ablations.csv": {
+      "bytes": 8077,
+      "sha256": "a911340cc933ebc6d8fce6df9c9d627aac61611d36b391ed3438174d09c0e5fd"
+    },
+    "cells.csv": {
+      "bytes": 53864,
+      "sha256": "5ab6dff745e1575f460694539481327c2a67e9bb9866cf3844f216644a38cde4"
+    },
+    "risk.csv": {
+      "bytes": 100614,
+      "sha256": "19642d10f6d9e443550017c88a5a6756e69e2498162b1472d6867133b1f03a36"
+    },
+    "verdict.json": {
+      "bytes": 21996,
+      "sha256": "d2ea1db9525431b01eb5895e3ffe35739c1a5420cfd297733304eeea6fff8e66"
+    },
+    "latency-by-count.csv": {
+      "bytes": 1055,
+      "sha256": "e4ee98bb054f52d5affe43343cb2cc6ffbdd1430abe668f39a9b4acf72e3297f"
+    },
+    "scaling.csv": {
+      "bytes": 1161,
+      "sha256": "f27fc8e33bda6a3f7d24654a680a8d33884e0cb7de1a9ef2116ab6a61a02dd54"
+    },
+    "meta.json": {
+      "bytes": 5815,
+      "sha256": "818ac25d97e6f05af89227e83e4339e75b21b71f1f980bebe07b4c4a5b861136"
+    },
+    "filter-diagnostics.json": {
+      "bytes": 627,
+      "sha256": "d3c62e21eb2201ad20e63f546406c56f90190287a15dea8fa17b5642a81576a4"
+    },
+    "size-ranges.json": {
+      "bytes": 83661,
+      "sha256": "a26abae77f65a7dc453304564005f5c5a8cd1384d867d2f8884055b77450c7c4"
+    },
+    "records.jsonl.gz": {
+      "bytes": 196140,
+      "sha256": "1ccd9a7989affc6e0fe97ba2f8c24522eabee40af0393d10552c794092349347"
+    },
+    "proposals.jsonl.gz": {
+      "bytes": 74106,
+      "sha256": "9ba21f70cbb969ea246d201b52e275cf0b67ae793c2e6a9599adaa6f779232b1"
+    },
+    "masks.tar.gz": {
+      "bytes": 689549,
+      "sha256": "f590bac2454dd73a697b4cc7b74b9526477da5ff2a1f55f3e6896c895d642729"
+    },
+    "mask-hashes.json": {
+      "bytes": 17883,
+      "sha256": "5fb9ff96937eab8a7c1abbf827a3257f27d7877ce9406c18f80abf7dec4aac63"
+    },
+    "no-dispatch-receipt.json": {
+      "bytes": 659,
+      "sha256": "f0a6104d070b506a9100661ac18f515e84e3b05a221508edaa2e928aae9c3d76"
+    },
+    "comparison.html": {
+      "bytes": 12572,
+      "sha256": "e3afba4b39f71d466d264f4baf238aa011843ce18704000b5e5684b5c7835c43"
+    },
+    "README.md": {
+      "bytes": 3277,
+      "sha256": "f268ecff33f5c9b02220fa559aaa978f49a68435e650dd506977123e44c9da7b"
+    }
+  },
+  "csv_format": "LF normalized for repository; numeric content unchanged"
+}

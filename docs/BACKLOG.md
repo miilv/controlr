@@ -6,6 +6,16 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **RGB-only support/size checks confuse missing geometry with implausible objects.**
+  General SAM round 2 has no accepted multiview bounds for 53% of proposals. Standalone
+  support loses 11.7pp recall versus raw small prompts; v2b agreement loses 22.5pp.
+  Score>=0.5 is the closest overall filter but still fails 12 phantom groups. Support
+  plus score leaves one phantom group and enough gain, but charging peer views costs
+  up to 1.70s per wrist (budget1s); geometry arithmetic itself is only 27ms median.
+  Plan better depth/observability and shared-view scheduling, without task-conditioned
+  candidates or exceptions ([complete ablations](experiments/2026-11-07-samint-r2.md)).
+
+
 - [ ] **General all-catalogue SAM union floods the proposer with unmatched masks.**
   The task-free 615-label inventory raises recall but fails every recorded camera/phase
   phantom guard: 11 to 2,378 masks across 180 views. Organize and imitate account for
