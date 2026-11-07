@@ -216,7 +216,7 @@ SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "lo
                "sweep_deep": ("off", "on"), "sweep_hold_pan": ("off", "on"),
                "ported_routes": ("off", "on"), "ported_swap": ("fixed", "reach"), "ported_drag": ("v1", "turn"),
                "ported_pour": ("v1", "full"), "ported_pour_aim": ("v1", "b10", "b20"), "ported_pickup": ("v1", "library"),
-               "ported_classify": ("v3b", "p1", "p2"),
+               "ported_classify": ("v3b", "p1", "p2"), "sort_contain": ("root", "bottom"), "sort_park": ("off", "home", "blocked"),
                "belt_container": ("off", "on"), "belt_container_tilts": ("25,40", "0,15,25", "40,50"),
                "belt_deposit": ("off", "on"), "belt_lift": ("off", "braced_hook"), "belt_first": ("off", "on"), "belt_first_recover": ("off", "on"), "belt_first_phase": ("off", "on"), "belt_target": ("off", "match"), "belt_confirm_zone": ("off", "on", "uncertain"), "disc_handover_read": ("off", "on"),
                "joint_limits": ("wide", "measured"), "belt_wrist_veto": ("off", "on"),
