@@ -249,3 +249,29 @@ The final primary arm completed at **06:16:41Z** (lane log). Per-pair scores,
 spread, per-row route proof, raw source hashes and reported spend are in
 [the evidence snapshot](../experiments/data/kong-scoped-relocate/verdict.json).
 No candidate/default field changes, new camera dispatch or adoption.
+
+## Lead, 7 Nov ~07:00Z: two refinements to the adoption gates (prospective only)
+
+These were written after the peg re-test and the KONG scoped verdicts. They apply only to pre-registrations from
+2026-11-07 07:00 UTC; every earlier A/B keeps the rule it registered, and none is re-judged. See EXPERIMENTS.md.
+
+- **Write audit, per writer.**
+  - An existing writer passes when its harmful RATE is no more than 5 percentage points above A's. Raw totals of
+    downstream writers mostly track trajectory length after divergence.
+  - A writer new in B passes when helpful ≥ 2 × harmful. Against A's zero, every new read failed by construction.
+- **Parity guards for scoped levers.** A guard on which the lever is proven inactive (identical resolved config and
+  skill parameters, zero lever actions and writes in every guard episode) is gated by that proof, not by its noisy
+  camera score. One strong guard (≥ 90 % cell) stays camera-gated.
+
+Why:
+- KONG scoped (make_kong only) failed on an imitate guard of −16 at n = 5, with the code path identical by
+  construction and zero relocation writes.
+- Its new relocation writer (16 helpful / 2 harmful) and peg's held_pose writer (11 helpful / 22 harmful) were judged
+  the same way, by "any harmful write against A's zero".
+- The refined gates still reject peg (its new writer fails 2×), so they separate the two cases on mechanism, not on
+  outcome.
+
+make_kong under scoping has been positive in every test so far: +20 at n = 15 historically, +30 global, +10 Luna,
++20 Sonnet. **KONG scoped gets its one fresh-layout re-test under the refined rule**: new layouts, 20 make_kong pairs,
+imitate as a parity guard, stack_blocks as the strong guard. It is queued on compute6 after the tie block. Peg's one
+re-test is used up; a mechanism study (offline, no LLM calls) decides whether a new lever follows.
