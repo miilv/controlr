@@ -928,3 +928,14 @@ runtime's belt tracker; G3's GT provider has no tracker, so `belt_ref`, `belt_ve
 replays match_and_pick's decision (first object, speed, the match it would take) on recorded camera reports (frame-0
 record + logged reads, robot at home, stub pick); its GT is the layout moved along the belt, for scoring only.
 `scripts/skills/match2_g3_job.sh` runs one scoped compute3 physics job on light3 / light4.
+
+### Internal RSI yardstick launcher
+
+`baselines/rsi/` measures the external fixed-program baseline on our hashed
+inputs through the official eval client; its programs never enter policy code.
+All host/state/lane/lock paths are explicit arguments. The desktop profile
+shares one prep/policy slot in a bounded user scope and yields to desktop
+load; the camera profile uses the existing lane2 caps and startup/boot gates.
+See [the install recipe](../baselines/rsi/INSTALL.md). CPU tests mock telemetry
+and verify admission, credential isolation, portable commands and input hashes.
+Running a recipe still requires current permission for the destination box.

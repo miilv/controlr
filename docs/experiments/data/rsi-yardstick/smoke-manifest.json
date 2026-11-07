@@ -1,0 +1,50 @@
+{
+  "generator": "simlab/v15",
+  "layout_form": "raw",
+  "salt": "rsi-yardstick-20261107",
+  "schema": "rsi-yardstick/1",
+  "tasks": {
+    "insert_tubes": [
+      {
+        "file": "insert_tubes/100020.json",
+        "id": 100020,
+        "position": 0,
+        "sha256": "b1430850c88d50b236d5235ef4e9680709abee5c253e9c1b26a3a5694ee1898a"
+      },
+      {
+        "file": "insert_tubes/100021.json",
+        "id": 100021,
+        "position": 1,
+        "sha256": "123b2282ecd32e75728ca5715799f3ce442baeca395e8c9399a0b4f42cb633a3"
+      }
+    ],
+    "press_by_number": [
+      {
+        "file": "press_by_number/100020.json",
+        "id": 100020,
+        "position": 0,
+        "sha256": "96e0f5bef95c4b423572e5db67b404cdbe04611a56a203ce3a363698b3595b01"
+      },
+      {
+        "file": "press_by_number/100021.json",
+        "id": 100021,
+        "position": 1,
+        "sha256": "ec40f0c90037bddd56beba28ce33038afa148f1faa721451e06da73bce272ba9"
+      }
+    ],
+    "stack_blocks": [
+      {
+        "file": "stack_blocks/100020.json",
+        "id": 100020,
+        "position": 0,
+        "sha256": "b5157a055c69917f2bd8083d14bfc7e60b0fc51447bc45a81aca53bd256d59df"
+      },
+      {
+        "file": "stack_blocks/100021.json",
+        "id": 100021,
+        "position": 1,
+        "sha256": "b9313f6df224bfb0a0520fc69f638355e70d9675d198dea88cf9121be98873f8"
+      }
+    ]
+  }
+}
