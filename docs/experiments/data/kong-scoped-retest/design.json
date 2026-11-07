@@ -1,0 +1,45 @@
+{
+  "experiment": "kong-scoped-retest-1107",
+  "rules_commit": "43c1801d7d19428a2a476724722c0a0edc51401b",
+  "deployment": "/home/robotics/dojo-integ-c6-kong-ffb2c151",
+  "code": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+  "baseline_candidate": "scripts/dojo/queues/2026-11-06-candidate.txt",
+  "baseline_candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "agentic_model": "claude/claude-sonnet-5-5",
+  "A_overrides": {
+    "watch_relocate": false,
+    "watch_relocate_task": ""
+  },
+  "B_overrides": {
+    "watch_relocate": false,
+    "watch_relocate_task": "make_kong"
+  },
+  "block": "kong-scoped-retest",
+  "salt": "kong-scoped-retest-20261107-53a0ae76903fe9ae1cb24eac61cc45fe74f086fc02819f7795d535629fce55c2",
+  "salt_sha256": "e3ffabe8f9b9b5a0e909b26c358e9eb82b6dc03ab1d1f78c9f139ea371ccc071",
+  "candidate_start": 100050,
+  "candidate_end": 100099,
+  "cells": [
+    {
+      "task": "make_kong",
+      "role": "gain",
+      "pairs": 20
+    },
+    {
+      "task": "imitate_sorting_sequence",
+      "role": "parity_guard",
+      "pairs": 5
+    },
+    {
+      "task": "stack_blocks",
+      "role": "strong_guard",
+      "pairs": 5
+    }
+  ],
+  "demo_speed": 1.25,
+  "repeat": 1,
+  "episode_cap_minutes": 25,
+  "pair_order": "AB when selected id minus 100050 is even, BA when odd; task order gain, parity guard, strong guard",
+  "selection": "first n default two-pass stable records by ascending id; no selection on camera/demo outcome; invalid demos block launch",
+  "queue": "append-only tail after all existing rows under queue2.txt.lock"
+}

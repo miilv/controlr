@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [kong-scoped-retest-prereg](2026-11-07-kong-scoped-retest-prereg.md) | Does scoped kong relocation pass its one fresh-layout re-test under refined audit/parity gates? | Preregistered: 20 kong + 5 imitation parity + 5 stack strong pairs; Sonnet; append after tie; no adoption |
 | 2026-11-07 | [BYIMG lift-first](2026-11-07-byimg-g3-r2.md) | Can a level raised basket support catching and loading? | Fresh 10 pairs: 10→20, 1/10→2/10 success, 2 wins/1 loss; released-target replay confirmed; gate fails |
 | 2026-11-07 | [BYIMG fresh retest](2026-11-07-byimg-g3-r2-retest.md) | Does the unchanged positive lift-first bundle generalize? | 14 fresh pairs: 14.29→21.43, 2/14→3/14 success, 2 wins/1 loss; gate fails; stays off |
 | 2026-11-07 | [BYIMG G3](2026-11-07-byimg-g3.md) | Does a braced, re-aimed hook lift the loaded basket? | Ten fresh settled v15 pairs: 0±0→0±0, 0/10 successes both, 0 wins/0 losses; rejected, no camera jobs |
