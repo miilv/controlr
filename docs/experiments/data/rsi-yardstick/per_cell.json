@@ -1273,13 +1273,69 @@
     },
     "pour_liquid_into_cup_random": {
       "dimension": "Generalization",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "306d8fdf035dbb6a614746da6de2557ae44d279b25bd14967e335f0c0c37651c",
+          "official_score": 0.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T204400fbb34eZ_pour_liquid_into_cup_random",
+          "steps": 399,
+          "success": false,
+          "task": "pour_liquid_into_cup_random",
+          "wall_s": 115.99440139101353
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "190195b155f1ac019b28d610fd63395835fef4ae023320ae0e27ae9586a1e849",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T204400fbb34eZ_pour_liquid_into_cup_random",
+          "steps": 226,
+          "success": true,
+          "task": "pour_liquid_into_cup_random",
+          "wall_s": 71.6212694220012
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "443b1c0885086961df4e1327402a139043c7347c5757ed0663b1b10c151ff197",
+          "official_score": 100.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T204400fbb34eZ_pour_liquid_into_cup_random",
+          "steps": 235,
+          "success": true,
+          "task": "pour_liquid_into_cup_random",
+          "wall_s": 71.60780169500504
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "dc47c5fb42ab4c5e0e2b1da28b9de3c0a2623bc633b38d9f7328159e3a4a22aa",
+          "official_score": 100.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T204400fbb34eZ_pour_liquid_into_cup_random",
+          "steps": 221,
+          "success": true,
+          "task": "pour_liquid_into_cup_random",
+          "wall_s": 76.04896738997195
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "9df6976c4110e2eb4ff4fa7df887498298367a2eb57e25800be0810a4a7eb142",
+          "official_score": 0.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T204400fbb34eZ_pour_liquid_into_cup_random",
+          "steps": 399,
+          "success": false,
+          "task": "pour_liquid_into_cup_random",
+          "wall_s": 110.28361647296697
+        }
+      ],
+      "n": 5,
+      "official_score": 60.0,
+      "score_sd": 54.772255750516614,
+      "steps": 1480,
+      "successes": 3,
+      "wall_s": 445.5560563709587,
       "weight": 0.008333333333333333
     },
     "press_by_number": {
