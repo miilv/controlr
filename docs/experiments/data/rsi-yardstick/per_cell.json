@@ -371,13 +371,69 @@
     },
     "fasten_screws": {
       "dimension": "Precision",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "c3ff4b431b6f8248de3fa567eae94a42f2b61e19f8a2f8856e162d7300f401c8",
+          "official_score": 100.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T225633d78680Z_fasten_screws",
+          "steps": 885,
+          "success": true,
+          "task": "fasten_screws",
+          "wall_s": 198.6256301649846
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "c7023be60d2bfacfe85a613b23a6b435cc8120640362ecc37241428e63ddab26",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T225633d78680Z_fasten_screws",
+          "steps": 909,
+          "success": true,
+          "task": "fasten_screws",
+          "wall_s": 179.6086661759764
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "3fbbc933fe92c5e83870fcf31ef84c82a754859bddcd48ffef7614d7e465d530",
+          "official_score": 100.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T225633d78680Z_fasten_screws",
+          "steps": 824,
+          "success": true,
+          "task": "fasten_screws",
+          "wall_s": 174.17325133702252
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "e9ffd9c9e4fd833702af9e7307150104ebb1697c0bd32457fc51a44aec1312a7",
+          "official_score": 100.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T225633d78680Z_fasten_screws",
+          "steps": 830,
+          "success": true,
+          "task": "fasten_screws",
+          "wall_s": 179.31853217503522
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "1ba373819e88bbdc108dc171628f0ba9002804283f06082ddca375705490f178",
+          "official_score": 100.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T225633d78680Z_fasten_screws",
+          "steps": 985,
+          "success": true,
+          "task": "fasten_screws",
+          "wall_s": 195.88723733799998
+        }
+      ],
+      "n": 5,
+      "official_score": 100.0,
+      "score_sd": 0.0,
+      "steps": 4433,
+      "successes": 5,
+      "wall_s": 927.6133171910187,
       "weight": 0.025
     },
     "fill_egg_holder": {
