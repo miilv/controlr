@@ -24,3 +24,16 @@ If a candidate works, screen original and new independent pilots before a new
 registration. Never tune on panel rows. The final source/bundle and fresh draw
 recipe must be committed before any new panel. All box/path/resource/zero-LLM
 rules continue, maximum two physics-only jobs on light2/light8.
+
+## Band endpoint diagnosis and shallow insertion amendment
+
+The actual jaws remain ~72 mm apart under close, supporting curved-surface
+contact rather than an empty free-close. In the band bank, 64 generated grasps
+produce zero accepted endpoints for either arm. Horizontal approaches put the
+palm at z=0.718–0.728 m, below the 0.765 m table. The thin-axis downward bridge
+site is z=0.7792 m (14.2 mm above table), not the hypothesised 64 mm clearance;
+reachable offset sites fail fingertip clearance at z=0.765–0.767 m. Preserve
+these refusals. Before any further episode, add shallow insertion proposals
+at +6/+12 mm world z, recompute mesh opposition at each new TCP, and retain
+native IK/finger/obstacle checks and original physical hold rejection. This
+changes pad insertion depth, not table tolerance or collision exemptions.
