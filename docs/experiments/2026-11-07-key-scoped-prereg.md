@@ -107,3 +107,48 @@ steps/timeouts, all input/config/code hashes, exclusions and refill provenance,
 actual spend and success/typical-failure videos. Passing makes the scoped lever
 an adopt-candidate for lead review. Failure parks it; neither outcome changes
 the previous global verdict. This PR authorizes no queue writes or dispatch.
+
+## Lead-authorized compute6 preparation (before generation)
+
+The lead merged #412 and authorized preparation and queue insertion in round 2.
+Both arms pin merged main `6d1a4abb02d2529beff478bb50c4c61d759191cb`,
+isolated at `compute6:~/dojo-integ-c6-key-6d1a4abb`. The new managed Python
+3.12.13 venv reproduces the existing frozen lane requirements. Candidate /
+package parity has `diff={}`, the catalogue gate passes, and all existing
+resolved candidate fields match the earlier compute6 deployment. New fields
+retain inactive defaults. No system, shared service or RoboDojo environment
+changes are made; the accepted offline Kit overlay and 600-second watchdog
+recipe are retained, with box-local calibration paths mapped to robotics.
+
+Before generation, `compute6:~/dojo-data/key-1107/pre-generation-freeze.json`
+(SHA256 `24ff1aaccef9320051cc71553a528b8c227308b5cef81ca50e4f3fc377343c58`)
+pins code, generator/settler, task configs, catalogue, backgrounds, checkpoints,
+packages, lane recipe and simulation versions. The four salts are unchanged;
+checks against the existing KONG, SEGAB and wave design/salt manifests found
+no collisions. No layouts were generated to choose salts or alter this panel.
+Preparation logs every attempted raw/settled identity, including failures.
+It uses one free light lock at a time with used VRAM <=20480 MiB, load <=26,
+a six-core/20-GiB scope and a 50-GB disk floor. Normal raw-check and two-pass
+settling retain their defaults; only the already frozen gain refills are allowed.
+
+The lead authorizes inserting whole KEY pairs immediately after remaining
+KONG rows and before remaining imitation ties. If KONG has drained, KEY
+precedes ties except any queued mate/retry of a started pair. Admission lock
+then `queue2.txt.lock` protects the queue-pop-before-START window. Unrelated
+rows remain in order. Every new row explicitly pins `cx/gpt-6-luna`.
+No camera verdict or adoption is authorized by this preparation amendment.
+
+**Write-audit applicability:** the changed consumers are
+`regrasp.plan_rest_handover` (candidate counts, orientation fallback, place
+checks and via search) and `regrasp.turn_held` (slice a local joint-waypoint
+list before the existing executor call). Neither switch adds or changes a
+perception read, pose assignment, belief writer, writer acceptance rule or
+write schema. The task gate only resolves Skills attributes. Existing
+handover/turn execution can produce different trajectories and therefore
+different downstream observations and ordinary writes; that is not an
+unchanged-episode claim. Those existing hooks are unchanged. This is a motion
+search/budget lever, so the perception/belief-change write-audit prerequisite
+is not triggered. Evidence: the only switch reads in `dojo/skills/regrasp.py`
+are at the search selector and waypoint-slice selector, and #412 changes only
+RuntimeConfig validation/resolution and Skills assignment, with route parity
+regressions. No physics write-audit pass is claimed or needed for this lever.
