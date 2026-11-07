@@ -143,3 +143,16 @@ check. That parent was resumed/preserved. The additional launcher refused
 the existing manifest before creating any episode or scope. Retain its
 startup refusal separately; no physical job was stopped, duplicated or
 excluded. The original two-worker FIFO is the actual standard scheduler.
+
+The complete screen passes: original12/12 standard,11/12 random;
+independent8/10 standard,9/10 random. Both original admission gates are met
+without amendment. Source/config remain10f and the registered bundle.
+
+Light2 was acquired by IMIT2 after our screen ended. Cancel only our verified
+waiting generator wrapper/orphan flock (no physics or generated records), then
+use free light8 for the registered draw. All30 variant21 raw files verify
+complete. Use the existing free light7/light8 pool for settling and the paired
+panel, rather than pre-empting light2's owner. A lock acquired by another
+stream queues our job normally. At most two LAPTOP jobs, unchanged who/GPU,
+<=24GiB VRAM/>=10GB disk and8G/600% limits; no other process is touched.
+This is resource admission only, before any A/B policy outcome.
