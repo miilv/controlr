@@ -49,7 +49,7 @@ Prior work: [generic SAM bake-off](2026-10-27-sam-bakeoff.md),
   cannot be measured by this image-based scorer.
 - v2b: its frozen `best.pt`, SHA-256
   `d7b2f167a69584697628ba967c0f82f4ecfacd3152267f12b23644cc46e8ca88`,
-  original classes, 960px inference, confidence 0.25.
+  original classes, 960px inference, confidence 0.25, Ultralytics 8.4.204.
 - SAM3: ModelScope `facebook/sam3/sam3.pt`, downloaded once on compute3,
   verified SHA-256 `9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e`.
   SAM3.1: Comfy-Org multiplex fp16 safetensors, SHA-256

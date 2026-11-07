@@ -129,7 +129,9 @@ def main():
     ]:
         with (out / f"{name}.csv").open("w") as f:
             writer = csv.DictWriter(
-                f, fieldnames=list(dict.fromkeys(k for r in rows for k in r))
+                f,
+                fieldnames=list(dict.fromkeys(k for r in rows for k in r)),
+                lineterminator="\n",
             )
             writer.writeheader()
             writer.writerows(rows)
