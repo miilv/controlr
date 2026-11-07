@@ -122,3 +122,7 @@ Membership/order in the pending list, all22 layouts, source and gates stay
 fixed; completion time only determines which free slot claims the next group.
 Retain both waiting-parent cancellations and scheduler versions. No in-flight
 physics process or outcome is stopped or replaced.
+
+Full final local suite on the strict-transfer implementation: **2200 passed,
+191 skipped**,1025.96 s.72 focused mocks also pass. Action source remains10f;
+subsequent changes are experiment documentation/orchestration only.
