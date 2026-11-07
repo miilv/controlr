@@ -10,6 +10,10 @@ import re
 from .audit import Profile
 
 ROOT = Path(__file__).resolve().parents[2]
+# Transitional additions are inventoried explicitly, not certified as clean roots.
+REVIEW_MODULES = ('dojo/perception/general_masks.py', 'dojo/perception/general_prompts.py',
+                  'dojo/perception/general_filters.py', 'dojo/perception/base_refit.py',
+                  'dojo/skills/coin_contact.py', 'dojo/skills/push_plan.py', 'dojo/skills/torso.py')
 GENERAL = ('dojo/general/', 'dojo/skills/general/', 'dojo/perception/general/', 'dojo/runtime/general/')
 
 
@@ -33,6 +37,7 @@ def controlr_inference(root=ROOT):
     # Path-loaded code has no reliable ordinary import edge. Explicitly root
     # every module and callable in the vendored subtree, not just its run().
     dynamic = sorted((root / 'dojo/skills/ported/skills').rglob('*.py'))
+    dynamic += [root / p for p in REVIEW_MODULES if (root / p).exists()]
     dynamic += [root / p for p in ('scripts/skills/articulation_links.py',
                                    'controlr/robot/so101/protocol.py', 'controlr/robot/so101/arm_id.py')
                 if (root / p).exists()]

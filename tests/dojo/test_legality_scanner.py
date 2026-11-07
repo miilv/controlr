@@ -83,7 +83,8 @@ def test_allowlist_budgets_only_shrink_and_general_dependencies_cannot_inherit_t
 def test_repository_shared_profile_matches_its_frozen_baseline():
     report = inventory(ROOT)
     allowed = json.loads((ROOT / 'scripts/legality/allowlist.json').read_text())
-    problems = gate(report['findings'], allowed)
+    reviewed = json.loads((ROOT / 'scripts/legality/transition-review.json').read_text())
+    problems = gate(report['findings'], allowed, reviewed=reviewed)
     assert not problems, '\n'.join(problems[:30])
 
 
@@ -179,3 +180,19 @@ def test_leaf_resolution_cannot_hide_callbacks_or_file_reads(tmp_path):
     assert any('unresolved call float' in v for v in whys)
     assert any('unresolved call np.ascontiguousarray' in v for v in whys)
     assert any('unresolved call np.load' in v for v in whys)
+
+
+def test_transition_review_is_exact_and_cannot_certify_a_clean_path():
+    r = {**row(), 'func': 'dojo.old:run', 'evidence': 'call()'}
+    pin = {k: r[k] for k in ('file', 'func', 'category', 'evidence', 'why')}
+    pin.update(count=1, reason='Unresolved callback; not approved for general entry.', disposition='review required')
+    reviewed = {'old': pin}
+    assert not gate([r], {}, reviewed=reviewed)
+    assert gate([r], {'old': 1}, reviewed=reviewed)  # cannot also hide in legacy debt
+    assert gate([r, r], {}, reviewed=reviewed)
+    assert gate([{**r, 'evidence': 'new_call()'}], {}, reviewed=reviewed)
+    assert gate([{**r, 'clean_reachable': True}], {}, reviewed=reviewed)
+    assert gate([r], {}, reviewed=reviewed, previous_reviewed={})
+    assert not gate([r], {}, reviewed=reviewed, previous_reviewed=reviewed)
+    assert gate([r], {}, reviewed={'old': {**pin, 'reason': ''}})
+    assert gate([r], {}, reviewed={'old': {**pin, 'disposition': 'approved'}})

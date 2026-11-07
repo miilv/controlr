@@ -125,7 +125,15 @@ Exemptions pin exact source evidence/reason and occurrence budgets, independentl
 harmless line-number moves. Neither keys nor budgets may grow. Bootstrap is permitted
 only when the base has no scanner/baseline. Remove exemptions as code is retired;
 never regenerate the baseline to make CI green. Historical exemptions are debt, not
-a certificate of board eligibility. Engine carrier/reflective exceptions are pinned
+a certificate of board eligibility. The separate `scripts/legality/transition-review.json`
+records recent additions with an explicit source pin, occurrence budget, reason,
+subsystem and `blocked` or `review required` disposition. These findings remain
+reported and are not certified as clean. A transition pin cannot also appear in
+legacy debt or mask clean-root reachability. After bootstrap, transition records
+may only be removed: new/changed records and increased budgets fail CI. The dated
+inventory explains each subsystem's remaining adoption blockers. Additional general
+modules outside the clean directories must be explicit inventory roots too.
+Engine carrier/reflective exceptions are pinned
 to one exact source line; duplicate matches fail closed, and a changed pin is a
 finding. Multiline literals pin their offending lines, not opening quotes.
 

@@ -1,5 +1,20 @@
 # Legality inventory: our main and D-C19 using the shared partner tool
 
+**Tomorrow's legacy hand-off — ten blocking items, by subsystem:** planner/supervisor:
+(1) `VOCABULARIES`/`infer_task` turn language into benchmark identity,
+(2) task-specific `NEW_ROUTES` recipes,
+(3) `waits_on_actor`/`WAITS_ON_ACTOR` suppress general observation;
+tasks.json/schema perception: (4) `task_map`/`load_sets` candidate vocabularies,
+(5) `label_groups`/`instance_range`/quota counts,
+(6) `_placement_prior`/`fixed_slot_labels`/D-C17 tie routing;
+ported execution: (7) `ported_plan`/`TIER_A` variant selection,
+(8) internal `HarnessRobot.cmd_obs` instruction leakage;
+checker-derived goals/tolerances: (9) `pour_p1._in_target`/`verified`, plus tile/row/pack/align
+checker-shaped goal banks;
+termination: (10) `episode_over`/`env_end`/success-latch feedback must be traced and removed
+where it changes inference, retries or completion. Transport-only shutdown is allowed;
+this last item remains a release blocker pending that distinction.
+
 **Board entry is blocked.** This is a static inventory of inference dependencies,
 not a scored experiment or an eligibility certificate. Zero live LLM calls/tokens,
 simulator jobs, robot access or remote box access.
@@ -12,14 +27,14 @@ source SHA256: `334f617d48de0a803247c64c8d92006cea62da1c98e18213ea6094fab9f5af48
 Our separate prototype scanner was removed. `scripts/legality/scan.py` is only
 report formatting and a CI debt ratchet over this shared engine.
 
-Main snapshot: `27eb254521d66cf50123d730afc95a43b2e13850`.
+Main snapshot: `3539749a409cb56fb8895bb99d58750c8059291c`.
 D-C19 source: `127b65c4` (the exact partner-audited source), candidate provenance
 `5509d7be`. Complete flags: [immutable candidate](data/legality/dc19-candidate.txt)
 and [parsed overrides/hash](data/legality/candidate-config.json), including submit_v3,
 ported routes and all five new_routes. This removes the audit's truncated-JSON limit.
 
 `dojo/legality/profiles.py:controlr_inference` indexes our `dojo/` and `controlr/`
-code without importing it. Main has 527 declared roots, D-C19 502: planner, supervisor,
+code without importing it. Main has 603 declared roots, D-C19 502: planner, supervisor,
 runtime entry/setup, model-agent runtime, perception, all local registered skills,
 every callable/module in the path-loaded ported subtree, known adjacent file-loader
 targets, all cmd_* handlers and the internal observation boundary. Imported
@@ -54,11 +69,11 @@ comments are review evidence. These counts must not be reported as proven board 
 
 | Category | Main | D-C19 |
 |---|---:|---:|
-| reflection | 53 | 39 |
-| unresolved | 28172 | 26174 |
+| reflection | 56 | 39 |
+| unresolved | 28701 | 26174 |
 | checker_module | 1 | 1 |
-| task_data | 101 | 96 |
-| checker_provenance | 175 | 165 |
+| task_data | 102 | 96 |
+| checker_provenance | 178 | 165 |
 | checker_tolerance | 60 | 57 |
 | task_switch | 88 | 67 |
 | checker_state | 53 | 51 |
@@ -76,6 +91,39 @@ Complete machine-readable, grouped inventories:
 Both include category, audit/review group, identity-source disposition, file:line,
 entry point, deep symbol, full call path, reason and exact source evidence.
 Use `gzip -dc docs/experiments/data/legality/main.csv.gz` to inspect them.
+
+## Recent additions: explicit review, separate from legacy debt
+
+Main is pinned after #427, #428, #430, #431, #432 and #433. The bootstrap has
+been refreshed before this tooling's first merge; after it lands, neither legacy
+budgets nor transition pins may grow. The recent additions are **not silently
+allowlisted as old debt**. All findings in the new modules, changed integration
+lines, and `sort_*`, `disc_*`, `belt_*`, push/grasp/stand/retreat option lines are
+listed individually in [the transition review ledger](../../scripts/legality/transition-review.json),
+with source, symbol, exact evidence/reason, occurrence budget, subsystem and a
+review disposition. Dynamic dependencies stay in the full inventory as well.
+The ledger is not a single-line engine exemption or a board clearance: its pins
+only preserve today's report-only CI behavior. It cannot certify clean roots or
+hide any of these signals in the legacy allowlist. Later pins may only be removed;
+new or changed findings fail the ratchet. Truly clean directories retain zero
+findings, including their dependencies.
+
+| Recent subsystem | Exact finding pins | Reason / disposition |
+|---|---:|---|
+| Sort integration | 29 | **Blocked for clean adoption.** `sort_into_containers` path-loads p2 and its nested stages; those still read the instruction and inherit `cmd_obs`. `contain=bottom` and `park_other` are physical arguments, but a general wrapper does not clear that internal policy. The ±10 mm containment band needs an instruction/physical contract and independent provenance. |
+| Thin-slot contact | 112 | **Review required.** `disc_*` options select contact procedures via geometry or explicit skill arguments, not an official task key. `official_read` reads applied jaw control from proprioception, not a success checker. Model fitting, reserve counts 80/150, and the bundled contact profile need transfer/provenance review. Do not promote this through the legacy task-specific planner/holder priors. |
+| Belt tracking / grasp | 59 | **Review required.** `belt_*` options represent tracking, observation, grasp and retry mechanics. Their measured-motion interpretation can be general, but `belt_objects`/matching consume a world whose candidate pruning is still task-conditioned. They inherit that blocker; fixed switches and candidate-count assumptions are not cleared here. |
+| ORG2 push / grasp integration | 286 | **Review required.** Push contact/sequence/clearance, torso mesh slices, stand rings and retreat-axis options use geometry, IK and observed slip. Stream names and “no checker” comments are not checker reads. Their gains, clearance bands and shape-biased grasp sampling remain empirical parameters requiring cross-shape evidence. The inherited arrange planner/perception is still blocked. |
+| Uniform perception proposals / geometry | 248 | **Review required.** General masks/prompts/filters and base refit are explicit roots even before adoption. Catalogue-wide category/caption extraction and raw instruction phrases can be legitimate; verify the index's intrinsic source and fixed, uniform thresholds. Historical `tasks.json` denial in a docstring is a false positive. `instance_evidence=log` is an output-only mode, not a historical-log input. |
+
+The 734 transition pins comprise 720 unresolved calls, four reflection sites,
+four provenance comments, one tolerance-comment signal, three task-data lexical
+signals and two explicit loaders. Every non-opaque signal above has its reason
+recorded in the ledger; none establishes a new checker import or actual schema
+read. The unresolved calls are concrete coverage limitations, not 720 proven
+violations. The legacy allowlist contains 28,591 separate pins; both files are
+source-pinned, disjoint and shrinking after this bootstrap. This separation is
+CI accounting, not a claim that all legacy dependencies are admissible.
 
 ## Path-loaded code coverage
 
@@ -310,7 +358,7 @@ review cases, not additional proven defects in our snapshot.
 
 The inventory job is report-only and uploads all findings. The separate ratchet
 rejects new findings, growing exemption keys/budgets and **any** finding reachable
-from the declared new general-system paths. The initial baseline is historical debt,
+from the declared new general-system paths. The separate transition ledger records reviewed recent additions and cannot mask clean-root findings. The initial legacy baseline is historical debt,
 not board permission. Retire exemptions as paths disappear; never regenerate it to
 make a PR green. Exemptions pin exact source evidence/reason, independent of harmless
 line-number moves. See [DEVELOPMENT](../DEVELOPMENT.md#inference-legality-inventory-and-ratchet).

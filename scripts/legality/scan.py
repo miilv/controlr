@@ -66,14 +66,28 @@ def inventory(root=ROOT):
                                            or r.startswith('controlr.robot.so101.arm_id:')})}
 
 
-def gate(rows, allowlist, previous=None):
+def gate(rows, allowlist, previous=None, reviewed=None, previous_reviewed=None):
     counts = Counter(r['key'] for r in rows)
+    reviewed = reviewed or {}
     issues = []
+    if set(allowlist) & set(reviewed):
+        issues.append('reviewed transition signals must not be hidden in legacy allowlist')
+    if previous_reviewed is not None and any(v != previous_reviewed.get(k) for k, v in reviewed.items()):
+        issues.append('transition review pins grew or changed relative to base')
+    for key, pin in reviewed.items():
+        if not pin.get('reason', '').strip() or pin.get('disposition') not in ('blocked', 'review required'):
+            issues.append(f'invalid transition review: {key}')
     if previous is not None and any(n > previous.get(k, 0) for k, n in allowlist.items()):
         issues.append('allowlist grew relative to base')
     for r in rows:
         clean_path = r.get('clean_reachable', False) or r.get('root', '').replace('.', '/').startswith(GENERAL) or r['file'].startswith(GENERAL) or any(p.replace('.', '/').startswith(GENERAL) for p in r['path'])
-        if counts[r['key']] > allowlist.get(r['key'], 0) or clean_path:
+        pin = reviewed.get(r['key'], {})
+        reviewed_match = (pin.get('count', 0) >= counts[r['key']]
+                          and all(pin.get(k) == r.get(k) for k in ('file', 'func', 'category', 'evidence'))
+                          and pin.get('why') == re.sub(r' \(line \d+\)', '', r['why'])
+                          and bool(pin.get('reason', '').strip())
+                          and pin.get('disposition') in ('blocked', 'review required'))
+        if (counts[r['key']] > allowlist.get(r['key'], 0) and not reviewed_match) or clean_path:
             issues.append(f"{r['file']}:{r['line']} {r['category']}: {r['why']}")
     return issues
 
@@ -102,15 +116,21 @@ def main(argv=None):
     if args.check:
         relative = 'scripts/legality/allowlist.json'
         allowed = json.loads((ROOT / relative).read_text())
-        previous = None
+        reviewed_relative = 'scripts/legality/transition-review.json'
+        reviewed = json.loads((ROOT / reviewed_relative).read_text())
+        previous = previous_reviewed = None
         if args.base_ref:
             subprocess.run(['git', 'cat-file', '-e', args.base_ref + '^{commit}'], cwd=ROOT, check=True, capture_output=True)
             old = subprocess.run(['git', 'show', f'{args.base_ref}:{relative}'], cwd=ROOT, capture_output=True, text=True)
             if old.returncode == 0:
                 previous = json.loads(old.stdout)
+                old_review = subprocess.run(['git', 'show', f'{args.base_ref}:{reviewed_relative}'], cwd=ROOT, capture_output=True, text=True)
+                if old_review.returncode:
+                    raise SystemExit('base scanner exists but its transition review is missing')
+                previous_reviewed = json.loads(old_review.stdout)
             elif subprocess.run(['git', 'cat-file', '-e', args.base_ref + ':scripts/legality/scan.py'], cwd=ROOT, capture_output=True).returncode == 0:
                 raise SystemExit('base scanner exists but its allowlist is missing')
-        problems = gate(report['findings'], allowed, previous)
+        problems = gate(report['findings'], allowed, previous, reviewed, previous_reviewed)
         print('\n'.join(problems[:100]))
         return bool(problems)
     return 0

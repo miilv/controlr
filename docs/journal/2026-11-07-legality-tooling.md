@@ -46,3 +46,16 @@ on 8 November. The inventory and machine-readable candidate/service records mark
 both statuses, covering dedicated/shared/official launchers, model-root variables
 and the legacy generic glyph-address fallback. Historical candidate bytes and
 runtime behavior are unchanged; no model was loaded or evaluated.
+
+
+The bootstrap was refreshed on main `3539749a409cb56fb8895bb99d58750c8059291c`
+after #427/#428/#430/#431/#432/#433. Recent general-library additions have 734
+exact transition review pins, separate from 28,591 legacy pins. Reasons distinguish
+physical options, lexical false positives and unresolved dependencies; sort's p2
+instruction boundary remains a blocker. General masks/prompts/filters and base
+refit are now explicit roots even before adoption (603 roots on main). Both debt
+files shrink after the first merge; neither can clear a clean-root finding. Tests
+cover review pin edits, duplicate growth, overlap, missing reasons and clean-root
+bypasses. The inventory begins with ten legacy retirement items for the joint
+library hand-off. The immutable D-C19 source/flags and reader provenance decisions
+are unchanged.
