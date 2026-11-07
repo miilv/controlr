@@ -1,0 +1,25 @@
+{
+  "config": {
+    "model": "sam3",
+    "sam_threshold": 0.2,
+    "v2b_confidence": 0.25,
+    "dedup_iou": 0.5,
+    "instruction_context_words": 3,
+    "max_instruction_phrase_words": 6
+  },
+  "config_sha256": "1e3e6c320c38982453a9f183f6d0898b19d9f1d5674f5b8324e8823ba84e073a",
+  "wall_s": 6215.512974556987,
+  "images": 180,
+  "catalogue_sha256": "0c49bf1d05d435f24c37ab3981fb1a7bb4de9dc663b785958768f937c2489cb1",
+  "frames_sha256": "c30959fa4ccae99e0dda1e2d6d7b3f0f13cb6b00bbfe9df33a78e2d278f98d5b",
+  "instructions_sha256": "f7c9171923a63b25123229f695a297da18b5568c9e819e99822c24bff9b05b12",
+  "SAM_checkpoint_sha256": "9999e2341ceef5e136daa386eecb55cb414446a00ac2b55eb2dfd2f7c3cf8c9e",
+  "weights_sha256": "d7b2f167a69584697628ba967c0f82f4ecfacd3152267f12b23644cc46e8ca88",
+  "classes_sha256": "900b4967d0ff4353b02efd782c065f556c8cb46289eb31d1e7f2cae56b5b027d",
+  "torch": "2.9.1+cu128",
+  "peak_allocated_gb": 5.573834752,
+  "peak_reserved_gb": 8.539602944,
+  "LLM_calls": 0,
+  "task_config_inputs": 0,
+  "per_task_bank_inputs": 0
+}
