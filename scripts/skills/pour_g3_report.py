@@ -62,11 +62,16 @@ def failure_stage(row, task):
             return "profile/lease" if "lease" in stop else "profile/move"
         tilt = (d.get("final") or {}).get("bottle_tilt")
         if tilt is not None and tilt > 30:
-            reasons = [x.get("plan_fail_reason") for x in (d.get("return") or {}).get("untilt", [])]
+            untilt = (d.get("return") or {}).get("untilt", [])
+            reasons = [x.get("plan_fail_reason") for x in untilt]
             if "budget" in reasons:
                 return "untilt/budget"
             if "lease_too_short" in reasons:
                 return "untilt/lease"
+            fluids = final.get("fluids", [])
+            if (i == first_pending and i < len(fluids) and not fluids[i].get("predicate_now")
+                    and untilt and all(x.get("reached") for x in untilt)):
+                return "capture/checker + return (order unobserved)"
             return "upright/return"
         if i == first_pending:
             fluids = final.get("fluids", [])

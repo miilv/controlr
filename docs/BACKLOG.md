@@ -894,12 +894,19 @@
   the candidate; stream H, journals
   2026-10-29-dojo-h95-pour-lean and -pour-overlap; `ported_pour_pace` "overlap", G3 5/10, successes end at 682-747 of
   800; camera mode adds 42-46 look steps).
-  - Compare the v1 port with the original strict wrapper's v5 and its adaptive ordered composite;
-    [POUR G3 study](experiments/2026-11-07-pour-g3.md) separates budget, fluid capture and upright-edge checks.
-  - Bottle orders that cannot alternate arms (right, centre, left) get no hand-over and run out of steps.
+  - [x] ~~Compare the port and establish fresh G3 feasibility.~~ The v1 body matches; current original strict RGB
+    uses v5. Six mechanisms screened; one registered panel gives budget+b10 **5/10 versus 0/10** full successes,
+    all five with final fluid predicates true. [POUR G3 study](experiments/2026-11-07-pour-g3.md).
+    Flags remain default-off; the camera gap is still open.
+  - Orders without safe companion moves retain little upright margin. One budget episode has all three fluid
+    predicates true but refuses its final 23-step upright at 800 steps; bottle ends at 60.6 degrees.
   - A companion of the centre bottle is unsafe between both bowls. A collision-aware companion check (the pouring
     bottle's swept volume, not a fixed 0.20 m around the bowl) could allow more hand-overs.
   - Lean (normal-speed moves) slips: 5 of 12 camera pours.
+  - Put-back can tip a bottle after successful staged untilt: one fresh budget episode has a 72.6 mm down-move
+    residual and ends at 84.6 degrees. Isolate the contact/return path before changing recovery.
+  - Landmine: later motion can scatter fluid after an earlier upright check latched (632/1921 particles remain
+    in one final bowl). Pending checks and current predicates differ; retain final particle diagnostics.
   Landmine: the checker's arms-home trigger is "either arm" (a nested list ORs), so the 20/50 tiers never bank with
   single-arm pours. We do not exploit that (the lead's ruling); only the full success scores.
 - [ ] **dojo skills: sweep_blocks(_random): stroke reach binds** (stream H, journal 2026-10-29-dojo-h95-sweep). G3 v1

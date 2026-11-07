@@ -1,0 +1,4388 @@
+{
+  "study": "dev-only physics-only POUR G3",
+  "registration_file": "2026-11-07-pour-g3-panel-registration.json",
+  "environment": {
+    "robodojo_version_file": "f57e1633ffed59761bc8e568cfe7530c4b33381c\n+e08ba78888b233b77ed2bb2d92886a52360a1081 XPolicyLab (heads/main)\n afca7b09d60d8beb9c1cb28b43066499940b969b third_party/IsaacLab (heads/main)\n+895c6517243f8cb091c73c018c8167192d39599a third_party/curobo (heads/main)\n",
+    "public_sources_sha256": {
+      "task/RoboDojo/tasks/pour_by_language.py": "f7a15a7fca2c649a7918d68960ede27e667f409a339b668dd9876db890724cfb",
+      "task/RoboDojo/tasks/pour_liquid_into_cup.py": "73f8c91b57c352fdc1e7ba3fe5354b3c10e4156d8e5ba777762ad0fa1aff5663",
+      "env/reward_manager/func_parser.py": "eb928a05c3eb6bae429a922c59e64272c2c3851c22d779143d45627e47b3a504",
+      "env/scene_manager/objects/fluid.py": "12b183d4d798d6b7188fd42747ee1927747318c386a91135551d1fa0561c41b5"
+    },
+    "gpu": "NVIDIA GeForce RTX 5090, 595.99.02, 32607 MiB",
+    "kernel": "7.0.0-42-generic",
+    "resource_limits": {
+      "MemoryMax": "8G",
+      "CPUQuota": "600%",
+      "max_used_vram_MiB": 24576,
+      "disk_floor_GiB": 10
+    },
+    "model_calls": 0,
+    "model_tokens": 0,
+    "model_spend_usd": 0
+  },
+  "source_integrity": {
+    "verified_utc": "2026-11-07T07:21:54.668665+00:00",
+    "controller_commit": "bcc8d4117e5ebaa53a7f597f780033a70fcd6e7a",
+    "controller_files_verified": 283,
+    "public_sources_sha256": {
+      "task/RoboDojo/tasks/pour_by_language.py": "f7a15a7fca2c649a7918d68960ede27e667f409a339b668dd9876db890724cfb",
+      "task/RoboDojo/tasks/pour_liquid_into_cup.py": "73f8c91b57c352fdc1e7ba3fe5354b3c10e4156d8e5ba777762ad0fa1aff5663",
+      "env/reward_manager/func_parser.py": "eb928a05c3eb6bae429a922c59e64272c2c3851c22d779143d45627e47b3a504",
+      "env/scene_manager/objects/fluid.py": "12b183d4d798d6b7188fd42747ee1927747318c386a91135551d1fa0561c41b5"
+    },
+    "matches": true
+  },
+  "all_layout_sha256": {
+    "pour_by_language": {
+      "100060": {
+        "raw": "ffc61608d9a45bb6b6aca6f3a9f087519b49d0564c829900051959df0b605940",
+        ".settled": "d69afe4901471f398e34fa05e5f8989e0b401c60ca7e83daae4f85123cae3a85"
+      },
+      "100061": {
+        "raw": "48add87f81162d49d70b82ebd8cf17fecf2b5f7930fcf69a20d8744b8be51912",
+        ".settled": "bf29837a03ddf700af39499ea41ac0dd879059f02e6e3538674c62a14b11a2a5"
+      },
+      "100062": {
+        "raw": "68a013b6239fcbe1ed67cf629f194240edd60a1f1328749a63b664f2eb590ad4",
+        ".settled": "99ec6b1f5a1be3dea3ee4b211c11117a8e9e9553718f626458099fe631f11589"
+      },
+      "100063": {
+        "raw": "484db9d5a3f4ed781bb67c9a7891a55e862112074bddd8a0a0a2bcbc72274a9c",
+        ".settled": "1ade995fc96d9d865b24cfcd74d84ca31767e93816095dd8d6a725c4e05cd5e7"
+      },
+      "100064": {
+        "raw": "52ff38bc0add403745d6d18f5b5b49f826ef24c37954b8ef8db27f4136384644",
+        ".settled": "d8c4e960928fa85d2e9cec6fec6008dfd039164665ec6015057f07b9eb576e71"
+      },
+      "100065": {
+        "raw": "54dd722947a5353aa5df7ae8e9a1de237cf0e4772d0f8cf8cb02f002b6e36a17",
+        ".settled": "e3d084f4f4e64aa384b062940edec5bb08a81747082f397fa6f3834d494d8746"
+      },
+      "100066": {
+        "raw": "40dbe753b3fdad05294ca5ca4d9efb0fe60601ced13480ccd77960c9b0c6ccf9",
+        ".settled": "30b3fa31412ba5f314d87d231286717c9f67c95f8df5d9c9d7b6a3fd5405a16a"
+      },
+      "100067": {
+        "raw": "e23f5feef1002e175c196d15bfe25537baaa428cfde66903743bac9eac738cf9",
+        ".settled": "ec5f163bd113c598c916058eb88ad79efcf81e485d17768674973495afa3ff01"
+      },
+      "100068": {
+        "raw": "f9d5238053f838256d961724f03fd930cab0f963255c2b5fa481df9e1fca608e",
+        ".settled": "70454eb9f655bd2af5c44a545015c22ba8c6efcab5da70a1ab9d9c6f4534643e"
+      },
+      "100069": {
+        "raw": "3bd77b31dd89ef6622b8e4d888ebdccb8d2e443bb320f282a4350f58a403c3bf",
+        ".settled": "2c66274c68f128a6ead7d9f2b40b2397f5f1b397c837441e8b895afe340c5b03"
+      },
+      "100070": {
+        "raw": "8dcfd50dfab2f63c0108eddc5dc59cc190d029416c27b0f8db4e071d04ee36b8",
+        ".settled": "6e11cac09eb3f0d21581de29c10c63662a3666a584cd2e6ba20a104ac0c5f010"
+      },
+      "100071": {
+        "raw": "7cfc5b954e779d97998ee85610afb6d0b3bfee572d78cb40629120d4a3b33042",
+        ".settled": "05414e36d99508730546f3bdb6b0cb8880d556ca340dcef00ed57fdc3dca37c6"
+      },
+      "100072": {
+        "raw": "5ce6c49ab28f48270eb133c99a59afcade045b5883fc640cbc7eb5bf157f752b",
+        ".settled": "b214219e3d11ea92dd56262c8f1099947157831a2768cf8b1230f37ec4f96cae"
+      },
+      "100080": {
+        "raw": "f054725d70b4190d1b9a0004b4f881a879fd0629cf127f879d6de50a3d1d8546",
+        ".settled": "b49c92ca7bf7ce895c472062db6f4e368f43894aaf5048498153321d9374b819"
+      },
+      "100081": {
+        "raw": "d5cd2a3c246dafe86e3553d2ef303e5de733ad9f3b1d97dd00585aa22c01f570",
+        ".settled": "137436249bd018d0e6b909b3f6e826655518fe31e2d0021d897aeee931f91c3c"
+      },
+      "100082": {
+        "raw": "5d4484d15498b1099039fa21e043735ecbcdb333f4c2a4ec8a0ad2428fcba777",
+        ".settled": "f1622a365fb86f3a257e773d2a284d6745e696f6561ab47a135d2dac038e8fb5"
+      },
+      "100083": {
+        "raw": "dcd95ff8d3d1199ec10fdf8f349b64f9514bbd22671b1c2ad6b67fba911848e0",
+        ".settled": "4e15be279c6ea7b4e30a661e1dedf1312d665f5d68ceba6953a230e04700b544"
+      },
+      "100084": {
+        "raw": "83cf2ac341b48837b7e483bcce9ea7f2fdb8a94bae06363e67f88605d468dcac",
+        ".settled": "488e1795a1bbdba441478eb8e9108e7496ba3f9dbdb5529912a8d9a04abce1b8"
+      },
+      "100085": {
+        "raw": "08e0a73aa3628822f6ad1cc55b9b35ce8c9ee2699b7367ceb350f81395877d8a",
+        ".settled": "9e42a09898e8527550b750a74ab40db88cc3c77b2fc6416f2c0d730e5bcb2dac"
+      },
+      "100086": {
+        "raw": "1a5042e2b976e1846eaff7c43b7c584529f50deefdb41b52f7f547cd56b20395",
+        ".settled": "6044aca4d2f53e238673fb1973a76fbe58e74fadd81f7f59b184de0cd9c46e05"
+      },
+      "100087": {
+        "raw": "45d4d5405c835095cb5709f40cc77c6da705275208f02d82b6becbfdcb7696ef",
+        ".settled": "b54bfa3f04a53570663aa7e25f17f842808665ed3f8914bc49260b1ed6a663b9"
+      },
+      "100088": {
+        "raw": "521bcff8528d6d7a586dc59250a4d56f6d692a4c6e4bcb647dc3523baf2d7b17",
+        ".settled": "5dc73c4dd00993cd7b104d0ce13c0fab9450adbb8c147f9deb52dbbce1d95117"
+      },
+      "100089": {
+        "raw": "767d405b8de0a33593732a1199a89f5743938ec342b21e9652a87c1777a6855f",
+        ".settled": "fefdfb4d69f02726d3215ac49089cade3849b437b27f4048b0b2a991f3164aeb"
+      }
+    },
+    "pour_liquid_into_cup": {
+      "100060": {
+        "raw": "27e7ce0879312442977de26f487f4d01b930ed0b520739e7a4ff8a46aa683980",
+        ".settled": "830df653dc3ade3c582fbe304153179d5d7c72584c3bf833b31d8956e2493ab9"
+      },
+      "100061": {
+        "raw": "55b59117031cb5ea3056590384316ff868f734af0d731f5b95f2371945849603",
+        ".settled": "9a48cf750a2a8375bd10df37965f021207ca90777908a2b813111b2d6bb077e7"
+      },
+      "100062": {
+        "raw": "d2dc7ff7cc0824020ac30d7eb9e99e7bf455335dc0ed00c202eb6a950a2820dc",
+        ".settled": "3fc1332354b28a82758ecc8027eba7c200bb29fa96a092089fd5e0e1db0c739d"
+      },
+      "100063": {
+        "raw": "3ca81b4b4de87b01e9ff742759c773819f5a0b983061cbd7809f2f59dd229dd2",
+        ".settled": "1987d6f6907dcf1f0407fc8f96e7a5393822cdef3a624e0c8b519b3ee15d274e"
+      },
+      "100064": {
+        "raw": "749159d98c753a6edec31b2522e4aefc5a3a1d19f71c3d95ef30da4db10b19df",
+        ".settled": "723a9fcf44368058fbb502f97ead13075358a32e0b0585e3d842f61def3149d7"
+      },
+      "100065": {
+        "raw": "58f926baf11f8d367d8048a3bcc6dd44039287d3c56742d40c711430c059b594",
+        ".settled": "0b36583b360a6ee26c1d74da87d0cef9cdf8b600f840e8ed35d335eddb977d1e"
+      },
+      "100066": {
+        "raw": "aeebd55368fc7f611a77b6d0a0c2516bf06c227eabf6765a3ac45082a4042ad4",
+        ".settled": "c0815bfa40ef4c350fb96a07a2d29c521c8c5ec019bb86c3135b2a4db241fe58"
+      },
+      "100067": {
+        "raw": "4005cfc47dfefc4fddd3b8c758e0528a2dd0b4444b8d8bf6aaf2108f4397ca8c",
+        ".settled": "260abf13688c635b9c6b3e8072de075fcae6ed40a662fe25efea4e324f84a01e"
+      },
+      "100068": {
+        "raw": "3b7ea2003912f19c375bd81c1ec894eab61d2f220a4c17a99e19bb46a53ac512",
+        ".settled": "56cebc7d2f8ebd6b833c109e38f5be62034a4124aed4648b7b8ddb95dc51da73"
+      },
+      "100069": {
+        "raw": "455af7a3cd6a691b7b79c8462763ccd59977d2153ffae95d68f8a08f9673d79f",
+        ".settled": "378965a8433891f6a559d837a57ac2b1df4a090496edc699f090e9df0b2add9d"
+      },
+      "100070": {
+        "raw": "f1b6ff525047a357aa7b11c97bae54321de102078cbe376d9f1f83450cfb29ba",
+        ".settled": "1b5e5affe95b8702fe2324477005f70da960855450699a140425fcd8552469fd"
+      },
+      "100080": {
+        "raw": "ee879e2138a0ee2de911ff889affb789979ade1938990727a64c24e633b975e5",
+        ".settled": "9439062101d18cee03cfa9e7bcea27f8200a311f87f6ebbdd7fa8436c8d37f5a"
+      },
+      "100081": {
+        "raw": "0bd82bedfc03418abe7dc60dd569dd001d84775eb7524ca031bcce2d62dd784d",
+        ".settled": "4da48c21abe47d615a16787befc43288d7734a8922083ebd1801854a1f84e395"
+      },
+      "100082": {
+        "raw": "dea0af9eee596a8b23e4298746499a89c3439e27d3f509924118dbdb1f88daff",
+        ".settled": "57097c9edc412862d3e1bb2c160c47eb4de091e90b62dd5365fa4551ed398462"
+      },
+      "100083": {
+        "raw": "56b2f554b43df779a4e166612365dc0a7d84a7462bbd25cbae7cea254550331a",
+        ".settled": "bfbfa21a8d1c8867b05f4a94b984944fd560c3c9ed094cfab3b18a343f92194a"
+      },
+      "100084": {
+        "raw": "439224c15108c1096edf5bc03653905fa40f2190cedfefdecf8380989e493ec5",
+        ".settled": "18d0488dff330e77fe30de05abea0009e3a1a264aaa460dbf9bd47d971a65e5e"
+      },
+      "100085": {
+        "raw": "00dd45f0ce27293266f42bf6c8da464b887298f764030bd4f1fb6dda05d4022d",
+        ".settled": "b56f2519db34a52c64e993a77a3dbefe2cb6af4d2b86768bfda48a38fb8ba73f"
+      },
+      "100086": {
+        "raw": "b7fb04f944fd56badb5e8be188c252fecef8dee72ae21e9c34d8f634cb3d44e7",
+        ".settled": "40b9b6803887f47dd9dc4abfa11d371f9f5af408bf536549ebf127c93709d881"
+      },
+      "100087": {
+        "raw": "9cfbc958ec883e548f5adeeef635b72a7f112fb14e8877533486b8a06a8f43e9",
+        ".settled": "0cc562bdf406aa2d7d07dc451cc84baa8b9917297305ebd16a3367190c855b72"
+      },
+      "100088": {
+        "raw": "1e48deee91be091dfe830043b5897445298e8de23e7756ccc86fb3318c7fb0f8",
+        ".settled": "392fe64e61aeb45477d1d6c8c9730da984f59d787c6f44c2ca5cb4bf36e7ecee"
+      },
+      "100089": {
+        "raw": "09232ee225869c1429bdae75728809c7f7a0fc54af8edb659be3bf54f84a6461",
+        ".settled": "4dbb42a4a511f0ff4dd2902fea32d2f89cf93c34408acd52b62ffb709e05c5c4"
+      }
+    }
+  },
+  "resource_observations": {
+    "jobs": [
+      {
+        "log": "pour_by_language-100080-A.log",
+        "used_MiB": 10941,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:04:02Z"
+      },
+      {
+        "log": "pour_by_language-100080-B.log",
+        "used_MiB": 10945,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:08:02Z"
+      },
+      {
+        "log": "pour_by_language-100081-A.log",
+        "used_MiB": 3520,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:11:58Z"
+      },
+      {
+        "log": "pour_by_language-100081-B.log",
+        "used_MiB": 5986,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:10:34Z"
+      },
+      {
+        "log": "pour_by_language-100082-A.log",
+        "used_MiB": 8071,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:14:42Z"
+      },
+      {
+        "log": "pour_by_language-100082-B.log",
+        "used_MiB": 6277,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:18:56Z"
+      },
+      {
+        "log": "pour_by_language-100083-A.log",
+        "used_MiB": 8449,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:25:22Z"
+      },
+      {
+        "log": "pour_by_language-100083-B.log",
+        "used_MiB": 9500,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:21:34Z"
+      },
+      {
+        "log": "pour_by_language-100084-A.log",
+        "used_MiB": 6020,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:28:19Z"
+      },
+      {
+        "log": "pour_by_language-100084-B.log",
+        "used_MiB": 13502,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:31:55Z"
+      },
+      {
+        "log": "pour_by_language-100085-A.log",
+        "used_MiB": 10920,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:38:21Z"
+      },
+      {
+        "log": "pour_by_language-100085-B.log",
+        "used_MiB": 12682,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:36:16Z"
+      },
+      {
+        "log": "pour_by_language-100086-A.log",
+        "used_MiB": 8449,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:40:53Z"
+      },
+      {
+        "log": "pour_by_language-100086-B.log",
+        "used_MiB": 8534,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:44:23Z"
+      },
+      {
+        "log": "pour_by_language-100087-A.log",
+        "used_MiB": 6067,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:50:16Z"
+      },
+      {
+        "log": "pour_by_language-100087-B.log",
+        "used_MiB": 5989,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:47:39Z"
+      },
+      {
+        "log": "pour_by_language-100088-A.log",
+        "used_MiB": 3532,
+        "free_GiB_rounded": 92,
+        "start_utc": "2026-11-07T06:52:51Z"
+      },
+      {
+        "log": "pour_by_language-100088-B.log",
+        "used_MiB": 10984,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:56:12Z"
+      },
+      {
+        "log": "pour_by_language-100089-A.log",
+        "used_MiB": 9710,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:00:42Z"
+      },
+      {
+        "log": "pour_by_language-100089-B.log",
+        "used_MiB": 8481,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T06:58:55Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100080-A.log",
+        "used_MiB": 8449,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:04:04Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100080-B.log",
+        "used_MiB": 13449,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:05:11Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100081-A.log",
+        "used_MiB": 13461,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:07:01Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100081-B.log",
+        "used_MiB": 13429,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:06:10Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100082-A.log",
+        "used_MiB": 13462,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:07:58Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100082-B.log",
+        "used_MiB": 13462,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:09:12Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100083-A.log",
+        "used_MiB": 13430,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:11:06Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100083-B.log",
+        "used_MiB": 13462,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:10:10Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100084-A.log",
+        "used_MiB": 13462,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:12:18Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100084-B.log",
+        "used_MiB": 13501,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:13:14Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100085-A.log",
+        "used_MiB": 8482,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:14:57Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100085-B.log",
+        "used_MiB": 5997,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:14:07Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100086-A.log",
+        "used_MiB": 5988,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:15:46Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100086-B.log",
+        "used_MiB": 5955,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:16:27Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100087-A.log",
+        "used_MiB": 5975,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:17:54Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100087-B.log",
+        "used_MiB": 5955,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:17:13Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100088-A.log",
+        "used_MiB": 5947,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:18:34Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100088-B.log",
+        "used_MiB": 6495,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:19:16Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100089-A.log",
+        "used_MiB": 8064,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:20:41Z"
+      },
+      {
+        "log": "pour_liquid_into_cup-100089-B.log",
+        "used_MiB": 8448,
+        "free_GiB_rounded": 93,
+        "start_utc": "2026-11-07T07:19:58Z"
+      }
+    ],
+    "first_start_utc": "2026-11-07T06:04:02Z",
+    "completed_utc": "2026-11-07T07:21:33Z",
+    "gpu_used_MiB_minmax": [
+      3520,
+      13502
+    ],
+    "free_GiB_rounded_min": 92,
+    "footprint_apparent_bytes": {
+      "/home/physicalai/controlr-pour": 178573097,
+      "/home/physicalai/dojo-data/pour": 275297900
+    }
+  },
+  "baseline_and_pilot_summaries": {
+    "baseline-pour_by_language": {
+      "n": 10,
+      "mean": 0.0,
+      "sd": 0.0,
+      "successes": 0,
+      "stages": {
+        "pour 3": 8,
+        "pour 2": 2
+      }
+    },
+    "baseline-pour_liquid_into_cup": {
+      "n": 10,
+      "mean": 70.0,
+      "sd": 48.3045891539648,
+      "successes": 7,
+      "stages": {
+        "success": 7,
+        "done": 3
+      }
+    },
+    "pilot-aim": {
+      "n": 3,
+      "mean": 0.0,
+      "sd": 0.0,
+      "successes": 0,
+      "stages": {
+        "pour 3": 3
+      }
+    },
+    "pilot-budget": {
+      "n": 3,
+      "mean": 66.66666666666667,
+      "sd": 57.735026918962575,
+      "successes": 2,
+      "stages": {
+        "success": 2,
+        "pour 2": 1
+      }
+    },
+    "pilot-checked": {
+      "n": 3,
+      "mean": 0.0,
+      "sd": 0.0,
+      "successes": 0,
+      "stages": {
+        "done": 3
+      }
+    },
+    "pilot-overlap": {
+      "n": 3,
+      "mean": 33.333333333333336,
+      "sd": 57.735026918962575,
+      "successes": 1,
+      "stages": {
+        "done": 1,
+        "success": 1,
+        "pour 2": 1
+      }
+    },
+    "pilot-ref-aim": {
+      "n": 1,
+      "mean": 100.0,
+      "sd": null,
+      "successes": 1,
+      "stages": {
+        "success": 1
+      }
+    },
+    "pilot-ref-checked": {
+      "n": 1,
+      "mean": 100.0,
+      "sd": null,
+      "successes": 1,
+      "stages": {
+        "success": 1
+      }
+    },
+    "pilot-sparse": {
+      "n": 3,
+      "mean": 0.0,
+      "sd": 0.0,
+      "successes": 0,
+      "stages": {
+        "pour 3": 3
+      }
+    },
+    "pilot-via": {
+      "n": 3,
+      "mean": 0.0,
+      "sd": 0.0,
+      "successes": 0,
+      "stages": {
+        "pour 3": 3
+      }
+    }
+  },
+  "baseline_diagnosed_stages": {
+    "pour_by_language": {
+      "profile_budget": 5,
+      "late_grasp_lift": 3,
+      "tilt_slip": 2
+    },
+    "pour_liquid_into_cup": {
+      "success": 7,
+      "completed_upright_checker": 2,
+      "upright_return": 1
+    }
+  },
+  "panel": {
+    "cells": {
+      "pour_by_language": {
+        "n": 10,
+        "expected": 10,
+        "missing": [],
+        "excluded": [],
+        "complete": true,
+        "official": {
+          "A": {
+            "mean": 0.0,
+            "sd": 0.0
+          },
+          "B": {
+            "mean": 54.0,
+            "sd": 49.03513479582211
+          },
+          "delta": {
+            "mean": 54.0,
+            "sd": 49.03513479582211
+          },
+          "wins": 7,
+          "losses": 0,
+          "ties": 3
+        },
+        "full_only": {
+          "A": {
+            "mean": 0,
+            "sd": 0.0
+          },
+          "B": {
+            "mean": 50,
+            "sd": 52.70462766947299
+          },
+          "delta": {
+            "mean": 50,
+            "sd": 52.70462766947299
+          },
+          "wins": 5,
+          "losses": 0,
+          "ties": 5
+        },
+        "successes": {
+          "A": 0,
+          "B": 5
+        },
+        "clean_successes": {
+          "A": 0,
+          "B": 5
+        },
+        "success_flips": {
+          "B_only": 5,
+          "neither": 5
+        },
+        "stages": {
+          "A": {
+            "profile/budget": 8,
+            "grasp/lift": 1,
+            "tilt/slip": 1
+          },
+          "B": {
+            "success": 5,
+            "grasp/lift": 1,
+            "tilt/slip": 2,
+            "untilt/budget": 1,
+            "upright/return": 1
+          }
+        },
+        "steps": {
+          "A": {
+            "median": 796.0,
+            "max": 800
+          },
+          "B": {
+            "median": 696.0,
+            "max": 800
+          }
+        }
+      },
+      "pour_liquid_into_cup": {
+        "n": 10,
+        "expected": 10,
+        "missing": [],
+        "excluded": [],
+        "complete": true,
+        "official": {
+          "A": {
+            "mean": 60.0,
+            "sd": 51.63977794943222
+          },
+          "B": {
+            "mean": 100.0,
+            "sd": 0.0
+          },
+          "delta": {
+            "mean": 40.0,
+            "sd": 51.63977794943222
+          },
+          "wins": 4,
+          "losses": 0,
+          "ties": 6
+        },
+        "full_only": {
+          "A": {
+            "mean": 60,
+            "sd": 51.63977794943222
+          },
+          "B": {
+            "mean": 100,
+            "sd": 0.0
+          },
+          "delta": {
+            "mean": 40,
+            "sd": 51.63977794943222
+          },
+          "wins": 4,
+          "losses": 0,
+          "ties": 6
+        },
+        "successes": {
+          "A": 6,
+          "B": 10
+        },
+        "clean_successes": {
+          "A": 6,
+          "B": 10
+        },
+        "success_flips": {
+          "B_only": 4,
+          "both": 6
+        },
+        "stages": {
+          "A": {
+            "capture/checker + return (order unobserved)": 4,
+            "success": 6
+          },
+          "B": {
+            "success": 10
+          }
+        },
+        "steps": {
+          "A": {
+            "median": 291.5,
+            "max": 385
+          },
+          "B": {
+            "median": 289.0,
+            "max": 292
+          }
+        }
+      }
+    },
+    "decision": {
+      "complete": true,
+      "gain_pass": true,
+      "guard_pass": true,
+      "clean_feasibility": true,
+      "passes": true
+    }
+  },
+  "episodes": {
+    "baseline-pour_by_language": {
+      "source_commits": [
+        "aac2a4b432d2f5601e83194489daba354e20c452"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on"
+      },
+      "rows": [
+        {
+          "seed": 100060,
+          "score": 0.0,
+          "success": false,
+          "steps": 791,
+          "wall_s": 221.4,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          }
+        },
+        {
+          "seed": 100061,
+          "score": 0.0,
+          "success": false,
+          "steps": 795,
+          "wall_s": 153.6,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          }
+        },
+        {
+          "seed": 100062,
+          "score": 0.0,
+          "success": false,
+          "steps": 791,
+          "wall_s": 160.3,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          }
+        },
+        {
+          "seed": 100063,
+          "score": 0.0,
+          "success": false,
+          "steps": 792,
+          "wall_s": 168.9,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          }
+        },
+        {
+          "seed": 100064,
+          "score": 0.0,
+          "success": false,
+          "steps": 795,
+          "wall_s": 187.8,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: neck grasp failed (bottle did not rise upright)",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          }
+        },
+        {
+          "seed": 100065,
+          "score": 0.0,
+          "success": false,
+          "steps": 527,
+          "wall_s": 124.5,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 2",
+            "note": "done [['bottle_0', 'bowl_0']]; bottle_1 -> bowl_1 not poured: in-hand slip",
+            "not_poured": "['bottle_1', 'bowl_1']",
+            "finish": "ok"
+          }
+        },
+        {
+          "seed": 100066,
+          "score": 0.0,
+          "success": false,
+          "steps": 799,
+          "wall_s": 174.3,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: neck grasp failed (bottle did not rise upright)",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          }
+        },
+        {
+          "seed": 100067,
+          "score": 0.0,
+          "success": false,
+          "steps": 794,
+          "wall_s": 175.4,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: neck grasp failed (bottle did not rise upright)",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          }
+        },
+        {
+          "seed": 100068,
+          "score": 0.0,
+          "success": false,
+          "steps": 528,
+          "wall_s": 108.4,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 2",
+            "note": "done [['bottle_0', 'bowl_0']]; bottle_1 -> bowl_1 not poured: in-hand slip",
+            "not_poured": "['bottle_1', 'bowl_1']",
+            "finish": "ok"
+          }
+        },
+        {
+          "seed": 100069,
+          "score": 0.0,
+          "success": false,
+          "steps": 793,
+          "wall_s": 145.6,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          }
+        }
+      ]
+    },
+    "baseline-pour_liquid_into_cup": {
+      "source_commits": [
+        "aac2a4b432d2f5601e83194489daba354e20c452"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on"
+      },
+      "rows": [
+        {
+          "seed": 100060,
+          "score": 1.0,
+          "success": true,
+          "steps": 294,
+          "wall_s": 41.1,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 294,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          }
+        },
+        {
+          "seed": 100061,
+          "score": 1.0,
+          "success": true,
+          "steps": 291,
+          "wall_s": 42.6,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 291,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          }
+        },
+        {
+          "seed": 100062,
+          "score": 1.0,
+          "success": true,
+          "steps": 284,
+          "wall_s": 38.0,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 284,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          }
+        },
+        {
+          "seed": 100063,
+          "score": 1.0,
+          "success": true,
+          "steps": 293,
+          "wall_s": 44.7,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 293,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          }
+        },
+        {
+          "seed": 100064,
+          "score": 1.0,
+          "success": true,
+          "steps": 298,
+          "wall_s": 45.8,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 298,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          }
+        },
+        {
+          "seed": 100065,
+          "score": 0.0,
+          "success": false,
+          "steps": 387,
+          "wall_s": 52.1,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": true,
+            "status": "ok",
+            "skill": "ported",
+            "steps": 384,
+            "verified": true,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ok"
+          }
+        },
+        {
+          "seed": 100066,
+          "score": 1.0,
+          "success": true,
+          "steps": 291,
+          "wall_s": 41.5,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 291,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          }
+        },
+        {
+          "seed": 100067,
+          "score": 0.0,
+          "success": false,
+          "steps": 370,
+          "wall_s": 47.1,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": true,
+            "status": "step_budget",
+            "skill": "ported",
+            "steps": 367,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ok"
+          }
+        },
+        {
+          "seed": 100068,
+          "score": 1.0,
+          "success": true,
+          "steps": 288,
+          "wall_s": 40.4,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 288,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          }
+        },
+        {
+          "seed": 100069,
+          "score": 0.0,
+          "success": false,
+          "steps": 380,
+          "wall_s": 60.0,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": true,
+            "status": "ok",
+            "skill": "ported",
+            "steps": 377,
+            "verified": true,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ok"
+          }
+        }
+      ]
+    },
+    "pilot-aim": {
+      "source_commits": [
+        "af26b2ef2af8c7a2ab9bff3ec8eca748e1c1719e"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_aim": "b10"
+      },
+      "rows": [
+        {
+          "seed": 100070,
+          "score": 0.0,
+          "success": false,
+          "steps": 800,
+          "wall_s": 146.2,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1912,
+                "residual": 9,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.004685059864653826
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1917,
+                "residual": 3,
+                "outside": 1,
+                "raw_poured_capture": 0.9994786235662148,
+                "raw_residual_fraction": 0.0015616866215512754
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1911,
+                "outside": 10,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9947943779281624
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100071,
+          "score": 0.0,
+          "success": false,
+          "steps": 798,
+          "wall_s": 186.0,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1921,
+                "residual": 0,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1921,
+                "residual": 0,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1911,
+                "outside": 10,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9947943779281624
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100072,
+          "score": 0.0,
+          "success": false,
+          "steps": 789,
+          "wall_s": 180.9,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: neck grasp failed (bottle did not rise upright)",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "step_budget"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1910,
+                "residual": 10,
+                "outside": 1,
+                "raw_poured_capture": 0.9994767137624281,
+                "raw_residual_fraction": 0.0052056220718375845
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1886,
+                "residual": 35,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.018219677251431546
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "pilot-budget": {
+      "source_commits": [
+        "cc9d567e00bdd811e402ca829db9d4e290e2d460"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_aim": "b10",
+        "ported_pour_pace": "budget"
+      },
+      "rows": [
+        {
+          "seed": 100070,
+          "score": 1.0,
+          "success": true,
+          "steps": 785,
+          "wall_s": 216.3,
+          "stable": true,
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: profile end",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1909,
+                "residual": 12,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.006246746486205101
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1877,
+                "residual": 7,
+                "outside": 37,
+                "raw_poured_capture": 0.9806687565308255,
+                "raw_residual_fraction": 0.003643935450286309
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1852,
+                "residual": 69,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.03591879229567933
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100071,
+          "score": 1.0,
+          "success": true,
+          "steps": 698,
+          "wall_s": 168.2,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "stage": "done",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1'], ['bottle_2', 'bowl_2']]",
+            "finish": "ended",
+            "skill": "pour_in_order"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1917,
+                "residual": 3,
+                "outside": 1,
+                "raw_poured_capture": 0.9994786235662148,
+                "raw_residual_fraction": 0.0015616866215512754
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1921,
+                "residual": 0,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1841,
+                "residual": 78,
+                "outside": 2,
+                "raw_poured_capture": 0.9989148128052089,
+                "raw_residual_fraction": 0.04060385216033316
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100072,
+          "score": 0.0,
+          "success": false,
+          "steps": 426,
+          "wall_s": 91.0,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 2",
+            "note": "done [['bottle_0', 'bowl_0']]; bottle_1 -> bowl_1 not poured: in-hand slip",
+            "not_poured": "['bottle_1', 'bowl_1']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 2,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 243,
+                "residual": 0,
+                "outside": 1678,
+                "raw_poured_capture": 0.12649661634565332,
+                "raw_residual_fraction": 0.0
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "pilot-checked": {
+      "source_commits": [
+        "af26b2ef2af8c7a2ab9bff3ec8eca748e1c1719e"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_aim": "b10",
+        "ported_pour_profile": "checked"
+      },
+      "rows": [
+        {
+          "seed": 100070,
+          "score": 0.0,
+          "success": false,
+          "steps": 253,
+          "wall_s": 45.0,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": true,
+            "status": "logic",
+            "skill": "pour_in_order",
+            "steps": 240,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_in_order_v5",
+            "stage": "done",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 3,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100071,
+          "score": 0.0,
+          "success": false,
+          "steps": 369,
+          "wall_s": 64.9,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": true,
+            "status": "logic",
+            "skill": "pour_in_order",
+            "steps": 366,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_in_order_v5",
+            "stage": "done",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 3,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1905,
+                "residual": 15,
+                "outside": 1,
+                "raw_poured_capture": 0.9994753410283316,
+                "raw_residual_fraction": 0.007808433107756377
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100072,
+          "score": 0.0,
+          "success": false,
+          "steps": 270,
+          "wall_s": 76.5,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": true,
+            "status": "logic",
+            "skill": "pour_in_order",
+            "steps": 257,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_in_order_v5",
+            "stage": "done",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 3,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "pilot-overlap": {
+      "source_commits": [
+        "af26b2ef2af8c7a2ab9bff3ec8eca748e1c1719e"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_aim": "b10",
+        "ported_pour_pace": "overlap"
+      },
+      "rows": [
+        {
+          "seed": 100070,
+          "score": 0.0,
+          "success": false,
+          "steps": 793,
+          "wall_s": 252.4,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": true,
+            "stage": "done",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1'], ['bottle_2', 'bowl_2']]",
+            "finish": "ok",
+            "skill": "pour_in_order"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 1717,
+                "residual": 10,
+                "outside": 194,
+                "raw_poured_capture": 0.8984824699110413,
+                "raw_residual_fraction": 0.0052056220718375845
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1919,
+                "residual": 0,
+                "outside": 2,
+                "raw_poured_capture": 0.9989588755856325,
+                "raw_residual_fraction": 0.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 351,
+                "residual": 1570,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.8172826652785008
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100071,
+          "score": 1.0,
+          "success": true,
+          "steps": 746,
+          "wall_s": 176.7,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "stage": "done",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1'], ['bottle_2', 'bowl_2']]",
+            "finish": "ended",
+            "skill": "pour_in_order"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1915,
+                "residual": 3,
+                "outside": 3,
+                "raw_poured_capture": 0.9984358706986444,
+                "raw_residual_fraction": 0.0015616866215512754
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1921,
+                "residual": 0,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1834,
+                "residual": 84,
+                "outside": 3,
+                "raw_poured_capture": 0.9983669025585193,
+                "raw_residual_fraction": 0.04372722540343571
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100072,
+          "score": 0.0,
+          "success": false,
+          "steps": 447,
+          "wall_s": 130.5,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 2",
+            "note": "done [['bottle_0', 'bowl_0']]; bottle_1 -> bowl_1 not poured: in-hand slip",
+            "not_poured": "['bottle_1', 'bowl_1']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 2,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 743,
+                "residual": 6,
+                "outside": 1172,
+                "raw_poured_capture": 0.38798955613577024,
+                "raw_residual_fraction": 0.0031233732431025507
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "pilot-ref-aim": {
+      "source_commits": [
+        "af26b2ef2af8c7a2ab9bff3ec8eca748e1c1719e"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_aim": "b10"
+      },
+      "rows": [
+        {
+          "seed": 100070,
+          "score": 1.0,
+          "success": true,
+          "steps": 285,
+          "wall_s": 45.5,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 285,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5832,
+                "residual": 80,
+                "outside": 160,
+                "raw_poured_capture": 0.9732977303070761,
+                "raw_residual_fraction": 0.013175230566534914
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "pilot-ref-checked": {
+      "source_commits": [
+        "af26b2ef2af8c7a2ab9bff3ec8eca748e1c1719e"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_aim": "b10",
+        "ported_pour_profile": "checked"
+      },
+      "rows": [
+        {
+          "seed": 100070,
+          "score": 1.0,
+          "success": true,
+          "steps": 285,
+          "wall_s": 51.2,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported:pour_bottle_v5",
+            "steps": 285,
+            "verified": false,
+            "error": "bottle still held (no budget for the put-back)",
+            "source": "robot-harness a21dd6f skills/pour_bottle_v5",
+            "holding": "{'arm': 'left', 'object': 'wuliangye_0_0'}",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "holding",
+            "finish": "suppressed: checked pour still holds bottle"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5831,
+                "residual": 88,
+                "outside": 153,
+                "raw_poured_capture": 0.9744318181818182,
+                "raw_residual_fraction": 0.014492753623188406
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "pilot-sparse": {
+      "source_commits": [
+        "af26b2ef2af8c7a2ab9bff3ec8eca748e1c1719e"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_aim": "b10",
+        "ported_pour_profile": "sparse"
+      },
+      "rows": [
+        {
+          "seed": 100070,
+          "score": 0.0,
+          "success": false,
+          "steps": 787,
+          "wall_s": 193.6,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 3,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 1066,
+                "residual": 14,
+                "outside": 841,
+                "raw_poured_capture": 0.5589931830099633,
+                "raw_residual_fraction": 0.007287870900572618
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1895,
+                "residual": 26,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.01353461738677772
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100071,
+          "score": 0.0,
+          "success": false,
+          "steps": 791,
+          "wall_s": 198.8,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: in-hand slip",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 3,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1903,
+                "residual": 18,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.009370119729307652
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1909,
+                "residual": 12,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.006246746486205101
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100072,
+          "score": 0.0,
+          "success": false,
+          "steps": 727,
+          "wall_s": 229.0,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: neck grasp failed (bottle did not rise upright)",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 3,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1902,
+                "residual": 19,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.00989068193649141
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 1725,
+                "residual": 192,
+                "outside": 4,
+                "raw_poured_capture": 0.9976865240023135,
+                "raw_residual_fraction": 0.09994794377928162
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "pilot-via": {
+      "source_commits": [
+        "af26b2ef2af8c7a2ab9bff3ec8eca748e1c1719e"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_aim": "b10",
+        "ported_pour_profile": "via"
+      },
+      "rows": [
+        {
+          "seed": 100070,
+          "score": 0.0,
+          "success": false,
+          "steps": 789,
+          "wall_s": 187.2,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 3,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1912,
+                "residual": 9,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.004685059864653826
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1899,
+                "residual": 20,
+                "outside": 2,
+                "raw_poured_capture": 0.9989479221462388,
+                "raw_residual_fraction": 0.010411244143675169
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100071,
+          "score": 0.0,
+          "success": false,
+          "steps": 786,
+          "wall_s": 137.5,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 3,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1902,
+                "residual": 18,
+                "outside": 1,
+                "raw_poured_capture": 0.999474513925381,
+                "raw_residual_fraction": 0.009370119729307652
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1907,
+                "residual": 13,
+                "outside": 1,
+                "raw_poured_capture": 0.999475890985325,
+                "raw_residual_fraction": 0.00676730869338886
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        },
+        {
+          "seed": 100072,
+          "score": 0.0,
+          "success": false,
+          "steps": 793,
+          "wall_s": 190.4,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: neck grasp failed (bottle did not rise upright)",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "step_budget"
+          },
+          "pour_final": {
+            "pending_upright_checks": 3,
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1903,
+                "residual": 18,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.009370119729307652
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1729,
+                "residual": 191,
+                "outside": 1,
+                "raw_poured_capture": 0.999421965317919,
+                "raw_residual_fraction": 0.09942738157209786
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "panel-A-pour_by_language": {
+      "source_commits": [
+        "bcc8d4117e5ebaa53a7f597f780033a70fcd6e7a"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_pace": "v1",
+        "ported_pour_aim": "v1",
+        "ported_pour_profile": "off"
+      },
+      "rows": [
+        {
+          "seed": 100080,
+          "score": 0.0,
+          "success": false,
+          "steps": 789,
+          "wall_s": 211.8,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1918,
+                "residual": 3,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0015616866215512754
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1858,
+                "residual": 63,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.03279541905257678
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1915,
+                "outside": 6,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9968766267568975
+              }
+            ]
+          },
+          "failure_stage": "profile/budget"
+        },
+        {
+          "seed": 100081,
+          "score": 0.0,
+          "success": false,
+          "steps": 796,
+          "wall_s": 146.4,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1921,
+                "residual": 0,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1921,
+                "residual": 0,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1903,
+                "outside": 18,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9906298802706923
+              }
+            ]
+          },
+          "failure_stage": "profile/budget"
+        },
+        {
+          "seed": 100082,
+          "score": 0.0,
+          "success": false,
+          "steps": 797,
+          "wall_s": 230.5,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1855,
+                "residual": 65,
+                "outside": 1,
+                "raw_poured_capture": 0.9994612068965517,
+                "raw_residual_fraction": 0.0338365434669443
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1914,
+                "residual": 7,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.003643935450286309
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1910,
+                "outside": 11,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9942738157209786
+              }
+            ]
+          },
+          "failure_stage": "profile/budget"
+        },
+        {
+          "seed": 100083,
+          "score": 0.0,
+          "success": false,
+          "steps": 790,
+          "wall_s": 157.1,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1914,
+                "residual": 7,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.003643935450286309
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1916,
+                "residual": 4,
+                "outside": 1,
+                "raw_poured_capture": 0.9994783515910276,
+                "raw_residual_fraction": 0.002082248828735034
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1910,
+                "outside": 11,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9942738157209786
+              }
+            ]
+          },
+          "failure_stage": "profile/budget"
+        },
+        {
+          "seed": 100084,
+          "score": 0.0,
+          "success": false,
+          "steps": 796,
+          "wall_s": 195.9,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: neck grasp failed (bottle did not rise upright)",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1914,
+                "residual": 6,
+                "outside": 1,
+                "raw_poured_capture": 0.9994778067885117,
+                "raw_residual_fraction": 0.0031233732431025507
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1850,
+                "residual": 69,
+                "outside": 2,
+                "raw_poured_capture": 0.9989200863930886,
+                "raw_residual_fraction": 0.03591879229567933
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          },
+          "failure_stage": "grasp/lift"
+        },
+        {
+          "seed": 100085,
+          "score": 0.0,
+          "success": false,
+          "steps": 523,
+          "wall_s": 123.9,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 2",
+            "note": "done [['bottle_0', 'bowl_0']]; bottle_1 -> bowl_1 not poured: in-hand slip",
+            "not_poured": "['bottle_1', 'bowl_1']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 2,
+            "pending_upright_labels": [
+              "bottle_1",
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 842,
+                "residual": 13,
+                "outside": 1066,
+                "raw_poured_capture": 0.4412997903563941,
+                "raw_residual_fraction": 0.00676730869338886
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          },
+          "failure_stage": "tilt/slip"
+        },
+        {
+          "seed": 100086,
+          "score": 0.0,
+          "success": false,
+          "steps": 796,
+          "wall_s": 185.7,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1912,
+                "residual": 6,
+                "outside": 3,
+                "raw_poured_capture": 0.9984334203655353,
+                "raw_residual_fraction": 0.0031233732431025507
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1865,
+                "residual": 56,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.029151483602290473
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1907,
+                "outside": 14,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9927121290994274
+              }
+            ]
+          },
+          "failure_stage": "profile/budget"
+        },
+        {
+          "seed": 100087,
+          "score": 0.0,
+          "success": false,
+          "steps": 796,
+          "wall_s": 132.7,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1914,
+                "residual": 7,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.003643935450286309
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1921,
+                "residual": 0,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1915,
+                "outside": 6,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9968766267568975
+              }
+            ]
+          },
+          "failure_stage": "profile/budget"
+        },
+        {
+          "seed": 100088,
+          "score": 0.0,
+          "success": false,
+          "steps": 793,
+          "wall_s": 183.8,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1916,
+                "residual": 5,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0026028110359187923
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1864,
+                "residual": 56,
+                "outside": 1,
+                "raw_poured_capture": 0.9994638069705094,
+                "raw_residual_fraction": 0.029151483602290473
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1913,
+                "outside": 8,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9958355023425299
+              }
+            ]
+          },
+          "failure_stage": "profile/budget"
+        },
+        {
+          "seed": 100089,
+          "score": 0.0,
+          "success": false,
+          "steps": 800,
+          "wall_s": 177.7,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: step budget",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1914,
+                "residual": 6,
+                "outside": 1,
+                "raw_poured_capture": 0.9994778067885117,
+                "raw_residual_fraction": 0.0031233732431025507
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1915,
+                "residual": 6,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0031233732431025507
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1916,
+                "outside": 5,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9973971889640812
+              }
+            ]
+          },
+          "failure_stage": "profile/budget"
+        }
+      ]
+    },
+    "panel-B-pour_by_language": {
+      "source_commits": [
+        "bcc8d4117e5ebaa53a7f597f780033a70fcd6e7a"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_pace": "budget",
+        "ported_pour_aim": "b10",
+        "ported_pour_profile": "off"
+      },
+      "rows": [
+        {
+          "seed": 100080,
+          "score": 1.0,
+          "success": true,
+          "steps": 655,
+          "wall_s": 127.7,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "stage": "done",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1'], ['bottle_2', 'bowl_2']]",
+            "finish": "ended",
+            "skill": "pour_in_order"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1915,
+                "residual": 6,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0031233732431025507
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1830,
+                "residual": 90,
+                "outside": 1,
+                "raw_poured_capture": 0.9994538503549972,
+                "raw_residual_fraction": 0.04685059864653826
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1844,
+                "residual": 73,
+                "outside": 4,
+                "raw_poured_capture": 0.9978354978354979,
+                "raw_residual_fraction": 0.03800104112441437
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100081,
+          "score": 0.2,
+          "success": false,
+          "steps": 326,
+          "wall_s": 62.8,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 2",
+            "note": "done [['bottle_0', 'bowl_0']]; bottle_1 -> bowl_1 not poured: neck grasp failed (bottle did not rise upright)",
+            "not_poured": "['bottle_1', 'bowl_1']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 2,
+            "pending_upright_labels": [
+              "bottle_1",
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1842,
+                "residual": 79,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.04112441436751692
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 5,
+                "residual": 1777,
+                "outside": 139,
+                "raw_poured_capture": 0.034722222222222224,
+                "raw_residual_fraction": 0.9250390421655388
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          },
+          "failure_stage": "grasp/lift"
+        },
+        {
+          "seed": 100082,
+          "score": 1.0,
+          "success": true,
+          "steps": 687,
+          "wall_s": 137.2,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "stage": "done",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1'], ['bottle_2', 'bowl_2']]",
+            "finish": "ended",
+            "skill": "pour_in_order"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1832,
+                "residual": 87,
+                "outside": 2,
+                "raw_poured_capture": 0.9989094874591058,
+                "raw_residual_fraction": 0.045288912024986985
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1915,
+                "residual": 6,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0031233732431025507
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1921,
+                "residual": 0,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100083,
+          "score": 1.0,
+          "success": true,
+          "steps": 750,
+          "wall_s": 201.1,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "stage": "done",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1'], ['bottle_2', 'bowl_2']]",
+            "finish": "ended",
+            "skill": "pour_in_order"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1915,
+                "residual": 6,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0031233732431025507
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1916,
+                "residual": 3,
+                "outside": 2,
+                "raw_poured_capture": 0.9989572471324296,
+                "raw_residual_fraction": 0.0015616866215512754
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1836,
+                "residual": 85,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.04424778761061947
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100084,
+          "score": 1.0,
+          "success": true,
+          "steps": 740,
+          "wall_s": 234.9,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "stage": "done",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1'], ['bottle_2', 'bowl_2']]",
+            "finish": "ended",
+            "skill": "pour_in_order"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1912,
+                "residual": 7,
+                "outside": 2,
+                "raw_poured_capture": 0.9989550679205852,
+                "raw_residual_fraction": 0.003643935450286309
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1837,
+                "residual": 83,
+                "outside": 1,
+                "raw_poured_capture": 0.999455930359086,
+                "raw_residual_fraction": 0.04320666319625195
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1917,
+                "residual": 3,
+                "outside": 1,
+                "raw_poured_capture": 0.9994786235662148,
+                "raw_residual_fraction": 0.0015616866215512754
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100085,
+          "score": 0.0,
+          "success": false,
+          "steps": 414,
+          "wall_s": 94.8,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 2",
+            "note": "done [['bottle_0', 'bowl_0']]; bottle_1 -> bowl_1 not poured: in-hand slip",
+            "not_poured": "['bottle_1', 'bowl_1']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 2,
+            "pending_upright_labels": [
+              "bottle_1",
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 632,
+                "residual": 9,
+                "outside": 1280,
+                "raw_poured_capture": 0.3305439330543933,
+                "raw_residual_fraction": 0.004685059864653826
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          },
+          "failure_stage": "tilt/slip"
+        },
+        {
+          "seed": 100086,
+          "score": 0.0,
+          "success": false,
+          "steps": 800,
+          "wall_s": 174.9,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: profile end",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "step_budget"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1913,
+                "residual": 7,
+                "outside": 1,
+                "raw_poured_capture": 0.9994775339602926,
+                "raw_residual_fraction": 0.003643935450286309
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1814,
+                "residual": 71,
+                "outside": 36,
+                "raw_poured_capture": 0.9805405405405405,
+                "raw_residual_fraction": 0.03695991671004685
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1913,
+                "residual": 5,
+                "outside": 3,
+                "raw_poured_capture": 0.9984342379958246,
+                "raw_residual_fraction": 0.0026028110359187923
+              }
+            ]
+          },
+          "failure_stage": "untilt/budget"
+        },
+        {
+          "seed": 100087,
+          "score": 0.2,
+          "success": false,
+          "steps": 719,
+          "wall_s": 136.7,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 3",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1']]; bottle_2 -> bowl_2 not poured: in-hand slip",
+            "not_poured": "['bottle_2', 'bowl_2']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1921,
+                "residual": 0,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 1631,
+                "residual": 10,
+                "outside": 280,
+                "raw_poured_capture": 0.8534798534798534,
+                "raw_residual_fraction": 0.0052056220718375845
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1797,
+                "outside": 124,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9354502863092139
+              }
+            ]
+          },
+          "failure_stage": "tilt/slip"
+        },
+        {
+          "seed": 100088,
+          "score": 1.0,
+          "success": true,
+          "steps": 705,
+          "wall_s": 141.9,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "stage": "done",
+            "note": "done [['bottle_0', 'bowl_0'], ['bottle_1', 'bowl_1'], ['bottle_2', 'bowl_2']]",
+            "finish": "ended",
+            "skill": "pour_in_order"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1917,
+                "residual": 4,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.002082248828735034
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1844,
+                "residual": 77,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.0400832899531494
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": true,
+                "in_target": 1843,
+                "residual": 77,
+                "outside": 1,
+                "raw_poured_capture": 0.9994577006507592,
+                "raw_residual_fraction": 0.0400832899531494
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100089,
+          "score": 0.0,
+          "success": false,
+          "steps": 326,
+          "wall_s": 87.2,
+          "stable": true,
+          "category": "logic",
+          "result": {
+            "ok": false,
+            "stage": "pour 1",
+            "note": "done []; bottle_0 -> bowl_0 not poured: profile end",
+            "not_poured": "['bottle_0', 'bowl_0']",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 2,
+            "pending_upright_labels": [
+              "bottle_1",
+              "bottle_2"
+            ],
+            "fluids": [
+              {
+                "wine": "wine_0",
+                "target": "bowl_0",
+                "bottle": "bottle_0",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 1679,
+                "residual": 242,
+                "outside": 0,
+                "raw_poured_capture": 1.0,
+                "raw_residual_fraction": 0.12597605413846955
+              },
+              {
+                "wine": "wine_1",
+                "target": "bowl_1",
+                "bottle": "bottle_1",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1920,
+                "outside": 1,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 0.9994794377928162
+              },
+              {
+                "wine": "wine_2",
+                "target": "bowl_2",
+                "bottle": "bottle_2",
+                "total": 1921,
+                "predicate_now": false,
+                "in_target": 0,
+                "residual": 1921,
+                "outside": 0,
+                "raw_poured_capture": 0.0,
+                "raw_residual_fraction": 1.0
+              }
+            ]
+          },
+          "failure_stage": "upright/return"
+        }
+      ]
+    },
+    "panel-A-pour_liquid_into_cup": {
+      "source_commits": [
+        "bcc8d4117e5ebaa53a7f597f780033a70fcd6e7a"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_pace": "v1",
+        "ported_pour_aim": "v1",
+        "ported_pour_profile": "off"
+      },
+      "rows": [
+        {
+          "seed": 100080,
+          "score": 0.0,
+          "success": false,
+          "steps": 383,
+          "wall_s": 52.7,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": true,
+            "status": "step_budget",
+            "skill": "ported",
+            "steps": 380,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle"
+            ],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": false,
+                "in_target": 4759,
+                "residual": 93,
+                "outside": 1220,
+                "raw_poured_capture": 0.7959525004181301,
+                "raw_residual_fraction": 0.015316205533596838
+              }
+            ]
+          },
+          "failure_stage": "capture/checker + return (order unobserved)"
+        },
+        {
+          "seed": 100081,
+          "score": 1.0,
+          "success": true,
+          "steps": 288,
+          "wall_s": 42.8,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 288,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5882,
+                "residual": 21,
+                "outside": 169,
+                "raw_poured_capture": 0.972070732110395,
+                "raw_residual_fraction": 0.003458498023715415
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100082,
+          "score": 0.0,
+          "success": false,
+          "steps": 382,
+          "wall_s": 56.1,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": true,
+            "status": "step_budget",
+            "skill": "ported",
+            "steps": 379,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle"
+            ],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": false,
+                "in_target": 4715,
+                "residual": 87,
+                "outside": 1270,
+                "raw_poured_capture": 0.7878028404344194,
+                "raw_residual_fraction": 0.01432806324110672
+              }
+            ]
+          },
+          "failure_stage": "capture/checker + return (order unobserved)"
+        },
+        {
+          "seed": 100083,
+          "score": 0.0,
+          "success": false,
+          "steps": 385,
+          "wall_s": 56.9,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": true,
+            "status": "step_budget",
+            "skill": "ported",
+            "steps": 382,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle"
+            ],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": false,
+                "in_target": 4335,
+                "residual": 77,
+                "outside": 1660,
+                "raw_poured_capture": 0.7231025854879066,
+                "raw_residual_fraction": 0.012681159420289856
+              }
+            ]
+          },
+          "failure_stage": "capture/checker + return (order unobserved)"
+        },
+        {
+          "seed": 100084,
+          "score": 1.0,
+          "success": true,
+          "steps": 291,
+          "wall_s": 41.9,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 291,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5809,
+                "residual": 101,
+                "outside": 162,
+                "raw_poured_capture": 0.9728688661865684,
+                "raw_residual_fraction": 0.016633728590250328
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100085,
+          "score": 1.0,
+          "success": true,
+          "steps": 289,
+          "wall_s": 33.3,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 289,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5893,
+                "residual": 24,
+                "outside": 155,
+                "raw_poured_capture": 0.9743716931216931,
+                "raw_residual_fraction": 0.003952569169960474
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100086,
+          "score": 1.0,
+          "success": true,
+          "steps": 292,
+          "wall_s": 29.5,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 292,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5891,
+                "residual": 18,
+                "outside": 163,
+                "raw_poured_capture": 0.9730756524611827,
+                "raw_residual_fraction": 0.0029644268774703555
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100087,
+          "score": 1.0,
+          "success": true,
+          "steps": 286,
+          "wall_s": 28.6,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 286,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5813,
+                "residual": 92,
+                "outside": 167,
+                "raw_poured_capture": 0.9720735785953177,
+                "raw_residual_fraction": 0.015151515151515152
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100088,
+          "score": 1.0,
+          "success": true,
+          "steps": 291,
+          "wall_s": 30.4,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 291,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5787,
+                "residual": 32,
+                "outside": 253,
+                "raw_poured_capture": 0.958112582781457,
+                "raw_residual_fraction": 0.005270092226613966
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100089,
+          "score": 0.0,
+          "success": false,
+          "steps": 384,
+          "wall_s": 40.1,
+          "stable": true,
+          "category": "step_budget",
+          "result": {
+            "ok": true,
+            "status": "step_budget",
+            "skill": "ported",
+            "steps": 381,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end'}",
+            "stage": "done",
+            "finish": "ok"
+          },
+          "pour_final": {
+            "pending_upright_checks": 1,
+            "pending_upright_labels": [
+              "bottle"
+            ],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": false,
+                "in_target": 4420,
+                "residual": 69,
+                "outside": 1583,
+                "raw_poured_capture": 0.7362985174079627,
+                "raw_residual_fraction": 0.011363636363636364
+              }
+            ]
+          },
+          "failure_stage": "capture/checker + return (order unobserved)"
+        }
+      ]
+    },
+    "panel-B-pour_liquid_into_cup": {
+      "source_commits": [
+        "bcc8d4117e5ebaa53a7f597f780033a70fcd6e7a"
+      ],
+      "skill_attrs": {
+        "ported_routes": "on",
+        "ported_pour_pace": "budget",
+        "ported_pour_aim": "b10",
+        "ported_pour_profile": "off"
+      },
+      "rows": [
+        {
+          "seed": 100080,
+          "score": 1.0,
+          "success": true,
+          "steps": 289,
+          "wall_s": 43.5,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 289,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end', 'final_tilt': 28.9}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5716,
+                "residual": 87,
+                "outside": 269,
+                "raw_poured_capture": 0.9550543024227235,
+                "raw_residual_fraction": 0.01432806324110672
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100081,
+          "score": 1.0,
+          "success": true,
+          "steps": 287,
+          "wall_s": 36.9,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 287,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end', 'final_tilt': 29.9}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5892,
+                "residual": 24,
+                "outside": 156,
+                "raw_poured_capture": 0.9742063492063492,
+                "raw_residual_fraction": 0.003952569169960474
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100082,
+          "score": 1.0,
+          "success": true,
+          "steps": 285,
+          "wall_s": 41.9,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 285,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end', 'final_tilt': 29.8}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5730,
+                "residual": 83,
+                "outside": 259,
+                "raw_poured_capture": 0.9567540490899983,
+                "raw_residual_fraction": 0.013669301712779974
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100083,
+          "score": 1.0,
+          "success": true,
+          "steps": 292,
+          "wall_s": 42.5,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 292,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end', 'final_tilt': 29.9}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5744,
+                "residual": 84,
+                "outside": 244,
+                "raw_poured_capture": 0.9592518370073481,
+                "raw_residual_fraction": 0.01383399209486166
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100084,
+          "score": 1.0,
+          "success": true,
+          "steps": 289,
+          "wall_s": 34.8,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 289,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end', 'final_tilt': 29.6}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5819,
+                "residual": 93,
+                "outside": 160,
+                "raw_poured_capture": 0.9732396721859843,
+                "raw_residual_fraction": 0.015316205533596838
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100085,
+          "score": 1.0,
+          "success": true,
+          "steps": 291,
+          "wall_s": 38.4,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 291,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end', 'final_tilt': 29.5}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5895,
+                "residual": 26,
+                "outside": 151,
+                "raw_poured_capture": 0.9750248097915978,
+                "raw_residual_fraction": 0.004281949934123847
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100086,
+          "score": 1.0,
+          "success": true,
+          "steps": 289,
+          "wall_s": 34.6,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 289,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end', 'final_tilt': 29.3}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5886,
+                "residual": 24,
+                "outside": 162,
+                "raw_poured_capture": 0.9732142857142857,
+                "raw_residual_fraction": 0.003952569169960474
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100087,
+          "score": 1.0,
+          "success": true,
+          "steps": 286,
+          "wall_s": 29.2,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 286,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end', 'final_tilt': 29.8}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5838,
+                "residual": 86,
+                "outside": 148,
+                "raw_poured_capture": 0.9752756431673906,
+                "raw_residual_fraction": 0.014163372859025032
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100088,
+          "score": 1.0,
+          "success": true,
+          "steps": 292,
+          "wall_s": 30.0,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 292,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end', 'final_tilt': 28.9}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5901,
+                "residual": 29,
+                "outside": 142,
+                "raw_poured_capture": 0.9765017375475757,
+                "raw_residual_fraction": 0.004776021080368906
+              }
+            ]
+          },
+          "failure_stage": "success"
+        },
+        {
+          "seed": 100089,
+          "score": 1.0,
+          "success": true,
+          "steps": 289,
+          "wall_s": 32.0,
+          "stable": true,
+          "result": {
+            "ok": true,
+            "status": "ended",
+            "skill": "ported",
+            "steps": 289,
+            "verified": false,
+            "error": "",
+            "source": "robot-harness a21dd6f skills/pour_bottle",
+            "pour": "{'max_phi': 150.0, 'stop': 'profile end', 'final_tilt': 29.1}",
+            "stage": "done",
+            "finish": "ended"
+          },
+          "pour_final": {
+            "pending_upright_checks": 0,
+            "pending_upright_labels": [],
+            "fluids": [
+              {
+                "wine": "wine",
+                "target": "cup",
+                "bottle": "bottle",
+                "total": 6072,
+                "predicate_now": true,
+                "in_target": 5732,
+                "residual": 74,
+                "outside": 266,
+                "raw_poured_capture": 0.9556518839613204,
+                "raw_residual_fraction": 0.012187088274044796
+              }
+            ]
+          },
+          "failure_stage": "success"
+        }
+      ]
+    }
+  },
+  "scored_episodes": 80,
+  "episode_wall_s_sum": 8962.1,
+  "no_controller_failure_retries": true,
+  "replacements": []
+}

@@ -626,6 +626,10 @@ multi-bottle v2 (`sparse` or `via`) or the original strict wrapper's v5
 (`checked`). `off` preserves the legacy skill and pacing dispatch. Target pairs
 come from the existing default-off `pour_order` language route; color clauses
 must form a complete distinct assignment before any pour executes.
+The optional `ported_pour_pace=budget` retains overlap's flow and staged-untilt
+angles, accelerates lift/untilt within existing joint limits and lets only the
+last flow profile spend its put-back reserve. Single-cup routing retains v1
+pacing. Pace defaults to `v1`; profile defaults to `off`.
 
 ### Basket image experiment
 

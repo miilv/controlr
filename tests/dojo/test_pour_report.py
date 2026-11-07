@@ -38,3 +38,11 @@ def test_duplicate_and_infrastructure_rows():
 def test_official_success_overrides_an_earlier_conservative_skill_failure():
     r = row(1, 1, True, result={'ok': False, 'stage': 'pour 3'})
     assert F['failure_stage'](r, 'pour_by_language') == 'success'
+
+
+def test_final_capture_and_pose_cannot_establish_failure_order():
+    import json
+    r = row(1, 0, pour_final={'pending_upright_labels': ['bottle'], 'fluids': [{'predicate_now': False}]},
+            ported=[{'details': json.dumps({'final': {'bottle_tilt': 88},
+                                           'return': {'untilt': [{'reached': True}]}})}])
+    assert F['failure_stage'](r, 'pour_liquid_into_cup') == 'capture/checker + return (order unobserved)'
