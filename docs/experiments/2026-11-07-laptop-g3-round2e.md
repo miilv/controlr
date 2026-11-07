@@ -1,5 +1,16 @@
 # Laptop G3 round 2e — independent failure diagnosis
 
+## Completed decision
+
+Source504daaef completes44 production development episodes. Original pilots:
+9/12 headset credits in each cell. Independent placement bank:6/10 standard,
+8/10 random. The registered standard8/10 gate fails, so this bundle receives
+**no fresh paired panel**. All44 rows are stable with complete meshes; no
+infrastructure exclusions or policy-failure replacements. Full-task successes0.
+The revised [wide/clear candidate](2026-11-07-laptop-g3-round2f.md) is separate.
+
+## Original registration
+
 The frozen centre-stage panel has random B at 1/5 completed credits, so its
 maximum is 6/10 and it cannot meet the 7/10-per-cell stopping rule. Finish and
 archive that panel without changing source or inspecting individual panel
@@ -446,3 +457,42 @@ target and25 mm release gap, never silently retain the raised screening goal.
 All other mode/default behavior remains. Any bundled wide-first/clearance
 candidate still needs its own complete production screen and fresh-panel
 registration; ongoing source504 screens stay frozen and complete.
+
+## Completed production development screen
+
+[Raw rows, diagnoses, hashes, admissions and exact recipes](2026-11-07-laptop-g3-round2e-results.json)
+retain normalized0–1 scores. This table uses0–100 points and sample SD. These
+are repeated development records, not an independent paired gain estimate.
+
+| Cell | Bank | n | Score mean ± SD | Headset credits | Full successes | Steps median/max |
+|---|---|---:|---:|---:|---:|---:|
+| Standard | Original pilots | 12 | 15 ±9.05 | 9/12 | 0/12 | 272.5/565 |
+| Random | Original pilots | 12 | 15 ±9.05 | 9/12 | 0/12 | 243/455 |
+| Standard | Coverage18 | 10 | 12 ±10.33 | 6/10 | 0/10 | 351.5/629 |
+| Random | Coverage18 | 10 | 16 ±8.43 | 8/10 | 0/10 | 283.5/429 |
+
+The original-bank gate passes; the independent standard gate fails. Keep all
+failures. No fresh id100000–14 was generated under this candidate. The random
+coverage bank is all asset8 and only broadens placement coverage; the original
+new45–49 bank supplies9/10 shape coverage. Every episode remains within800
+steps. No missing mesh or unstable reset, and zero full-task successes.
+
+The separate BF enclosure/rest screen was intentionally truncated after known
+regressions, at2/4 standard and3/5 random; its planned12/cell did not run.
+Retain the dispatch-stop metadata and completed in-flight episodes. An earlier
+upright-grid engineering attempt was cancelled after nine redundant native
+plan refusals with no physical pick/no score row; it is not a completed zero.
+
+Heading-offset upright probes do not establish a general bridge route. On
+asset8, a clean7.8 mm pickup is followed by an action-induced numerical
+explosion during upright deposit (reported centre~1128 m); count the probe0,
+never a successful rest or an infrastructure exclusion. Asset10's initial
+pickup is loose12.8 mm and put down. Only the earlier heavy-asset2 bridge
+probe demonstrates a genuine upright-rest/bridge hang, with30 released-support
+steps. Conservative footprint-screen refusal is not proof of physical
+impossibility, and its yaw-dependent bbox must not be treated as one.
+
+Source504 full local suite:2165 passed/191 skipped,1016.77 s. No defaults,
+checker thresholds, robot physics, board selection or camera route changed.
+Calls/tokens/spend:0/0/$0. Physics-only saved traces/actions are retained in
+the allowed private root; no render/video job was dispatched.

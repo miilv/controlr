@@ -223,3 +223,17 @@ place against ground and repairs refined picks against that same true target.
 The default off and existing centre/mesh-centre contracts remain unchanged;
 54 focused mock tests cover native refusal, repair truth and wrapper scope.
 No production source deployment changes while the source504 screen runs.
+
+Source504 finishes all44 registered development rows: old12/cell9/12 both;
+independent coverage18 standard6/10 and random8/10. All stable/complete meshes,
+no exclusions, no budget exhaustion, full successes0. The standard8/10 gate
+fails; no fresh paired panel is dispatched for504. Archive every row and
+probe, including the action-induced upright-deposit numerical explosion0.
+
+Wide-priority and explicit release-clearance probes address separate observed
+regressions. Freeze source3866ad73 bundle (wide on, mesh_clear, all preceding
+slow/cup/mesh/staged/seat/sites flags). Its full local suite passes2174/191
+(1017.04 s),54 focused. Isolated deployment under controlr-laptop/frozen-round2f
+preserves root504 while it finishes; old/new share only permitted data/public
+assets, at most two actual light2/light8 scopes. Original12+independent10/cell
+new-source screen registered before outcomes; final ids0–14 remain unused.
