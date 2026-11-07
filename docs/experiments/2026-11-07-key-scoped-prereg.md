@@ -219,3 +219,30 @@ at a time, made **zero model calls**, changed no shared environment and killed
 no processes. The original worker's deliberate ten-pair assertion blocked
 launch at n=9; only the committed lead amendment enabled the final block.
 Queue insertion and its receipt follow separately; no camera verdict is made.
+
+## Dispatch receipt
+
+At **2026-11-07 02:11:25 UTC**, all **40 `c6b_` KEY rows** were inserted at
+queue positions **1–40**, before 92 remaining imitation tie rows. KONG had
+fully drained (zero remaining KONG rows). Both arms of the currently running
+tie pair (100008/r2) were already claimed, with no queued mate or retry to
+protect; no started pair was split. Insertion held admission then queue locks,
+preserved all existing rows in order, and refused duplicate/already-started
+KEY names. Every inserted row explicitly pins `cx/gpt-6-luna`.
+
+The [dispatch receipt](data/key-scoped/dispatch.json) retains exact inserted
+rows, running pair, queue positions and manifest SHA256. Queue SHA256:
+`37fad54195b73ce74b6f63958b04e04b03be8ab6af7d5973b3c4fd19968da1f8`
+→ `1447f85702da8d3bec332a14b239efaacb3f6597b6cbca9c98aed96e9170c796`.
+The manifest remains
+`5bbaa131fc2813bc459537bcf088fcbe79d51fb17026adaabf92047370be2305`.
+The complete freeze was committed as `af11db4a` before insertion.
+`compute6:~/dojo-data/key-1107/notes.log` records dispatch and the ETA estimate.
+
+Expected first start is after the already claimed tie jobs, approximately
+0–30 minutes subject to admission. Estimated finish is **04:11–06:11 UTC**,
+using the prior roughly two-hour KONG panel as a rough two-lane reference;
+key search may be slower. This is not a deadline: 25-minute episode caps and
+the existing 33-minute job caps permit about 11 two-lane hours before waits /
+retries. Report actual camera spend at verdict. No camera result, adoption or
+physics-audit pass is claimed at dispatch; prep used zero model calls.

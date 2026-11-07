@@ -6,7 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
-| 2026-11-07 | [key-scoped-prereg](2026-11-07-key-scoped-prereg.md) | Can insert_key-only handover/lean retain gain without charger harm? | Compute6 prep complete; 10 gain / 5 charger / 5 stack pairs frozen; one lead-authorized final refill; queue insertion pending |
+| 2026-11-07 | [key-scoped-prereg](2026-11-07-key-scoped-prereg.md) | Can insert_key-only handover/lean retain gain without charger harm? | 40 cx rows dispatched on compute6; 10 gain / 5 charger / 5 stack pairs; one lead-authorized final refill; no verdict |
 | 2026-11-06 | [egg2-reach-g3](2026-11-06-egg2-reach-g3.md) | Can practical-workspace orientation search raise the egg ceiling? | Ten pairs: 23.5→17.5, 0/10→0/10 success, 0 score wins/4 losses; stays off |
 | 2026-11-07 | [kong-scoped-relocate-prereg](2026-11-07-kong-scoped-relocate-prereg.md) | Can task-scoped relocation retain kong gain without imitate harm? | 40/40 arms audited; 228/228 writes scored; raw B harmful-write excesses and two cross-instance relocation flags documented; camera verdict left to lead |
 | 2026-11-06 | [ORG reach approaches](2026-11-06-org-skill-ceiling.md) | Can lower hovers and tilted face pushes raise organize score? | Ten dev pairs 42.5→47.5, 3 wins/1 loss, 0 successes; defaults off; parked score-based camera registration |
