@@ -1,0 +1,1932 @@
+{
+  "updated_utc": "2026-11-07T19:28:49.539939+00:00",
+  "model": "claude/claude-sonnet-5-5",
+  "rows": {
+    "c6b_pourlangsg_pourrtAr1_100000": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1276980,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100000": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1279410,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100001": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1281800,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100001": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1283905,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100002": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1285632,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100002": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1287460,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100003": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1289135,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100003": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1290899,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100004": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1292606,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100004": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1294301,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100005": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1295996,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100005": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1297589,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100006": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1299287,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100006": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1300985,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100007": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1302682,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100007": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1304379,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100008": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1306150,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100008": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1307779,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100009": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1309545,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100009": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1311135,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100020": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1312811,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100020": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1314610,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100021": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1316275,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100021": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1317931,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100022": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1319654,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100022": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1321405,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100023": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1323156,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100023": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1324938,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100024": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1326575,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100024": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1328494,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100025": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1330215,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100025": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1332126,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100026": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1333839,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100026": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1335514,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100027": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1337231,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100027": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1338817,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100028": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1340846,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100028": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1342478,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 3,
+      "transcript_starts": 3,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtBr1_100029": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1344419,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourlangsg_pourrtAr1_100029": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1346133,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtAr1_100001": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1347715,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtBr1_100001": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1349409,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtBr1_100002": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1351032,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtAr1_100002": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1352817,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtAr1_100003": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1354375,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtBr1_100003": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1355954,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtBr1_100004": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1357565,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtAr1_100004": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1359275,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtAr1_100005": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1360871,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtBr1_100005": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1362458,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtBr1_100007": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1364070,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtAr1_100007": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1365706,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtAr1_100008": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1367310,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtBr1_100008": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1368972,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtBr1_100020": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1370574,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtAr1_100020": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1372273,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtAr1_100021": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1373891,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtBr1_100021": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1375518,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtBr1_100022": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1377092,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_pourliquidsg_pourrtAr1_100022": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1378837,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtAr1_100000": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1380325,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtBr1_100000": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1381728,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtBr1_100001": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1383205,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtAr1_100001": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1384658,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtAr1_100003": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1386163,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtBr1_100003": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1387630,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtBr1_100004": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1389131,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtAr1_100004": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1390555,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtAr1_100005": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1391962,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtBr1_100005": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1393496,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtBr1_100006": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1394931,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtAr1_100006": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1396351,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtAr1_100007": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1397714,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtBr1_100007": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1399189,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtBr1_100008": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1400526,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtAr1_100008": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1402015,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtAr1_100009": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1403423,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtBr1_100009": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1404844,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtBr1_100021": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1406205,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 1,
+      "transcript_starts": 1,
+      "report_present": true
+    },
+    "c6b_xylophonesg_pourrtAr1_100021": {
+      "expected": "claude/claude-sonnet-5-5",
+      "queued_pin_verified": true,
+      "process_checks": [
+        {
+          "pid": 1407625,
+          "model_matches": true,
+          "data_matches": true,
+          "background_matches": true,
+          "interpreter_matches": true,
+          "ok": true
+        }
+      ],
+      "transcript_models": [
+        "expected"
+      ],
+      "call_models": [
+        "expected"
+      ],
+      "status": "confirmed",
+      "call_records": 2,
+      "transcript_starts": 2,
+      "report_present": true
+    }
+  },
+  "violations": [],
+  "confirmed_rows": 80,
+  "reports_present": 80,
+  "active_our_rows": [],
+  "queued_our_rows": 0,
+  "model_calls_by_monitor": 0
+}

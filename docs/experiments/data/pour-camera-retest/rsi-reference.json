@@ -1,0 +1,13 @@
+{
+  "source": "docs/experiments/data/rsi-yardstick/per_cell.json",
+  "source_sha256": "ee7fff531faf6ab7c0974abe5dbaecd221f8b5413c34f3e86e4d87fc488a15ed",
+  "task": "pour_by_language",
+  "RSI_score": 100.0,
+  "RSI_n": 5,
+  "RSI_successes": 5,
+  "B_score": 35.0,
+  "B_n": 20,
+  "B_minus_RSI": -65.0,
+  "identical_layout_hash_overlap": [],
+  "interpretation": "Unpaired reachability yardstick on our dev layouts; different input hashes, n5 vs n20. Task-keyed RSI policy is not an adoptable board system under the general-system rule."
+}
