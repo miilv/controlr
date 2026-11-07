@@ -1787,13 +1787,69 @@
     },
     "sort_nesting_dolls_by_size": {
       "dimension": "Generalization",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "7ae115a7e7309f93b33a5a228f28db28e7e7954ce0a7700b2a54bb1d3c0026b9",
+          "official_score": 100.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T215520eae0ddZ_sort_nesting_dolls_by_size",
+          "steps": 639,
+          "success": true,
+          "task": "sort_nesting_dolls_by_size",
+          "wall_s": 166.32538806193043
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "7c75545e9be18cc37d3386ee9c61b71c26915495cf17824bcb563cfddddfe33d",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T215520eae0ddZ_sort_nesting_dolls_by_size",
+          "steps": 695,
+          "success": true,
+          "task": "sort_nesting_dolls_by_size",
+          "wall_s": 159.209295602981
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "713fea7e85af255f928c657bd08b0102aa855090a37589e5623f7104a442af1b",
+          "official_score": 0.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T215520eae0ddZ_sort_nesting_dolls_by_size",
+          "steps": 767,
+          "success": false,
+          "task": "sort_nesting_dolls_by_size",
+          "wall_s": 138.01839757699054
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "a607ba811fbef8307937e38f656d3266778f5261aa9a2be25418c896b2cd6280",
+          "official_score": 0.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T215520eae0ddZ_sort_nesting_dolls_by_size",
+          "steps": 996,
+          "success": false,
+          "task": "sort_nesting_dolls_by_size",
+          "wall_s": 223.48519104800653
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "65880db20ff9812ff4bec47f8cef606df525b2a4ca73331c8a4f916d8ec96869",
+          "official_score": 100.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T215520eae0ddZ_sort_nesting_dolls_by_size",
+          "steps": 806,
+          "success": true,
+          "task": "sort_nesting_dolls_by_size",
+          "wall_s": 198.4538327769842
+        }
+      ],
+      "n": 5,
+      "official_score": 60.0,
+      "score_sd": 54.772255750516614,
+      "steps": 3903,
+      "successes": 3,
+      "wall_s": 885.4921050668927,
       "weight": 0.008333333333333333
     },
     "sort_nesting_dolls_by_size_random": {
