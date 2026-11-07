@@ -390,3 +390,17 @@ rest/pinch/carry errors also fit; count any violation as0, not an exemption.
 Run unchanged source504daaef plus this retained probe on random45 and47.
 No production source/bundle change, no final-panel record, no forced pose or
 collision/hold/stability threshold relaxation. Two queued jobs, same slots.
+
+## Existing wide-first priority probe
+
+Standard31 regresses for a concrete ordering reason: current cup25 mm
+lifts5.6 mm clean but loses237.7 mm in carry and falls. The frozen centre-
+stage source picked a41 mm site on the same pilot, with6.0 mm lift drift,
+3.3 mm carry shift and20 points. Before changing code, probe the existing
+`hang_wide=on` priority on standard31 and random47, with source504daaef and
+all other slow enclosure/rest fields unchanged. It ranks>=35 mm grasps
+before narrow cups while retaining checked narrow fallbacks; it does not
+change grasp/hold tolerances or infer a hold. The existing wide-priority
+mock regression test remains unchanged and passes in the2165-test suite.
+No change to the ongoing off-priority screen or its gates. Any new final
+bundle requires separate full screen/registration before fresh ids are used.
