@@ -1453,13 +1453,15 @@ def lift_and_return(sk: Skills, label: str, lift: float = 0.08) -> SkillResult:
 
 
 def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 0.0, press: float = 0.001,
-                blind_depth: float = 0.016) -> dict:
+                blind_depth: float = 0.016, disc_contact: str | None = None) -> dict:
     """Insert ``obj`` into whichever of ``receptacles`` its mesh fits best (``insertion.fit_insertion``:
     leading end, yaw and offset with the largest clearance, depth to the floor), then, when asked, turn
     it about the insertion axis by ``turn_deg`` (a key in its lock) before letting go. Re-oriented in the
     hand or relayed between the arms (``place_oriented``): a slow straight descent from 15 mm above the
     opening after a still pre-place pose and an in-hand re-measure; ``press`` = how far past the floor
-    contact the descent is commanded."""
+    contact the descent is commanded. ``disc_contact`` (a chooser's skill argument): None = the Skills switches
+    as configured; "on" = ``coin_contact.PROFILE`` for this call (a thin disc standing in a fixed holder: measure the
+    holder's walls, close as the fingertips clear them, seat on the table, release in stages); "off" = none of them."""
     from dojo.skills.insertion import fit_insertion
     w = sk.refresh()
     o = w.obj(obj)
@@ -1512,7 +1514,9 @@ def insert_into(sk: Skills, obj: str, receptacles: list[str], turn_deg: float = 
             from dojo.skills.precision import disc_axis, disc_into_slot
             if disc_axis(o) is not None and not turn_deg:
                 # a thin disc (a coin): by its rim, edge first, let go over the slot (skills-5)
-                return disc_into_slot(sk, obj, rec, tg)
+                from dojo.skills.coin_contact import scoped
+                with scoped(sk, disc_contact):
+                    return disc_into_slot(sk, obj, rec, tg)
             sk.coll.include.add(rec)
             for T in tg:
                 T[2, 3] -= press

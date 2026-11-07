@@ -382,6 +382,13 @@ class Skills:
         # ``library.press_joint`` (stream H; ``RuntimeConfig.press_repeat``): "off" (today: one stroke) | "cross" (four
         # more, the press point 4 mm each way: the lever's 85 % has ~0.1 mm of margin at the planned point)
         self.press_repeat = "off"
+        # deposit_coin's contact sequence (COIN2, ``coin_contact``; ``RuntimeConfig.disc_*``): all "off" = today
+        self.disc_align = "off"
+        self.disc_snap = "off"
+        self.disc_lift = "off"
+        self.disc_seat = "off"
+        self.disc_release = "off"
+        self.disc_reserve = "off"
         self.slot_approach = "off"
         self.slot_hover = "off"
         self.slot_place = "off"
@@ -673,10 +680,16 @@ class Skills:
                   q_start: dict | None = None, max_eval: int = 40, keep: int = 4, grasp_kw: dict | None = None,
                   lift_to_z: float | None = None, approach_rad: float = FAST, descend_rad: float = SLOW,
                   open_g: float | None = None, settle: int = 2, return_all: bool = False, lift_rad: float = MEDIUM,
-                  grasps: list | None = None, squeeze: int = 0):
+                  grasps: list | None = None, squeeze: int = 0, snap_in: float = 0.0, snap_rad: float = 0.01,
+                  lift_step: float = 0.0, post_lift=None):
         """``grasps``: explicit candidates (world TCP poses) instead of the method's generator. ``squeeze``: still
         steps with the gripper closing before the lift (a 2 mm coin between the pads: lifted right after the close
-        it stayed in its holder, 3/3; four more steps and it came out, 3/3)."""
+        it stayed in its holder, 3/3; four more steps and it came out, 3/3).
+        ``snap_in`` (m, default 0 = today): descend that much further along the approach, close there (on a holder's
+        walls), then rise back to the grasp at ``snap_rad`` with the jaws closing (``coin_contact``'s ``disc_snap``).
+        ``lift_step`` (m, default 0 = today): the lift moves that far per env step. ``post_lift``: a callable
+        (arm, q, T_tcp_obj, obj) -> (ops, T_tcp_obj) | None appending moves after the lift and replacing the planned
+        in-hand pose (``coin_contact.seat_post_lift``); None keeps the pick as it is."""
         w = self.world
         obj = w.obj(label)
         refused = self.geometry_refusal(label, "pick", arm)
@@ -686,6 +699,8 @@ class Skills:
         # start (``execute_pick``)
         plan_kw = dict(lift=lift, max_eval=max_eval, grasp_kw=grasp_kw, lift_to_z=lift_to_z, approach_rad=approach_rad,
                        descend_rad=descend_rad, open_g=open_g, settle=settle, lift_rad=lift_rad, squeeze=squeeze)
+        if snap_in or lift_step or post_lift is not None:
+            plan_kw.update(snap_in=snap_in, snap_rad=snap_rad, lift_step=lift_step, post_lift=post_lift)
         arms = [arm] if arm else sorted(ARMS, key=lambda a: float(np.linalg.norm(self.kin.base(a)[:2, 3] - obj.pos[:2])))
         best, notes, allf = None, [], []
         for a in arms:
@@ -725,11 +740,24 @@ class Skills:
                     n_coll += to_pre.status == "collision"
                     n_ik += to_pre.status == "ik_fail"
                     continue
-                down = self.motion.line(a, to_pre.q_end, g.T, descend_rad, "pick_descend", gripper=go, ignore=(label,))
+                T_down = g.T
+                if snap_in:
+                    T_down = g.T.copy()
+                    T_down[:3, 3] = g.T[:3, 3] + g.approach * snap_in
+                down = self.motion.line(a, to_pre.q_end, T_down, descend_rad, "pick_descend", gripper=go, ignore=(label,))
                 if not down.ok:
                     n_coll += down.status == "collision"
                     n_ik += down.status != "collision"
                     continue
+                rise = None
+                if snap_in:
+                    # the pads close on the holder's walls, then rise with the jaws closing: they shut on the object
+                    # where the fingertips clear the walls (a contact leg: the closed pads are inside the walls)
+                    rise = self.motion.line(a, down.q_end, g.T, snap_rad, "pick_snap_rise", gripper=CLOSED, check=False)
+                    if not rise.ok:
+                        n_ik += 1
+                        continue
+                q_grasp = rise.q_end if rise is not None else down.q_end
                 T_tcp_obj = inv_T(g.T) @ obj.T
                 box = held_box(obj, T_tcp_obj)
                 T_lift = g.T.copy()
@@ -739,16 +767,36 @@ class Skills:
                     # rack; a vertical lift closes the 13 mm gap to the next one by 9 mm over 10 cm)
                     u = up_in_plane(obj)
                     T_lift[:3, 3] = g.T[:3, 3] + u * (float(T_lift[2, 3] - g.T[2, 3]) / max(float(u[2]), 0.5))
-                up = self.motion.line(a, down.q_end, T_lift, lift_rad, "pick_lift", gripper=CLOSED, ignore=(label,),
-                                      held=box)
+                if lift_step:
+                    # one waypoint per env step (FAST is never the binding joint rate for a few mm)
+                    up = self.motion.line(a, q_grasp, T_lift, FAST, "pick_lift", gripper=CLOSED, ignore=(label,),
+                                          held=box, max_step_m=lift_step)
+                else:
+                    up = self.motion.line(a, q_grasp, T_lift, lift_rad, "pick_lift", gripper=CLOSED, ignore=(label,),
+                                          held=box)
                 if not up.ok:
                     n_coll += up.status == "collision"
                     n_ik += up.status != "collision"
                     continue
+                extra = None
+                if post_lift is not None:
+                    extra = post_lift(a, up.q_end, T_tcp_obj, obj)
                 p = ArmPlan(a, np.asarray(q0, float), self.ex.g[a])
                 p.grip(go, 0, "open_for_grasp").move(to_pre, "approach").move(down, "descend").hold(settle, "settle")
                 from dojo.skills.kinematics import grip_to_gap
-                p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close").hold(squeeze, "squeeze").move(up, "lift")
+                p.grip(CLOSED, close_steps(grip_to_gap(go), g.width), "close")
+                if rise is not None:
+                    p.move(rise, "snap_rise")
+                p.hold(squeeze, "squeeze").move(up, "lift")
+                if extra is not None:
+                    ops, T_tcp_obj = extra
+                    for op in ops:
+                        if op[0] == "move":
+                            p.move(op[1], "post_lift")
+                        elif op[0] == "hold":
+                            p.hold(int(op[1]), "post_lift")
+                        elif op[0] == "grip":
+                            p.grip(float(op[1]), int(op[2]), "post_lift")
                 cost = p.steps + 30 * g.score
                 feas.append((cost, PickPlan(a, p, g, T_tcp_obj, p.steps, label, method, dict(plan_kw))))
                 if len(feas) >= keep:
@@ -1054,7 +1102,8 @@ class Skills:
                    servo_xy_tol: float | None = None, held_tol: float | None = None, held_gate: float | None = None,
                    blind_up: float | None = None, spiral: float | None = None, guarded: bool | None = None,
                    held_read: bool | None = None, purpose: str | None = None, approach_line: bool = False, carry_read: bool = False,
-                   approach_lateral: bool = False, approach_staged: bool = False, approach_vias=()):
+                   approach_lateral: bool = False, approach_staged: bool = False, release_stages=None,
+                   approach_vias=()):
         """Approach above the target, descend in a straight line, settle, open, back out.
         ``approach_line``: collision-checked Cartesian transit to the hover, preserving the interpolated TCP
         orientation along the carry instead of a joint-space transit. No joint-path fallback.
@@ -1130,6 +1179,9 @@ class Skills:
             tail_kw["guarded"] = True
         if held_read:
             tail_kw["held_read"] = True
+        if release_stages:
+            # let go in stages: (gripper value, steps) before the full open (``coin_contact``'s ``disc_release``)
+            tail_kw["release_stages"] = tuple((float(g), int(n)) for g, n in release_stages)
         # the pre-place pose must hold the object clear of what it goes onto / into (a nested bowl's
         # target is inside the base bowl: 4 cm above it the two boxes still overlap)
         sup_top = max((self.world.obj(l).top_z for l in ignore if l in self.world.objects), default=None)
@@ -1189,7 +1241,8 @@ class Skills:
                     guard_lag: float | None = None, servo_xy_tol: float | None = None,
                     held_tol: float | None = None, held_gate: float | None = None,
                     blind_up: float | None = None, spiral: float | None = None,
-                    guarded: bool | None = None, held_read: bool | None = None) -> ArmPlan | str:
+                    guarded: bool | None = None, held_read: bool | None = None,
+                    release_stages=None) -> ArmPlan | str:
         T_rel = T_obj @ inv_T(h.T_tcp_obj)
         T_rel[2, 3] += release_gap
         if fingers_out:
@@ -1236,6 +1289,8 @@ class Skills:
             T_hi[2, 3] += 0.04
             up_b = self.motion.line(arm, up.q_end, T_hi, MEDIUM, "place_rise", gripper=open_g, ignore=ignore)
             if up_b.ok:
+                for g_s, n_s in release_stages or ():
+                    t.grip(g_s, n_s, "release_stage")
                 t.grip(open_g, open_steps, "release").hold(pre_open_hold, "let_go").move(up, "retreat")
                 t.move(up_b, "rise")
                 return t
@@ -1247,6 +1302,8 @@ class Skills:
             if not up2.ok:
                 return f"retreat: {up.note}"
             up = up2
+        for g_s, n_s in release_stages or ():
+            t.grip(g_s, n_s, "release_stage")
         t.grip(open_g, open_steps, "release").hold(pre_open_hold, "let_go").move(up, "retreat")
         return t
 
@@ -2117,8 +2174,11 @@ class Skills:
         if Tq[2, 0] > -0.5:
             T_up[2, 3] += 0.02
         up = self.motion.line(arm, self.ex.q[arm], T_up, MEDIUM, "place_retreat", gripper=OPEN, check=False)
-        p = ArmPlan(arm, self.ex.q[arm].copy(), CLOSED).grip(float(kw.get("open_g", OPEN)), int(kw.get("open_steps", OPEN_STEPS)),
-                                                             "release").hold(int(kw.get("pre_open_hold", 1)) + 1, "let_go")
+        p = ArmPlan(arm, self.ex.q[arm].copy(), CLOSED)
+        for g_s, n_s in kw.get("release_stages") or ():
+            p.grip(g_s, n_s, "release_stage")
+        p.grip(float(kw.get("open_g", OPEN)), int(kw.get("open_steps", OPEN_STEPS)),
+               "release").hold(int(kw.get("pre_open_hold", 1)) + 1, "let_go")
         if up.segments:
             p.move(up, "retreat")
         self.ex.run({arm: p}, name=f"place {label} release")

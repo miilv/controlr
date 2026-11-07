@@ -4237,7 +4237,7 @@ class EstimatorConfig:
     fm_refine_w_sil: float = 0.0
     # SAM mask proposals (dojo.perception.sam_masks; a no-op without a SAM server at DOJO_SAM_ADDR). Default off.
     # sam_fg: the head foreground combined with SAM 3.1's text masks for the scene vocabulary: "union" | "gate" | "replace"
-    sam_task_routes: dict = field(default_factory=dict)  # per instruction vocabulary; empty preserves every default
+    sam_task_routes: dict = field(default_factory=dict)  # DIAGNOSTIC ONLY; forbidden for board candidates
     sam_fg: str = "off"
     sam_text_thr: float = 0.4
     sam_trim_cover: float = 0.5  # "trim" cuts only blobs the masks cover by this share (not several objects' merged blob)

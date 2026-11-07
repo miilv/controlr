@@ -397,6 +397,10 @@ Default-off routing/shared service implemented by [SAMINT](journal/2026-11-07-sa
   - thin rings break into 21-104 px fragments (7 of 11 misses);
   - v2b's watch masks are refused by the "add" exact-class rule. `seg_add_category` (default off) addresses only this
     last class.
+  - CLASSIFY3 (D-C19 camera rows 100005-09 / 100020-24): every 9-object row holds 6 beliefs (5 / 5 rows, all score 0;
+    seg count 0-2 on every frame). The count is the dominant loss of the cell. Head regions no belief explains cover 12
+    of the 29 frame-0 misses (`dojo.perception.evidence` candidates); a general count source is still needed (SAMINT's
+    instruction-derived union, or confirmed candidates). Journal 2026-11-07-dojo-classify3.
 - [ ] **dojo perception: no genuine-5.1 belt background for pick_from_conveyor_by_image** (`Dynamic/conveyor/00001`).
   Only 6.0-proxy leave-one-out folds exist (`compute3:~/dojo-data/pbake-identity/bg_byimg{A,B}`), so every genuine-5.1
   run of the task reads the belt blind (`belt_blind`, "nothing moves"). Needs a 5.1 rendered `belt_bg record` of our
@@ -582,6 +586,26 @@ Default-off routing/shared service implemented by [SAMINT](journal/2026-11-07-sa
   `series_count` doesn't rename them. Check what the checker / twin need there. SAM 3.1 text also undercounts its
   small toys (1-5 masks for 3-9 objects): within 30 / 69 with `sam`. arrange_largest_number's `linked_count` mats are
   not handled at all.
+- [ ] **dojo eval: the per-episode `perception` block misreads numbered series.** It matches one estimate per config
+  label, so with numbered series (`rigid0_0..`) it reports correctly found instances "found: false", and the row's
+  `category` becomes `perception_gross` (classify 100005: 6 / 6 instances within 5 mm, 5 reported missed). Score series
+  cells from a physics replay (`scripts/perception/classify3/stage_audit.py`) until the block matches every member.
+- [ ] **dojo perception: identity never changes after frame 0, and nothing adds a missed instance** (CLASSIFY3: 0 key
+  changes, 0 added instances over 132 camera beliefs, 20 rows). `dojo.perception.evidence` keeps candidates and
+  identity votes (`RuntimeConfig.instance_evidence=log`, logging only). Not built: the consumer that looks at an open
+  candidate with a wrist camera, adds a confirmed one to the world and re-plans, and applies identity votes. Offline
+  the candidates cover 12 / 29 language misses at ~1 object-sized phantom per row plus the merged shadow region.
+- [ ] **dojo skills: the sort skill's carries are refused by the idle arm and by neighbours** (G3 true state, 20 dev
+  layouts: of 74 refused transits, other arm 30, an object 20, a basket wall 15; cars lose most: 26 / 35 placed).
+  `sort_into_containers(park_other=...)` (`RuntimeConfig.sort_park`, default off) tried two parks in G3. `home`
+  (before every carry) gives classify 67.5 → 94.0 (4 / 0 pairs) but language 53.3 → 40.0 (2 / 4). `blocked` (after a
+  refusal, one retry) fired 1-2 times and changed little (67.5 / 56.7), because most refusals happen in p2's fallback /
+  high-retry paths. Next: keep the idle arm out of every carry path's swept volume without extra homing. p2's physics
+  ceiling on these layouts is 67.5 / 53.3 against the RSI bar 100 / 88.
+- [ ] **dojo G3: `--belief-drop` (heldsim) breaks the ported skills' picks.** With it, classify_into_bins_p2's picks
+  fail ("held: false", the object stays on the table) where true state succeeds, so mode B cannot emulate the camera's
+  release beliefs for ported skills. heldsim's attach model was built for our Skills library; check what the
+  HarnessRobot path reads at the close before using mode B with a ported skill.
 - [ ] **dojo perception: a "held" refine can fit the object 80 mm below the jaws** (breadth3 store_tools 100000 step 67: fit 78 mm low, 43 deg off, iou 0.73). The runtime's in-hand bounds (#99) reject it now; perception could reject fits whose centre is outside the jaws itself.
 - [ ] **dojo skills: organize_table, three skill-side gaps (G3 mode A 0.44: alarm 2/9, figurine 0/9, keyboard 4/9).**
   (journal 2026-10-27-dojo-longh §5) The drawer's top is a tray 23 mm under a rim; the place targets use the bbox top,
@@ -1194,7 +1218,9 @@ Default-off routing/shared service implemented by [SAMINT](journal/2026-11-07-sa
 - [ ] **dojo skills: sweep_blocks** (lead: a real broom sweep only, no pick-into-pan; low weight, after the others) and ~~**fold_clothes** (parked: no cloth state in the skills layer)~~ — `fold_garment` (#103); Sol, Sonnet and the planner route fold_clothes (+ `_random`) to it 6/6 each (journal 2026-10-27-dojo-official §2.2).
 - [x] ~~**dojo skills: deposit_coin.** The coin starts out of the inserting arm's reach in about half the layouts.~~ Rim grasps tilted in the coin's plane reach 12/25 with one arm; the rest go through an in-air rim handover (the giver turns the coin on its side, the taker takes its top rim 8 mm off-centre). The coin is 28.4 mm x 1.9 mm (the collider; `physics.size` in its metadata says 21 x 1 mm). Two grippers can share it this way (journal/2026-10-26-dojo-skills5.md).
 - [ ] **dojo skills: a rim-held coin slides in the pads as it leaves its stand** (G3 2/25, journal
-  2026-10-27-dojo-precision.md §3). 100002: the coin slid 5.2 mm down in the pads during the lift out of the stand
+  2026-10-27-dojo-precision.md §3). COIN2 (journal 2026-11-07-dojo-coin2): the camera's losses are this, driven by the
+  belief's plane yaw (median 3.9 deg off; the stand's slot allows +-1.4 deg); `disc_snap=on` (+ `disc_align=walls`,
+  `disc_seat=table`) holds 12 mm instead of 9 mm and fixes it in G3 under +10 / -12 deg errors — camera A/B pending. 100002: the coin slid 5.2 mm down in the pads during the lift out of the stand
   (cover 9 -> 3.8 mm) and fell out early in the carry; 100019: it slid back into the stand. Ideas: a longer squeeze, a
   re-grasp when the measured cover is under `DISC_MIN_COVER` while the coin is still over its stand. Also note: a hand
   on its side at the slot (finger roots over the bank) is now avoided only for the handover's taker (`hand_down_first`).
@@ -1338,6 +1364,20 @@ Default-off routing/shared service implemented by [SAMINT](journal/2026-11-07-sa
   tubes stay on the fallback; a coin's own-camera read under-covers (perception-held: never adopt it without a second
   view), which the protocol does not enforce yet (`disc_into_slot` places pass no `held_tol`).
 
+- [ ] **dojo coin: camera A/B of the thin-disc contact profile** (`insert_into(disc_contact="on")` / the `disc_*`
+  RuntimeConfig fields; COIN2 report 2026-11-07-coin2-contact). Needs strict v2 (`_official`) for `disc_align`; audit
+  the `wall_probe` writer. Its chooser text (manual / J2 registry) is not written: a new manual version + A/B.
+- [ ] **dojo coin: retry after a snap that did not take the coin** (COIN2 panel: 4 / 20 first closes never lifted the
+  coin under belief error; the put-down then finds no rim grasp and `disc_into_slot` stops; with GT beliefs 3 / 3
+  recover). Re-probe the walls and re-plan instead of `disc_lift_and_return`, within `disc_reserve`.
+- [ ] **dojo thin objects: the contact sequence covers discs only** (`insert_thin` refuses other thin shapes):
+  edge grasps / spins for a thin rectangle (a card) are the missing piece.
+- [ ] **dojo coin: tilted edge grasps under `disc_snap`.** All 3 snap failures at +10 deg were +-12 deg in-plane
+  tilted grasps (lost in the lift). Try tilt 0 first, or no snap for tilted grasps.
+- [ ] **dojo coin: the wall probe's fit is biased toward 0 when the true yaw is near a squeeze turn** (three squeezes,
+  three unknowns: apex -7.4..-9.6 for a true -10). A fourth squeeze at the fitted apex would over-determine it (~12 steps).
+- [ ] **dojo coin: held_look calls a held coin "dropped" 7 / 17 times** (camera re-test, GT replays); 0 false "held".
+  A deeper seated hold may make the coin visible below the fingertips; measure on the camera A/B.
 - [ ] **dojo coin: validate disc_hold_evidence in strict CAMERA.** Isolated default-off disc scope of held_thin; historical dev rows have 12 opening-negative belief drops in six handover failures, but one has no demonstrated lift. No camera gain claimed. See journal/2026-11-05-dojo-coin-disc-hold-evidence.md and experiments/2026-11-05-coin-disc-hold-evidence-prereg.md. slot_read remains parked.
 - [ ] **Agentic transport accounting / quota fallback:** `ChatReply` drops httpx attempt counts;
   runtime `agentic.calls` is logical calls, so retries are invisible in the request budget.

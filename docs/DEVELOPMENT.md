@@ -929,6 +929,35 @@ replays match_and_pick's decision (first object, speed, the match it would take)
 record + logged reads, robot at home, stub pick); its GT is the layout moved along the belt, for scoring only.
 `scripts/skills/match2_g3_job.sh` runs one scoped compute3 physics job on light3 / light4.
 
+### Thin-disc contact switches (COIN2)
+
+Six default-off `RuntimeConfig` fields, copied onto Skills and mirrored in G3 `--skill-attr`
+(`dojo/skills/coin_contact.py`): `disc_align=walls`, `disc_snap=on`, `disc_lift=shallow`, `disc_seat=table`,
+`disc_release=staged`, `disc_reserve=on`. They act only inside `precision.disc_into_slot` /
+`plan_disc_handover`, which `insert_into` reaches by geometry (a thin disc, `disc_axis`, standing in a fixed holder,
+`holder_of`), never by task name. A planner selects them per call with `insert_into(..., disc_contact="on")`
+(`coin_contact.PROFILE`, scoped to the call and restored on exit); `None` keeps the configured switches. The agent
+manual and the J2 registry do not document the argument yet: adding it there changes the chooser prompt for every
+task and needs its own manual version and A/B.
+
+- `disc_align=walls` reads `<arm>_ee_joint_state_official` (strict v2, `DOJO_GRIP_SOURCE=v2` in G3). Without the key
+  the probe ends with "no official jaw reading" and writes nothing. Its writes go through `provider.set_pose`
+  (runtime: a `belief_write` with writer `wall_probe`, before7 / after7; G3 `OffsetBeliefProvider`: the offset is
+  re-derived; the GT provider has none). Include `wall_probe` in the write audit.
+- The V's slope varies by layout and arm (0.0016-0.0021 per degree in the twin): the fit takes it free within
+  `WALL_B_RANGE`. The intercept (pads square and centred) comes from the holder's catalogue mesh at the squeeze
+  height (`wall_intercept`); `WALL_A` only when the mesh is unknown.
+- `coin_contact.insert_thin(obj, receptacle, slot_pose7=None, contact="on")` is the general entry: a perceived slot
+  pose gives the targets (`slot_targets_from_pose`), else the receptacle's perceived pose and catalogue frame. Only
+  discs run the contact sequence; another thin shape is refused with a named stage.
+- `plan_pick` gained `snap_in`, `snap_rad`, `lift_step` and `post_lift`; all default to today's plan (the op list is
+  unchanged, `tests/dojo/test_coin_contact.py`). `plan_place` / `_place_tail` gained `release_stages`.
+- G3 `--belief-offset-file F` (dev) gives per-layout belief offsets `{seed: {label: [dx, dy, dyaw]}}`, on top of
+  `--belief-offset`. Camera-like coin errors: `docs/experiments/data/coin2/camera_pick_errors.json`.
+- `scripts/skills/coin2_stages.py` scores the contact stages from `m95_replay.py --every 1 --full` replays (GT, dev
+  only): fingertip clearance at each close, hold loss stage, slip, end state, release pose in the bank's frame.
+  `scripts/skills/coin2_g3_job.sh` runs one scoped compute3 job on light5 / light6.
+
 ### Offline SAM task-prompt comparison
 
 `scripts/perception/sam/collect_task_frames.py ROOT` exports existing `c4b_` /
@@ -1006,6 +1035,27 @@ load; the camera profile uses the existing lane2 caps and startup/boot gates.
 See [the install recipe](../baselines/rsi/INSTALL.md). CPU tests mock telemetry
 and verify admission, credential isolation, portable commands and input hashes.
 Running a recipe still requires current permission for the destination box.
+
+### General instruction/catalogue mask proposals
+
+`dojo.perception.general_masks.propose(image, instruction, index, v2b, sam, cfg)`
+is the task-free component API. Its inputs are RGB, the actual episode instruction,
+the one shared catalogue index and the two detector clients. `GeneralMaskConfig`
+contains one uniform set of model/confidence/deduplication parameters for every
+episode. There is no task key, registry selector, checker or task-config input.
+Catalogue category labels and caption names are global; catalogue geometry, roles
+and placement priors are ignored. Generic grammatical chunks add instruction
+object phrases. All catalogue labels are included on every call. Existing v2b
+identities precede score-ordered SAM proposals during mask-IoU de-duplication;
+SAM proposals carry candidate categories and text, never exact asset identities.
+
+This API is an offline component, with no runtime activation or default change.
+It does not make the downstream task-prior inverse-layout fitter board-compliant.
+`scripts/perception/sam/general_eval.py` validates the frozen image/layout hashes
+and passes GT/task metadata only to scoring after prediction. `general_summary.py`
+requires the complete panel, checks the rerun v2b reference and evaluates the
+prospectively frozen all-cell harm gates. Historical task-bank scores are references
+only. An offline gate failure prohibits camera dispatch for that configuration.
 
 ### Task-scoped SAM camera proposals and shared service
 
@@ -1090,3 +1140,17 @@ SAM parity guard, inspect every `vocab_explain.candidates` entry as well as the 
 vocabulary and record routing counters. A final inactive vocabulary alone does not
 prove that an earlier candidate estimate made zero SAM requests. An active bank
 in a guard's candidate exploration blocks the zero-request parity proof.
+
+### Sort-into-containers evidence tools
+
+`scripts/perception/classify3/` (dev only, GT read after the fact for scoring):
+- `replay_job.sh`: physics-only `m95_replay.py --full` of recorded camera rows on a compute3 light lock;
+- `stage_audit.py`: per GT instance the first failing stage, and the skill's own `truth_in` records against physics;
+- `release_rest_offline.py`: container tests on every recorded release;
+- `candidates_offline.py`: evidence-ledger candidates against the missed instances;
+- `frame0_e2e.py` / `e2e_job.sh`: the perception service's frame-0 estimate re-run on recorded frames under a general
+  `DOJO_PERCEPTION_CFG`, with v2b and optionally a SAM server; B1 on CPU (`DOJO_GL=0`, ~6 min per frame);
+- `g3_job.sh`: a scoped G3 panel.
+
+Two pitfalls: the eval's per-episode `perception` block misreads numbered series (score series cells from a replay),
+and G3 `--belief-drop` does not fit the ported skills (their picks fail).

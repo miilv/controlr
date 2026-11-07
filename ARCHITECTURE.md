@@ -506,6 +506,18 @@ cannot resolve the disc's thickness is unknown; other held evidence retains its
 normal interpretation. The existing `held_thin` switch applies the same guard to
 all unresolved thin objects. Neither switch measures a pose or guarantees a grasp.
 
+### Thin-disc contact sequence
+
+`dojo.skills.coin_contact` holds default-off switches for a thin disc standing in a fixed holder (a coin in a stand),
+used by `precision.disc_into_slot`. `disc_align=walls` squeezes the holder's walls with open pads at several wrist
+yaws and fits the official jaw value (one finger's travel: V-shaped in the yaw error, linear in the offset along the
+closing axis); a bracketed fit rewrites the coin and holder through `provider.set_pose` (logged `belief_write`,
+writer `wall_probe`). The holder is a fixed Geometry object, so the squeeze moves nothing. `disc_snap` closes on the
+walls and rises with the jaws closing, so the pads shut on the coin where the fingertips clear the walls.
+`disc_lift`, `disc_seat` and `disc_release` slow the shallow hold, re-seat the coin against the table and let go in
+stages; `disc_reserve` gates a pick on the steps left. The skill is chosen by object geometry or by the
+`insert_into(disc_contact=...)` argument, never by task name (one fixed system across tasks).
+
 ### Belief-object free-space routing
 
 Dojo RuntimeConfig.plan_world defaults to table (legacy routing, retaining its
@@ -736,6 +748,27 @@ SAM3/SAM3.1 models live in one serialized side service per box, reused by both c
 SAM masks carry allowed candidates rather than asset identities and enter the existing
 silhouette/appearance fit path. Raw prompt categories never become exact identity hints.
 The lane accounts for the shared GPU process once and verifies its health around each job.
+
+### Sort into containers and per-instance evidence
+
+`sort_into_containers` (`dojo/skills/ported/skills/sort_into_containers`) is the general sort-by-category skill the
+planner's sort route runs from the instruction (fixed category -> container map, or a free sort). It is our wrapper
+around the vendored p2 mechanics, unchanged, with two options:
+- `contain`: `root` = p2's in-container test on the object's root position; `bottom` = on its lowest point. A believed
+  object let go into a container keeps its in-hand orientation, so its root can sit above the rim.
+- `park_other`: `off`, or `home` = the idle arm goes home with v3's checked `home_safe` before a one-arm carry.
+
+`RuntimeConfig.sort_contain` / `sort_park` (defaults `root` / `off`, mirrored by G3 `--skill-attr`) select it; with
+both at their defaults the route runs the `ported_classify` variant as before.
+
+`dojo.perception.evidence.Ledger` keeps an episode's per-instance evidence:
+- candidates: unexplained object-sized head regions off fixtures and off believed objects, kept until a look resolves
+  them;
+- identity votes per label, kept apart from pose writes. The key switches only when another key's votes exceed it by
+  a margin.
+
+`RuntimeConfig.instance_evidence=log` (default `off`) feeds every estimate record through `_persist_reads` into it and
+logs `candidate` / `identity_vote` events and the report's `evidence`. It never writes the world.
 
 ### Planned pushes and torso grasps (ORG2)
 
