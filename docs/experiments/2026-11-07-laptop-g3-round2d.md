@@ -78,3 +78,19 @@ full-motion and original physical verification remain; no asset/id routing or
 loose-hold exemption. First run the full hang on random pilot 100066, then
 screen all independent pilots only if a physical hang works. The full-plan
 budget remains 24 and source remains frozen during any panel.
+
+## Centre rest/re-grasp prototype
+
+Full cup hang has 364 right pickup endpoints but no right cradle pair; left
+has 188 pickup endpoints/60 cradle pairs but tested lifts slip. All measured
+pickup TCPs reach their target within 0.5 mm /0.1 degrees, excluding a wrist
+stop as the cause in the per-arm screen. The direct prototype's high left
+21 mm pinch rises only 23/186 mm; no credit. Do not relax verification.
+
+Test a centre rest/re-grasp on this pilot: right cup pick → clear table space
+near (0,-0.15) m with the original lying orientation → ordinary hang re-plan
+from the measured rest. Use native free-space selection and checked transfers;
+no forced pose or coupled carry. Restrict the new narrow cup proposals to
+patch >=0.8: both suspended 25 mm contacts have patch 1.0; the fallen 27 mm
+contact has patch 0.4. Preserve the wide bank and unchanged physical verifier.
+This adds a staging leg only; all collision checks, limits and budgets remain.
