@@ -428,3 +428,103 @@ append exactly the rewritten block under the compute4 queue lock after COIN.
 Retain recoverable source/destination snapshots and report both queues' hashes,
 positions, deployment/instrument pins and ETA. No KONG outcome is inspected
 and no adoption is authorized by this amendment.
+
+## MOVE receipt — compute6 to compute4, 2026-11-07
+
+The host amendment **`7e16003ebc46f59567f5e50fd3536c9f65dfb324`** was on
+main before either queue mutation. At **11:28:30.674685Z**, under compute6's
+`queue2.txt.lock`, every eligible KONG name was rechecked against all lane
+START logs: **zero started rows**. The exact frozen 60-row suffix was removed
+from **positions 104–163** (the queue had drained since the earlier 112–171
+receipt). Source queue: **163 → 103 rows**; every other row remained a
+byte-identical prefix. No POUR/tie row, running job, cap or lane was changed.
+The original block and before/after snapshots remain recoverable in
+`compute6:~/dojo-data/kong-retest-eligible-1107/move-to-c4/`.
+
+At **11:29:19.223920Z**, under compute4's `queue2.txt.lock`, all 60 rewritten
+rows were appended at **positions 45–104**, after **44 remaining COIN rows**
+(and the already active jobs). The previous tail was
+`c4b_stack_blocks_discretAr1_discstack2_100004`. Source names retain the frozen
+suffix/order with only `c6b_ → c4b_`; all 30 pairs stay adjacent and AB/BA
+balanced. Destination queue: **44 → 104 rows**. Existing COIN bytes are an
+unchanged prefix. Cross-check: no original KONG name remains on compute6;
+compute4's suffix is exactly the validated 60-row file. Both hosts retain the
+completed handover receipt and notes; compute4's `wave-1106/lead-notes.log`
+also records placement.
+
+| Queue snapshot | SHA256 |
+|---|---|
+| compute6 before removal | `8eaae45496d4d9d67e4cf369bb8fa5ede9b952d22fde7de3cefeaba1138c8686` |
+| compute6 after removal | `65f3619d13f9e25a5af1f4db61cb590f1e08780ce3e6056b6ae72881c4926048` |
+| compute4 before append | `8a327852010f293c9d5cddd7332b7d0fbbcd31eab148c68339972fdbb6036589` |
+| compute4 after append | `cae1a430ea3afb35991e2494af6f6f4f4ebca561bd77500c8d831c7def1e545a` |
+
+- **Frozen manifest unchanged:**
+  `8b3a0dc168c8637f8adb1f161b04cdcfe89dbb9e5e851eb8a605fdaf58d1a3fd`.
+  All **72** manifest-listed input/metadata files match byte-for-byte, including
+  settled layouts, RAW originals, indices and the five standard-valid demos.
+  Nothing was regenerated or reselected. All 60 ids pass the canonical positive
+  `OUR_MEASUREMENT_SLICES` allowlist; none of the refused panel is staged.
+- **New deployment:** `compute4:~/dojo-integ-c4-3eefbfc5`, full source
+  `3eefbfc50741842be0c67e0376d0765664e0d3e4` (main at preparation).
+  All **1,529 tracked source files** match the git archive. No existing deploy
+  was modified. Managed Python **3.12.13**; the new venv was copied from the
+  working compute4 lane and aligned, only in this new venv, to compute6's exact
+  package freeze. The full package inventory and the core parity gate both
+  have **zero differences**, after normalizing intended editable/host paths.
+  Eight ancillary versions and two unused editable SAM installs differed in
+  the initial copy; these were aligned/removed before release, not waived.
+- **Shared inputs:** **101** frozen model/background/calibration/catalogue-index
+  hashes match on compute4. Catalogue coverage gate passes. The read-only
+  compute4 offline cache at `~/dojo-data/wave-1106-c3moved/extscache` matches
+  **all 4,440 files** in compute6's registered offline cache. No system package,
+  driver, simulator install or colleague's tree was changed.
+- **Config proof:** **60/60** actual staged configs equal every frozen compute6
+  field; full canonical equality holds with the explicitly inactive seven-field
+  schema extension described above. Raw schema extension is recorded rather
+  than hidden. All frozen Skills fields also equal the compute6 snapshots;
+  the six additional Skills attributes are `off`. Both guards have equal
+  task-resolved A/B configurations and Skills snapshots. Post-collection
+  zero-action/zero-write parity proof is still required.
+- **Candidate/route:** all **six task/arm candidate-parity checks pass with
+  `diff={}`**, using the frozen candidate plus its registered overrides and
+  matched frozen background environment. **60/60 rows explicitly pin
+  `AGENTIC_MODEL=claude/claude-sonnet-5-5`**. This is dispatch proof, not a claim
+  that future call-log/transcript/report model verification has already run.
+- **Instrument:** primary remains #417 merge
+  `77b4571907f6ce49eec11c0685db8f0c7ba05d64`; nearest-GT is supplementary.
+  The new deployment's identity module and audit scorer are byte-identical to
+  that registered merge's files. The frozen instrument receipt is copied
+  unchanged, including its pre-data selection timestamps.
+- **Operational proof:** all rows name their own `BASH_ENV` recipe under the
+  moved root's `move/`. A real noninteractive **bash-script invocation**, matching
+  the lane's launch form, verifies offline rendered/physics Kit flags, registry
+  disabled, both **600-second** watchdogs and the **50 GB** floor. No tracked
+  launcher was patched. Existing compute4 caps **`2 4`**, <=16384 MiB-used gate,
+  startup serialization, heavy locks and `lane_gate.stamp` protocol remain
+  unchanged. MOVE itself accessed no coord file and started no GPU/model job.
+- **Validation:** **17 focused tests passed**, 246 deselected, covering scoped
+  watcher/runtime behavior and #417 identity/held-write logging. The catalogue
+  gate, six candidate-parity checks, config/Skills proof and shell environment
+  check all passed before removal/append. No KONG outcome was inspected.
+
+Source 60-row SHA256:
+`04688cc81e5acc56a46a9a14e47e91d8803640218be5e3dfbbaebf10b443b8e9`.
+Rewritten 60-row SHA256:
+`5871dc4563e4011211611fbf9e0547ccd5f31212f8ea6ed02180d963aac78310`.
+
+**Planning ETA:** start immediately after COIN, approximately **14:00Z**;
+finish approximately **16:25Z**, 7 November. This uses the lead's COIN finish
+estimate and the prior Sonnet per-cell estimate of **17,065 lane-seconds**
+(~4.74 lane-hours / two lanes = ~2.37 hours). Shared admission/startup waits,
+COIN overruns, time caps, infra retries or a stopped lane can delay it. The
+registered 25 lane-hour worst-case episode-cap ceiling is unchanged. No new
+model calls were made for this move; actual collection spend is a later report.
+
+[Complete receipt/validation](data/kong-scoped-retest/eligible/compute4-move/receipt.json)
+and [all 60 config proofs](data/kong-scoped-retest/eligible/compute4-move/config-proof.json)
+retain hashes, schema extensions, package/Skills checks and both queue events.
+Full canonical configs, package inventories, scripts, operational recipe and
+before/after queues are in
+`compute4:~/dojo-data/kong-retest-moved-1107/move/`. No candidate/default change,
+verdict or adoption is part of this move.
