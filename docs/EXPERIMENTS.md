@@ -80,9 +80,9 @@ both of these hold:
    - Run `scripts/perception/m95_score.py audit` on physics-only replays of both arms.
    - It compares every belief write the report logs (refines, post_place moves, any `before7` / `after7` event) with
      GT at that step.
+   - GT identity is fixed at the first consumed pick/grasp-close; earlier unambiguous matches within 10 mm are provisional, and nearest-object fallback use is reported.
    - A write is **harmful** when it adds **more than 2 mm** of error to the tracked object (3-D, with z reported
-     apart), and helpful when it removes as much. The tracked object is the GT object of the label's group nearest
-     the pre-write belief.
+     apart), and helpful when it removes as much. The tracked object is the label's persistently associated GT instance; a later retry never reassigns it.
    - Compare B's harmful and helpful counts per writer with A's, under these per-writer conditions:
      - **A writer that also writes in A** passes when B's harmful rate (harmful ÷ writes) is at most 5 percentage
        points above A's. Raw totals are reported but not gated. Once an arm takes a different action, the two

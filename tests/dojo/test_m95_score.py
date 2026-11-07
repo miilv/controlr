@@ -185,3 +185,45 @@ def test_lay_and_relocate_remain_two_writes_when_version_log_combines_them():
     writes = ms.belief_writes(rep)
     assert [w["writer"] for w in writes] == ["watch_lay", "watch_relocate"]
     assert writes[0]["after"] == writes[1]["before"]
+
+
+def test_audit_cli_uses_persistent_instance_and_reports_nearest_fallback(tmp_path, monkeypatch):
+    import gzip
+    import json
+    from types import SimpleNamespace
+
+    import numpy as np
+    from dojo.perception import audit_identity as ai, grasp_metric as gm
+
+    fp = gm.Footprints(loader=lambda key: np.array([[.01, -.01, .02], [.03, .01, .04]]))
+    monkeypatch.setattr(gm, 'Footprints', lambda: fp)
+    monkeypatch.setattr(ai, 'Groups', lambda task: SimpleNamespace(of=lambda label: 'blocks'))
+    def frame():
+        return {'objects': [{'label': lab, 'type': 'Rigid', 'category': 'block', 'category_idx': 5,
+                             'pos': [x, 0, .8], 'quat': [1, 0, 0, 0]}
+                            for lab, x in [('belief0', 0.), ('other', .2)]]}
+    rep = {'events': [{'kind': 'consume', 'skill': 'pick', 'label': 'belief0', 'step': 1,
+                       'key': 'Rigid/block/00005', 'pose7_used': [.2, 0, .8, 1, 0, 0, 0]},
+                      {'kind': 'belief_write', 'writer': 'held_pose', 'label': 'belief0', 'step': 5,
+                       'before7': [.2, 0, .8, 1, 0, 0, 0], 'after7': [.203, 0, .8, 1, 0, 0, 0]},
+                      {'kind': 'belief_write', 'writer': 'perception', 'label': 'unknown', 'step': 6,
+                       'before7': [1., 0, .8, 1, 0, 0, 0], 'after7': [.99, 0, .8, 1, 0, 0, 0]}]}
+    rp = tmp_path / 'report.gz'
+    with gzip.open(rp, 'wt') as f:
+        json.dump(rep, f)
+    replays = tmp_path / 'replays'
+    replays.mkdir()
+    with gzip.open(replays / 'episode_100000.json.gz', 'wt') as f:
+        json.dump({'frames': {str(s): frame() for s in (1, 5, 6)}, 'score': 1.}, f)
+    row = {'task': 'task', 'layout_id': 100000}
+    ap = tmp_path / 'actions.gz'
+    with gzip.open(ap, 'wt') as f:
+        json.dump({'actions': []}, f)
+    monkeypatch.setattr(ms, 'episodes', lambda runs: iter([('episode', row, str(rp), str(ap))]))
+    out = tmp_path / 'out'
+    ms.cmd_audit(SimpleNamespace(out=str(out), runs=[], replays=str(replays), back=0, harm_mm=2., by='task'))
+    rows = [json.loads(l) for l in (out / 'writes.jsonl').read_text().splitlines()]
+    assert rows[0]['gt_label'] == 'other' and rows[0]['verdict'] == 'harmful'
+    assert rows[0]['err_before_mm'] == 0. and rows[0]['err_after_mm'] == 3.
+    assert not rows[0]['identity_fallback'] and rows[1]['identity_fallback']
+    assert json.loads((out / 'association.json').read_text())['nearest_fallback'] == 1

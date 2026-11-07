@@ -740,3 +740,17 @@ restoration/intersection of the temporary measured joint envelope.
 `settle_native_phase.py --ids ...` removes total belt travel from authored
 positions, avoiding the extra horizontal phase introduced by the round-1
 snapshot method; its pure correction has a CPU test.
+
+### Write-audit identity and held transport
+
+Held-pose `belief_write.before7` is the prior attachment synchronized to the current measured TCP; `before_sync7`
+retains the cached raw world pose. Computing the synchronized prior is logging-only and does not add a live belief
+synchronization or observation. `m95_score.py audit` associates labels chronologically: unambiguous <=10 mm proximity
+anchors are provisional until the first consumed pick or saved grasp-close evidence finalizes the identity. Subsequent
+retries cannot rebind it. Every row records its association source/step and fallback flag; `association.json` counts
+fallbacks and missing body geometry. A missing already-anchored GT object fails rather than selecting a neighbour.
+
+`scripts/perception/audit_supplementary.py` re-scores copied frozen ledgers against saved exact write frames without
+starting a simulator. It accepts frozen body-bounds/group caches, and keeps the 2 mm body-centre definitions unchanged.
+Its optional legacy-show repair records exact-flange versus commanded-anchor-FK provenance; approximate legacy
+reconstructions are supplementary diagnostics, never retroactive qualification of a registered verdict.
