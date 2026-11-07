@@ -35,6 +35,12 @@ Shell wrappers call `runner.py` (`run`, `batch`, `smoke`, `collect`).
   remain null. The publisher refuses a short scored cell or duplicate input.
   `collect.sh COMMON --episodes 5` rebuilds that incremental view on the CPU.
   The separate `summarize.py` CLI retains `--require-complete` for 10/cell.
+- `publish.py --host HOST --remote-state ABS --checkout DOCS_WORKTREE --watch`
+  runs on this agent machine, polling only our result file every five minutes.
+  It verifies 54 cells, first-five positions and permitted ids, then pushes
+  docs-only bar updates to main. Previously published cells cannot change.
+  Use a clean dedicated docs worktree; any non-bar branch change refuses a
+  direct main push. Record the local publisher PID before detaching it.
 - The batch owns one `power_watch.py --state ABS` child (five-minute samples).
   It records its PID and stops it on exit; the logger has a singleton lock.
 
