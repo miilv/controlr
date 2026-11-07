@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [coin-disc-retest-prereg](2026-11-07-coin-disc-retest-prereg.md) | Once-only disc evidence re-test on fresh salted layouts | Prospective: 20 gain + 10 pairs per original guard; Sonnet pinned; no verdict |
 | 2026-11-07 | [key-scoped-prereg](2026-11-07-key-scoped-prereg.md) | Can insert_key-only handover/lean retain gain without charger harm? | 40 cx rows dispatched on compute6; 10 gain / 5 charger / 5 stack pairs; one lead-authorized final refill; no verdict |
 | 2026-11-06 | [egg2-reach-g3](2026-11-06-egg2-reach-g3.md) | Can practical-workspace orientation search raise the egg ceiling? | Ten pairs: 23.5→17.5, 0/10→0/10 success, 0 score wins/4 losses; stays off |
 | 2026-11-07 | [kong-scoped-relocate-prereg](2026-11-07-kong-scoped-relocate-prereg.md) | Can task-scoped relocation retain kong gain without imitate harm? | 40/40 arms audited; 228/228 writes scored; raw B harmful-write excesses and two cross-instance relocation flags documented; camera verdict left to lead |
