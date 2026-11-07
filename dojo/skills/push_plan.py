@@ -4,14 +4,14 @@ Three independent capabilities of ``library.push_to``:
 
 * ``Skills.push_contact`` "pair": the stroke pushes with the gripper OPEN and its jaw line across the stroke, so the two
   fingertips (``OPEN_GAP`` apart) meet the trailing face at two points. A two-point push squares the face up against the
-  jaw line instead of turning the object about a single contact (G3 dev: single closed-finger strokes of a 368 mm keyboard
+  jaw line instead of turning the object about a single contact (G3 dev: single closed-finger strokes of a 37 cm flat slab
   along its long face turned it 10-14 deg per 80 mm stroke, always the same way). With a support given, the strokes run
   along the support's horizontal axes, so the squared-up object ends aligned with the support.
 * ``Skills.push_plan`` "sequence": before each stroke, the whole remaining stroke sequence is planned kinematically (the
   object moved virtually by each planned stroke) for both axis orders, and the first stroke of the first order whose
   every stroke plans is executed. The legacy rule pushes the axis with most to go first; one axis's strokes can leave the
-  object where the other axis's start pose is out of reach or in a fixture (dev: pushed up first, a keyboard's end lay
-  beside a drawer where no sideways stroke fits).
+  object where the other axis's start pose is out of reach or in a fixture (dev: one axis first left the slab's end
+  beside a tall fixture where no stroke along the other axis fits).
 * ``Skills.push_goal`` "clear": the goal is the point of the cover region (the centres at which the object, aligned with
   the support, covers or lies inside it) with the most clearance from other objects' footprints and from ``keep_clear``
   discs (the caller's pending place sites), at least ``GOAL_EDGE`` inside the region where it can be.
@@ -34,7 +34,7 @@ GOAL_EDGE = 0.015         # m: the "clear" goal stays this far inside the cover 
 GOAL_CLEAR = 0.06         # m: clearance beyond which more does not count (then: nearest the region's middle)
 KEEP_MARGIN = 0.01        # m: added to every keep-clear disc
 OVERSHOOT = 0.85          # strokes longer than 30 mm are cut to this fraction of what is left (dev: 80 mm planned
-                          # strokes moved a keyboard 90-95 mm); the re-read after each stroke takes the rest
+                          # strokes moved a flat slab 90-95 mm); the re-read after each stroke takes the rest
 PAIR_GRIP = 1.0           # the gripper command of a pair stroke (open)
 
 
@@ -230,7 +230,7 @@ def pair_stroke(sk, o, label: str, u, step: float, centre=None):
             m1 = sk.motion.to_pose(arm, sk.ex.q[arm], T_ab, FAST, "push_above", gripper=PAIR_GRIP, ignore=(label,))
             if not m1.ok:
                 # by way of home: an arm left out by a fixture (the place before) can neither move across nor rise
-                # from there ("hits drawer; via failed: lift unreachable")
+                # from there ("hits <fixture>; via failed: lift unreachable")
                 pre = escape_home(sk, arm)
                 if pre is not None:
                     m1 = sk.motion.to_pose(arm, pre.q_end, T_ab, FAST, "push_above", gripper=PAIR_GRIP,
@@ -258,7 +258,7 @@ ESCAPE_RISES = (0.0, 0.05, 0.10)     # m: straight rises tried before the joint 
 def escape_home(sk, arm: str):
     """A collision-checked way home for an arm that cannot move across from where it is: a straight rise (none, 5 or
     10 cm), then a checked joint move home, the gripper as it is. ``ArmPlan`` or None (never an unchecked move: an
-    unchecked home swing from a place beside a drawer swept the open fingers through the just-placed object, G3 dev)."""
+    unchecked home swing from a place beside a tall fixture swept the open fingers through the just-placed object, G3 dev)."""
     from dojo.skills.executor import ArmPlan
     q0 = np.asarray(sk.ex.q[arm], float)
     g = float(sk.ex.g[arm])

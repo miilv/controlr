@@ -2,15 +2,15 @@
 
 ``Skills.grasp_torso`` "on": ``plan_transfer`` adds ``torso_grasps`` to an irregular object's candidates: near-
 horizontal approaches that close across the body at mid / upper height, the closing direction 90 or 45 degrees off the
-object's long horizontal axis (a figurine's arm line). Top-down slice pinches of a 19 cm figurine with spread arms
+object's long horizontal axis (the line of its outstretched appendages). Top-down slice pinches of a 19 cm figure with spread arms
 closed 57-78 mm wide at mid height with a 40 deg tilt and slid out at the lift (G3 dev: rose -41 to +16 mm of 80, 4 of
 9 layouts). Across the arm line the body is 40-60 mm deep, and a side approach keeps the TCP between the arm's base and
 the object, which reaches 0.55 m out where a top pinch does not.
 
 ``Skills.stand_offset`` "base": a stand smaller than the object (``library._on_targets``' small-support case) gets
 extra place positions on rings of 0.25 and 0.5 x the object's base radius around its centre, ordered by clearance from
-the other objects (a stand 4 cm from a drawer: an object 14 cm across its base does not fit at the stand's centre
-without its footprint entering the drawer). Half the base radius keeps the stand under the object's base.
+the other objects (a stand 4 cm from a tall fixture: an object 14 cm across its base does not fit at the stand's centre
+without its footprint entering the fixture). Half the base radius keeps the stand under the object's base.
 
 ``Skills.retreat_axis`` "on": a place whose hand approached from the side backs out along the fingers first and only
 then rises (``Skills._place_tail``: today's retreat rises 2 cm while backing out, which drags an appendage that hangs
@@ -37,7 +37,7 @@ FINGER_HALF = 0.012                       # m: a finger's half-width across the 
 FINGER_REACH = 0.014                      # m: how far a finger extends past the TCP along the approach
 PRE = 0.07                                # m: the pre-grasp retreat (``Grasp.pre_dist``)
 TORSO_FIRST = -0.6                        # score offset: screened and planned before the slice pinches (G3 dev: all 5
-                                          # executed slice picks of a figurine slid out, baseline 100000-09)
+                                          # executed slice picks of a figure slid out, dev baseline)
 PALM_DEPTH, PALM_HALF_W, PALM_HALF_H = 0.084, 0.08, 0.03   # m: ``X5Kin.palm_points``' box (flange frame)
 
 
@@ -156,8 +156,8 @@ def stand_yaws(sk, label: str, support: str) -> list[float]:
 def stand_points(sk, label: str, support: str, pts=()) -> list[np.ndarray]:
     """``Skills.stand_offset`` "base": ``pts`` (the caller's positions) plus rings around a small support's centre
     (module doc), all ordered by clearance from other objects' footprints (capped at ``CLEAR_CAP``), then nearest the
-    centre: the transfer screen's IK budget goes to positions that can be clear first (a wide figurine's centre
-    positions beside a drawer used up 6000 place IKs with no pair, CPU dev screen)."""
+    centre: the transfer screen's IK budget goes to positions that can be clear first (a wide figure's centre
+    positions beside a tall fixture used up 6000 place IKs with no pair, CPU dev screen)."""
     from dojo.skills.push_plan import _inside, _seg_dist, footprint
     w = sk.world
     o, b = w.obj(label), w.obj(support)
@@ -188,8 +188,8 @@ VIA_NEAR = 0.20          # m: fixtures whose footprint lies within this of the s
 def clear_vias(sk, label: str, support: str) -> list[np.ndarray]:
     """``Skills.place_via`` "clear": xy offsets (from the place target) for ``Motion.via_xy``: out from each fixture
     next to the support (along the normal from its footprint's nearest point to the support's centre), and towards the
-    arms' bases, so the held object comes in from its clear side (a stand 4 cm beside a drawer, the carry's joint move
-    swept a 19 cm figurine through the drawer's front corner: "hits drawer", G3 dev 4 of 5 plans)."""
+    arms' bases, so the held object comes in from its clear side (a stand 4 cm beside a tall fixture, the carry's joint move
+    swept a 19 cm figure through the fixture's corner, G3 dev 4 of 5 plans)."""
     from dojo.skills.kinematics import ARMS
     from dojo.skills.push_plan import _seg_dist, footprint
     w = sk.world
