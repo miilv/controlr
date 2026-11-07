@@ -6,6 +6,13 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Task-prompt masks need an asset identity/pose gate.** SAM semantic labels
+  cannot replace catalogue IDs. Prototype only behind a default-off task-bank
+  flag, preserve base v2b identity during union de-duplication, honor SAM API
+  minima below the current server's 0.3 processor floor, and measure phantoms
+  before any camera A/B ([SAMBAKE](experiments/2026-11-07-sam3-task-prompts.md)).
+
+
 - [ ] **Complete first-grasp identity anchors for ported skills in write audits.**
   POUR's frozen audit scored all 81 writes, but association sources were 76
   initial-tight/five nearest fallback, with no consumed-pick/grasp-close anchor

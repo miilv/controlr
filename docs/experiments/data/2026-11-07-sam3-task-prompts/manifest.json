@@ -1,0 +1,952 @@
+[
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100000",
+    "frame": "frame0",
+    "task": "match_and_pick_from_conveyor",
+    "layout_id": 100000,
+    "gt_source": "belt-reconstructed",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain1/simlab/layouts/match_and_pick_from_conveyor/100000.json",
+    "layout_sha256": "4977fea6e4a860bba4dc964b5aa74de8720b57104951076f19e42fd6df07e1a3",
+    "belt_phase": {
+      "native_steps": 50.74618710782165,
+      "anchor_step": 0,
+      "anchor_label": "rider0",
+      "reference_label": "target0",
+      "anchor_xy": [
+        0.448,
+        0.039
+      ],
+      "speed_m_per_step": 0.004
+    },
+    "images": {
+      "cam_head": "eaa5988b516b31268edcaeed0443e8c9b25d701b3de3a99fed5ed3754107a419",
+      "cam_left_wrist": "49c2b3e56f4469ec97c50e57b14048805110196b493c1973b19661c1966088cd",
+      "cam_right_wrist": "91aa321f4f1538db5b55653c454ffecaa6826e06a0c6987159f929d2b6a87134"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100001",
+    "frame": "frame0",
+    "task": "match_and_pick_from_conveyor",
+    "layout_id": 100001,
+    "gt_source": "belt-reconstructed",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain1/simlab/layouts/match_and_pick_from_conveyor/100001.json",
+    "layout_sha256": "307880c44ef9001edccbe667aa77ac8c4ecdda42cc2d5747e14858b9606ece35",
+    "belt_phase": {
+      "native_steps": 49.37242295693393,
+      "anchor_step": 0,
+      "anchor_label": "rider0",
+      "reference_label": "target0",
+      "anchor_xy": [
+        0.446,
+        0.036
+      ],
+      "speed_m_per_step": 0.004
+    },
+    "images": {
+      "cam_head": "8bfd3c7d9ecd7221d9b1651b2d9e346b0595660d86b21a02cb55f59efee04a3f",
+      "cam_left_wrist": "45608ca097d7a4add3e623e6af7d61bc8b606ff41403e658e0fc58a2b24337db",
+      "cam_right_wrist": "721e3d0796dfc454a1b6fcbd0c10504d43ba75e360c7918c39566bcc0ad9bfa4"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100002",
+    "frame": "frame0",
+    "task": "match_and_pick_from_conveyor",
+    "layout_id": 100002,
+    "gt_source": "belt-reconstructed",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain1/simlab/layouts/match_and_pick_from_conveyor/100002.json",
+    "layout_sha256": "d40b5ba0f312dfba8f66fbb9df5dc1fc03ff7c6bc38ae4807f9ef1de6fc9d428",
+    "belt_phase": {
+      "native_steps": 50.21583982339473,
+      "anchor_step": 0,
+      "anchor_label": "rider0",
+      "reference_label": "target0",
+      "anchor_xy": [
+        0.446,
+        0.037
+      ],
+      "speed_m_per_step": 0.004
+    },
+    "images": {
+      "cam_head": "92c74143a42d63b1ccb34069099c838883f590b54eb24dbd847a00305f5d92a5",
+      "cam_left_wrist": "78127e5ce42fe09a604b9875aea77422e6e3ee6b03ef5463ad8c58a5a69cd5f5",
+      "cam_right_wrist": "60dd8ab93bb653cf0f10d09ec895759ab39d06cb40a3692fa79227d38974f36b"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100003",
+    "frame": "frame0",
+    "task": "match_and_pick_from_conveyor",
+    "layout_id": 100003,
+    "gt_source": "belt-reconstructed",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain1/simlab/layouts/match_and_pick_from_conveyor/100003.json",
+    "layout_sha256": "adeafaf428398ffc36468dc98997d27403048f2e1ed7e44af0b3423d2984a596",
+    "belt_phase": {
+      "native_steps": 51.241245258322124,
+      "anchor_step": 0,
+      "anchor_label": "rider0",
+      "reference_label": "target0",
+      "anchor_xy": [
+        0.445,
+        0.036
+      ],
+      "speed_m_per_step": 0.004
+    },
+    "images": {
+      "cam_head": "d4c07a7a443c2dbd04885302c8c1fa0a012376c0d1bb08955f2cc13a7ed202dd",
+      "cam_left_wrist": "a038e2c894a1a7c6d03ed8757e523b2c8e5f87b24f148ad2eb88e420cbbbbab8",
+      "cam_right_wrist": "4f6119fec3ffbc3fd2a1750572181b09496dec9a53fe9b6c9a90f3c8b2ccb3a3"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100004",
+    "frame": "frame0",
+    "task": "match_and_pick_from_conveyor",
+    "layout_id": 100004,
+    "gt_source": "belt-reconstructed",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-gain1/simlab/layouts/match_and_pick_from_conveyor/100004.json",
+    "layout_sha256": "d2ebf3349ce4e785308fc388bf0002a782b1ab8b53dd29c6a543c2bead2983ab",
+    "belt_phase": {
+      "native_steps": 51.4776289592341,
+      "anchor_step": 0,
+      "anchor_label": "rider0",
+      "reference_label": "target0",
+      "anchor_xy": [
+        0.451,
+        -0.02
+      ],
+      "speed_m_per_step": 0.004
+    },
+    "images": {
+      "cam_head": "6537dbccb848fb7ad97637f6577d4f1b361e0c88a924a4d71a865998d5c3e82c",
+      "cam_left_wrist": "62e73f43489da4ea83d480380cddcb0fd446a3f2bcf397131af9c744d57dcdb1",
+      "cam_right_wrist": "6083ddca682bcc9df1a458b40271a89b548168fd3f3f71710bc9d65466d76189"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100000",
+    "frame": "frame0",
+    "task": "pick_from_conveyor_by_image",
+    "layout_id": 100000,
+    "gt_source": "belt-reconstructed",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard1/simlab/layouts/pick_from_conveyor_by_image/100000.json",
+    "layout_sha256": "a97484a73ae1388b0d3a2237cc899c62056f709c67ab4d611825664f6ea4b936",
+    "belt_phase": {
+      "native_steps": 51.949709178646565,
+      "anchor_step": 0,
+      "anchor_label": "rider0",
+      "reference_label": "basket",
+      "anchor_xy": [
+        -0.068,
+        0.038
+      ],
+      "speed_m_per_step": 0.004
+    },
+    "images": {
+      "cam_head": "cec2350176129bd4c7350674c641787459738550d77a7d839cdcc383e149071c",
+      "cam_left_wrist": "2b944aae18787720142ebbd4dfb9910d5e2e5f15993f59427e4e07714dfdf0fe",
+      "cam_right_wrist": "a6ffa13f3ef8b35ef0d8658b00371b234fb2870aeb50a4650cb20783f87aa3dd"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100001",
+    "frame": "frame0",
+    "task": "pick_from_conveyor_by_image",
+    "layout_id": 100001,
+    "gt_source": "belt-reconstructed",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard1/simlab/layouts/pick_from_conveyor_by_image/100001.json",
+    "layout_sha256": "da2c4488f06f1dae9ea4d5eefdd0830bafef71cd206af2125b7fb392d2ea60d3",
+    "belt_phase": {
+      "native_steps": 50.88242623028428,
+      "anchor_step": 0,
+      "anchor_label": "rider0",
+      "reference_label": "basket",
+      "anchor_xy": [
+        -0.153,
+        -0.024
+      ],
+      "speed_m_per_step": 0.004
+    },
+    "images": {
+      "cam_head": "d84db01e609d9b87c9ae50810b6295b4801bd23d0e73322c910bcdb6ba301671",
+      "cam_left_wrist": "f6cb7b93bcdc4eb45768c0623590115e59213ae0bbfd15012da5e5e8f7825b57",
+      "cam_right_wrist": "4e129286f39b59830975e69c15e643572dda0f6cebc14bed4c186f9ada9aacbe"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100002",
+    "frame": "frame0",
+    "task": "pick_from_conveyor_by_image",
+    "layout_id": 100002,
+    "gt_source": "belt-reconstructed",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard1/simlab/layouts/pick_from_conveyor_by_image/100002.json",
+    "layout_sha256": "38c57e9ce6ea42e4317aa66d263dae3adb402f14a87fba804bb2c05ffff336c1",
+    "belt_phase": {
+      "native_steps": 52.44986791888194,
+      "anchor_step": 0,
+      "anchor_label": "rider0",
+      "reference_label": "basket",
+      "anchor_xy": [
+        -0.198,
+        0.002
+      ],
+      "speed_m_per_step": 0.004
+    },
+    "images": {
+      "cam_head": "51a1e9f5ad49bbb8461efa5bd311f108113a4c436e9aeb461566fbac62248f90",
+      "cam_left_wrist": "c7498f445b84a5b5ac837134fefa572bd8f5334955fc1f2e227371ae55cd52be",
+      "cam_right_wrist": "76667297ad9051bda9eee892793001d32147f038a4f6ac88371c1abfdd1eb4c0"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100003",
+    "frame": "frame0",
+    "task": "pick_from_conveyor_by_image",
+    "layout_id": 100003,
+    "gt_source": "belt-reconstructed",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard1/simlab/layouts/pick_from_conveyor_by_image/100003.json",
+    "layout_sha256": "4120ea4e6b24e1d56ad3054c46a48a17a021f3ca0e490fe2b8847b453a3065e3",
+    "belt_phase": {
+      "native_steps": 50.723484343983294,
+      "anchor_step": 0,
+      "anchor_label": "rider0",
+      "reference_label": "basket",
+      "anchor_xy": [
+        -0.086,
+        0.061
+      ],
+      "speed_m_per_step": 0.004
+    },
+    "images": {
+      "cam_head": "1b01326fa9047ea589a3413832f09e476e089a71d4e2886b46b9015bf63baab4",
+      "cam_left_wrist": "1ad9783d2ae37aa016ec8f181eb614d2ae1d6e322ac3ce9797e604e67365e004",
+      "cam_right_wrist": "fc05b1031b8d7cb83b0ab3685a4262efbe0111ede3e808f8ab9e8827820cb8aa"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100004",
+    "frame": "frame0",
+    "task": "pick_from_conveyor_by_image",
+    "layout_id": 100004,
+    "gt_source": "belt-reconstructed",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/blocks/waist-guard1/simlab/layouts/pick_from_conveyor_by_image/100004.json",
+    "layout_sha256": "0ba12ac3dd27525f6c949d90863b8b0cb3605a6705792cf9184e941f12426bce",
+    "belt_phase": {
+      "native_steps": 53.0616519361171,
+      "anchor_step": 0,
+      "anchor_label": "rider0",
+      "reference_label": "basket",
+      "anchor_xy": [
+        -0.307,
+        -0.023
+      ],
+      "speed_m_per_step": 0.004
+    },
+    "images": {
+      "cam_head": "5f44594f2b627df3c7b65373efd5cd87d1409b92ddb91f99ef1a606624313ebd",
+      "cam_left_wrist": "35c829d891582514ef352c80cb6186f45d7f8b7f1c79303464dad8b5719d09e6",
+      "cam_right_wrist": "4abc26f45a08e7869ca77c2fa41448f884ea98160e429aeb391422cdd805afff"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100005",
+    "frame": "frame0",
+    "task": "classify_objects",
+    "layout_id": 100005,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/classify_objects/100005.settled.json",
+    "layout_sha256": "04c140447273921e721ccd9e068f32b1b2ca86405774b760d969fee2e879652d",
+    "images": {
+      "cam_head": "fdc2387a427864de63a2155a669fafc1fa8f6d655ef80f720becdc67eac099be",
+      "cam_left_wrist": "82cd6cbfc38780ea820f72a3c4f4069e36014d8eb725fd56a58c21ed621ea609",
+      "cam_right_wrist": "8a2dba8759616c61130e4930360fea63fd169daa702db46a337c10ee23cc565a"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100006",
+    "frame": "frame0",
+    "task": "classify_objects",
+    "layout_id": 100006,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/classify_objects/100006.settled.json",
+    "layout_sha256": "b9b7679147b00ad2d76e0efe6e8f2279e4e12f16ba770058747b0debde569c46",
+    "images": {
+      "cam_head": "42a568b2a93adad2c697465d17184ca9922a1f857adf0fc1dccfc358f5f9dc41",
+      "cam_left_wrist": "8cd24056d5d377b07282708d08903da3984c9995e55f720b2d9ac9f84f772d11",
+      "cam_right_wrist": "1713aa682c463122a4f45179820a3fb3e1d82ec7b2c19859912c7ecdffc86235"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100007",
+    "frame": "frame0",
+    "task": "classify_objects",
+    "layout_id": 100007,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/classify_objects/100007.settled.json",
+    "layout_sha256": "3dad92d6664fb062dbc1efa5a0f20318d6bf5ea8ba10415dafc928699f33683e",
+    "images": {
+      "cam_head": "960143a6857054da820b9737046cf9436b29f59df916ff2b56af43630a820ec2",
+      "cam_left_wrist": "33a41c0a7b5990ddcecc5dd434fd5a7986f2447230b4bcf3963bda4e316913bf",
+      "cam_right_wrist": "ee5220b79d9a3eae729938cee5d56ab43974d64104075768fd5b66665c290119"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100008",
+    "frame": "frame0",
+    "task": "classify_objects",
+    "layout_id": 100008,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/classify_objects/100008.settled.json",
+    "layout_sha256": "573475fb09fe0acfc420af7bca8cb1d856739a1ceb0239979118c944cb25c85e",
+    "images": {
+      "cam_head": "816104364293f81f5f7afb0cd7c6c7647a97137beb1be2a334a848774e69035d",
+      "cam_left_wrist": "bcc9f3d24e098910453034457764f710c2bda9478bbdc65e016df6c30de97895",
+      "cam_right_wrist": "5004963230f92938102e82722bb3d3eaec63899151a30085578d3b81fae576c9"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100009",
+    "frame": "frame0",
+    "task": "classify_objects",
+    "layout_id": 100009,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/classify_objects/100009.settled.json",
+    "layout_sha256": "348e5660ff2967b8ef24cfa51bcb5d46ac983e3a313e83f19fd296b0d05f4d9d",
+    "images": {
+      "cam_head": "c29dc1c13802ac1820f8eb637fb0ef076f7120aa540b588a149a89aa5a5b46a0",
+      "cam_left_wrist": "4b959cf2a69ba2d13c17cc70e8090051cc18911a602791452f40f93645a2510c",
+      "cam_right_wrist": "7e468c0635ed07bfc117900e03ac5ee8840bf0b4f9bee5006bd8e517d73474ff"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100005",
+    "frame": "frame0",
+    "task": "classify_objects_by_language",
+    "layout_id": 100005,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/classify_objects_by_language/100005.settled.json",
+    "layout_sha256": "40d18d76d9359e36185e4720a4bdbd8e23fa54e3decebc5b8951e94c67d52b6c",
+    "images": {
+      "cam_head": "7df67009d7080e9571ec4e22af76b24f48741dad19cb57921d174e62b1344c74",
+      "cam_left_wrist": "d8cc2633d275979adc35a795ff7787f26c7cfe918e48de374bcb7a08eb23afe1",
+      "cam_right_wrist": "a1ad41fe4a58efd42b0713f4207be8e5571dd1bd25da0237d825ead099ee8187"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100006",
+    "frame": "frame0",
+    "task": "classify_objects_by_language",
+    "layout_id": 100006,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/classify_objects_by_language/100006.settled.json",
+    "layout_sha256": "0a53a6653aab4f07df13db459cfdf6c083ab4d0418ea14477529ce15dbdf8dd5",
+    "images": {
+      "cam_head": "dfe7a4c01547244f5d2bbb69029d0e28bd00f9a84d05172190cc90ef3e666b61",
+      "cam_left_wrist": "f80a5fc8270937b7eaea794ac59c5865c024926859ba972cd61728c32ca593a2",
+      "cam_right_wrist": "f7740aa87381c855a17babefae4e11f60d52dbebbb2db981c5233b0199ec970a"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100007",
+    "frame": "frame0",
+    "task": "classify_objects_by_language",
+    "layout_id": 100007,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/classify_objects_by_language/100007.settled.json",
+    "layout_sha256": "d325531f4339a08d6db8619e1bb1367955857d9b09ec939fdeed342cf5e110fb",
+    "images": {
+      "cam_head": "7f98047c22474fb066853d34d97cfdd0394c713d4085c44793db9052db78adfd",
+      "cam_left_wrist": "33a7bc7871facac5e12049e34acf310c50ae1512ef26ea8437868327f64e21a4",
+      "cam_right_wrist": "b184b427efa85597cd5b190285e7ccbec9dac6d387d1b775d8ae8585583fa39f"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100008",
+    "frame": "frame0",
+    "task": "classify_objects_by_language",
+    "layout_id": 100008,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/classify_objects_by_language/100008.settled.json",
+    "layout_sha256": "5b8af49de20abf79f4036458b27665023b6761e04f52b7a5751919d8f67af69c",
+    "images": {
+      "cam_head": "48149b67206bf9295a8a2bc8fdc183524f71713452a52217f0ffcbebb99dd5bd",
+      "cam_left_wrist": "b30ceba012f49068affca90b8d7cd06560838bb77e2fb00e9ea471731e12a711",
+      "cam_right_wrist": "cc0f372a92178d2bffe0c16e954035c773c6f727dbdd4e8e7e72f5f5c57363f3"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100009",
+    "frame": "frame0",
+    "task": "classify_objects_by_language",
+    "layout_id": 100009,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/classify_objects_by_language/100009.settled.json",
+    "layout_sha256": "2f38b670e15808f12718c4e870935c0b627c85cab32fc5309a4bf546781efe38",
+    "images": {
+      "cam_head": "afa5965f2fd210d60059ae7e3fe94723339439a23749142404d44c2c35d08137",
+      "cam_left_wrist": "751bf60029c29549d502fc0d3e4a1df3362a5e59b8a58b66362ec1eda9658ad7",
+      "cam_right_wrist": "a279df8ee275f670ebc965a4feea9bab5d5fb39043b29e258244fe9e23830d0c"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100000",
+    "frame": "frame0",
+    "task": "deposit_coin",
+    "layout_id": 100000,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/deposit_coin/100000.settled.json",
+    "layout_sha256": "bd996993f94e936d81a5c1732c8ef1b83b4aa720893ee5f37b81465d3cd0b85b",
+    "images": {
+      "cam_head": "eb2e463c0bfd95a360d4c01e0691d69e5f23c87cf1956a46e4e584c95882ea02",
+      "cam_left_wrist": "48525773237c52b0591bafe16e39a951e31a563800484803318787d79d4e7562",
+      "cam_right_wrist": "125f1534faac3dbad3b5a94acf63d8a04200adcc5625f03f433291f01b9d1428"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100000",
+    "frame": "look",
+    "task": "deposit_coin",
+    "layout_id": 100000,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/deposit_coin/100000.settled.json",
+    "layout_sha256": "bd996993f94e936d81a5c1732c8ef1b83b4aa720893ee5f37b81465d3cd0b85b",
+    "images": {
+      "cam_head": "ba39ee32be48c0a7b37643dbfaaaf1675b81a532634efd2e8bdb3d700dcd3e35",
+      "cam_left_wrist": "5afd063a8b0548c241470da8a42a1fb6af2e97b60252e543135b12bd8009bcd5",
+      "cam_right_wrist": "44066a58c80bcf37089fc8ebf864bdc89a516815b6d1770df21ec856f86f21c1"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100001",
+    "frame": "frame0",
+    "task": "deposit_coin",
+    "layout_id": 100001,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/deposit_coin/100001.settled.json",
+    "layout_sha256": "8749fca405f859435e3976305b1d6fdc444093f68f730d0fc66fb997fbeee76f",
+    "images": {
+      "cam_head": "2d9cc5ffb0874576e60656b78f867ec829ab3075b4cc03eb4f5c5b3e29af14e3",
+      "cam_left_wrist": "90ef1da950b25f5717b3b8af9412edea04ec0391ee9b05239b0a9cf296ff80fb",
+      "cam_right_wrist": "35b0b3c239691c00c16fbde8fdd81969270013c2cbe08b60afefe4b50dc1ad31"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100001",
+    "frame": "look",
+    "task": "deposit_coin",
+    "layout_id": 100001,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/deposit_coin/100001.settled.json",
+    "layout_sha256": "8749fca405f859435e3976305b1d6fdc444093f68f730d0fc66fb997fbeee76f",
+    "images": {
+      "cam_head": "733f861b97a3cc884216136a1a7475eba90b282d4c617918989bd4613ae297db",
+      "cam_left_wrist": "1e4477887692b704ff51eb9e7f4673edd823d8fde12eb1360e5445b7d42806e2",
+      "cam_right_wrist": "6676b4efb205af2fbdddc8cf8bb25e7b93ce5908ba6f455be49ad2ca98c8b548"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100002",
+    "frame": "frame0",
+    "task": "deposit_coin",
+    "layout_id": 100002,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/deposit_coin/100002.settled.json",
+    "layout_sha256": "f1e2e4bf8b1a5d45da5483ffa1d6b7e76a7ba491b4b090f8310a6e57e62d0d18",
+    "images": {
+      "cam_head": "0d7081bd1b0db283eb3ede90a735de42e1bd1fee3c915280ef7ec0820d1b7dcd",
+      "cam_left_wrist": "82e27054fa82f44f880254a196dcfd15b89b682803d6129b1e0e15f75c2b7482",
+      "cam_right_wrist": "1bd5c6768ae52f5ae868f1a132d3111f9d4cb6e908c87fb345b9ef36d5d13b69"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100003",
+    "frame": "frame0",
+    "task": "deposit_coin",
+    "layout_id": 100003,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/deposit_coin/100003.settled.json",
+    "layout_sha256": "6c85d0d16e8e83fbe6a687c1bc7a15f70e32884a3c325472914967353db8d5ac",
+    "images": {
+      "cam_head": "24e14a35a361df8f9832adb0bcc850ce157d35cae6d5660dd5694cae7fa5fd67",
+      "cam_left_wrist": "a48fae07af39b86b640b7d923390967ff25027da96e0667c45759ead576ff6a1",
+      "cam_right_wrist": "9ae13792266f8f9d38168a9f365197248edca36b0f38a2b2c1ece74fab934330"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100004",
+    "frame": "frame0",
+    "task": "deposit_coin",
+    "layout_id": 100004,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/deposit_coin/100004.settled.json",
+    "layout_sha256": "6729ebfc9f1da8fa94e7f7bf43460200d601ed1e905d51df2e0ba198b1660ef7",
+    "images": {
+      "cam_head": "8ad61f295754ea8e2b8b87933cabb2fc9158c60176e4f820849f498f72722e16",
+      "cam_left_wrist": "6f30251c01c3119776efae86e45d7d66a394f3f752f0d788602389c3bf62edf1",
+      "cam_right_wrist": "5f5794a553c4364e41cfaa8f75fe58ed2cfca406c3a2acb40d2ad24d857a32ac"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100006",
+    "frame": "frame0",
+    "task": "fill_egg_holder",
+    "layout_id": 100006,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/fill_egg_holder/100006.settled.json",
+    "layout_sha256": "e2934e8ae04cb0dacd9e891f12bd5d475ff1976a25ea7b66afb22c75a149c0d8",
+    "images": {
+      "cam_head": "4cbf028816d9ab02fea0eea8c6a229464b4bca0445c5fd9852450873784023a7",
+      "cam_left_wrist": "e1f7711707f25248b4acf138b5b31425368577b789d82a460e12a45ea7a9a3cf",
+      "cam_right_wrist": "659220157cc1c7ec1d74ad97c51cf207e1e6c0a9cf6f43f927872360a992a593"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100008",
+    "frame": "frame0",
+    "task": "fill_egg_holder",
+    "layout_id": 100008,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/fill_egg_holder/100008.settled.json",
+    "layout_sha256": "71ca8998ccd1e4e92f258e3a00f2f61ee9b827d2be85922cb0c996efb6e86b19",
+    "images": {
+      "cam_head": "94344ad7bf7eebabb8d0468e9d383ab0073c5e52a6db6076a293cd7a20693aa6",
+      "cam_left_wrist": "da504ba2f29e510638263f41b36ac505659fd9df63e1be90054b1637494ceaf0",
+      "cam_right_wrist": "e75206a029743150301785486103613e765661989b3a4aa7f8c709f618579d63"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100009",
+    "frame": "frame0",
+    "task": "fill_egg_holder",
+    "layout_id": 100009,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/fill_egg_holder/100009.settled.json",
+    "layout_sha256": "2adb7ad90aeb01fd66eddded98847791566ea7438071ee2b29619a3132b14458",
+    "images": {
+      "cam_head": "93b2de286e699a7815cf7d2e01ab8fcba568e98a728c9febb8a233b57e71d7ae",
+      "cam_left_wrist": "e6798f746daee1e8263d5667b4e6d61c59ff74a2e45ca16c1003df3e01924a0d",
+      "cam_right_wrist": "7fe952e1951b3101712a8247dbf5056d16d3978eeca698037653a42bc5fbc5fb"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100023",
+    "frame": "frame0",
+    "task": "fill_egg_holder",
+    "layout_id": 100023,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/fill_egg_holder/100023.settled.json",
+    "layout_sha256": "a0df5f1a8ef50727f32214c51613a4d0e54c4d67572aa662fe1b64e78ea5f97d",
+    "images": {
+      "cam_head": "e7912b3aba839b965df3568402d7a5b7e6e206a3137a9d400555cfa28bb0d936",
+      "cam_left_wrist": "a5df00536367426a7dcc4c636a7009a0b8ffb534a339c40c819e4d64e5b6e35d",
+      "cam_right_wrist": "aadff90189d329cd19e9bbdf240d2567577d2c87aa97ab50f781ac8b72e19afe"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fillpensg_fpliftA_v15_100005",
+    "frame": "frame0",
+    "task": "fill_pen_holder",
+    "layout_id": 100005,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts_v15/fill_pen_holder/100005.settled.json",
+    "layout_sha256": "c5480ed35040aee21fb955d2eaef03742305c0f5017106ce2fbd063b99e5b946",
+    "images": {
+      "cam_head": "66084fc92e7b5ce18da68fd07d557a4c2d104410fa78f53f8854552815394743",
+      "cam_left_wrist": "3500600d2bd7bf94b54f82ae010d1069f97ef723ebdf21801c0282251e16e8ea",
+      "cam_right_wrist": "8286b6452382756ab0aee69ae6c9531188fb120ba6001f574cd6468abf8d45c0"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100021",
+    "frame": "frame0",
+    "task": "fill_pen_holder",
+    "layout_id": 100021,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/pen-inputs/simlab/layouts/fill_pen_holder/100021.settled.json",
+    "layout_sha256": "08864d346dd4f6a0dda84f503d62f672506a9b7b3e675dcf2c2c167ffa7ed1a0",
+    "images": {
+      "cam_head": "98e5c5020551e55b62f459361d6dc4da2eb288f00bf385205171f01158693b43",
+      "cam_left_wrist": "4cffa69bdfba9f2d6d27bcf030dc4dd019d457a8b2029009287a301aa703939d",
+      "cam_right_wrist": "23daf1ff70778f50ec402923ced5c54223ac72b3fd69db58912b7cc8f8b66068"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100021",
+    "frame": "look",
+    "task": "fill_pen_holder",
+    "layout_id": 100021,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/pen-inputs/simlab/layouts/fill_pen_holder/100021.settled.json",
+    "layout_sha256": "08864d346dd4f6a0dda84f503d62f672506a9b7b3e675dcf2c2c167ffa7ed1a0",
+    "images": {
+      "cam_head": "3d2c786ef14bd0def3d54dcf3a3452c95c35d338bff13f7236eaa3994ddcdaff",
+      "cam_left_wrist": "9cdde99cc7fce4b6780c96995678f927109dd4b0d0834408809320b1c208cd64",
+      "cam_right_wrist": "b82c939baa20ccaffb3253ba58659b903742902ec420eabbdd56e84bc7e579d2"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100022",
+    "frame": "frame0",
+    "task": "fill_pen_holder",
+    "layout_id": 100022,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/pen-inputs/simlab/layouts/fill_pen_holder/100022.settled.json",
+    "layout_sha256": "6e4ba0612846cad514dbcd36728077b9a89e85f76596a07d3bfe2f101237f70a",
+    "images": {
+      "cam_head": "c478d3de6e96ef6358c795f1d31ec4e10890290fd27c60373eb816082ff87108",
+      "cam_left_wrist": "87966f2f2d5858fb9c74593d46de367998bb33db5d5a6efa439bdf31de132e61",
+      "cam_right_wrist": "9dfbe12e1effe0e0107ce6ebc0b2550e2c22152a11ef7e47a44229cbefebdcff"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100022",
+    "frame": "look",
+    "task": "fill_pen_holder",
+    "layout_id": 100022,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/pen-inputs/simlab/layouts/fill_pen_holder/100022.settled.json",
+    "layout_sha256": "6e4ba0612846cad514dbcd36728077b9a89e85f76596a07d3bfe2f101237f70a",
+    "images": {
+      "cam_head": "cf7d59f3bb608ebf50990989cc4a24fd914df5342298d34a11513866a01b80cb",
+      "cam_left_wrist": "805578b5fb29be4f03b822d4a2ab79271d118baa7817cdf3d31e7c5fd87bf6dd",
+      "cam_right_wrist": "8686c42a1209a76bd88d29dc7341a68fcb078902d9f52c73337a3abf6226e75f"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100023",
+    "frame": "frame0",
+    "task": "fill_pen_holder",
+    "layout_id": 100023,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/pen-inputs/simlab/layouts/fill_pen_holder/100023.settled.json",
+    "layout_sha256": "5b6798fbbf5646f0235f980882d85ce81c05f8efff9927e2f20d0c6fce1bdbdd",
+    "images": {
+      "cam_head": "242609021e664d0bcf4337471d3fe9ff734c980bf121a88c3c27b20a28e27bf2",
+      "cam_left_wrist": "2b344e6e5092dee5e154d3668cf79e4bdc65e596d9545cdf4d04c8cd1c67c7c7",
+      "cam_right_wrist": "d90c05e1d005f70c351b1bf2ef06e6ca0b12d3a39a08802906450f05ad2a051c"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100024",
+    "frame": "frame0",
+    "task": "fill_pen_holder",
+    "layout_id": 100024,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/wave-1106-c3moved/pen-inputs/simlab/layouts/fill_pen_holder/100024.settled.json",
+    "layout_sha256": "38206a9cd35592e8f78d448186ce391ebc3dda438c5368b848ef911c057e1551",
+    "images": {
+      "cam_head": "d1d3ef2b355f67ca7c56cbe0d8576d5fd43d3fae98828dc9e71d43358b8fa33c",
+      "cam_left_wrist": "c85ea437736b76b6bd14cf7df7584e82cbae2a72673589b91a189b131c3cbc95",
+      "cam_right_wrist": "406c6bd78e82884a23a06afb253ee43788f93e27407f8006b75a7890fbdc01e2"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_r2_100000",
+    "frame": "frame0",
+    "task": "imitate_sorting_sequence",
+    "layout_id": 100000,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/imitate_sorting_sequence/100000.settled.json",
+    "layout_sha256": "2e705847348ad52fdf936f735624bca90856aec46f08b4bb853de85e4e043456",
+    "images": {
+      "cam_head": "4e63ff634a38ff1735e02d2e15d4a5cf68c9b0e5de0ab60a54cd4bd2a225db04",
+      "cam_left_wrist": "8ff96e381ea299e4c1fbd1cd9d34b9dfaa6ead19fec01c8129e686605659e875",
+      "cam_right_wrist": "9f8f570b6c4f27060c502dc30634f140d6993fa8d340ed8e8327253963a9c868"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_home_100001",
+    "frame": "frame0",
+    "task": "imitate_sorting_sequence",
+    "layout_id": 100001,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/imitate_sorting_sequence/100001.settled.json",
+    "layout_sha256": "2ba524239c15d18212a8f93fc83f46e831f8e2a4101d8000f966a57dab45bfa8",
+    "images": {
+      "cam_head": "ab211691d422dfe30ca37525794190dd6112be4b4fcceb66c0495321565a3df1",
+      "cam_left_wrist": "873dc7d5a8193045786b0846400feac60ac85ffafc23cc7e66f885b538cab7e2",
+      "cam_right_wrist": "739af453e8a3800e20277d9e9aa3c18acbfcf34ec47feca014daf613d91ebdeb"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_home_100002",
+    "frame": "frame0",
+    "task": "imitate_sorting_sequence",
+    "layout_id": 100002,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/imitate_sorting_sequence/100002.settled.json",
+    "layout_sha256": "75efb59331267a0ab9d9487f5f1a9f1275c3299866d50180d1b97f17d30e06f1",
+    "images": {
+      "cam_head": "399a92ee0aaf87274981ced38189e9f303abafdbdbbc6dbf65e335744c468903",
+      "cam_left_wrist": "a6e67a8f882530dd8bb8b3aef3172adb66e18fe1b6a07b2e94b54b0ba0f63c79",
+      "cam_right_wrist": "ea67bf85ef2cf653798551f7e846f5660a5726855b02d53f31cf9a310828712a"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_bundleoff_100006",
+    "frame": "frame0",
+    "task": "imitate_sorting_sequence",
+    "layout_id": 100006,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/imitate_sorting_sequence/100006.settled.json",
+    "layout_sha256": "6968971731534f3ca91560a09cd67d65acd6cf0dd1de63b8333885117800ecb5",
+    "images": {
+      "cam_head": "60861b22adad2961ed1dd301380e0f1c0c8d1a5b366d0f3a8f8f5ccc16e33640",
+      "cam_left_wrist": "6c22131f8a95eda0c5bddf406cd8fff084626e6f3d09134ad7b4f42595ebc8bb",
+      "cam_right_wrist": "2b7eb2afddbb2576dd85dbc194592c0fe6c1af187d95b6cb42f52f6eac0385dd"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_bundleoff_100007",
+    "frame": "frame0",
+    "task": "imitate_sorting_sequence",
+    "layout_id": 100007,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/imitate_sorting_sequence/100007.settled.json",
+    "layout_sha256": "fd69042e44e9f3664a9c76c3c93db7dff5ec305fdd64b1622965c1fd2ddac063",
+    "images": {
+      "cam_head": "961669bd439d40f517313c7eaafcacb27912d0b6a37979c27ca914eedb9bde6b",
+      "cam_left_wrist": "cab6fc7c360eac4528a25d93fc13e39a18ad8c6450f96a98871e0c1f1e359697",
+      "cam_right_wrist": "af7b7bbb6c65025aaaf2e7d4e24ca5a5a5be33e11041e1662b7418caa2523699"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fm_100000",
+    "frame": "frame0",
+    "task": "organize_table",
+    "layout_id": 100000,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/organize_table/100000.settled.json",
+    "layout_sha256": "00edc4bbc8e70358674719a5e2efcf732cfdac5966df02b0086ce35cde050d31",
+    "images": {
+      "cam_head": "13d38ef4ceec77a0a9c1b12bcfe464547712d64950bc98ed52dce6f43f73878e",
+      "cam_left_wrist": "7336d12857f64983c93309943d26bd2682214034c1f3497cd026ab475ce10b19",
+      "cam_right_wrist": "de96134b841c8414e06d60a875661a9311647cc1a6ead953c466e33be5087375"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fm_100000",
+    "frame": "look",
+    "task": "organize_table",
+    "layout_id": 100000,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/organize_table/100000.settled.json",
+    "layout_sha256": "00edc4bbc8e70358674719a5e2efcf732cfdac5966df02b0086ce35cde050d31",
+    "images": {
+      "cam_head": "3e9eff05beddb4221d94737e2900270b8749de278ed630eb34d19baac7624983",
+      "cam_left_wrist": "b213876842f1e8a257f8103048099e0a0cf1d3c1f8705924e6a3dc032136382a",
+      "cam_right_wrist": "15fd3522ed357d3c73ebc405925757c04a93b99f7dc8aa041871524d1bd7c1b4"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fmoff_100001",
+    "frame": "frame0",
+    "task": "organize_table",
+    "layout_id": 100001,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/organize_table/100001.settled.json",
+    "layout_sha256": "6fd802bb1a575c3000dab1c557861f24bac35885d77b859e7e8933472cefe15e",
+    "images": {
+      "cam_head": "81cdc9b744dac3402e0e62bb6dc0a314ab16f41d6e890c340511860ac1e4f267",
+      "cam_left_wrist": "bc6b4c7afc298c8658a87d223312ae355bc2e5e0ef7590995d1a01708f25b072",
+      "cam_right_wrist": "4103a40d9551ce2043a4bbb272a4a0529805e03b5b0bd66deb07de1aeaab881e"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fmoff_100001",
+    "frame": "look",
+    "task": "organize_table",
+    "layout_id": 100001,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/organize_table/100001.settled.json",
+    "layout_sha256": "6fd802bb1a575c3000dab1c557861f24bac35885d77b859e7e8933472cefe15e",
+    "images": {
+      "cam_head": "4eaa955c746c9221c2076274e728b78f85d000865eb19762a0073e2635a3395e",
+      "cam_left_wrist": "2ff43a647d56fd54229392238e60e67306058ba569252caca1783763fff98763",
+      "cam_right_wrist": "7d1849da33e155bd09fcbe7a6564027604cfcb535aab6e1a79607a6d09b6cf17"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100002",
+    "frame": "frame0",
+    "task": "organize_table",
+    "layout_id": 100002,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/organize_table/100002.settled.json",
+    "layout_sha256": "925d6972ef704f9f65dd0610dc0cd80f01e7078d9a980fb18b0b3e443e5e60c1",
+    "images": {
+      "cam_head": "9ff0d4a9fe7ab2bbc226d9747274fe2983aa8c45e8f9d705027da561de444380",
+      "cam_left_wrist": "9153f352aad5259b51a2c04c37219ddcda3bbbd7df933f4b1b7466fffba79140",
+      "cam_right_wrist": "9034184806fb402902ca7cd6c7438bf589fba1be834757518b0f565768f16f42"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100003",
+    "frame": "frame0",
+    "task": "organize_table",
+    "layout_id": 100003,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/organize_table/100003.settled.json",
+    "layout_sha256": "ab59d12f1bb947cf2919b27c587eaa3d3ab7f0483ba728158e82c7f0a2a75f08",
+    "images": {
+      "cam_head": "b6f6770cb2867f1b00fb1ac78a921ef0a14c855aedaad10a021361c92309804d",
+      "cam_left_wrist": "7d04e2b27dc9377b0fdbba0d2c156291e94e17166d76cb10b9c63fa14e7b7784",
+      "cam_right_wrist": "43f5e5da9381d3fc7bbdc513510b22e108eaaa73030b5fadcce9d7d53a8dcef8"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100004",
+    "frame": "frame0",
+    "task": "organize_table",
+    "layout_id": 100004,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/organize_table/100004.settled.json",
+    "layout_sha256": "0fe5b9ec601c7d1c6d9724d638bc36c2701bb1db10a7c870674dedec7de6148c",
+    "images": {
+      "cam_head": "18c14fa68cb1d38155716f08dee1bebc98defc7b0a7709d5dc21863d8b4358f6",
+      "cam_left_wrist": "c0326216f94d731926f6fee28efd24eb1000fb3b01def0cf26ac9e4502db04f6",
+      "cam_right_wrist": "dd714af30c2177565e91b9edc62f760880369e65926b69521a820832321ef374"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100005",
+    "frame": "frame0",
+    "task": "pour_by_language",
+    "layout_id": 100005,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/pour_by_language/100005.settled.json",
+    "layout_sha256": "24a0fa34a96009afc66d1c3734187a1f9b8dfad192aefb9c781659fcfa7449e0",
+    "images": {
+      "cam_head": "31ac02798fcad862973e6e26d133508c08f18b0e3f4354deec1b704b2b9c495d",
+      "cam_left_wrist": "a092bc755145e121d6d389e1722011e8d019302ecbf320ca871a6097e398e69e",
+      "cam_right_wrist": "5b258509e22df4677beea2c68966cf4cb8d80b76fc2685d766d7e34a78349fce"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100006",
+    "frame": "frame0",
+    "task": "pour_by_language",
+    "layout_id": 100006,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/pour_by_language/100006.settled.json",
+    "layout_sha256": "4171450ab0418e95989663cf8ecf3000d05bedfb789e1f60b06f56807d3ec5d2",
+    "images": {
+      "cam_head": "76fa862255204910754948a60e12fcd5bd46708fc4265b9e398d3039e9250a3e",
+      "cam_left_wrist": "c65b311c82c4b66e76d72a8774b64c3199c8574122c71b32561e05bbe8f49823",
+      "cam_right_wrist": "43adf2fe17c7a5630ee904bbf58ad0858d57257086cfa546963cf398eb398771"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100007",
+    "frame": "frame0",
+    "task": "pour_by_language",
+    "layout_id": 100007,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/pour_by_language/100007.settled.json",
+    "layout_sha256": "53f08c41e8005a4bae38a0f84c5cd40b9b7b011c6f80fc53025ff6bf09e3da65",
+    "images": {
+      "cam_head": "d114f034b51b39279c471e5161f2e25ebc3cc1954d4b1ca9bc038a671318055c",
+      "cam_left_wrist": "7ac04d0dcd802e84904ea1cbf08ad6327047a5483fc2d6f5bcde1937e7059f1f",
+      "cam_right_wrist": "bddd70d1f6c38f164a30f8cc8bf030d96503938b40efcc39fcb69b33a02ff26d"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100008",
+    "frame": "frame0",
+    "task": "pour_by_language",
+    "layout_id": 100008,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/pour_by_language/100008.settled.json",
+    "layout_sha256": "b2a936ff0bcddccf25681dfad3b0d494f8218a0986967e46a35e58f934b9478d",
+    "images": {
+      "cam_head": "c97ee484695d2fdcc0c4633cab910e08ef1c101b7684a63a2c325aca16811f4d",
+      "cam_left_wrist": "5b59423388cd1f171e8d1cfa6a6a486906c7d60f96cb2337e70a3371dfc0c3d8",
+      "cam_right_wrist": "d056e5cdfcb7559b4166f3bb0cd37f4b1005e0eec0c175d62124ddd44096b5e7"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100009",
+    "frame": "frame0",
+    "task": "pour_by_language",
+    "layout_id": 100009,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/pour_by_language/100009.settled.json",
+    "layout_sha256": "aad5c379ab13c1a7a3a24d6344c9a4e38feb0d36dbee463f31eec2bdc3d04536",
+    "images": {
+      "cam_head": "be927ce94fcbd4060041ca2a58763146a9e87e17117de5f988dff7677a81d7d7",
+      "cam_left_wrist": "0cf1b0d2fb773cb2cca8ddfd86e579aa347646a86b37b6f294c48f75ad2838e5",
+      "cam_right_wrist": "001ffe01ca2361f20a87651447a5fc82d413fd87f22c3f2d03e0d240a031a3a6"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100000",
+    "frame": "frame0",
+    "task": "put_bottles_into_dustbin",
+    "layout_id": 100000,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/put_bottles_into_dustbin/100000.settled.json",
+    "layout_sha256": "a496c663324faf2425943f19a2f14a56d53adb3873b44924dd152747b84cc475",
+    "images": {
+      "cam_head": "5e19286c53c458c0a58ca3792bd0bc3f19ef6918c5703b65e036d167199bccf9",
+      "cam_left_wrist": "2449b1ac0f51f0825edbe66903828c0e2afba572e3cdb0ca8f79bd5ada6a858e",
+      "cam_right_wrist": "15c306655ad1bf42eb557d1947e879b11ef032f11d52c726e1331af59cb359d7"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100001",
+    "frame": "frame0",
+    "task": "put_bottles_into_dustbin",
+    "layout_id": 100001,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/put_bottles_into_dustbin/100001.settled.json",
+    "layout_sha256": "7d3d905ca0807328c5031b98a416ff33bf67468dc2e49f025e35406a29288c01",
+    "images": {
+      "cam_head": "ac9abcdaf7f6d0fb8f4f4ff1029a1f246922a8271a6f03c3cef04b825e6be649",
+      "cam_left_wrist": "87f9a08a16458763438889f75cd63a0661ff6964763ce775c9ae7a30cc9edc12",
+      "cam_right_wrist": "a04fab8b9e931a3ef5c89f1cb167e0b87fa3d5a6f5b36f40862eb34d0f7fc6b2"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100002",
+    "frame": "frame0",
+    "task": "put_bottles_into_dustbin",
+    "layout_id": 100002,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/put_bottles_into_dustbin/100002.settled.json",
+    "layout_sha256": "4eecf8bf5d26f202d9aa62b0ad9379351f876f3ce8e30776be0681fb2d032986",
+    "images": {
+      "cam_head": "4b772288085d01bc8dec1f94698e85e6f7fabf8ce657575baf9388ebdf73fabc",
+      "cam_left_wrist": "ae1ee2ea92cb0e87039afcdc6c4b838316cddcd3a6f6e32c5aadbfb4b3e6aaba",
+      "cam_right_wrist": "bbf3f8f644617e5fc570ef67f57d9e95ef41983e5e306f8e107433df74c842e2"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100003",
+    "frame": "frame0",
+    "task": "put_bottles_into_dustbin",
+    "layout_id": 100003,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/put_bottles_into_dustbin/100003.settled.json",
+    "layout_sha256": "4071b04b076e429963a70a40fa920b6e6b4bd6c61df7332fb0f5f9052872b611",
+    "images": {
+      "cam_head": "402a0e124b60fe48f9f70d1dcf6ce1c61a8433cdfc81ad1d16f52edfd8bab092",
+      "cam_left_wrist": "32c732584a209dda76de349ccbfd93f99378ff4af7988d438172feb381eefa97",
+      "cam_right_wrist": "338d01a586438befe912287e36663ff028790d8b82afbf34b748389f60eac468"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100004",
+    "frame": "frame0",
+    "task": "put_bottles_into_dustbin",
+    "layout_id": 100004,
+    "gt_source": "loaded-settled",
+    "layout_path": "/home/haptics/dojo-data/simlab/layouts/put_bottles_into_dustbin/100004.settled.json",
+    "layout_sha256": "a401befb438f93e13d1650edc7bf2bc43e0c80fa8d9885d7828bb17f80246cac",
+    "images": {
+      "cam_head": "cb15afd8cb8fc7222afb73008b49a7c2ef48316c59f40d084d522d7745a04399",
+      "cam_left_wrist": "baf475194a14aa0028b65e9690f3ec303c2794cc20871de451f73ae5210e5027",
+      "cam_right_wrist": "fc696a7fbaac715b340be5d400913a39d7d6bb5eb55f35765fbbb1833e7cc9b2"
+    }
+  }
+]
