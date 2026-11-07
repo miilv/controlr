@@ -501,7 +501,8 @@ class RuntimeConfig:
     imitate_keep_sides: bool = False
     # IMIT2 (``Skills.imitate_order`` / ``imitate_carry`` / ``imitate_retry``; all default today's behaviour):
     # imitate_order: v1 (a departure read once is final) | persist (a spot counts as left after PERSIST_READS reads in a
-    # row, dated by the first: a single read under the demonstrator's arm or its shadow is not a departure)
+    # row, dated by the first: a single read under the demonstrator's arm or its shadow is not a departure) | elim (all but
+    # one of the demonstrator's objects read leaving: the last one goes last, by elimination) | persist_elim (both)
     imitate_order: str = "v1"
     # imitate_carry: v1 | reach (an object on the far side of the table, REACH_MARGIN nearer the other arm, goes by that
     # arm: across itself, else a table handover first (phones), centred grasps only at long reach; camera 100021 / 100009:
@@ -769,7 +770,7 @@ class RuntimePolicy:
                 or self.cfg.imitate_pairing not in ("greedy", "one_to_one", "cues")
                 or self.cfg.imitate_wait not in ("still", "origin", "home")
                 or self.cfg.imitate_look not in ("off", "ambiguous")
-                or self.cfg.imitate_order not in ("v1", "persist") or self.cfg.imitate_carry not in ("v1", "reach")
+                or self.cfg.imitate_order not in ("v1", "persist", "elim", "persist_elim") or self.cfg.imitate_carry not in ("v1", "reach")
                 or self.cfg.imitate_retry not in ("v1", "refind")
                 or self.cfg.row_size_read not in ("off", "look", "look_union")
                 or self.cfg.series_labels not in ("keep", "numbered") or self.cfg.place_verdict not in ("belief", "measured")

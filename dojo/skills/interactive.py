@@ -820,7 +820,7 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
         # IMIT2: twins by appearance, read once on the episode start's views (``provider.twin_costs``) before the
         # demonstrator moves anything; None (no reader: G3, a failed read) falls back to the one_to_one assignment
         st["cue"] = cue_twins(sk, w, demo_side, [m for m in movers if m not in demo_side])
-    persist = getattr(sk, "imitate_order", "v1") == "persist"
+    persist = getattr(sk, "imitate_order", "v1") in ("persist", "persist_elim")
     if not st["order"] or len(st["order"]) < expect:      # (the start estimate may see no identity twice)
         t0 = w.step
         ao = ArrivalOrder(n_consecutive=quiet, expected=expect)
@@ -888,6 +888,17 @@ def copy_demonstration(sk: Skills, container: str, demo_container: str, objects:
             if sk.ex.steps_used - t0 > max_wait:
                 sk.log(f"[imitate] stopped watching after {sk.ex.steps_used - t0} steps, {len(st['order'])} seen")
                 break
+    # IMIT2 ``imitate_order`` "elim" / "persist_elim": the demonstrator moves every object on its side, so when all
+    # but one were read leaving, the last one left too, unseen (its spot under the demonstrator's arm or shadow at home:
+    # camera 100006, the 5th departure missed in 4 of 4 runs); it goes last. A miss earlier in the order is not fixed
+    # by this, but it is not made worse either: the copy stops at the first wrong object whatever comes after it
+    if getattr(sk, "imitate_order", "v1") in ("elim", "persist_elim") and st["gone"] \
+            and len(st["gone"]) == len(demo_side) - 1 and not st.get("elim"):
+        rest = [l for l in demo_side if l not in st["gone"]]
+        st["gone"].append(rest[0])
+        st["order"] = list(st["gone"])
+        st["elim"] = rest[0]
+        sk.log(f"[imitate] {rest[0]} not read leaving: last by elimination, #{len(st['gone'])}")
     # copy: the twin of each demonstrated object, in order
     if st["gone"]:
         expect = len(st["gone"])

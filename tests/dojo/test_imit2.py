@@ -22,7 +22,8 @@ def test_defaults_are_todays_behaviour():
     assert (c.imitate_pairing, c.imitate_order, c.imitate_carry, c.imitate_retry) == ("greedy", "v1", "v1", "v1")
     from dojo.skills.g3 import SKILL_ATTRS
     assert SKILL_ATTRS["imitate_pairing"][0] == "greedy" and "cues" in SKILL_ATTRS["imitate_pairing"]
-    for k, alt in (("imitate_order", "persist"), ("imitate_carry", "reach"), ("imitate_retry", "refind")):
+    assert SKILL_ATTRS["imitate_order"] == ("v1", "persist", "elim", "persist_elim")
+    for k, alt in (("imitate_carry", "reach"), ("imitate_retry", "refind")):
         assert SKILL_ATTRS[k] == ("v1", alt)
 
 
@@ -326,3 +327,26 @@ def test_refind_retries_until_the_step_floor(monkeypatch):
     monkeypatch.setattr(ia, "put_in_open", put)
     r = ia.copy_demonstration(sk, "basket0", "basket1", list(objs))
     assert not r["ok"] and len(tries) == 3                      # 1000 -> 600 -> 200 -> -200: the 4th is refused
+
+
+def test_elim_appends_the_one_unseen_departure_last(monkeypatch):
+    """camera 100006: the 5th departure was never read; with "elim" the remaining demonstrator object goes last."""
+    for mode, want in (("v1", ["ours_y"]), ("elim", ["ours_y", "ours_x"])):
+        objs = _scene()
+        sk = _sk(_world(objs), "one_to_one", imitate_order=mode)
+        puts, placed = [], set()
+        monkeypatch.setattr(ia, "watch", lambda *a: {"gone": [{"label": "demo_a", "asset": objs["demo_a"].asset.key}]})
+        monkeypatch.setattr(ia, "wait_demo_done", lambda *a: "home")
+        monkeypatch.setattr(ia, "inside_xy", lambda o, c: any(o is objs[l] for l in placed))
+
+        def put(sk_, label, container, **kw):
+            puts.append(label)
+            placed.add(label)
+            return SimpleNamespace(note="")
+
+        monkeypatch.setattr(ia, "put_in_open", put)
+        sk.ex = SimpleNamespace(steps_left=1500, steps_used=10_000, hold=lambda n: None)   # watching ends at once
+        ia.copy_demonstration(sk, "basket0", "basket1", list(objs), max_wait=0)
+        order = sk.refresh().notes["imitate"]["order"]
+        assert order[:1] == ["demo_a"] and (order == ["demo_a", "demo_b"]) == (mode == "elim")
+        assert len(puts) == len(want)
