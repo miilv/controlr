@@ -2294,6 +2294,13 @@ class Skills:
         self.refresh()
         kw = dict(getattr(pl, "transfer_kw", {}) or {})
         pl2 = self.plan_place(pp.arm, pl.T_obj_target, yaw_sym=1, **kw)
+        if (getattr(self, "headset_retry", "legacy") == "sites"
+                and self.world.obj(pp.label).category == "headset" and not isinstance(pl2, PlacePlan)):
+            back = self._record(self.regrasp(pp.arm))
+            if not back.ok:
+                return back
+            return SkillResult(False, "transfer", "grasp_unusable", r.steps, pp.arm,
+                               note=f"measured attachment has no checked place: {getattr(pl2, 'note', '')}")
         use = pl2 if isinstance(pl2, PlacePlan) else pl
         # the idle arm must be clear of the carry including the held object's reach (twin: a wrench carried
         # past the other hand, left open over a failed pick, was knocked out and flung off the table)

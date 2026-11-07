@@ -195,3 +195,20 @@ drift, after an upright rest. The earlier balanced horizontal grip was loose
 18.1 mm, followed by a186 mm slip. Before any production integration, cross-check
 the unchanged tilt recipe on standard45 (a lighter shape) and random49 (asset9).
 These are pilot records, not final-panel observations.
+
+## Production enclosure/rest screen registration
+
+Freeze the implementation of full-opening `cups`, `mesh_center` support
+height, and `sites` retry with refusal of an unchecked measured-attachment
+place fallback. Screen the original seven pilots30,31,65–69 plus new45–49
+per cell (12/cell), all fixed settled files. Bundle: straddle/on/staged/cups/
+mesh/mesh_center/sites. No bridge prototype or changed hold tolerances.
+Record every outcome, including regressed old successes; this screen is
+development, not a fresh paired estimate. Final source and fresh-panel
+registration remain separate. All switches retain their original defaults.
+
+Bridge cross-check standard45 fails the native static stability predicate
+before any action. The heavy standard48 success is feasibility evidence,
+not grounds for a universal bridge strategy. Another original cup diagnostic
+measures closing-axis shift9.0 mm and perpendicular shift13.7 mm after lift;
+a closing-axis recenter alone would not explain that entire failure.

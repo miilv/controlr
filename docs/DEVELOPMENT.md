@@ -788,3 +788,12 @@ It excludes nearby equivalent approaches/closing axes and permits four physical
 staging and four hang attempts. Plan refusals do not trigger repeated identical
 searches; place/budget/end failures are not retried. Every attempt retains
 native planning and the original lift/loose verifier and episode step budget.
+
+`headset_grasp=cups` opens to the full 88 mm jaw gap before descent; all
+finger/table/scene checks still apply. `headset_stage=mesh_center` preserves
+the centre-stage geometry and sets its rest height from all mesh vertices
+plus 3 mm clearance; invalid geometry uses the previous bbox target.
+With `headset_retry=sites`, a failed measured-attachment place re-plan puts
+the object down and rejects that pickup site instead of carrying a nominal
+attachment. Legacy retry retains the original fallback.
+

@@ -54,7 +54,7 @@ def cup_grasps(sk, obj, arm, bridge_tag="headband_bridge"):
     wide = dense_grasps(sk, obj, arm)
     frames = functional_frames(obj, bridge_tag, active=True) or functional_frames(obj, bridge_tag)
     if not frames or obj.asset.mesh is None:
-        return wide
+        return _cup_opening(sk, wide)
     bridge = obj.T @ frames[0]
     narrow = []
     for g in G.antipodal_grasps(obj, sk.kin, arm, n_samples=800, n_approach=13):
@@ -67,7 +67,7 @@ def cup_grasps(sk, obj, arm, bridge_tag="headband_bridge"):
             continue
         g.note = "cup " + g.note
         narrow.append(g)
-    return wide + narrow
+    return _cup_opening(sk, wide + narrow)
 
 
 def stage_for_cradle(sk, objects, rack, hook_tag, bridge_tag):
@@ -104,6 +104,8 @@ def stage_for_cradle(sk, objects, rack, hook_tag, bridge_tag):
             result = None
             for xy in free_spots(sk, label, near_xy=(0.0, -0.15), clearance=0.03, avoid=(rack,))[:8]:
                 target = rest_with_R(sk, label, xy, o.R)
+                if getattr(sk, "headset_stage", "off") == "mesh_center":
+                    target = mesh_support_target(o, target)
                 def grasps(a):
                     candidates = cup_grasps(sk, o, a, bridge_tag)
                     return sites.filter(o, a, candidates) if sites is not None else candidates
@@ -116,14 +118,14 @@ def stage_for_cradle(sk, objects, rack, hook_tag, bridge_tag):
                 executed = True
                 result = sk.run_transfer(*plans, tol_xy=0.015, tol_tilt=25.0, tol_z=0.05)
                 sk.log(f"[headset_stage] {label} {arm}: {result.status} {result.note}")
-                if sites is not None and result.status in ("loose", "grasp_slip"):
+                if sites is not None and result.status in ("loose", "grasp_slip", "grasp_unusable"):
                     sites.remember_pick(sk, plans[0])
                 sk.bank()
                 sk.refresh()
                 if result.ok:
                     staged.add(label)
                 break
-            if not executed or label in staged or result.status not in ("loose", "grasp_slip"):
+            if not executed or label in staged or result.status not in ("loose", "grasp_slip", "grasp_unusable"):
                 break
     return staged
 
@@ -155,3 +157,34 @@ class GraspSites:
             if not duplicate:
                 out.append(g)
         return out
+
+
+def _cup_opening(sk, candidates):
+    # A visual slice can be narrower than the collider swept during descent.
+    if getattr(sk, "headset_grasp", "legacy") == "cups":
+        from dojo.skills.grasps import MAX_GAP
+        for g in candidates:
+            g.clear_w = MAX_GAP
+    return candidates
+
+
+def mesh_support_target(obj, target):
+    """A planned rest with actual mesh clearance, keeping the original xy/R.
+
+    Empty OBB corners can otherwise leave a sparse headset high enough to tip
+    when released. Native hand, object and scene checks still validate this
+    target and its full path. Invalid geometry retains the bbox target.
+    """
+    from dojo.skills.kinematics import TABLE_Z
+    mesh = obj.asset.mesh
+    if mesh is None:
+        return target
+    try:
+        vertices = np.asarray(mesh[0], float)
+    except (TypeError, ValueError):
+        return target
+    if vertices.ndim != 2 or vertices.shape[1] != 3 or not len(vertices) or not np.isfinite(vertices).all():
+        return target
+    out = target.copy()
+    out[2, 3] = TABLE_Z + .003 - float((vertices @ target[:3, :3].T)[:, 2].min())
+    return out

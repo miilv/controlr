@@ -647,6 +647,15 @@ per arm instead of rejecting a whole method. It uses the executed pick's
 attachment, preserving site identity across object motion and refined picks.
 Both switches retain legacy defaults; physical verification remains mandatory.
 
+`headset_grasp=cups` opens to the full 88 mm jaw gap before descent; all
+finger/table/scene checks still apply. `headset_stage=mesh_center` preserves
+the centre-stage geometry and sets its rest height from all mesh vertices
+plus 3 mm clearance; invalid geometry uses the previous bbox target.
+With `headset_retry=sites`, a failed measured-attachment place re-plan puts
+the object down and rejects that pickup site instead of carrying a nominal
+attachment. Legacy retry retains the original fallback.
+
+
 ### Basket image experiment
 
 `belt_lift=braced_hook` (RuntimeConfig, Skills and G3; default `off`) changes

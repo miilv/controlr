@@ -103,7 +103,7 @@ def test_staging_defaults_and_threaded_hooks_remain_unchanged(monkeypatch):
     from dojo.skills.world import WorldState
 
     assert RuntimeConfig().headset_stage == "off"
-    assert SKILL_ATTRS["headset_stage"] == ("off", "center")
+    assert SKILL_ATTRS["headset_stage"] == ("off", "center", "mesh_center")
     assert Skills(KinematicEnv([]), SimpleNamespace(refresh=lambda: WorldState("", "", {}, {}, {}))).headset_stage == "off"
     with pytest.raises(ValueError, match="bad runtime config"):
         RuntimePolicy(RuntimeConfig(headset_stage="invalid"), assets=object())
@@ -194,3 +194,61 @@ def test_retry_defaults_and_cup_mode_validation():
     RuntimePolicy(RuntimeConfig(headset_grasp="cups", headset_retry="sites"), assets=object())
     with pytest.raises(ValueError, match="bad runtime config"):
         RuntimePolicy(RuntimeConfig(headset_retry="invalid"), assets=object())
+
+
+@pytest.mark.parametrize('retry,category,expected', [
+    ('legacy', 'headset', 'place'), ('sites', 'other', 'place'),
+    ('sites', 'headset', 'grasp_unusable'),
+])
+def test_measured_replan_failure_never_uses_nominal_carry_in_headset_site_mode(retry, category, expected):
+    from dojo.skills.skills import Skills
+    events = []
+    obj = SimpleNamespace(category=category, asset=SimpleNamespace(extents=np.ones(3)*.1))
+    nominal = SimpleNamespace(T_obj_target=np.eye(4), transfer_kw={}, plan=object())
+    pp = SimpleNamespace(label='item', arm='right')
+    def carry(plan, *a, **kw):
+        assert plan is nominal
+        events.append('carry')
+        return SkillResult(True, 'place')
+    def put_down(arm):
+        events.append('put_down')
+        return SkillResult(True, 'regrasp')
+    sk = SimpleNamespace(headset_retry=retry, _record=lambda r:r,
+                         run_pick=lambda p:SkillResult(True,'pick'), refine=None,
+                         refresh=lambda:None, world=SimpleNamespace(obj=lambda l:obj),
+                         plan_place=lambda *a,**kw:SkillResult(False,'place','ik_fail',note='blocked'),
+                         regrasp=put_down, held={'left':None,'right':None},
+                         _park_if_blocking=lambda *a,**kw:None, run_place=carry)
+    r = Skills.run_transfer(sk, pp, nominal)
+    assert (r.status if expected=='grasp_unusable' else r.skill) == expected
+    assert events == (['put_down'] if expected=='grasp_unusable' else ['carry'])
+
+
+def test_cup_opening_encloses_physical_envelope_without_changing_legacy(monkeypatch):
+    from dojo.skills import grasps as G
+    monkeypatch.setattr(library, 'functional_frames', lambda *a,**kw:[])
+    obj = SimpleNamespace(asset=SimpleNamespace(mesh=None))
+    for profile,expected in [('dense',.048),('cups',.088)]:
+        grasp = G.Grasp('antipodal',np.eye(4),.026)
+        monkeypatch.setattr(headset,'dense_grasps',lambda *a:[grasp])
+        out = headset.cup_grasps(SimpleNamespace(headset_grasp=profile),obj,'right')
+        assert out[0] is grasp and grasp.width == .026
+        assert grasp.open_gap() == pytest.approx(expected)
+
+
+def test_mesh_rest_seats_real_geometry_without_changing_xy_or_orientation():
+    from dojo.skills.kinematics import TABLE_Z
+    target = T_from([.1,-.2,.85],rot_z(.5))
+    vertices = np.array([[-.05,-.02,-.04],[.05,.02,.08]])
+    obj = SimpleNamespace(asset=SimpleNamespace(mesh=(vertices, np.empty((0,3)))))
+    out = headset.mesh_support_target(obj,target)
+    world = vertices @ out[:3,:3].T + out[:3,3]
+    assert world[:,2].min() == pytest.approx(TABLE_Z+.003)
+    assert np.array_equal(out[:2,3],target[:2,3]) and np.array_equal(out[:3,:3],target[:3,:3])
+    assert target[2,3] == .85
+
+
+@pytest.mark.parametrize('mesh',[None,([],[]),([[0,0,float('nan')]],[]),([[0,0]],[]),('bad',[])])
+def test_invalid_support_mesh_retains_bbox_target(mesh):
+    target=np.eye(4)
+    assert headset.mesh_support_target(SimpleNamespace(asset=SimpleNamespace(mesh=mesh)),target) is target

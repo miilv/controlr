@@ -3546,7 +3546,7 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     if mesh_table:
         sk.coll.held_table = "mesh"
     try:
-        if "handle" not in handle_tag.lower() and getattr(sk, "headset_stage", "off") == "center":
+        if "handle" not in handle_tag.lower() and getattr(sk, "headset_stage", "off") in ("center", "mesh_center"):
             from dojo.skills.headset import stage_for_cradle
             staged = stage_for_cradle(sk, objects, rack, hook_tag, handle_tag)
             return _hang_on_hooks(sk, objects, rack, hook_tag, handle_tag, cup_labels=staged)
@@ -3781,7 +3781,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
         # tol_xy < LOOSE_OK_TOL: a grasp that shifted in the hand is put down (and the object tried once more)
         r = sk.run_transfer(pp, pl, tol_xy=0.015, tol_tilt=25.0, tol_z=0.05)
         arm = pp.arm
-        if site_mode and r.status in ("loose", "grasp_slip") and sk.held[arm] is None:
+        if site_mode and r.status in ("loose", "grasp_slip", "grasp_unusable") and sk.held[arm] is None:
             rejected_sites.remember_pick(sk, pp)
             site_attempts[lab] = site_attempts.get(lab, 0) + 1
             used.discard(hi)
