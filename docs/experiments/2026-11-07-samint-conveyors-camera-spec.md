@@ -2,7 +2,10 @@
 
 Gain cells: match_and_pick_from_conveyor, pick_from_conveyor_by_image. Design: [data/samint/conveyors.json](data/samint/conveyors.json).
 
-These are PARKED dispatch specifications, registered before generation or collection. No queue rows have been sent.
+**CANCELLED FOR BOARD DISPATCH — diagnostic history only.** The binding general-system rule
+forbids task-keyed routes and per-task phrase banks. No rows from this specification may be
+queued or enabled for a board candidate. Earlier authorizations below are superseded;
+all completed input preparation is retained as diagnostic evidence. No SAMINT rows were queued.
 
 A is the frozen candidate `scripts/dojo/queues/2026-11-06-candidate.txt` (SHA256 5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e),
 with `DOJO_PERCEPTION_CFG={"series_count":"seg","glyph_read":"on","pad_row_extend":true}`.

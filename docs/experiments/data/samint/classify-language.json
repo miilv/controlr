@@ -1,5 +1,5 @@
 {
-  "status": "AUTHORIZED_PREPARATION_BEHIND_STOP",
+  "status": "DIAGNOSTIC_ONLY_BOARD_DISPATCH_CANCELLED",
   "salt": "samint-classify-language-20261107-670dce1ba6c84e23",
   "ids": [
     100000,

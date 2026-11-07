@@ -968,6 +968,16 @@ Running a recipe still requires current permission for the destination box.
 
 ### Task-scoped SAM camera proposals and shared service
 
+**Diagnostic-only; prohibited for a board candidate.** `sam_task_routes` and
+`sam_task_banks.json` are historical component experiments, default-off. Never enable
+these fields or their task-keyed prompt lists for board episodes. The board requires
+one general perception path, with no task names, task-keyed code, task-config values
+or checker values. A general mask proposer must consume only episode instruction text
+and the one shared catalogue; thresholds and post-filters must be uniform. The legacy
+inverse-layout fitter also reads task-config candidate pools/priors, so replacing only
+its mask prompts does not by itself establish board compliance.
+
+
 `EstimatorConfig.sam_task_routes` defaults to `{}`. Keys are the instruction-routed
 vocabulary passed to perception (as for other task switches), never launcher task IDs.
 Each entry accepts `mode: v2b|sam|union`, `bank` (same task), `model: sam3|sam3.1_text`,
