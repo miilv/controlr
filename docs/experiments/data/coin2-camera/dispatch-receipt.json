@@ -1,0 +1,23 @@
+{
+ "utc": "2026-11-07T19:48:53.051263+00:00",
+ "host": "compute4",
+ "stream": "COIN2-CAM",
+ "mode": "appended after existing rows",
+ "rows_before": 50,
+ "rows_after": 120,
+ "positions_1_based": [
+  51,
+  120
+ ],
+ "sha256_before": "cd17114cdbe8d4bb33111d5ca08f947ef32be48a55ddb8250c8e00d97a0989ac",
+ "bytes_before": 78060,
+ "sha256_after": "25ac88c410a641dd5699e2cb76e4911d4b6aebc798e4438f41aaa899d0e321a2",
+ "block_sha256": "9c15c8d5ae8feeef2f02bb1ca0709e0ee7cf3352dc3cd28f4332b8fceec63be1",
+ "first": "c4b_depositcoin_coin2camAr1_100000",
+ "last": "c4b_tttsg_coin2camBr1_100004",
+ "route_checked_rows": 70,
+ "route": "claude/claude-sonnet-5-5",
+ "stop_present": true,
+ "stop_touched": false,
+ "running_lanes": []
+}

@@ -96,4 +96,17 @@ perception call (the probe reads proprioception), so per-episode calls should no
 
 ## Receipt
 
-RECEIPT
+**Dispatch receipt — 2026-11-07T19:48:53Z** ([dispatch-receipt.json](data/coin2-camera/dispatch-receipt.json)).
+The pre-registration and frozen rows were on main at `97929058` before the append.
+
+- Appended **70 rows at queue positions 51–120** under `flock ~/dojo-integ-c4-state/queue2.txt.lock`, after the 50
+  rows already queued (all CLASSIFY3: `c4b_classify*_cls3*`, `c4b_stackblockssg_cls3*`). Existing bytes are an exact
+  prefix of the new queue (asserted); the queue's last 70 lines equal the frozen block.
+- Queue sha256 before `cd17114cdbe8d4bb33111d5ca08f947ef32be48a55ddb8250c8e00d97a0989ac` (78,060 bytes), after
+  `25ac88c410a641dd5699e2cb76e4911d4b6aebc798e4438f41aaa899d0e321a2`; block `9c15c8d5…63be1`.
+- Route checked on 70 / 70 rows: `claude/claude-sonnet-5-5`. First `c4b_depositcoin_coin2camAr1_100000`, last
+  `c4b_tttsg_coin2camBr1_100004`.
+- `STOP` present before and after, not touched; no lane running at the append. No `~/coord` access; no other process
+  touched. Spend at dispatch: 0 calls, 0 tokens (estimate for the panel stays ~350 logical Claude calls).
+- ETA (occupancy only): the lanes resume at the lead's word (~23:45Z); 50 CLASSIFY3 rows first (~2 h on two lanes),
+  then these 70 (~3 h): roughly 04:30–05:00Z on 8 Nov. Not a deadline.
