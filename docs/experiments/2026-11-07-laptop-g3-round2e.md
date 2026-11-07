@@ -176,3 +176,14 @@ alternatives. Carry with the current upright orientation to the cradle, rather
 than correcting the4.7-degree rest tilt; this stays within the task's alignment
 and avoids introducing another wrist torque. All native checks, original pick
 verification and30-step released-support proof remain. No scene pose changes.
+
+One final bridge feasibility variant approaches from above (35/50/65 deg
+from down) instead of tangent-horizontal, to avoid pushing an upright headset
+sideways before enclosure. Rotate the closing axis0/15/25 deg within the band
+plane, verify opposed mesh faces again, and recompute the gravity-balanced site
+for each axis. This trades a small face angle for a reachable downward approach;
+native IK/collision decides feasibility. Keep full opening, original hold
+verification, current-orientation carry and released-support proof. If this
+variant also fails, park the upright-bridge mechanism and proceed with the
+physically supported enclosure/rest improvements rather than adding more
+unregistered variants. No final-panel record is involved.
