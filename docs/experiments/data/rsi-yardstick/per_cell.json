@@ -493,13 +493,69 @@
     },
     "hang_mugs": {
       "dimension": "Generalization",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "539dad4275bf104c0b5d6582d60ca8d9aab87672eebacf53b3e63322f90e47a8",
+          "official_score": 40.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T19254646f9f9Z_hang_mugs",
+          "steps": 368,
+          "success": false,
+          "task": "hang_mugs",
+          "wall_s": 177.8010501509998
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "9b28b545933587dedfb7176db9df51fb36b2cb1af5c94f6ee07141ec20118c91",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T19254646f9f9Z_hang_mugs",
+          "steps": 525,
+          "success": true,
+          "task": "hang_mugs",
+          "wall_s": 173.5985537939705
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "cb7d94976bc97a1e5d4480aad98325a75c3b5634790d190fe17eb820e1e4ff6f",
+          "official_score": 15.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T19254646f9f9Z_hang_mugs",
+          "steps": 713,
+          "success": false,
+          "task": "hang_mugs",
+          "wall_s": 276.59324262698647
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "2b48ecfbd4dce8c9fa906a6458c47ca1540f3670155800001a0946c0c22bdc4a",
+          "official_score": 15.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T19254646f9f9Z_hang_mugs",
+          "steps": 741,
+          "success": false,
+          "task": "hang_mugs",
+          "wall_s": 300.8788096300559
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "4197dbbface517c5878fe56ffa3c6469fe35aa2c12332f682e33c0aa3f6319cf",
+          "official_score": 15.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T19254646f9f9Z_hang_mugs",
+          "steps": 695,
+          "success": false,
+          "task": "hang_mugs",
+          "wall_s": 208.15919547504745
+        }
+      ],
+      "n": 5,
+      "official_score": 37.0,
+      "score_sd": 36.84426685388108,
+      "steps": 3042,
+      "successes": 1,
+      "wall_s": 1137.0308516770601,
       "weight": 0.008333333333333333
     },
     "hang_mugs_random": {
