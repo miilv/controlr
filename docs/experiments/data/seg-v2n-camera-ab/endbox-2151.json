@@ -1,0 +1,1303 @@
+{
+  "pooled_gain_bootstrap95": null,
+  "time": "2026-11-06T21:51:16Z",
+  "verdict": "pending",
+  "complete": false,
+  "cells": [
+    {
+      "cell": "stack_blocks",
+      "scheduled_pairs": 10,
+      "complete_pairs": 10,
+      "wins": 0,
+      "losses": 0,
+      "missing_pairs": 0,
+      "attempts": [
+        {
+          "name": "c6b_blockssg_segB_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segB_a_100000/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 258,
+          "wall_s": 172.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segA_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segA_a_100000/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 258,
+          "wall_s": 147.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segA_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segA_a_100001/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 242,
+          "wall_s": 70.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segB_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segB_a_100001/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 244,
+          "wall_s": 67.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segB_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segB_a_100002/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 236,
+          "wall_s": 86.5,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segA_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segA_a_100002/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 233,
+          "wall_s": 72.4,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segA_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segA_a_100003/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 250,
+          "wall_s": 73.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segB_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segB_a_100003/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 250,
+          "wall_s": 80.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segB_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segB_a_100004/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 247,
+          "wall_s": 134.1,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segA_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segA_a_100004/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 247,
+          "wall_s": 137.7,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segA_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segA_b_100000/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 220,
+          "wall_s": 99.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segB_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segB_b_100000/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 219,
+          "wall_s": 90.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segB_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segB_b_100001/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 267,
+          "wall_s": 185.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segA_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segA_b_100001/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 254,
+          "wall_s": 107.4,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segA_b_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segA_b_100002/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 230,
+          "wall_s": 87.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segB_b_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segB_b_100002/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 231,
+          "wall_s": 121.5,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segB_b_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segB_b_100003/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 29,
+          "wall_s": 82.4,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segA_b_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segA_b_100003/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 29,
+          "wall_s": 102.7,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segA_b_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segA_b_100004/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 228,
+          "wall_s": 150.5,
+          "skipped": false
+        },
+        {
+          "name": "c6b_blockssg_segB_b_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_blockssg_segB_b_100004/stack_blocks_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 228,
+          "wall_s": 94.2,
+          "skipped": false
+        }
+      ],
+      "A": 90.0,
+      "B": 90.0,
+      "delta": 0.0,
+      "paired_delta_sd": 0.0,
+      "paired_bootstrap95": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "cell": "sort_nesting_dolls_by_size_random",
+      "scheduled_pairs": 10,
+      "complete_pairs": 10,
+      "wins": 0,
+      "losses": 0,
+      "missing_pairs": 0,
+      "attempts": [
+        {
+          "name": "c6b_dollssg_segA_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segA_a_100000/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 447,
+          "wall_s": 432.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segB_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segB_a_100000/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 468,
+          "wall_s": 387.3,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segB_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segB_a_100001/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 847,
+          "wall_s": 995.3,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segA_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segA_a_100001/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 819,
+          "wall_s": 1015.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segA_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segA_a_100002/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 575,
+          "wall_s": 461.1,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segB_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segB_a_100002/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 466,
+          "wall_s": 374.5,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segB_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segB_a_100003/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 724,
+          "wall_s": 1025.7,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segA_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segA_a_100003/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 766,
+          "wall_s": 998.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segA_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segA_a_100004/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 513,
+          "wall_s": 660.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segB_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segB_a_100004/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 850,
+          "wall_s": 659.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segB_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segB_b_100000/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 452,
+          "wall_s": 615.1,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segA_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segA_b_100000/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 292,
+          "wall_s": 797.4,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segA_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segA_b_100001/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 573,
+          "wall_s": 503.4,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segB_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segB_b_100001/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 610,
+          "wall_s": 726.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segB_b_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segB_b_100002/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 376,
+          "wall_s": 397.5,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segA_b_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segA_b_100002/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 437,
+          "wall_s": 704.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segA_b_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segA_b_100003/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 498,
+          "wall_s": 524.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segB_b_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segB_b_100003/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 766,
+          "wall_s": 687.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segB_b_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segB_b_100004/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 793,
+          "wall_s": 934.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_dollssg_segA_b_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_dollssg_segA_b_100004/sort_nesting_dolls_by_size_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 627,
+          "wall_s": 867.8,
+          "skipped": false
+        }
+      ],
+      "A": 0.0,
+      "B": 0.0,
+      "delta": 0.0,
+      "paired_delta_sd": 0.0,
+      "paired_bootstrap95": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "cell": "store_laptop_and_headphones_random",
+      "scheduled_pairs": 10,
+      "complete_pairs": 10,
+      "wins": 0,
+      "losses": 0,
+      "missing_pairs": 0,
+      "attempts": [
+        {
+          "name": "c6b_laptopsg_segB_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segB_a_100000/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 34,
+          "wall_s": 129.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segA_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segA_a_100000/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 43,
+          "wall_s": 177.5,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segA_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segA_a_100001/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 52,
+          "wall_s": 213.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segB_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segB_a_100001/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 131,
+          "wall_s": 296.7,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segB_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segB_a_100002/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 41,
+          "wall_s": 147.7,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segA_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segA_a_100002/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 41,
+          "wall_s": 160.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segA_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segA_a_100003/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 127,
+          "wall_s": 292.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segB_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segB_a_100003/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 47,
+          "wall_s": 182.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segB_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segB_a_100004/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 47,
+          "wall_s": 188.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segA_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segA_a_100004/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 47,
+          "wall_s": 253.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segA_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segA_b_100000/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 47,
+          "wall_s": 240.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segB_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segB_b_100000/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 47,
+          "wall_s": 177.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segB_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segB_b_100001/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 135,
+          "wall_s": 146.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segA_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segA_b_100001/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 129,
+          "wall_s": 154.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segA_b_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segA_b_100002/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 40,
+          "wall_s": 173.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segB_b_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segB_b_100002/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 143,
+          "wall_s": 263.1,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segB_b_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segB_b_100003/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 49,
+          "wall_s": 149.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segA_b_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segA_b_100003/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 49,
+          "wall_s": 185.1,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segA_b_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segA_b_100004/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 47,
+          "wall_s": 220.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_laptopsg_segB_b_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_laptopsg_segB_b_100004/store_laptop_and_headphones_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 45,
+          "wall_s": 219.8,
+          "skipped": false
+        }
+      ],
+      "A": 0.0,
+      "B": 0.0,
+      "delta": 0.0,
+      "paired_delta_sd": 0.0,
+      "paired_bootstrap95": [
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "cell": "hang_mugs_random",
+      "scheduled_pairs": 10,
+      "complete_pairs": 7,
+      "wins": 0,
+      "losses": 0,
+      "missing_pairs": 3,
+      "attempts": [
+        {
+          "name": "c6b_mugssg_segB_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segB_a_100000/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 246,
+          "wall_s": 250.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segA_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segA_a_100000/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 285,
+          "wall_s": 365.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segA_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segA_a_100001/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 273,
+          "wall_s": 326.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segB_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segB_a_100001/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 288,
+          "wall_s": 314.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segB_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segB_a_100002/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.15,
+          "category": "perception_gross",
+          "steps": 484,
+          "wall_s": 424.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segA_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segA_a_100002/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.4,
+          "category": "perception_gross",
+          "steps": 487,
+          "wall_s": 298.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segA_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segA_a_100003/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 312,
+          "wall_s": 440.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segB_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segB_a_100003/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.15,
+          "category": "perception_gross",
+          "steps": 380,
+          "wall_s": 422.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segB_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segB_a_100004/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.15,
+          "category": "perception_gross",
+          "steps": 380,
+          "wall_s": 335.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segA_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segA_a_100004/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 691,
+          "wall_s": 495.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segA_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segA_b_100000/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 398,
+          "wall_s": 597.1,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segB_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segB_b_100000/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 450,
+          "wall_s": 335.3,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segB_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segB_b_100001/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 427,
+          "wall_s": 289.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_mugssg_segA_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_mugssg_segA_b_100001/hang_mugs_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 450,
+          "wall_s": 340.2,
+          "skipped": false
+        }
+      ],
+      "A": 5.714285714285714,
+      "B": 6.428571428571429,
+      "delta": 0.7142857142857143,
+      "paired_delta_sd": 13.363062095621222,
+      "paired_bootstrap95": [
+        -8.571428571428571,
+        8.571428571428571
+      ]
+    },
+    {
+      "cell": "pour_liquid_into_cup_random",
+      "scheduled_pairs": 10,
+      "complete_pairs": 10,
+      "wins": 2,
+      "losses": 3,
+      "missing_pairs": 0,
+      "attempts": [
+        {
+          "name": "c6b_poursg_segA_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segA_a_100000/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 392,
+          "wall_s": 197.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segB_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segB_a_100000/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 400,
+          "wall_s": 168.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segB_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segB_a_100001/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 138,
+          "wall_s": 115.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segA_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segA_a_100001/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 394,
+          "wall_s": 190.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segA_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segA_a_100002/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 128,
+          "wall_s": 141.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segB_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segB_a_100002/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 324,
+          "wall_s": 124.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segB_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segB_a_100003/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 326,
+          "wall_s": 177.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segA_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segA_a_100003/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 325,
+          "wall_s": 161.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segA_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segA_a_100004/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 379,
+          "wall_s": 171.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segB_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segB_a_100004/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 379,
+          "wall_s": 171.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segB_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segB_b_100000/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 124,
+          "wall_s": 119.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segA_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segA_b_100000/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 313,
+          "wall_s": 142.3,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segA_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segA_b_100001/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 324,
+          "wall_s": 157.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segB_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segB_b_100001/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 400,
+          "wall_s": 174.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segB_b_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segB_b_100002/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 380,
+          "wall_s": 185.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segA_b_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segA_b_100002/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 327,
+          "wall_s": 150.7,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segA_b_100003__retry",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segA_b_100003__retry/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 375,
+          "wall_s": 151.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segB_b_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segB_b_100003/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 374,
+          "wall_s": 198.3,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segB_b_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segB_b_100004/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 216,
+          "wall_s": 172.3,
+          "skipped": false
+        },
+        {
+          "name": "c6b_poursg_segA_b_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_poursg_segA_b_100004/pour_liquid_into_cup_random_perception_verify-bundle_episodes.jsonl",
+          "success": false,
+          "score": 0.0,
+          "category": "perception_gross",
+          "steps": 397,
+          "wall_s": 200.3,
+          "skipped": false
+        }
+      ],
+      "A": 50.0,
+      "B": 40.0,
+      "delta": -10.0,
+      "paired_delta_sd": 73.78647873726219,
+      "paired_bootstrap95": [
+        -50.0,
+        30.0
+      ]
+    },
+    {
+      "cell": "make_toast_random",
+      "scheduled_pairs": 10,
+      "complete_pairs": 0,
+      "wins": 0,
+      "losses": 0,
+      "missing_pairs": 10,
+      "attempts": []
+    },
+    {
+      "cell": "insert_tubes",
+      "scheduled_pairs": 10,
+      "complete_pairs": 10,
+      "wins": 0,
+      "losses": 0,
+      "missing_pairs": 0,
+      "attempts": [
+        {
+          "name": "c6b_tubessg_segA_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segA_a_100000/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 439,
+          "wall_s": 139.3,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segB_a_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segB_a_100000/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 439,
+          "wall_s": 135.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segB_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segB_a_100001/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 481,
+          "wall_s": 156.7,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segA_a_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segA_a_100001/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 480,
+          "wall_s": 194.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segA_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segA_a_100002/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 479,
+          "wall_s": 182.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segB_a_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segB_a_100002/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 481,
+          "wall_s": 183.9,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segB_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segB_a_100003/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 444,
+          "wall_s": 112.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segA_a_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segA_a_100003/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 445,
+          "wall_s": 107.7,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segA_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segA_a_100004/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 461,
+          "wall_s": 124.8,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segB_a_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segB_a_100004/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 462,
+          "wall_s": 123.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segB_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segB_b_100000/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 478,
+          "wall_s": 138.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segA_b_100000",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segA_b_100000/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 478,
+          "wall_s": 135.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segA_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segA_b_100001/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 463,
+          "wall_s": 115.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segB_b_100001",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segB_b_100001/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 463,
+          "wall_s": 134.2,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segB_b_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segB_b_100002/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 438,
+          "wall_s": 116.6,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segA_b_100002",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segA_b_100002/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 439,
+          "wall_s": 108.1,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segA_b_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segA_b_100003/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 437,
+          "wall_s": 142.5,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segB_b_100003",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segB_b_100003/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 439,
+          "wall_s": 113.0,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segB_b_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segB_b_100004/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 446,
+          "wall_s": 127.4,
+          "skipped": false
+        },
+        {
+          "name": "c6b_tubessg_segA_b_100004",
+          "file": "/home/robotics/dojo-data/integ-c6/runs2/c6b_tubessg_segA_b_100004/insert_tubes_perception_verify-bundle_episodes.jsonl",
+          "success": true,
+          "score": 1.0,
+          "category": null,
+          "steps": 446,
+          "wall_s": 150.6,
+          "skipped": false
+        }
+      ],
+      "A": 100.0,
+      "B": 100.0,
+      "delta": 0.0,
+      "paired_delta_sd": 0.0,
+      "paired_bootstrap95": [
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "calls_from_completed_call_logs": 659,
+  "usage": {
+    "prompt": 9477400,
+    "completion": 610089,
+    "reasoning": 386658,
+    "cache_read": 7774943
+  },
+  "attempt_count": 114,
+  "note": "Scores converted from 0\u20131 episode rows to 0\u2013100. Partial results are not a verdict; infrastructure attempts retained. Adoption requires lead review.",
+  "monitor_validation": {
+    "time": "2026-11-06T21:51:16Z",
+    "captured_utc": "2026-11-06T21:51:51.791700+00:00",
+    "paired_complete": 57,
+    "categories": {
+      "ok": 47,
+      "perception_gross": 67
+    },
+    "completed_lane_occupied_s": 38762,
+    "inflight_elapsed_since_START_s": {
+      "c6b_mugssg_segB_b_100002": 79,
+      "c6b_mugssg_segA_b_100002": 261
+    },
+    "STOP": false,
+    "STOP_heavy1": false,
+    "STOP_heavy2": false,
+    "power": {
+      "time": "2026-11-06T21:47:33.513269+00:00",
+      "gpu": "103.67, 20100",
+      "rc": 0,
+      "lane2_draining": false
+    },
+    "pending_seg_rows": 24,
+    "manifest_sha256": "92689cca1d1260c01082ae04eef183ecf414728d3ba2a8f6ba089415cd76094c",
+    "five_minute_power_range_W": [
+      11.23,
+      398.14
+    ]
+  }
+}

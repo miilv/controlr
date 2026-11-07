@@ -1,0 +1,18 @@
+[
+  {
+    "block": "disc-keyrefill2",
+    "task": "insert_key",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-keyrefill2-lead-amendment-r1",
+    "salt_sha256": "3e679ef8fdb02ee562b521a53767c95fab9823c9b6682874e5b499eab27740ca",
+    "refill": true
+  },
+  {
+    "block": "disc-keyrefill3",
+    "task": "insert_key",
+    "n": 5,
+    "salt": "coin-20261107-once-retest-disc-keyrefill3-lead-amendment-r1",
+    "salt_sha256": "de20097ef1ca80fc1da76ba58ccafa41063508fd87968edbb75c8e028c260d47",
+    "refill": true
+  }
+]

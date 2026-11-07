@@ -6,6 +6,33 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Preserve agentic transport retry telemetry.** `OmniChat` drops
+  `LLMResult.attempts` / `http_status` when building `ChatReply`, so logical
+  call logs cannot certify actual recovered retries or transient 429 counts.
+  Propagate per-attempt status/timing without credentials and distinguish
+  logical calls from HTTP attempts
+  ([KEY verdict](experiments/2026-11-07-key-scoped-prereg.md)).
+
+- [ ] **Distinguish static deployment labels from executed camera routes.**
+  Copied deployment provenance can retain an old `model` / `stream` label
+  after a lead-authorized route correction. Record the resolved per-run
+  perceiver route; use call logs/transcript models to audit existing data
+  ([KEY route evidence](experiments/2026-11-07-key-scoped-prereg.md)).
+
+- [ ] **Account for insert_key's high second-pass presettle rejection rate.**
+  Raw records can pass the initial settle yet fail after settled poses are written
+  back and reloaded. Track failure rates by task/block and budget prospective
+  stability-only refills; never silently relax tolerances or reduce camera n.
+  Diagnose the preparation path separately from controller outcomes before
+  changing generation or settling semantics
+  ([COIN preparation](experiments/2026-11-07-coin-disc-retest-prereg.md)).
+
+- [ ] **Account for reset-rejected attempts before retrying or scoring camera A/Bs.**
+  `eval` can report `n=0, unstable=1` without an episode JSONL; the lane retries
+  every no-row job and the episode-only collector then omits the original.
+  Require explicit retry eligibility and retain an attempt record for every
+  START ([SEGAB incident](incidents/2026-11-06-segab-unscored-reset.md)).
+
 - [ ] **Gate camera dispatch on a genuine-render startup smoke.** CUDA availability,
   package parity and a passing physics-only settle do not certify Isaac RTX.
   Require a bounded dev render on the exact deployment before consuming a
