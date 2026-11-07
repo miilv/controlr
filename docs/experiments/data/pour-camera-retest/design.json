@@ -1,0 +1,72 @@
+{
+  "code": "066e9c8f34c727d9bbfdfa1c219e7c6a78366a45",
+  "deployment": "/home/robotics/dojo-integ-c6-066e9c8f",
+  "baseline_candidate": "scripts/dojo/queues/2026-11-06-candidate.txt",
+  "baseline_candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "model": "claude/claude-sonnet-5-5",
+  "repeats_per_arm": 1,
+  "A_overrides": {
+    "ported_pour_aim": "b10",
+    "ported_pour_profile": "off",
+    "ported_pour_pace": "v1"
+  },
+  "B_overrides": {
+    "ported_pour_aim": "b10",
+    "ported_pour_profile": "off",
+    "ported_pour_pace": "budget"
+  },
+  "cells": [
+    {
+      "task": "pour_by_language",
+      "slug": "pourlangsg",
+      "pairs": 20,
+      "role": "gain",
+      "block": "pourlangsg",
+      "salt": "pour-camera-retest-pourlangsg-20261107-190a3a98befae28105297b57dac55efe0c7e5e6f934955736b828d1a8b25fb5a",
+      "salt_sha256": "2de294cc94f87d9836a50f3ca41519c0eed1c71fb393415f0a9546d1d737bab9"
+    },
+    {
+      "task": "pour_liquid_into_cup",
+      "slug": "pourliquidsg",
+      "pairs": 10,
+      "role": "parity_guard",
+      "block": "pourliquidsg",
+      "salt": "pour-camera-retest-pourliquidsg-20261107-6eb702a38f534aa095af5d35d5b86fc068b242f1edf8c15f7d97750c29f3eb46",
+      "salt_sha256": "567c8fbe8ab597668156d112b73f37a8d6f0b042956ead15c9964475ef6984b0"
+    },
+    {
+      "task": "play_Xylophone",
+      "slug": "xylophonesg",
+      "pairs": 10,
+      "role": "strong_guard",
+      "block": "xylophonesg",
+      "salt": "pour-camera-retest-xylophonesg-20261107-d866285991cd0d0891c3eb73a2deb53f8e92ff5627d347f8fe230e7e0c9e86ed",
+      "salt_sha256": "038bb8e04418d82be581e03cb37fca3860bd5e12bb7cec0cf961b685df13927e"
+    }
+  ],
+  "candidate_ids": [
+    100000,
+    100001,
+    100002,
+    100003,
+    100004,
+    100005,
+    100006,
+    100007,
+    100008,
+    100009,
+    100020,
+    100021,
+    100022,
+    100023,
+    100024,
+    100025,
+    100026,
+    100027,
+    100028,
+    100029
+  ],
+  "retest_number": 1,
+  "single_cup_scope": "Both arms explicitly resolve ported_pour_pace=v1 for identical complete task RuntimeConfig, matching the existing planner single-cup resolver even under global budget.",
+  "data_root": "/home/robotics/dojo-data/pour-cam/retest"
+}
