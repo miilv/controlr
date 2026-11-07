@@ -94,3 +94,24 @@ def test_checked_held_return_suppresses_generic_open_without_changing_default(mo
     assert bool(finished) is homes
     if not homes:
         assert result["stage"] == "holding"
+
+
+def test_snapshot_queries_checker_without_changing_episode():
+    from types import SimpleNamespace
+    import numpy as np
+    from dojo.skills.pour_diagnostics import snapshot
+    calls = []
+    fluid = SimpleNamespace(init_ori=[1, 0, 0, 0], init_pos=[0, 0, 0],
+                            get_particle_positions=lambda: (np.array([[0, 0, .05]]), None, None))
+    lm = SimpleNamespace(get_instance_name=lambda label, env_idx: label,
+                         get_scene_object=lambda **kw: fluid,
+                         get_instance_pose=lambda inst_name, env_idx: ([0 if inst_name == 'cup' else 1, 0, 0], [1, 0, 0, 0]),
+                         get_instance_bbox_vertices=lambda **kw: [[-.1, -.1, 0], [.1, .1, .1]])
+    pending = [object()]
+    parser = SimpleNamespace(is_A_fluid_in_B=lambda args: calls.append(args) or 1.)
+    run = SimpleNamespace(env=SimpleNamespace(scene_manager=SimpleNamespace(layout_manager=lm),
+                                              reward_manager=SimpleNamespace(trigger_check_list=[pending], func_parser=parser)))
+    r = snapshot(run, 'pour_liquid_into_cup')
+    assert r['pending_upright_checks'] == 1 and len(pending) == 1
+    assert r['fluids'][0]['predicate_now'] and r['fluids'][0]['in_target'] == 1
+    assert calls[0]['percentage_threshold'] == .97 and calls[0]['C_residual_threshold'] == .15

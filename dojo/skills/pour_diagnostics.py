@@ -38,7 +38,15 @@ def snapshot(run, task):
         in_b, in_c = masks
         in_b &= ~in_c
         n = len(points)
-        out["fluids"].append({"wine": wine, "target": target, "bottle": bottle, "total": n,
+        language = task == "pour_by_language"
+        predicate_now = rm.func_parser.is_A_fluid_in_B({
+            "env_idx": 0, "label_A": wine, "label_B": target, "label_C": bottle,
+            "percentage_threshold": .95 if language else .97,
+            "C_residual_threshold": .1 if language else .15,
+            "B_buffer": 0., "C_buffer": 0., "B_z_threshold": .001,
+            "ignore_scattered": True, "scatter_connect_radius": .006 if language else .0065,
+            "scatter_min_component_size": 12 if language else 7, "max_ignore_ratio": .2})
+        out["fluids"].append({"wine": wine, "target": target, "bottle": bottle, "total": n, "predicate_now": bool(predicate_now),
                               "in_target": int(in_b.sum()), "residual": int(in_c.sum()),
                               "outside": int((~(in_b | in_c)).sum()),
                               "raw_poured_capture": float(in_b.sum() / max(1, n - in_c.sum())),
