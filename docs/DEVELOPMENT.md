@@ -758,6 +758,47 @@ retain the legacy bbox check. This avoids empty OBB corners blocking a lift;
 it is not a smaller margin or an unchecked contact move. Geometry hanging
 outside an edge can be conservatively refused. Native table/obstacle checks
 still validate every planned waypoint. Threaded hooks retain their old mode.
+### Multi-bottle pour profiles
+
+`RuntimeConfig.ported_pour_profile` / G3 `--skill-attr ported_pour_profile=...`
+accept `off` (legacy dispatch), `sparse` (Mikhail's multi-bottle v2 roll profile,
+without via points), and `via` (v2 including target-row carry waypoints).
+They supersede `ported_pour_pace` when enabled; `ported_pour_aim` remains independent.
+The existing default-off `new_routes: [pour_order]` / G3 `--routes pour_order`
+routes the three color-named bottle/bowl clauses in instruction order. It refuses
+incomplete or repeated-color assignments. No task/checker labels ground targets.
+
+The `checked` pour profile uses the original strict RGB wrapper's underlying
+v5 skill: staged rolls, mandatory waypoint retries, checked put-downs. These
+profiles are dev feasibility switches; they do not select a camera candidate.
+`scripts/skills/pour_g3_job.sh` serializes the POUR stream on compute3's light7
+lock, checks <=24 GiB used VRAM and >=10 GB free disk before each scoped job,
+and uses an 8G/600% physics-only process with a bounded KILL tail.
+
+For ordered pours, `checked` runs the original v5 composite (adaptive drain,
+pre-flow-only retry, stop on an unsuccessful pair, checked held-bottle return).
+A still-held bottle suppresses generic finish, which otherwise opens both hands.
+Single-cup checked pours use the v5 bottle skill directly.
+
+`ported_pour_pace=budget` is an opt-in overlap derivative. Flow angles, flow
+speed, hold count, drain and staged untilt angles remain the overlap profile;
+lift uses normal speed and staged untilt uses the existing full held-speed
+limit. The last pour alone receives `profile_reserve=0`: the 60-step put-back
+reserve no longer cuts its flow profile short. The put-back reserve and all
+move-budget/lease checks remain in force. Single-cup routing retains v1 pacing.
+
+`scripts/skills/pour_g3_panel.sh` executes an existing private
+`~/dojo-data/pour/panel-registration.json`. It verifies source, stable-layout
+hashes and a fixed A/B order, alternates AB/BA by layout, and refuses duplicate
+or mixed-source/settings rows. Completed episodes are skipped on resume;
+admission or process failures stop the driver for diagnosis. It never generates
+layouts or selects a candidate from outcomes.
+
+`python3 scripts/skills/pour_g3_report.py --root ~/dojo-data/pour` reads the
+registration and retained rows without simulator imports. It reports paired
+coverage, official/full-only means and sample SD, >=10-point wins/losses,
+clean final-predicate successes and first-blocking-stage diagnostics. Missing
+or infrastructure pairs cannot yield a passing completed decision.
 
 The basket-image experiment uses `--routes basket_image` and
 `--skill-attr belt_container=on --skill-attr belt_deposit=on` in G3;

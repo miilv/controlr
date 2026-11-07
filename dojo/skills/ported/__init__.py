@@ -22,12 +22,18 @@ from dojo.skills.ported.harness_robot import PASS_THROUGH, SOURCE_COMMIT, Harnes
 # order_gen11.tsv, order_K4_gen.tsv). The reserve is one value for every skill (the single-fixed-system audit,
 # 2026-10-28: his pick_up ran with reserve 0, here 20 like the rest)
 RESERVE = 20
+# These later originals were added after the adapter's a21dd6f source snapshot.
+SOURCE_COMMITS = {name: "6769a6c5b3df8c55f56b0324cfdf196084b9ec94"
+                  for name in ("pour_bottle_v2", "pour_bottle_v5", "pour_in_order_v5")}
 BALL_POURS = ("pour", "pour_p1")              # pours verified by counting balls (``ported``: no ball, no verdict)
 TIER_A = {
     "cover_uncover_v2": (RESERVE, {}),
     "swap_poses": (RESERVE, {}),
     "pour": (RESERVE, {}),
     "pour_bottle": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),     # D-C14
+    "pour_in_order_v5": (RESERVE, {}),
+    "pour_bottle_v5": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),
+    "pour_bottle_v2": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),
     "pour_bottle_lean": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),  # H: pour_bottle paced lean, same D-C14 args
     "pick_up": (RESERVE, {}),
     "planar_drag": (RESERVE, {}),
@@ -70,7 +76,7 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
     r0, a0 = TIER_A.get(skill, (RESERVE, {}))
     # the two-arm move verb exists only for the overlap pour pace (stream H; ``harness_robot.PAIR_COMMANDS``)
     robot = HarnessRobot(sk, reserve=r0 if reserve is None else int(reserve),
-                         pair_moves=skill == "pour_bottle_lean" and getattr(sk, "ported_pour_pace", "v1") == "overlap")
+                         pair_moves=skill == "pour_bottle_lean" and getattr(sk, "ported_pour_pace", "v1") in ("overlap", "budget"))
     n0 = sk.ex.steps_used
     try:
         rep = robot.run_skill(skill, {**a0, **(args or {})})
@@ -113,7 +119,9 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
     # "ok" = the skill ran its whole procedure (robot-harness's ``ok``), so the runtime's supervisor does not run it a
     # second time (his runs call it once per episode); a skill that could not start (grounding, an error) is not ok
     out = {"ok": bool(rep.get("ok")), "status": status, "skill": f"ported:{skill}", "steps": steps,
-           "verified": verified, "error": note, "source": f"robot-harness {SOURCE_COMMIT[:7]} skills/{skill}"}
+           "verified": verified, "error": note, "source": f"robot-harness {SOURCE_COMMITS.get(skill, SOURCE_COMMIT)[:7]} skills/{skill}"}
+    if rep.get("holding") is not None:
+        out["holding"] = rep["holding"]
     if rep.get("companion") is not None:          # pour_bottle_lean's overlap: the next bottle the other arm now holds
         out["companion"] = rep["companion"]
     d = rep.get("details") if isinstance(rep.get("details"), dict) else {}
@@ -122,6 +130,8 @@ def ported(sk, skill: str, args: dict | None = None, reserve: int | None = None)
         # pour that poured: the skill returns ok=True also when it found no neck grasp, or the grasp failed)
         phis = [float(t["phi"]) for t in d["pour"] if isinstance(t, dict) and t.get("phi") is not None]
         out["pour"] = {"max_phi": max(phis) if phis else None, "stop": d.get("pour_stop")}
+        if getattr(sk, "ported_pour_pace", "v1") == "budget":
+            out["pour"]["final_tilt"] = (d.get("final") or {}).get("bottle_tilt")
     return out
 
 

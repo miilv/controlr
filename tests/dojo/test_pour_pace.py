@@ -62,7 +62,7 @@ def test_lean_cuts_the_steps_and_still_runs_the_whole_profile():
 @pytest.mark.parametrize("aim, back", [(None, None), ("b10", 0.010)])
 def test_a_single_pour_keeps_v1s_pace(aim, back):
     w = _world()
-    for pace in (None, "v1", "lean"):
+    for pace in (None, "v1", "lean", "overlap", "budget"):
         opts = {k: v for k, v in (("pour_aim", aim), ("pour_pace", pace)) if v is not None}
         p = planner.ported_plan(w.instruction, w, opts=opts)
         assert p.args["skill"] == "pour_bottle" and p.args["args"] == ({} if back is None else {"spout_back": back})
@@ -110,3 +110,11 @@ def test_default_and_validation():
         RuntimePolicy(RuntimeConfig(mode="perception", ported_pour_pace="rush"), assets=_Assets())
     from dojo.skills.g3 import SKILL_ATTRS
     assert SKILL_ATTRS["ported_pour_pace"][0] == RuntimeConfig().ported_pour_pace
+
+
+def test_profile_reserve_is_independent_of_put_back_reserve():
+    _, _, legacy = _pour('pour_bottle_lean', {'min_return_steps': 800})
+    _, _, terminal = _pour('pour_bottle_lean', {'min_return_steps': 800, 'profile_reserve': 0})
+    assert legacy['pour'] == [] and legacy['pour_stop'] == 'step budget'
+    assert terminal['pour_stop'] == 'profile end' and terminal['pour'][-1]['phi'] == 150
+    assert 'hover' not in terminal['return']  # the override does not spend the put-back reserve

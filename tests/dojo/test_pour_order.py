@@ -107,3 +107,11 @@ def test_ported_reports_the_pour_trace(monkeypatch):
     env = KinematicEnv([], step_lim=100)
     r = ported_mod.ported(Skills(env, GTProvider(env, None), reserve=30), "pour_bottle", {})
     assert r["pour"] == {"max_phi": 135.0, "stop": "profile end"} and pour_order.poured(r)
+
+
+def test_route_accepts_public_case_and_refuses_ambiguous_assignments():
+    w = _world()
+    assert pour_order.route(POUR, w, ["pour_order"])[0] == "pour_in_order"
+    assert pour_order.route(POUR.replace("third violet", "third red"), w, ["pour_order"]) is None
+    assert pour_order.route(POUR.replace("third brown", "third white"), w, ["pour_order"]) is None
+    assert pour_order.route(POUR.split(", from")[0], w, ["pour_order"]) is None

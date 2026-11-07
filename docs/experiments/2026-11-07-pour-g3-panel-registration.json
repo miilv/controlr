@@ -1,0 +1,754 @@
+{
+  "controller_commit": "bcc8d4117e5ebaa53a7f597f780033a70fcd6e7a",
+  "prereg_commit": "e466beec",
+  "registered_utc": "2026-11-07T05:40:53Z",
+  "selected_utc": "2026-11-07T05:55:11.241504+00:00",
+  "seed_salt": "pour-panel-20261107-6c42a9",
+  "presettle_source": "04df92ff",
+  "arms": {
+    "A": {
+      "pace": "v1",
+      "aim": "v1",
+      "profile": "off"
+    },
+    "B": {
+      "pace": "budget",
+      "aim": "b10",
+      "profile": "off"
+    }
+  },
+  "cells": {
+    "pour_by_language": {
+      "ids": [
+        100080,
+        100081,
+        100082,
+        100083,
+        100084,
+        100085,
+        100086,
+        100087,
+        100088,
+        100089
+      ],
+      "layouts": {
+        "100080": {
+          "raw_sha256": "f054725d70b4190d1b9a0004b4f881a879fd0629cf127f879d6de50a3d1d8546",
+          "settled_sha256": "b49c92ca7bf7ce895c472062db6f4e368f43894aaf5048498153321d9374b819",
+          "settled_md5": "ab4aafeca7267a7118445dbf4c5899e9",
+          "stability": {
+            "from": "100080.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.42,
+            "pass1_drift_deg": 0.03,
+            "pass2_top": [
+              [
+                "bottle_1",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_0",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "bottle_2",
+                0.0,
+                "Rigid"
+              ]
+            ],
+            "objects_written": 6,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.01,
+            "pass2_drift_deg": 0.011,
+            "passes": 2,
+            "status": "ok",
+            "s": 46.3
+          }
+        },
+        "100081": {
+          "raw_sha256": "d5cd2a3c246dafe86e3553d2ef303e5de733ad9f3b1d97dd00585aa22c01f570",
+          "settled_sha256": "137436249bd018d0e6b909b3f6e826655518fe31e2d0021d897aeee931f91c3c",
+          "settled_md5": "ac764ca3e8982b5b91dd53b98c1bc933",
+          "stability": {
+            "from": "100081.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.42,
+            "pass1_drift_deg": 0.03,
+            "pass2_top": [
+              [
+                "bottle_0",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_1",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_2",
+                0.01,
+                "Rigid"
+              ]
+            ],
+            "objects_written": 6,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.009,
+            "pass2_drift_deg": 0.008,
+            "passes": 2,
+            "status": "ok",
+            "s": 41.1
+          }
+        },
+        "100082": {
+          "raw_sha256": "5d4484d15498b1099039fa21e043735ecbcdb333f4c2a4ec8a0ad2428fcba777",
+          "settled_sha256": "f1622a365fb86f3a257e773d2a284d6745e696f6561ab47a135d2dac038e8fb5",
+          "settled_md5": "8ce94cf42ba4dd05aeb6fb1d310ecb5a",
+          "stability": {
+            "from": "100082.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.42,
+            "pass1_drift_deg": 0.03,
+            "pass2_top": [
+              [
+                "bottle_0",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "bottle_1",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "bottle_2",
+                0.0,
+                "Rigid"
+              ]
+            ],
+            "objects_written": 6,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.005,
+            "pass2_drift_deg": 0.004,
+            "passes": 2,
+            "status": "ok",
+            "s": 41.4
+          }
+        },
+        "100083": {
+          "raw_sha256": "dcd95ff8d3d1199ec10fdf8f349b64f9514bbd22671b1c2ad6b67fba911848e0",
+          "settled_sha256": "4e15be279c6ea7b4e30a661e1dedf1312d665f5d68ceba6953a230e04700b544",
+          "settled_md5": "d877213877461d4ca3424f3507c27551",
+          "stability": {
+            "from": "100083.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.42,
+            "pass1_drift_deg": 0.03,
+            "pass2_top": [
+              [
+                "bottle_0",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_2",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_1",
+                0.0,
+                "Rigid"
+              ]
+            ],
+            "objects_written": 6,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.007,
+            "pass2_drift_deg": 0.007,
+            "passes": 2,
+            "status": "ok",
+            "s": 46.3
+          }
+        },
+        "100084": {
+          "raw_sha256": "83cf2ac341b48837b7e483bcce9ea7f2fdb8a94bae06363e67f88605d468dcac",
+          "settled_sha256": "488e1795a1bbdba441478eb8e9108e7496ba3f9dbdb5529912a8d9a04abce1b8",
+          "settled_md5": "210e58abf336987d304a419864c7e198",
+          "stability": {
+            "from": "100084.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.42,
+            "pass1_drift_deg": 0.03,
+            "pass2_top": [
+              [
+                "bottle_0",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_1",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "bottle_2",
+                0.0,
+                "Rigid"
+              ]
+            ],
+            "objects_written": 6,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.005,
+            "pass2_drift_deg": 0.005,
+            "passes": 2,
+            "status": "ok",
+            "s": 46.3
+          }
+        },
+        "100085": {
+          "raw_sha256": "08e0a73aa3628822f6ad1cc55b9b35ce8c9ee2699b7367ceb350f81395877d8a",
+          "settled_sha256": "9e42a09898e8527550b750a74ab40db88cc3c77b2fc6416f2c0d730e5bcb2dac",
+          "settled_md5": "d15739a461ea9654bc5b918edffba344",
+          "stability": {
+            "from": "100085.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.42,
+            "pass1_drift_deg": 0.03,
+            "pass2_top": [
+              [
+                "bottle_0",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_1",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_2",
+                0.01,
+                "Rigid"
+              ]
+            ],
+            "objects_written": 6,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.007,
+            "pass2_drift_deg": 0.007,
+            "passes": 2,
+            "status": "ok",
+            "s": 55.3
+          }
+        },
+        "100086": {
+          "raw_sha256": "1a5042e2b976e1846eaff7c43b7c584529f50deefdb41b52f7f547cd56b20395",
+          "settled_sha256": "6044aca4d2f53e238673fb1973a76fbe58e74fadd81f7f59b184de0cd9c46e05",
+          "settled_md5": "1cf01a3e80768fa1f797bacf63e1eac0",
+          "stability": {
+            "from": "100086.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.42,
+            "pass1_drift_deg": 0.03,
+            "pass2_top": [
+              [
+                "bottle_0",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_1",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_2",
+                0.0,
+                "Rigid"
+              ]
+            ],
+            "objects_written": 6,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.007,
+            "pass2_drift_deg": 0.007,
+            "passes": 2,
+            "status": "ok",
+            "s": 54.8
+          }
+        },
+        "100087": {
+          "raw_sha256": "45d4d5405c835095cb5709f40cc77c6da705275208f02d82b6becbfdcb7696ef",
+          "settled_sha256": "b54bfa3f04a53570663aa7e25f17f842808665ed3f8914bc49260b1ed6a663b9",
+          "settled_md5": "a946506bda284f3e03c4d7b941afe543",
+          "stability": {
+            "from": "100087.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.42,
+            "pass1_drift_deg": 0.03,
+            "pass2_top": [
+              [
+                "bottle_2",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_0",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "bottle_1",
+                0.0,
+                "Rigid"
+              ]
+            ],
+            "objects_written": 6,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.005,
+            "pass2_drift_deg": 0.005,
+            "passes": 2,
+            "status": "ok",
+            "s": 45.4
+          }
+        },
+        "100088": {
+          "raw_sha256": "521bcff8528d6d7a586dc59250a4d56f6d692a4c6e4bcb647dc3523baf2d7b17",
+          "settled_sha256": "5dc73c4dd00993cd7b104d0ce13c0fab9450adbb8c147f9deb52dbbce1d95117",
+          "settled_md5": "cd9142559244bfa177d0f62c78cbe78a",
+          "stability": {
+            "from": "100088.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.42,
+            "pass1_drift_deg": 0.03,
+            "pass2_top": [
+              [
+                "bottle_0",
+                0.01,
+                "Rigid"
+              ],
+              [
+                "bottle_1",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "bottle_2",
+                0.0,
+                "Rigid"
+              ]
+            ],
+            "objects_written": 6,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.006,
+            "pass2_drift_deg": 0.006,
+            "passes": 2,
+            "status": "ok",
+            "s": 58.8
+          }
+        },
+        "100089": {
+          "raw_sha256": "767d405b8de0a33593732a1199a89f5743938ec342b21e9652a87c1777a6855f",
+          "settled_sha256": "fefdfb4d69f02726d3215ac49089cade3849b437b27f4048b0b2a991f3164aeb",
+          "settled_md5": "03ff34f0f192f99f759cc1b726b145d2",
+          "stability": {
+            "from": "100089.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.42,
+            "pass1_drift_deg": 0.03,
+            "pass2_top": [
+              [
+                "bottle_0",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "bottle_1",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "bottle_2",
+                0.0,
+                "Rigid"
+              ]
+            ],
+            "objects_written": 6,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.002,
+            "pass2_drift_deg": 0.001,
+            "passes": 2,
+            "status": "ok",
+            "s": 60.3
+          }
+        }
+      }
+    },
+    "pour_liquid_into_cup": {
+      "ids": [
+        100080,
+        100081,
+        100082,
+        100083,
+        100084,
+        100085,
+        100086,
+        100087,
+        100088,
+        100089
+      ],
+      "layouts": {
+        "100080": {
+          "raw_sha256": "ee879e2138a0ee2de911ff889affb789979ade1938990727a64c24e633b975e5",
+          "settled_sha256": "9439062101d18cee03cfa9e7bcea27f8200a311f87f6ebbdd7fa8436c8d37f5a",
+          "settled_md5": "d88346049fd81fa750115993452fcbae",
+          "stability": {
+            "from": "100080.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 1.97,
+            "pass1_drift_deg": 2.39,
+            "pass2_top": [
+              [
+                "bottle",
+                2.86,
+                "Rigid"
+              ],
+              [
+                "cup",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "camera_stand",
+                0.0,
+                "Geometry"
+              ]
+            ],
+            "objects_written": 2,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 2.864,
+            "pass2_drift_deg": 0.424,
+            "passes": 2,
+            "status": "ok",
+            "s": 30.8
+          }
+        },
+        "100081": {
+          "raw_sha256": "0bd82bedfc03418abe7dc60dd569dd001d84775eb7524ca031bcce2d62dd784d",
+          "settled_sha256": "4da48c21abe47d615a16787befc43288d7734a8922083ebd1801854a1f84e395",
+          "settled_md5": "a405a53f496952c464575c0f60a95d98",
+          "stability": {
+            "from": "100081.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 2.02,
+            "pass1_drift_deg": 1.02,
+            "pass2_top": [
+              [
+                "bottle",
+                2.85,
+                "Rigid"
+              ],
+              [
+                "cup",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "camera_stand",
+                0.0,
+                "Geometry"
+              ]
+            ],
+            "objects_written": 2,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 2.854,
+            "pass2_drift_deg": 1.802,
+            "passes": 2,
+            "status": "ok",
+            "s": 30.2
+          }
+        },
+        "100082": {
+          "raw_sha256": "dea0af9eee596a8b23e4298746499a89c3439e27d3f509924118dbdb1f88daff",
+          "settled_sha256": "57097c9edc412862d3e1bb2c160c47eb4de091e90b62dd5365fa4551ed398462",
+          "settled_md5": "a259df8749c12c31286a0141769e8440",
+          "stability": {
+            "from": "100082.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 1.51,
+            "pass1_drift_deg": 1.19,
+            "pass2_top": [
+              [
+                "bottle",
+                2.69,
+                "Rigid"
+              ],
+              [
+                "cup",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "camera_stand",
+                0.0,
+                "Geometry"
+              ]
+            ],
+            "objects_written": 2,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 2.688,
+            "pass2_drift_deg": 0.543,
+            "passes": 2,
+            "status": "ok",
+            "s": 20.9
+          }
+        },
+        "100083": {
+          "raw_sha256": "56b2f554b43df779a4e166612365dc0a7d84a7462bbd25cbae7cea254550331a",
+          "settled_sha256": "bfbfa21a8d1c8867b05f4a94b984944fd560c3c9ed094cfab3b18a343f92194a",
+          "settled_md5": "ea83395546d40ffa9198e1cf108fd1e7",
+          "stability": {
+            "from": "100083.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 1.06,
+            "pass1_drift_deg": 1.03,
+            "pass2_top": [
+              [
+                "bottle",
+                1.78,
+                "Rigid"
+              ],
+              [
+                "cup",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "camera_stand",
+                0.0,
+                "Geometry"
+              ]
+            ],
+            "objects_written": 2,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 1.777,
+            "pass2_drift_deg": 0.853,
+            "passes": 2,
+            "status": "ok",
+            "s": 19.9
+          }
+        },
+        "100084": {
+          "raw_sha256": "439224c15108c1096edf5bc03653905fa40f2190cedfefdecf8380989e493ec5",
+          "settled_sha256": "18d0488dff330e77fe30de05abea0009e3a1a264aaa460dbf9bd47d971a65e5e",
+          "settled_md5": "aeb81ab1f730434ad17ed3ca4ea27537",
+          "stability": {
+            "from": "100084.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.38,
+            "pass1_drift_deg": 1.02,
+            "pass2_top": [
+              [
+                "bottle",
+                3.39,
+                "Rigid"
+              ],
+              [
+                "cup",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "camera_stand",
+                0.0,
+                "Geometry"
+              ]
+            ],
+            "objects_written": 2,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 3.387,
+            "pass2_drift_deg": 2.493,
+            "passes": 2,
+            "status": "ok",
+            "s": 17.2
+          }
+        },
+        "100085": {
+          "raw_sha256": "00dd45f0ce27293266f42bf6c8da464b887298f764030bd4f1fb6dda05d4022d",
+          "settled_sha256": "b56f2519db34a52c64e993a77a3dbefe2cb6af4d2b86768bfda48a38fb8ba73f",
+          "settled_md5": "88dd27295f5e14984bb6ec1e0c1f2475",
+          "stability": {
+            "from": "100085.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.23,
+            "pass1_drift_deg": 0.43,
+            "pass2_top": [
+              [
+                "bottle",
+                0.87,
+                "Rigid"
+              ],
+              [
+                "cup",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "camera_stand",
+                0.0,
+                "Geometry"
+              ]
+            ],
+            "objects_written": 2,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.874,
+            "pass2_drift_deg": 0.134,
+            "passes": 2,
+            "status": "ok",
+            "s": 20.6
+          }
+        },
+        "100086": {
+          "raw_sha256": "b7fb04f944fd56badb5e8be188c252fecef8dee72ae21e9c34d8f634cb3d44e7",
+          "settled_sha256": "40b9b6803887f47dd9dc4abfa11d371f9f5af408bf536549ebf127c93709d881",
+          "settled_md5": "39e81caf1a9c2f7bded29e96bf6d746c",
+          "stability": {
+            "from": "100086.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 2.14,
+            "pass1_drift_deg": 1.47,
+            "pass2_top": [
+              [
+                "bottle",
+                2.45,
+                "Rigid"
+              ],
+              [
+                "cup",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "camera_stand",
+                0.0,
+                "Geometry"
+              ]
+            ],
+            "objects_written": 2,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 2.45,
+            "pass2_drift_deg": 1.378,
+            "passes": 2,
+            "status": "ok",
+            "s": 17.7
+          }
+        },
+        "100087": {
+          "raw_sha256": "9cfbc958ec883e548f5adeeef635b72a7f112fb14e8877533486b8a06a8f43e9",
+          "settled_sha256": "0cc562bdf406aa2d7d07dc451cc84baa8b9917297305ebd16a3367190c855b72",
+          "settled_md5": "9f4b3d0a72a21f571f650a2e9cae62f2",
+          "stability": {
+            "from": "100087.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.42,
+            "pass1_drift_deg": 2.4,
+            "pass2_top": [
+              [
+                "bottle",
+                0.51,
+                "Rigid"
+              ],
+              [
+                "cup",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "camera_stand",
+                0.0,
+                "Geometry"
+              ]
+            ],
+            "objects_written": 2,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 0.513,
+            "pass2_drift_deg": 0.907,
+            "passes": 2,
+            "status": "ok",
+            "s": 20.9
+          }
+        },
+        "100088": {
+          "raw_sha256": "1e48deee91be091dfe830043b5897445298e8de23e7756ccc86fb3318c7fb0f8",
+          "settled_sha256": "392fe64e61aeb45477d1d6c8c9730da984f59d787c6f44c2ca5cb4bf36e7ecee",
+          "settled_md5": "7b1fcbf852d8f71be0b6fd9865bbde57",
+          "stability": {
+            "from": "100088.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 0.34,
+            "pass1_drift_deg": 0.22,
+            "pass2_top": [
+              [
+                "bottle",
+                1.38,
+                "Rigid"
+              ],
+              [
+                "cup",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "camera_stand",
+                0.0,
+                "Geometry"
+              ]
+            ],
+            "objects_written": 2,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 1.38,
+            "pass2_drift_deg": 0.962,
+            "passes": 2,
+            "status": "ok",
+            "s": 26.1
+          }
+        },
+        "100089": {
+          "raw_sha256": "09232ee225869c1429bdae75728809c7f7a0fc54af8edb659be3bf54f84a6461",
+          "settled_sha256": "4dbb42a4a511f0ff4dd2902fea32d2f89cf93c34408acd52b62ffb709e05c5c4",
+          "settled_md5": "e886f61d3179266bd6e19d8de7a9cf28",
+          "stability": {
+            "from": "100089.json",
+            "pass1_robodojo_stable": true,
+            "pass1_drift_mm": 4.67,
+            "pass1_drift_deg": 4.43,
+            "pass2_top": [
+              [
+                "bottle",
+                3.29,
+                "Rigid"
+              ],
+              [
+                "cup",
+                0.0,
+                "Rigid"
+              ],
+              [
+                "camera_stand",
+                0.0,
+                "Geometry"
+              ]
+            ],
+            "objects_written": 2,
+            "pass2_robodojo_stable": true,
+            "pass2_drift_mm": 3.287,
+            "pass2_drift_deg": 2.441,
+            "passes": 2,
+            "status": "ok",
+            "s": 22.7
+          }
+        }
+      }
+    }
+  }
+}
