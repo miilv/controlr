@@ -1,0 +1,88 @@
+{
+ "stream": "CLASSIFY3-CAM",
+ "prereg": "docs/experiments/2026-11-07-classify3-camera-prereg.md",
+ "prereg_commit": "77e40828",
+ "design_sha256": "71909613c1c180a5cb86406f041738421c75c67518cfcd5b1570a9fe91e8981b",
+ "selection_sha256": "be3cc061e45783c91dcc28c64feeaa44877cb3f7b1510b762d817144a2e0b6e7",
+ "selection": {
+  "classify_objects": [
+   100020,
+   100021,
+   100022,
+   100023,
+   100024,
+   100025,
+   100026,
+   100027,
+   100028,
+   100029
+  ],
+  "classify_objects_by_language": [
+   100020,
+   100021,
+   100022,
+   100023,
+   100024,
+   100025,
+   100026,
+   100027,
+   100028,
+   100029
+  ],
+  "stack_blocks": [
+   100020,
+   100021,
+   100022,
+   100023,
+   100024
+  ]
+ },
+ "block": {
+  "host_root": "compute4:/home/haptics/dojo-data/classify3-cam/classify3-cam-1",
+  "files": 54,
+  "listing_sha256": "01117c60426e8a54a9a09c0e61025e4583c4e3bdf4920a0760e5b77187672226",
+  "verified": "compute3 == local relay == compute4, file by file (SHA256)",
+  "kit_replacement": {
+   "file": "simlab/kit/simlab.physics.kit",
+   "compute3_sha256_in_listing": true,
+   "replaced_by": "compute4 KONG block's own physics kit (identical apart from /home/<user>/ host paths)",
+   "compute4_sha256": "03a4db8400b66195445548c88a1c8e2212487a3054ac1e1a95a02aa9e6172cd0"
+  }
+ },
+ "deployment": {
+  "path": "compute4:/home/haptics/dojo-integ-c4-2f198642",
+  "commit": "2f198642900d5b6b280b6ee17918ed72c94b9365",
+  "source_files": 1720,
+  "symlinks": [
+   "AGENTS.md"
+  ],
+  "source_vs_git_archive": "identical (SHA256 listing cd33fddbc652fdb1f849c1673de8745fbb38a2334b58e5f58bd527651d8f99e1)",
+  "venv": "independent copy of dojo-integ-c4-416a2a03/.venv re-pointed; uv freeze identical after path normalisation",
+  "imports": "dojo from the deployment, torch 2.11.0+cu128, cv2 5.0.0, transformers 5.21.0",
+  "candidate_parity": {
+   "parity": true,
+   "diff": {}
+  },
+  "catalog_md5": "2cd7455cbdce2ab38e4e9d586e28db61",
+  "side_models_md5": {
+   "seg v2b": "2f546196145fc424f76a5e2e47dd3210",
+   "digit_v2": "df7da507a3d3e65e1736a16ce955932b",
+   "kong_v1b": "300f319c1f77ac1b04551cf2a957f64f"
+  },
+  "kit_env_sha256": "0023b748633125a441b1f4e1059b1675ccbb141faf35e7e0e289661a5a58634a (copy of the KONG move kit-env.sh)",
+  "deploy_script_sha256": "5aa2d211071e9e1779e79f098c8c90a8d7aea7d9ecf02fe714939e98a4c8cb73"
+ },
+ "queue": {
+  "file": "queue-classify3.txt",
+  "rows": 50,
+  "sha256": "cd17114cdbe8d4bb33111d5ca08f947ef32be48a55ddb8250c8e00d97a0989ac",
+  "rows_check_sha256": "df3b2e8b05c4528c51b126cdd3a81bfb736a4606d5a5ba98f5bebdc96918a581",
+  "route": "claude/claude-sonnet-5-5 on every row (rows-check)",
+  "pair_diff": "sort_contain only, on all 25 pairs",
+  "orders": "AB 13 / BA 12",
+  "make_rows_sha256": "b8e2a032d077bf95bd8ae290b2595e0daf15d762d6ba74129ba9635bbe1b1981"
+ },
+ "baseline_candidate": "scripts/dojo/queues/2026-11-06-candidate.txt",
+ "baseline_candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+ "model_calls_in_prep": 0
+}
