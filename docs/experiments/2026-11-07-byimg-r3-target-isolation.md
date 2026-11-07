@@ -35,3 +35,17 @@ this independent n/N separately from the original 5/10 screen and from the
 full-task settled panel. A first launch specified invalid variant 29 and was
 refused during generation before writing any input or running an episode;
 variant 21 is fixed here before outcomes. The task panel's variant 19 is valid.
+
+## Component results
+
+Initial registered screen: **5/10** retained targets (81,83,86,88,89), all stable
+loads. The others end at one basket intercept, two target slips and two
+no-intercept plans. Conditional 5/9 after the basket miss is descriptive only.
+
+Frozen-prefix independent confirmation: **6/10**, all stable loads, no episode
+replacement. Six successful targets rise 122.75–125.95 mm before the hold and
+122.83–125.99 mm after it. Failures are three no-intercept plans (90,97,99) and
+one -5 mm slip (98). This does **not** establish reliable interception. The
+spent-layout combined screen is 7/10 and is not substituted for this fresh
+result. The task panel remains a separate settled-input comparison. Exact
+component rows are in the R3 probe archive.
