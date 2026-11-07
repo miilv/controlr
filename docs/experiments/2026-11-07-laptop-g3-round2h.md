@@ -126,3 +126,12 @@ physics process or outcome is stopped or replaced.
 Full final local suite on the strict-transfer implementation: **2200 passed,
 191 skipped**,1025.96 s.72 focused mocks also pass. Action source remains10f;
 subsequent changes are experiment documentation/orchestration only.
+
+H random completes11/12 original and9/10 independent, freeing light8 while
+G standard's last group still owns light2. Before any H standard manifest,
+allow its FIFO parent to start when **either G standard or H random is done**.
+Its light2 worker queues behind G; its light8 worker immediately uses the
+released slot. Both H manifests still precede outcomes and both sources stay
+isolated. This removes a scheduling-only dependency, without changing any
+layout, controller, group, gate or outcome. Retain the verified waiting-parent
+replacement; no physics process is stopped.
