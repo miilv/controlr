@@ -727,3 +727,10 @@ opening with longer settle pauses. Threaded hooks retain their original pick
 and release behavior. Use with `hang_cradle=straddle` to screen the seating
 change independently of cradle collision feasibility. Missing wide grasps
 refuse the transfer rather than falling back to the slipping narrow pinches.
+
+`RuntimeConfig.headset_carry` defaults to `legacy`; G3 exposes the same enum.
+`staged` scopes a two-leg carry to non-threaded cradle hangs: rotate above the
+held object's current xy, then translate to the hover along a checked Cartesian
+line at fixed orientation. A failed leg rejects the whole placement. This
+retains the existing cradle contact allowance and all hand/arm collision checks;
+it does not enable straddling or change grasp/loose verification by itself.

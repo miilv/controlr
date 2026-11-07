@@ -43,3 +43,34 @@ Completed panel: ten pairs per cell, A 0 ± 0 -> B 2 ± 6.32 points in each;
 No infrastructure failures or missing meshes. No camera qualification (pooled
 +2 < +5), no camera spec/dispatch or board update. Own scopes/processes exited.
 Footprint 130 MB deployment / 2.6 MB data; zero model calls/tokens/spend.
+
+## Round 2: contact during the turn
+
+Lead requested sustained development and two LAPTOP jobs (light7/light8),
+with the same box gates and zero LLM spend. Numeric round-1 pilot audit:
+relative position remains within ~1 mm through 58 degrees of TCP turn.
+Separation from sampled stand mesh falls to ~5 mm at step 95; the headset
+then stays nearly stationary against the stand while TCP-relative drift grows
+past 90 mm. A stationary-pivot fit leaves 44 mm maximum residual; this is
+not explained by a simple free pendulum. The leading mechanism is premature
+stand contact during wrist reorientation, supported by the staged-route probe.
+
+Default-off `headset_carry=staged` separates turn and approach. Standard
+100031's carry drift falls 97.6 -> 1.2 mm and earns 20 points. Random 100030/31
+also score 20 (20.0/5.2 mm carry shift). Standard 100030 remains loose at lift.
+High carries, thin bridge pinches, cup-site ranking, loose continuation and
+excluding failed pinch sites were probed on pilots only; none improved the
+frozen bundle. The weak loose-hold continuation is explicitly not implemented.
+
+The laptop physical closure probe shuts to 0.99 but slides the slab off its
+stand onto the table. Opposite-side tray targets then have left reach failure
+and right table collision. Closed geometry ~179 x 126 x 10 mm; stand top
+sample bbox ~305 x 119 mm. Authored laptop mass is **0.1 kg**, friction **0.45**,
+so the old journal's informal ~1 kg-class description is not an established
+physics fact. Rack endpoint IK/native collision results are reported separately.
+
+Fresh variant-12 salted ids 100070–84 are generated and settled independently
+per cell; selection/hashes and final candidate are pre-registered in the
+[round-2 report](../experiments/2026-11-07-laptop-g3-round2.md). Existing panel
+records are never used for tuning. No camera/board changes or external work
+are touched. Full local suite runs concurrently with settling after source freeze.

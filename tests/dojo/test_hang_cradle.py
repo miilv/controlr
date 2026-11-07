@@ -76,7 +76,8 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
         return SkillResult(False, "transfer", "ik_fail", 0, None, note="right: 0/1 grasps reachable, 0 grasp-place pairs")
     monkeypatch.setattr(L, "G_hang", lambda *a: [SimpleNamespace(width=0.025, method="thin"),
                                                SimpleNamespace(width=0.04, method="wide")])
-    for flag, expect, seat in ((False, None, "off"), ("on", "fn", "off"), (False, None, "on")):
+    for flag, expect, seat, carry in ((False, None, "off", "legacy"), ("on", "fn", "off", "legacy"),
+                                      (False, None, "on", "legacy"), (False, None, "on", "staged")):
         seen.clear()
         stand = ObjectState("stand", "Geometry", "headset_stand", 0, np.array([-0.2, -0.1, Z]), np.array([1.0, 0, 0, 0]),
                             AssetInfo(key="Geometry/headset_stand/00000", bbox_min=np.array([-0.02, -0.02, 0.0]),
@@ -86,11 +87,11 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
                          AssetInfo(key="Rigid/headset/00000", bbox_min=np.full(3, -0.05), bbox_max=np.full(3, 0.05),
                                    active_functional={"headband_bridge": {"frame": [[0.0, 0.0, 0.05, 1, 0, 0, 0]]}}))
         w = WorldState("", "", {"stand": stand, "headset": hs}, {}, {})
-        sk = SimpleNamespace(world=w, refresh=lambda: w, log=lambda m: None, hang_wide=flag, hang_cradle="strict", hang_carry_slow=True, headset_seat=seat,
+        sk = SimpleNamespace(world=w, refresh=lambda: w, log=lambda m: None, hang_wide=flag, hang_cradle="strict", hang_carry_slow=True, headset_seat=seat, headset_carry=carry,
                              coll=SimpleNamespace(include=set(), parts={}, held_skip={}), plan_transfer=fake_transfer,
                              bank=lambda: None, held={"left": None, "right": None})
         L.hang_on_hooks(sk, ["headset"], "stand", "support_cradle", "headband_bridge")
-        assert seen["staged"] is False
+        assert seen["staged"] is (carry == "staged")
         assert seen["pick_kw"] == ({"squeeze": 8} if seat == "on" else None)
         assert seen["widths"] == ([0.04] if seat == "on" else [0.025, 0.04])
         assert seen["carry"] == L.HANG_CARRY * (0.5 if seat == "on" else 1.0)

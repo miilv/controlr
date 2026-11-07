@@ -28,3 +28,23 @@ alternated by id, report mean/sample SD, headset credits, full successes,
 score wins/losses/ties, steps and infrastructure exclusions. Reliability
 criterion: at least 7/10 headset-tier credits **per cell**. Camera advancement
 also requires the current paired score rule; write only a spec, dispatch none.
+
+## Frozen candidate (before panel episodes)
+
+Use B: `headset_seat=on`, `headset_carry=staged`; A keeps both defaults.
+Both use `hang_cradle=straddle`; neither enables the laptop route. The staged
+carry turns the held object to the target orientation above its current xy,
+then uses a checked Cartesian segment at fixed wrist orientation to the hover.
+Both legs must plan before anything executes. Existing finger/arm checks,
+cradle contact allowance, measured attachment, grasp-slip/loose rejection,
+release and retry budgets remain in force. Defaults remain off/legacy.
+
+Development: staged carry scored headset credit on 3/4 pilot records (std
+100031, random 100030/31; std 100030 fails loose holds). Higher 12/20 cm
+approaches and bridge-centre thin pinches found no complete transfer. Preferring
+low ear-cup sites did not fix the failed standard pilot. Continuing its loose
+22 mm hold lost the headset, so loose rejection is retained. Rejecting the
+failed pinch site did not rescue that pilot and is excluded too. No pilot
+result is included in the panel; these are a mechanism screen, not a reliable
+success-rate estimate. Actual production wiring will receive pilot-only smoke
+checks before the fresh panel; any correction is recorded before outcomes.
