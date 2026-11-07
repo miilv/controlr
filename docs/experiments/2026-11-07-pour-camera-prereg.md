@@ -264,3 +264,43 @@ existing work and 480/300/300-second language/cup/Xylophone planning values
 for this new block. Startup, admission, cap use and infrastructure retries can
 delay it; unchanged caps allow up to 33.3 summed lane-hours for the new rows
 before retries. There is no camera verdict, adoption or default/candidate change.
+
+## Lead-authorized rendered-slice amendment — 2026-11-07
+
+The original <100100 condition was insufficient. Rendered/proxy runs require
+`OUR_MEASUREMENT_SLICES`: 100000–09 and 100020–29. Original language pairs
+100010–19 and single-cup 100010 are in Mikhail's slices and cannot run here.
+Their raw/settled files and histories remain retained, never scored as outcomes.
+The lead held refused queue rows at 10:41Z and restarted lanes on eligible rows;
+we do not modify those lane controls or KONG's held rows.
+
+**Disclosure:** while diagnosing, the lead saw lane-log outcomes for language
+pairs 100000–100009. Replacement is a mechanical id-range shift selected only
+by rendered eligibility, never by outcome. Arms, source, model, budgets, salts,
+validation thresholds, score/guard gates and audit rules remain unchanged.
+No controller outcome is replaced or excluded.
+
+[Replacement design](data/pour-camera/replacement-design.json): generate ten
+language pairs on 100020–100029 using the originally registered language salt.
+Generate one single-cup pair on the first raw-valid/two-pass-valid id in
+100020–100029, ascending, with the originally registered single-cup salt.
+Apply the identical raw-check and default two-pass presettle; retain all failures.
+If ten language layouts do not pass in this pool, stop before dispatch and report
+exhaustion; do not change n, salt or eligibility. No camera outcomes select inputs.
+Preserve original pair order/parity mechanically: old language 100010 maps to
+100020, etc.; old single-cup 100010 maps to the first eligible selected record.
+
+The seven refused attempts (100010 A/B and their retries, 100011 A/B and their
+retries, 100012 A, as reported by the lead) are **infrastructure refusals** with
+rc=2 before any episode; exclude all seven from outcome analysis and retain
+attempt names/timing/refusal evidence. Verify the seven exact records from
+metadata rather than interpreting camera scores.
+
+The [corrected prep script](data/pour-camera/prepare-eligible-script.txt) and
+[replacement controller](data/pour-camera/replacement-prepare-script.txt) assert
+`is_our_measurement_id` for every generated batch; the latter also rejects an
+ineligible pool before any generation. No application default changes.
+Freeze updated input/row manifest and hashes on main before queuing 22 rows.
+Under admission then queue locks insert after remaining POUR rows, immediately
+before the first eligible unstarted tie, preserving any started tie's mate and
+all existing row bytes/order. Record positions and before/after queue hashes.
