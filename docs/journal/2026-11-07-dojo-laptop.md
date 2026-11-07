@@ -340,3 +340,18 @@ on fresh held-observer provenance and renderer host; projected belief cannot
 count as measured evidence. No camera/model calls or board change. Laptop80
 supported pickup remains open, numeric study retained. Finish PR #413 checks
 and conditional merge, without further physics.
+
+
+## Final main integration and check gate
+
+CI on final result commit8b2cbc83 passes, but concurrent main changes cause
+an experiment-index conflict. Merge mainec865e93, preserve both MATCH2 and
+all LAPTOP rows. The incoming code adds off-default belt switches, belt-only
+tracking/helpers and tests. It does not change the headset implementation
+files; those and their tests still match frozen10f exactly. No deployment,
+controller tuning or physics rerun follows the completed panel.
+
+Post-integration72 focused mocks pass. Run the full local suite and CI on
+the integrated head before the already-authorized default-off merge. The
+experimental2200/191 validation remains source-specific; newer whole-repo
+counts include the independent MATCH2 tests.

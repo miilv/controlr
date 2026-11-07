@@ -68,8 +68,10 @@ driver595.99. Model calls/tokens/spend **0/0/$0**.
 Full local **2200 passed,191 skipped**,1025.96 s;72 focused mocks pass.
 Defaults stay legacy/off. Native refusal, other objects/threaded hooks and
 unchanged tolerant relay execution are covered. Controller/tests remain
-byte-identical to10f throughout this panel; later main integration changes
-research/docs only. All LAPTOP physics jobs exited; other streams/root3613
+byte-identical to10f throughout this panel. Earlier main integration changed
+research/docs only. Post-panel main integration adds MATCH2 belt switches
+and tracker helpers, all off/default-preserving and unused by these headset
+routes; the headset implementation/test files still match10f exactly. All LAPTOP physics jobs exited; other streams/root3613
 untouched. Footprint296 MB deployment +43 MB data,91 GB disk free.
 
 ## Development admission completed before primary
