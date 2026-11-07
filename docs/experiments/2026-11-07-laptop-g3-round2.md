@@ -116,3 +116,11 @@ All studies are simulator-only, all inputs are private dev records, LLM
 calls/tokens/spend 0/0/$0. No real robot, rendering, system changes or other
 stream's processes are touched. Another stream later acquired light7; the
 queued own pilot was terminated by its recorded PID and moved to light8.
+
+For an unbraced horizontal push on a flat 126 mm slab, a simple quasi-static
+model predicts sliding before tipping: with force applied 6–10 mm above the
+floor, tipping needs about 6.2–10.3 N (mg times the 63 mm half-width divided
+by force height), versus mu*mg ≈0.44 N to slide at authored mass/friction.
+This rules against **unbraced** push-to-pivot under those assumptions. A fixture
+or supporting second arm changes the force balance and remains a legitimate
+unproven mechanism; these calculations do not rule it out.

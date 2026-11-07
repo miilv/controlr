@@ -91,3 +91,20 @@ samples 400 faces and thirteen approaches, retains box/slice proposals at
 round-2b panel registration uses new salt, variant 13 and ids 100050–64.
 Another stream owns light7 now; only our waiting wrapper PID was stopped,
 and subsequent work uses light2/light8. No other process is signalled.
+
+The dense bank scores 4/4 original pilots before the second panel. Lift drift
+is 3.0/6.0 mm on standard 100030/31 and 5.3/5.4 mm on random; carry drift
+1.3/3.3 and 4.9/2.5 mm. This is pilot development, not a held-out claim.
+The laptop rack's four right-arm endpoints also pass the rack/scene check;
+thus the blockers are acquiring/supporting the slab and a complete route,
+not a universal upright-pose IK failure. An unbraced horizontal push is
+predicted to slide at ~0.44 N before tipping at ~6–10 N; a fixture changes
+that assumption and is not ruled out. No physical laptop hold was demonstrated.
+
+Production wiring reproduces all four dense-bank pilot credits before panel
+launch. Continuous post-lift to pre-place audits have maximum displacement
+1.66/3.36 mm (standard) and 6.79/2.50 mm (random), not just a small final
+residual after a large swing. These traces are retained under the private
+production-pilot directories. The second fresh panel starts only afterward.
+Final-source local suite: **2063 passed / 191 skipped**, 1041.26 s. Source
+473d64cf also has green GitHub CI; subsequent edits are documentation/data only.
