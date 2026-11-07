@@ -763,3 +763,10 @@ restoration/intersection of the temporary measured joint envelope.
 `settle_native_phase.py --ids ...` removes total belt travel from authored
 positions, avoiding the extra horizontal phase introduced by the round-1
 snapshot method; its pure correction has a CPU test.
+
+`scripts/skills/pour_g3_panel.sh` executes an existing private
+`~/dojo-data/pour/panel-registration.json`. It verifies source, stable-layout
+hashes and a fixed A/B order, alternates AB/BA by layout, and refuses duplicate
+or mixed-source/settings rows. Completed episodes are skipped on resume;
+admission or process failures stop the driver for diagnosis. It never generates
+layouts or selects a candidate from outcomes.
