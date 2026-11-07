@@ -22,3 +22,8 @@ repairs. Per-stage receipts and both source snapshots are committed beside the
 report. REPRO's updated file has n=0 / null for both cells. Draft PR #422 retains
 these unsuccessful probes for review; no score improvement or camera readiness
 is claimed.
+
+Validation: full local 2142 passed / 191 skipped; merged-main targeted 106
+passed; final classify checks 8 passed. PR-code G3 smoke after the main merge
+completed at 15 / 116 actions, consistent with the failure diagnosis. No
+simulator remains from this stream. CI is tracked on the draft PR.
