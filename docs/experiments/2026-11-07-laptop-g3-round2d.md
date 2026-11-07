@@ -169,3 +169,45 @@ Two concurrent physics-only LAPTOP scopes max on light2/light8, who/GPU checks
 and <=24 GiB used / >=10 GB free admission before each job, 8G /600% user
 scopes and bounded timeout. Zero LLM calls/tokens/spend; no camera dispatch or
 board candidate changes.
+
+## Local validation of the frozen action source
+
+`uv run pytest -q`: **2094 passed /191 skipped**, 974.86 s. Focused headset
+suite: 27 passed. Tests cover unchanged RuntimeConfig/Skills/G3 defaults,
+legacy/threaded dispatch, stage gates, the eight-plan/one-execution bound,
+physical failure propagation, verified-stage cup scope, proposal coordinates
+and contact requirements, carry refusal and mesh guard conservatism.
+No live test or model call was enabled. Later report commits do not alter the
+deployed action source.
+
+## Completed centre-stage panel
+
+Frozen action source **7faef88e**, first ten stable 100015–24 per cell. Forty
+valid episodes, exact shared settled records, no exclusions, missing meshes,
+infrastructure failures or exhausted episode budgets.
+[Rows, hashes, admissions, pilot diagnoses and recipes](2026-11-07-laptop-g3-round2d-results.json).
+All scores are 0 or 20 points; SD below is sample SD.
+
+| Cell | n pairs | A mean ± SD | B mean ± SD | Headset credits A/B | Full successes A/B | Score W/L/T |
+|---|---:|---:|---:|---:|---:|---:|
+| standard | 10 | 0 ± 0 | 14 ± 9.66 | 0/10 / 7/10 | 0/10 / 0/10 | 7 / 0 / 3 |
+| random | 10 | 0 ± 0 | 10 ± 10.54 | 0/10 / 5/10 | 0/10 / 0/10 | 5 / 0 / 5 |
+
+Pooled gain +12 points, 12 wins /0 losses passes the score gate, but random
+5/10 **fails the stopping criterion**. Standard meets 7/10. Do not pool selected
+panels. Continue only on a [new independent pilot bank](2026-11-07-laptop-g3-round2e.md),
+which exposes shape coverage missing from the earlier all-asset-8 random pilots.
+No individual panel failure was opened for development.
+
+Steps median/max: standard A56/96, B248.5/396; random A93.5/179, B207.5/315.
+Full-success flips 0/0; laptop tier unattempted. All model calls/tokens/spend
+remain 0/0/$0, with no camera dispatch or board changes.
+
+The frozen production hard-pilot trace gives continuous attachment maxima
+**1.97 mm** over the right staging carry (33 env steps), **2.74 mm** over the
+left final carry (172 steps, 99.2-degree TCP turn), using measured joints and
+GT rather than commanded FK. Final residuals 0.32/1.61 mm. The left path has a
+13.9-degree transient joint tracking error (j1 command -1.745 vs measured
+-1.502 rad), despite the stable attachment; ideal arm tracking is not claimed.
+This remaining motion-model limitation is separate from the original ~98 mm
+object-in-hand loss. Source trace hash and analysis recipe are in the data.

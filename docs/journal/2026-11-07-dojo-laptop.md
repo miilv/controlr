@@ -142,7 +142,7 @@ exclusions. Random reliability fails; continue on independent pilot 100066,
 not individual panel failures. Full local suite 2071 passed /191 skipped,
 934.65 s. No model calls, camera dispatch or board changes.
 
-Independent random-100066 cup diagnosis: 16 per-arm physical sites screened,
+Independent random-100066 cup diagnosis: 16 physical sites total (eight per arm) screened,
 reset each time. Two right 25 mm cup pinches remain suspended through 30 steps
 (patch 1.0, one clean 6.2 mm lift drift), but right cannot reach the cradle;
 left pickups reach commanded poses yet slip. The 13 mm bridge pinch falls
@@ -163,3 +163,20 @@ Production source 7faef88e screens 7/7 standard and 7/7 random on original
 27 passed; full local suite running. Freeze and register variant-16 fresh
 ids 100015–29 (first ten stable), new salt, ten paired layouts per cell.
 All earlier panels remain separate, no selected pooling or camera dispatch.
+
+Frozen 7faef88e full local suite completes: **2094 passed /191 skipped**,
+974.86 s. The first ten stable fresh records per cell are selected and hashed
+before any panel outcome: ids 100015–24. Both arms use exact settled files;
+paired source/config remain frozen, no laptop route, camera or model calls.
+
+Centre-stage fresh panel source7faef88e: standard A0±0 ->B14±9.66,
+7/0/3 W/L/T; random A0±0 ->B10±10.54,5/0/5. Headset credits0->7 and0->5
+of ten, full successes zero. Forty valid rows, no exclusions; random misses
+reliability. Continue on new independent45–49 variant17 pilots, not individual
+panel failures. Their random shapes8/9/10 and standard2/4/5 expose coverage
+missing from the earlier seven all-asset8 random pilots.
+
+Measured-joint continuous audit of production random66: max attachment drift
+1.97 mm staging,2.74 mm final carry through99.2-degree turn. A transient j1
+command/measurement gap13.9 degrees (-1.745/-1.502 rad) remains; do not claim
+ideal kinematic tracking. Original lift/loose verification stays unchanged.

@@ -153,14 +153,14 @@
     (`row_home_clear` off: net 0 on the 3 changed seeds); `_random` 100002 is a doll held 48 deg tilted and toppled at
     the release (held state).
 - [ ] **dojo laptop follow-up: generalize the headset hold across shapes.** Default-off
-  staged rotation/carry and denser wide pinches produce paired G3 gains; a conservative full-mesh
-  held-table guard removes false refusals from empty headset OBB corners. The latest
-  [mesh-table panel](experiments/2026-11-07-laptop-g3-round2c.md) has 9/10 standard and 5/10 random
-  headset credits (A 0/10 and 2/10); random reliability remains open. Earlier independent panels
-  are retained separately; no selected pooling. A pilot's ~98 mm carry loss is stand contact during
-  reorientation, reduced to ~1 mm by turning before translation. Wide curved-cup and thin-band
-  holds can still slip. Camera spec is blocked; no camera dispatch or board change.
-  Closing the lid alone earns no credit; the laptop 80-point conjunction still needs a physical pick.
+  staged rotation/carry, dense grasps, conservative full-mesh held-table checks and checked
+  centre rest/re-grasp earn paired G3 gains. The [centre-stage panel](experiments/2026-11-07-laptop-g3-round2d.md)
+  gives 7/10 standard and 5/10 random credits against 0/10 controls in both; random reliability
+  remains open. Earlier independent panels are retained separately, with no selected pooling.
+  A pilot's ~98 mm carry loss falls below 3 mm continuous attachment drift with staged carry;
+  pickup quality and shape coverage remain blockers. The old random pilot bank only used asset8;
+  the new independent bank also covers9/10. Camera spec stays blocked; no dispatch or board change.
+  Closing the lid alone earns no credit; the laptop80-point conjunction still needs a physical pick.
 - [ ] **dojo skills: store_laptop: the headset hang plans now; its hold and the laptop's pick do not** (journal
   2026-10-29-dojo-newskill-hang, store_laptop sections).
   - Done: `hang_cradle` "straddle" (#345) lets the held headset straddle the stand's top, so the hang plans in 16 of

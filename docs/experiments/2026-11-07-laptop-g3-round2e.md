@@ -28,3 +28,14 @@ reserve only for stability/infra, not policy scores). Keep all prior panels
 separate, no selected pooling. Two concurrent physics-only LAPTOP jobs maximum
 on light2/light8, unchanged who/GPU/disk admission and 8G/600% scopes. Zero
 LLM calls/tokens/spend. No camera dispatch or board change.
+
+## Coverage finding before candidate selection
+
+The earlier seven random development records all contain headset asset 00008.
+This new bank contains 00008 (45/46), 00010 (47/48) and 00009 (49). Standard
+contains 00004 (45/46/49), 00005 (47), 00002 (48). This is a development coverage
+gap, not evidence that any particular unopened panel failure has that cause.
+Public metadata: 8/9/10 all mass 0.22 kg; friction 0.32/0.45/0.45; depth
+72.28/80.64/78.30 mm; bridge local z 85/80/90 mm. Do not infer grip-force limits
+from mass/friction alone. Complete the baseline and use actual per-shape lift,
+carry and support measurements to select the next mechanism.
