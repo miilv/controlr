@@ -1,0 +1,48 @@
+{
+ "old_code": "066e9c8f",
+ "new_code": "ec865e93",
+ "changed_existing_fields": {},
+ "new_fields_defaults": {
+  "belt_grasp": "off",
+  "belt_high_lift": "off",
+  "belt_ref": "off",
+  "belt_retry": "off",
+  "belt_speed": "off",
+  "belt_veto": "off",
+  "belt_wrist_id": "off",
+  "save_belt_look_frames": 0
+ },
+ "existing_fields": 203,
+ "A_vs_new_default": {
+  "save_belt_look_frames": [
+   0,
+   6
+  ]
+ },
+ "A_vs_B": {
+  "belt_high_lift": [
+   "off",
+   "on"
+  ],
+  "belt_ref": [
+   "off",
+   "tracked"
+  ],
+  "belt_retry": [
+   "off",
+   "window"
+  ],
+  "belt_speed": [
+   "off",
+   "lock"
+  ],
+  "belt_veto": [
+   "off",
+   "evidence"
+  ],
+  "belt_wrist_id": [
+   "off",
+   "on"
+  ]
+ }
+}

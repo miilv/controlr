@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [match2-screen](2026-11-07-match2-screen.md) | What do the MATCH2 switches do per stage on camera? (diagnostic, not an adoption test) | Pre-registered: 10 fresh-salt pairs on compute6, A candidate vs B six switches; verdict none by design |
 | 2026-11-07 | [match2](2026-11-07-match2.md) | What limits match_and_pick per stage, and do re-implemented RSI mechanisms close it? | Camera 49/110 dev: reference 20, false veto 14, match identity 21/85; G3 ceiling 45/55; perception switches offline-positive, `belt_grasp=solid` −3/−4 in G3; camera screen requested |
 | 2026-11-07 | [pour-camera-prereg](2026-11-07-pour-camera-prereg.md) | Does budget pacing turn fresh G3 feasibility into camera success? | Ownership amendment: 22 replacement Sonnet rows queued 11:00Z at 33–54 after remaining POUR; effective 20 language +10 cup +10 Xylophone pairs all in our slices; nine infra refusals excluded, no verdict |
 | 2026-11-07 | [BYIMG R3 reliability](2026-11-07-byimg-g3-r3.md) | Can guarded fixed-wrist carry and phase-aware acquisition stabilize lift-first? | 16 fresh pairs: B-r2 18.75±40.31 (3/16) → B-r3 0±0 (0/16), 0 wins/3 losses; rejected; numeric contact/IK limits |

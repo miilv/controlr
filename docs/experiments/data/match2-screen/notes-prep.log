@@ -1,0 +1,3 @@
+2026-11-07T14:37:47.680808+00:00 RAWCHECK START lock=/home/robotics/dojo-gpu-light.lock used_MiB=20331 load=5.86
+2026-11-07T14:39:11.704804+00:00 RAWCHECK END rc=0 status={"100000": "raw ok", "100001": "raw ok", "100002": "raw ok", "100003": "raw ok", "100004": "raw ok", "100005": "raw ok", "100006": "raw ok", "100007": "raw ok", "100008": "raw ok", "100009": "raw ok"} records_unchanged=True
+2026-11-07T14:36:54.490969+00:00 DEPLOY ec865e93f7ac691376b579b6083bfbec75793e83 /home/robotics/dojo-integ-c6-ec865e93 parity=true catalogue=pass; no simulation environment changes
