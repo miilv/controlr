@@ -348,7 +348,7 @@ class Skills:
         # ``library.press_joint`` (stream H; ``RuntimeConfig.press_repeat``): "off" (today: one stroke) | "cross" (four
         # more, the press point 4 mm each way: the lever's 85 % has ~0.1 mm of margin at the planned point)
         self.press_repeat = "off"
-        # deposit_coin's contact sequence (COIN2, ``coin_contact``; ``RuntimeConfig.disc_*``): all "off" = today
+        # the thin-object-in-holder contact sequence (COIN2, ``coin_contact``; ``RuntimeConfig.disc_*``): all "off" = today
         self.disc_align = "off"
         self.disc_snap = "off"
         self.disc_lift = "off"

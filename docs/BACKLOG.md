@@ -1371,6 +1371,11 @@
   edge grasps / spins for a thin rectangle (a card) are the missing piece.
 - [ ] **dojo coin: tilted edge grasps under `disc_snap`.** All 3 snap failures at +10 deg were +-12 deg in-plane
   tilted grasps (lost in the lift). Try tilt 0 first, or no snap for tilted grasps.
+- [ ] **dojo coin: the wall probe assumes one hand offset for all squeezes.** The first squeeze comes from a descent
+  line whose IK leaves the commanded TCP ~0.9 mm off the centre line (kinematic test); later turns re-solve to
+  ~0.1 mm. The offset term (0.0164 / mm) is ~8.6 deg of yaw per mm, so this biases the apex. Fix: subtract each
+  squeeze's commanded (FK) offset along the closing axis before the fit, or re-solve the first squeeze like the rest;
+  re-check in G3 before any camera use (the 2026-11-07 camera A/B runs the unfixed, G3-validated probe).
 - [ ] **dojo coin: the wall probe's fit is biased toward 0 when the true yaw is near a squeeze turn** (three squeezes,
   three unknowns: apex -7.4..-9.6 for a true -10). A fourth squeeze at the fitted apex would over-determine it (~12 steps).
 - [ ] **dojo coin: held_look calls a held coin "dropped" 7 / 17 times** (camera re-test, GT replays); 0 false "held".

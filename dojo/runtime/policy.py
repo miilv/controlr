@@ -559,11 +559,11 @@ class RuntimeConfig:
     # taker inserts the coin with its planned in-hand pose) | on (the taker's insertion asks for the in-hand read at the
     # pre-insert hover; with held_pose "request" that is the only place that reads). 5.1 rb 100006: 11 mm off, jammed
     disc_handover_read: str = "off"
-    # deposit_coin's contact sequence (COIN2, ``dojo.skills.coin_contact``; G3 ``--skill-attr``), all "off" = today:
+    # the thin-object-in-holder contact sequence (COIN2, ``dojo.skills.coin_contact``; G3 ``--skill-attr``), all "off" = today:
     # disc_align "walls" (squeeze the holder's walls, read the strict-v2 official jaw value at three yaws, rewrite the
-    # coin + holder plane; needs the official key), disc_snap "on" (close on the walls, rise, the pads close onto the coin
+    # object + holder plane; needs the official key), disc_snap "on" (close on the walls, rise, the pads close onto the object
     # as the fingertips clear them), disc_lift "shallow" (4 mm per step lift, slow carry), disc_seat "table" (press the
-    # held coin onto the table, deeper into the pads), disc_release "staged" (in-hand read at the hover, release in
+    # held object onto the table, deeper into the pads), disc_release "staged" (in-hand read at the hover, release in
     # stages), disc_reserve "on" (a pick starts only with 80 / 150 steps left, same-arm / cross-arm)
     disc_align: str = "off"
     disc_snap: str = "off"
