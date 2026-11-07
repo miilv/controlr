@@ -37,3 +37,33 @@ def test_diagnostic_boxes_follow_rotated_checker_frame():
     vertices = [[-.1, -.02, 0], [.1, .02, .1]]
     assert box_mask([[1, 2.09, .05], [1.09, 2, .05], [1, 2, 0]],
                     [1, 2, 0], q, vertices, .001).tolist() == [True, False, False]
+
+
+@pytest.mark.parametrize("profile,skill", [("sparse", "pour_bottle_v2"), ("via", "pour_bottle_v2"),
+                                           ("checked", "pour_bottle_v5")])
+def test_ordered_route_forwards_profile_and_only_final_pour_homes(monkeypatch, profile, skill):
+    import dojo.skills.ported as adapter
+    from dojo.skills.pour_order import pour_in_order
+    calls = []
+
+    def fake(sk, name, args, reserve=None):
+        calls.append((name, args))
+        return {"ok": True, "verified": True}
+
+    monkeypatch.setattr(adapter, "ported", fake)
+
+    class Sk:
+        ported_pour_profile = profile
+        ported_pour_aim = "b10"
+
+        def refresh(self):
+            return None
+
+        def log(self, message):
+            pass
+
+    assert pour_in_order(Sk(), [["a", "x"], ["b", "y"], ["c", "z"]])["ok"]
+    assert [name for name, _ in calls] == [skill] * 3
+    assert [args.get("home", True) for _, args in calls] == [False, False, True]
+    assert [args["container"] for _, args in calls] == ["@a", "@b", "@c"]
+    assert all(args["spout_back"] == .01 for _, args in calls)
