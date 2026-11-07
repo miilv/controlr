@@ -379,3 +379,52 @@ All selected ids pass the same canonical positive allowlist checked by the
 rendered driver. Refusal checks and script source are retained with the freeze;
 the BACKLOG ownership landmine extends POUR's entry. No sealed data or re-test
 camera outcomes were read, and no verdict, adoption or default change is made.
+
+## MOVE pre-collection host amendment — compute4 throughput
+
+**Host moved compute6 → compute4 by the lead for throughput before any re-test
+row started; same inputs, configs, route and instrument; family prefix `c4b_`.**
+Move the whole eligible 30-pair / 60-row panel, preserving adjacent pairs and
+its frozen balanced order, after compute4's remaining COIN rows. No layout or
+demo is regenerated. The eligible manifest remains
+`8b3a0dc168c8637f8adb1f161b04cdcfe89dbb9e5e851eb8a605fdaf58d1a3fd`;
+only `OUR_MEASUREMENT_SLICES` ids may be staged. The rejected 100050-series
+panel remains historical and is not an input to this move.
+
+The lead requests current main for the new compute4 deployment:
+`~/dojo-integ-c4-3eefbfc5`, source
+`3eefbfc5` (the main head captured at deployment preparation). It contains
+#410/#411 and #417. Offline primary identity remains pinned to the registered
+#417 merge `77b4571907f6ce49eec11c0685db8f0c7ba05d64`; nearest-GT remains
+supplementary. The existing camera/deployment change is prospective, before
+any KONG re-test outcome. No candidate, default or decision gate is changed.
+
+Current main's config schema adds seven fields absent from compute6's frozen
+`ffb2c151` schema: `belt_lift`, `belt_first`, `belt_first_recover`,
+`belt_first_phase`, `belt_target`, `ported_pour_profile` (all explicitly `off`)
+and `key_scope_task` (explicitly empty). They are pinned inactive in both arms.
+No existing field default changed. Validation must report zero differences on
+**every frozen field**, and exact full equality after expanding the old config
+with these seven inactive defaults onto the current schema. Raw old/new dicts
+have this documented schema extension; it must not be hidden as literal
+same-key equality. Per-row canonical configs and both schema inventories are
+retained for the later verdict and parity reconstruction.
+
+Input root: `compute4:~/dojo-data/kong-retest-moved-1107/`, containing an
+unaltered copy of the eligible inputs/manifest and separate `move/` evidence.
+Use byte-verified frozen backgrounds, color calibration, models and catalogue,
+plus the offline Kit extension cache and 600-second early/hard watchdogs.
+A per-row `BASH_ENV` file exports the space-containing Kit arguments for the
+existing noninteractive bash launch; this avoids changing the live lane,
+global environment, current COIN jobs or tracked deployment source.
+
+Retain compute4's current caps, <=16384 MiB-used gate, 50 GB disk floor and
+unchanged `lane_gate.stamp` protocol. No other coord file is accessed. Moving
+rows requires this amendment to be committed first, all deployment/input/config
+checks to pass, and a locked compute6 check proving **none** of the 60 names
+has a START. If any has started, stop and ask the lead. Remove exactly the
+frozen block under the compute6 queue lock, preserve all other bytes, then
+append exactly the rewritten block under the compute4 queue lock after COIN.
+Retain recoverable source/destination snapshots and report both queues' hashes,
+positions, deployment/instrument pins and ETA. No KONG outcome is inspected
+and no adoption is authorized by this amendment.
