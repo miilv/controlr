@@ -6,6 +6,8 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [ORG2 G3](2026-11-07-org2-g3.md) | Do general (task-blind, default-off) push / torso-grasp / stand / release capabilities close organize_table's gap to the RSI yardstick (85.0 on 100000-04)? | Registered fresh panel 18 pairs: 36.1 -> 58.3 (+22.2), 12W/2L/4T, successes 0 -> 2: rule passes, bar not reached (B CI 47-69). Alarm 2 -> 13, keyboard 2 -> 8, figure 0 -> 3; wide-shouldered figures limit B. Base refit null (14 harmful / 1 helpful). 0 LLM calls |
+| 2026-11-07 | [ORG2 G3 prereg](2026-11-07-org2-g3-prereg.md) | Fresh paired G3 panel of the ORG2 bundle | Registered before any panel episode; result in the ORG2 G3 report |
 | 2026-11-07 | [SAMINT general union](2026-11-07-samint-general.md) | Does one instruction/catalogue prompt generator help all recorded cells? | NOT QUALIFIED: 180 views / 11 tasks; recall 68.5→93.5%, phantoms 11→2378; all 42 view/phase guards fail; zero LLM calls, no camera queue |
 | 2026-11-07 | [CLASSIFY3 camera prereg](2026-11-07-classify3-camera-prereg.md) | Does the sort skill's lowest-point container test raise the camera score? | QUEUED 19:20Z (compute4 positions 1–50); 20 gain pairs + 5 strong/parity; starts when the lead resumes the lanes |
 | 2026-11-07 | [CLASSIFY3](2026-11-07-classify3.md) | Where the sort-into-containers cells lose on camera; general container test, idle-arm park, evidence ledger | Camera loss: language count (5/10 rows 0) + root container test (31/128 placed read "not in"); bottom test 23→2 false "not in" offline, G3 neutral; idle-arm park home classify 67.5→94 but language 53→40; camera A/B (bottom only) parked |

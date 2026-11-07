@@ -225,7 +225,8 @@ class FrozenGarmentProvider:
 # ``--skill-attr NAME=VALUE``: Skills switches a G3 run may set (each mirrors a ``RuntimeConfig`` field; first = default)
 SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "low"), "push_approach": ("off", "tilted"),
                "plan_profile": ("legacy", "recover"), "plan_capture": ("off", "requests"), "plan_solver": ("routes", "curobo"), "plan_world": ("table", "objects"), "place_surface": ("bbox", "mesh"), "push_order": ("greedy", "lookahead"),
-               "arrange_order": ("near", "big_first", "push_big_first"), "push_stroke": ("face", "press"),
+               "arrange_order": ("near", "big_first", "push_big_first", "push_first"), "arrange_retry": ("off", "once"),
+               "push_contact": ("off", "pair"), "push_plan": ("off", "sequence"), "grasp_torso": ("off", "on"), "stand_offset": ("off", "base"), "retreat_axis": ("off", "on"), "place_via": ("off", "clear"), "slip_avoid": ("off", "on"), "push_stroke": ("face", "press"),
                "hang_cradle": ("strict", "straddle"), "hang_wide": ("off", "on"), "headset_seat": ("off", "on"), "headset_carry": ("legacy", "staged"), "headset_grasp": ("legacy", "dense", "cups"), "headset_table": ("bbox", "mesh"), "headset_stage": ("off", "center", "mesh_center", "mesh_clear"), "headset_retry": ("legacy", "sites"), "headset_lift": ("legacy", "slow"), "headset_hold": ("legacy", "loaded"),
                "hang_half_turn": ("off", "on"),
                "hang_handle_grasp": ("off", "on"),
@@ -255,7 +256,7 @@ SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "lo
                "ported_pour_pace": ("v1", "lean", "overlap", "budget"),
                "ported_pour_profile": ("off", "sparse", "via", "checked"),
                "nest_verify": ("target", "support"),
-               "push_goal": ("centre", "cover", "cover_obb"), "fill_move_lift": ("off", "clear"),
+               "push_goal": ("centre", "cover", "cover_obb", "clear"), "fill_move_lift": ("off", "clear"),
                "fill_guard": ("off", "geometry"), "fill_grasp": ("off", "vertical", "rolled", "rolled_tilt"),
                "fill_insert": ("off", "safe"), "fill_holder": ("off", "stay"), "fill_drop": ("off", "center", "inset"),
                "egg_grasp_height": ("off", "raised"), "egg_grasp_angles": ("off", "wide"),

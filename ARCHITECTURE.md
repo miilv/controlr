@@ -769,3 +769,14 @@ both at their defaults the route runs the `ported_classify` variant as before.
 
 `RuntimeConfig.instance_evidence=log` (default `off`) feeds every estimate record through `_persist_reads` into it and
 logs `candidate` / `identity_vote` events and the report's `evidence`. It never writes the world.
+
+### Planned pushes and torso grasps (ORG2)
+
+`dojo/skills/push_plan.py` and `dojo/skills/torso.py` add default-off capabilities to the existing `push_to`,
+`plan_transfer`, `_on_targets`, `_place_tail` and `plan_place` (switches in DEVELOPMENT, "Arrange ORG2 switches").
+Pushes plan their whole stroke sequence in the planning world (the object moved virtually, restored after) and execute
+one stroke per re-read; pair strokes keep the open fingers across the stroke. Torso grasps, stand positions and place
+vias are generated from the asset mesh and the current world only. Every motion keeps the existing collision checks;
+the escape home and the via legs are checked. No switch reads a task name, a layout id, GT beyond the provider's world,
+or the evaluator's termination.
+

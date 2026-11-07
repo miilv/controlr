@@ -652,6 +652,19 @@
   median steps 279 -> 539. Defaults off; camera registration parked. Lateral
   approach pilot resolves a no-plan figurine pick, then loses it during carry
   (169 mm attachment shift). Hold stability and keyboard convergence remain open.
+  ORG2 ([report](experiments/2026-11-07-org2-g3.md)): general default-off capabilities (planned two-point pushes,
+  clear push goal, arrange retry, torso grasps, base-radius stands, checked vias, slip memory, squeeze) take G3 dev
+  47.2 -> ~70-75; keyboard and alarm are largely solved in physics. Open: **wide-shouldered figures** (catalogue
+  garage 5 / 7) have no side grasp clear of the palm and their top-down slices slip; a support-preserving base slide
+  is the next general mechanism. Camera: keyboard asset variant wrong 9/33, mouse missing from the first read 13/33,
+  one wide figure read 14-26 mm off its base in 5/5 arms (base refit null, see report).
+- [ ] **dojo skills: `plan_home` is unchecked.** Any skill that sends an arm home from beside a fixture with a placed
+  object on it can sweep through that object (ORG2: the open fingers knocked a just-placed clock). `push_plan.escape_home`
+  is the checked alternative (rise, then a checked joint move); audit the other `plan_home` callers.
+- [ ] **dojo skills: a place is verified before its tail finishes.** The clock's "ok, rel tilt 0.3 deg" was logged, then
+  the retreat or the next motion knocked it over (4/9 G3 baseline). Re-read the placed object after the arm has left.
+- [ ] **dojo skills: push strokes overshoot 20-35 % in physics** (80 mm planned, 90-110 mm moved; a slab rotates 10-14 deg
+  per single-contact stroke). `push_plan` measures a per-object stroke gain; the legacy strokes do not.
 - [ ] **dojo skills: tic-tac-toe "wait opponent (timeout)" on layout 100003.** The opponent's move is never counted, the
   wait times out, and the episode ends not_home with the board unfinished:
   - c4b_ttt_gcoff_100003 (8dae375, 949/1100, own 4 / opp 3);
