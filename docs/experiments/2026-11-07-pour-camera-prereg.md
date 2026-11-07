@@ -365,3 +365,117 @@ excludes the wrapper. This changes only the read-only metadata observer, after
 dispatch, with old/new script hashes recorded; frozen camera inputs, control,
 manifest and scoring/audit gates are unchanged. Only the own monitor PID was
 replaced. No model calls are made by the monitor.
+
+## POUR camera verdict — FAIL / NOT ADOPTED
+
+All **80 eligible rows rc 0**, exactly 20 language /10 single-cup /10 Xylophone
+pairs from the amended manifest. Last valid arm: **2026-11-07T13:05:41Z**.
+Nine registered pre-episode ownership refusals are excluded infrastructure;
+no controller outcome was rerun or excluded.
+
+| cell | pairs | A pooled | B pooled | Δ | success flips (B / A) | score wins / losses (≥10 pts) | successes A / B |
+|---|---|---|---|---|---|---|---|
+| pour_by_language (gain) | 20 | 0.0 | 43.0 | +43.0 | 7 / 0 | 15 / 0 | 0 / 7 |
+| pour_liquid_into_cup (guard) | 10 | 60.0 | 50.0 | -10.0 | 1 / 2 | 1 / 2 | 6 / 5 |
+| play_Xylophone (strong guard) | 10 | 80.0 | 90.0 | +10.0 | 1 / 0 | 1 / 0 | 8 / 9 |
+| language, full-success-only | 20 | 0.0 | 35.0 | +35.0 | 7 / 0 | 7 / 0 | 0 / 7 |
+
+**Language gain passes both screens:** official +43 >=5, 15 wins >=2×0 losses,
+15 net wins; full-success-only +35 >=5, seven wins >=2×0, seven net wins.
+B has seven full successes, eight 20-point partials and five zeros. The public
+checker supports 20/50/100 return-home rising-edge scores; partials are not
+full successes. **Cup guard FAILS:** −10 <−5 and two paired losses >one win,
+on both official/full scores. Xylophone passes +10, one win / zero losses.
+Pacing is inactive on guards, but this prereg registered ordinary score gates,
+so no retrospective parity waiver is applied.
+
+Sample SD A/B: language **0/43.66** (full-success-only 0/48.94), cup **51.64/52.70**, Xylophone
+**42.16/31.62**. Paired-layout percentile bootstrap 95% CIs (10,000 resamples,
+RNG seed 0): language **[25,62]** points; full-success-only **[15,55]**;
+cup **[−40,20]**; Xylophone **[0,30]**. All per-pair deltas are retained.
+
+B's absolute language score is **43.0/100**, +43 versus the lead-provided
+D-C19 candidate aggregate **0**; full success is **7/20 (35%)**. This historical
+aggregate comparison is unpaired context, not sealed-record analysis. The
+actual registered-candidate A arm on this panel also scored 0, giving paired +43.
+
+### Refined writer audit
+
+Pacing adds no perception request, writer implementation, acceptance or schema
+change: frozen source/config/Skills proof is unchanged. Guard traces have zero
+budget-pour calls (cup uses pour_bottle, no pour_bottle_lean; Xylophone no pour).
+However, observed writes differ, triggering the prereg's stricter conditional
+audit. Motion-only scope is **not** used as an exemption.
+
+**Audit FAIL (both gain writers exceed their harmful-rate bounds): 81/81 writes**, exact write steps,
+**0 uncertain**; **46/46 stable
+prefix resets**. Other 34 episodes log zero writes. The frozen 066e9c8f/#417
+instrument uses its frozen GT-association policy, exact ledger-key coverage and the
+unchanged >2 mm 3-D threshold; z is separate. Nearest fallback:
+**5/81**; missing body geometry:
+[].
+
+| cell / arm | writer | writes | harmful | helpful | neutral | uncertain | harmful rate | median / max Δ absolute z error (mm) |
+|---|---|---|---|---|---|---|---|---|
+| pour_by_language / A | perception | 39 | 1 | 31 | 7 | 0 | 2.56% | 0.00 / 0.10 |
+| pour_by_language / A | predicted | 2 | 0 | 2 | 0 | 0 | 0.00% | -40.40 / -40.10 |
+| pour_by_language / B | perception | 21 | 2 | 13 | 6 | 0 | 9.52% | 0.00 / 0.10 |
+| pour_by_language / B | predicted | 8 | 2 | 6 | 0 | 0 | 25.00% | 7.05 / 40.80 |
+| pour_liquid_into_cup / A | predicted | 6 | 1 | 5 | 0 | 0 | 16.67% | -14.40 / 8.60 |
+| pour_liquid_into_cup / B | predicted | 5 | 2 | 3 | 0 | 0 | 40.00% | 1.50 / 82.30 |
+
+- perception: A 1/39 harmful; B 2/21; FAILS the registered existing-writer harmful-rate bound (B <= A +5 percentage points).
+- predicted: A 0/2 harmful; B 2/8; FAILS the registered existing-writer harmful-rate bound (B <= A +5 percentage points).
+
+Every replay uses identical saved actions through its last write and captures
+exact write/event/gripper frames. Original full reports/actions drive identity.
+Truncated prefixes do not test final reward equality. Available live-close
+fidelity: **72/73** within 2 mm, worst
+**4.9 mm**; limitations are retained in the evidence.
+All guard writes are reported; the refined per-writer gates use gain cells.
+
+Coverage limitations are not waived: the one >2 mm close mismatch is language
+B/100020 (worst 4.9 mm). Association sources are 76 initial-tight and five nearest
+fallback, with no consumed-pick/grasp-close anchor source recorded. Initial
+tight matches are provisional under the frozen instrument; ported grasp paths
+do not demonstrate full first-physical-pick anchor coverage in this ledger.
+Zero exact-frame uncertainty is not an identity-coverage certificate.
+No harmlessness clearance is claimed; qualifying coverage remains unproven,
+in addition to the numerical writer-rate failures.
+
+### Route, spend and failure stages
+
+**80/80 actual Sonnet routes** verified from call logs/transcript starts, minimum
+two logical calls per row; static deployment labels are not proof. Report
+configs equal frozen RuntimeConfig, and loaded input hashes match the manifest.
+The own metadata observer was stopped after collection; its retained launcher
+false-positive correction does not change actual call evidence.
+
+Spend: **467 logical Claude calls**; **6,537,401 prompt / 401,947 completion / 242,154 reasoning / 5,357,603 cache-read tokens**. Cell totals: language 263, cup 134, Xylophone 70 calls.
+Report totals cross-check call logs without double counting. Reasoning/cache
+are subsets. All 46 included no-JSON error entries are retained; recovered HTTP
+retry counts/usage are unobservable, so zero retries is not claimed. Monetary
+billing is not logged. Analysis/replay/audit made **zero model calls**.
+
+No wall caps. Raw harness categories A/B: language budget 18/6, plan 2/7
+(B also seven successes); cup budget 4/5; Xylophone A one grasp-slip/one gross
+perception failure, B one gross perception failure. These raw categories are
+not relabeled causal stages. Language A returned failure stages pour 1/2/3
+=3/4/13; B's 13 non-successes: pour 1/2/3=5/4/2, one reported poured but checker
+incomplete, one interrupted with no result. Mean steps A/B:
+language 776.45/710.85, cup 383.4/382.2, Xylophone 174.8/198.9.
+Mean look steps: 42.50/42.35,33/33,24.4/25.1. Episode wall sum 13,764.7s;
+lane locks 19,121s.
+
+**Disclosure:** lead saw original language 100000–09 outcomes while diagnosing
+id refusals. Replacement was the registered mechanical shift, selected only by
+eligibility/validity, with unchanged salts/recipe; no outcome selected a layout.
+All nine refused attempts remain infrastructure exclusions, not zero-score
+controller failures.
+
+No adoption, candidate or default change; the full panel fails, so no candidate
+field change is proposed. Evidence: [verdict](data/pour-camera/camera-verdict.json),
+[audit](data/pour-camera/camera-audit-summary.json),
+[exact writes](data/pour-camera/camera-audit-writes.jsonl). Original source hashes,
+calls, paired deltas and replay hashes are retained. Native replays remain under
+compute6:~/dojo-data/pour-cam/audit-replays.

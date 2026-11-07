@@ -1,0 +1,18 @@
+{
+  "manifest_sha256": "78bcfec5af4071ff069a2ba01b4fc7151dbf0d09a513ebab7ef13ffee2e8dd44",
+  "source_code": "066e9c8f34c727d9bbfdfa1c219e7c6a78366a45",
+  "method": "Registered 10000 paired-layout bootstrap resamples seed0; sample SD; frozen066e audit exact-step frames, persistent association instrument, >2mm 3D threshold, all81 writes. Source and output hashes retained. Qualitative identity/fidelity limitations added after raw scoring, not a changed instrument.",
+  "sha256": {
+    "attempt-accounting.json": "bf2e33bb39a2050010e0436c11ed8da7bd6f806c692a6b62d72beee69316bcc0",
+    "writer-ledger.jsonl": "ad44f4c911aec3f079350150f6e6f532e37a3a3fd69b3089494bcc1240240469",
+    "audit-driver-script.txt": "bc9074bbc5d300fcd2f3c56c9739e90b0ce84d89171ef486945bcc75e6d170dc",
+    "verdict-integrity.json": "ee9bce47efafd8be859d824ccfd009b5085273c567c83a99afd5b3d6a9137535",
+    "camera-audit-summary.json": "7fc653318f3be92573456e165c139bf92db04bb011b6aa702652eda131279f42",
+    "camera-audit-writes.jsonl": "ceff1f2022b4f9c8cc2088d4390997fdf51c3782453e4b412b5d5671a776e508",
+    "analysis-script.txt": "e3dc18a9b876ec865fb5e20d3e15cf16b6da0793ead677a6edd3cf520dd23985",
+    "camera-verdict.json": "926863c93799845be28ce88cc6a00d2fdf61077f8ba2dd0ec6412c8894c651c6",
+    "route-proof-final.json": "851a0bd91e502c0a1bf87720b853f316c27206052623839db8e4151e66d11395",
+    "audit-summary-script.txt": "d7ac2447a96f5746f6473ce17adafd9ec71647b2203b7711a5c75175235babc4"
+  },
+  "postprocessing": "Adds explicit pair-ID mapping and qualitative identity/fidelity limitations to raw numeric results; no score, threshold or instrument change."
+}
