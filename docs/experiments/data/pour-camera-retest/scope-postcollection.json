@@ -1,0 +1,21 @@
+{
+  "frozen_source_and_settings_hash_checks": 233,
+  "all_unchanged": true,
+  "valid_starts": 80,
+  "extra_attempts": [],
+  "writer_inventory": [
+    "perception",
+    "predicted"
+  ],
+  "writer_code_settings_acceptance_schema_identical": true,
+  "observed_counts_or_outputs_not_gated": true,
+  "write_gate": "N/A by motion-only proof",
+  "cup_parity": {
+    "rows": 20,
+    "v1_rows": 20,
+    "complete_paired_config_identical": true,
+    "budget_pour_actions": 0,
+    "lever_specific_writes": 0,
+    "proof": "Every loaded config is v1; frozen single-cup resolver is pour_bottle, spout_back0.010, adapter pair_moves=False. All logged calls are legacy; ordinary writes are not lever-specific."
+  }
+}

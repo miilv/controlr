@@ -1,0 +1,873 @@
+[
+ {
+  "seed": 100000,
+  "score": 0.75,
+  "success": false,
+  "steps": 476,
+  "garage_idx": 8,
+  "final": {
+   "mouse": true,
+   "keyboard": true,
+   "garage": false,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 264.3,
+  "garage_up_deg": 90.0,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": -2.0,
+  "order": [
+   "place mouse -> mousemat",
+   "place garage -> cube_cushion",
+   "place alarm -> drawer",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "place alarm -> drawer",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place mouse -> mousemat: ok xy err 0.2 mm, dz -1.5 mm (centre 0.7843 vs 0.7858), rel tilt 0.5 deg; in-hand shi",
+   "place garage -> cube_cushion: place_miss xy err 116.4 mm, dz +119.0 mm (centre 0.9746 vs 0.8557), rel tilt 33.",
+   "place alarm -> drawer: grasp_slip object rose 0 mm (planned 100), in-hand drift 97 mm [box close 0 approach -1",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (221 mm left)",
+   "place garage -> cube_cushion: ik_fail left: 36/84 grasps reachable, 354 grasp-place pairs; right: 0/84 grasps ",
+   "place alarm -> drawer: ok xy err 0.3 mm, dz -0.3 mm (centre 1.0090 vs 1.0093), rel tilt 0.1 deg; in-hand shift",
+   "push keyboard -> frame: ok covers frame, 16 mm from the clear goal after 5 strokes"
+  ],
+  "garage_drift_mm": [],
+  "first_held": {
+   "mouse": 41,
+   "alarm": 240,
+   "keyboard": 447
+  },
+  "lost": [
+   {
+    "item": "alarm",
+    "step": 244,
+    "seg": "pick alarm"
+   }
+  ],
+  "tier_items": 3,
+  "tier_step": 447,
+  "alarm_max_tilt_after_release": 0.5,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100001,
+  "score": 0.75,
+  "success": false,
+  "steps": 542,
+  "garage_idx": 11,
+  "final": {
+   "mouse": true,
+   "keyboard": true,
+   "garage": false,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 50.8,
+  "garage_up_deg": 0.6,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": 0.5,
+  "order": [
+   "place mouse -> mousemat",
+   "place alarm -> drawer",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place mouse -> mousemat: ok xy err 0.4 mm, dz -0.8 mm (centre 0.7844 vs 0.7851), rel tilt 0.4 deg; in-hand shi",
+   "place alarm -> drawer: ok xy err 0.2 mm, dz -0.3 mm (centre 1.0091 vs 1.0093), rel tilt 0.3 deg; in-hand shift",
+   "place garage -> cube_cushion: ok xy err 21.6 mm, dz +5.8 mm (centre 0.8663 vs 0.8605), rel tilt 9.0 deg; in-ha",
+   "push keyboard -> frame: ok covers frame, 13 mm from the clear goal after 7 strokes"
+  ],
+  "garage_drift_mm": [],
+  "first_held": {
+   "mouse": 74,
+   "alarm": 198,
+   "keyboard": 431
+  },
+  "lost": [
+   {
+    "item": "alarm",
+    "step": 202,
+    "seg": "pick alarm"
+   }
+  ],
+  "tier_items": 3,
+  "tier_step": 431,
+  "alarm_max_tilt_after_release": 0.7,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100002,
+  "score": 0.5,
+  "success": false,
+  "steps": 271,
+  "garage_idx": 7,
+  "final": {
+   "mouse": true,
+   "keyboard": false,
+   "garage": false,
+   "alarm": false
+  },
+  "garage_xy_err_mm": 232.4,
+  "garage_up_deg": 88.4,
+  "alarm_tilt_deg": 86.1,
+  "keyboard_yaw_deg": 0.1,
+  "order": [
+   "place mouse -> mousemat",
+   "place garage -> cube_cushion",
+   "place alarm -> drawer",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "place alarm -> drawer",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place mouse -> mousemat: ok xy err 0.5 mm, dz -1.4 mm (centre 0.7844 vs 0.7858), rel tilt 0.5 deg; in-hand shi",
+   "place garage -> cube_cushion: place_miss xy err 207.7 mm, dz -33.4 mm (centre 0.8270 vs 0.8604), rel tilt 88.3",
+   "place alarm -> drawer: place_miss xy err 36.9 mm, dz +29.4 mm (centre 1.0388 vs 1.0094), rel tilt 22.1 deg; in",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (180 mm left)",
+   "place garage -> cube_cushion: ik_fail left: 50/270 grasps reachable, 10 grasp-place pairs; right: 20/270 grasp",
+   "place alarm -> drawer: grasp_slip object rose -47 mm (planned 80), in-hand drift 131 mm [box close 0 approach ",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (180 mm left)"
+  ],
+  "garage_drift_mm": [],
+  "first_held": {
+   "mouse": 33,
+   "alarm": 187
+  },
+  "lost": [
+   {
+    "item": "alarm",
+    "step": 214,
+    "seg": "place alarm tail"
+   }
+  ],
+  "tier_items": 2,
+  "tier_step": 206,
+  "alarm_max_tilt_after_release": 92.6,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100003,
+  "score": 0.5,
+  "success": false,
+  "steps": 226,
+  "garage_idx": 11,
+  "final": {
+   "mouse": true,
+   "keyboard": false,
+   "garage": false,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 349.1,
+  "garage_up_deg": 100.4,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": 0.0,
+  "order": [
+   "place garage -> cube_cushion",
+   "place mouse -> mousemat",
+   "place alarm -> drawer",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place garage -> cube_cushion: grasp_slip object rose -65 mm (planned 80), in-hand drift 191 mm [torso torso h ",
+   "place mouse -> mousemat: ok xy err 0.5 mm, dz -0.9 mm (centre 0.7844 vs 0.7853), rel tilt 0.6 deg; in-hand shi",
+   "place alarm -> drawer: ok xy err 0.3 mm, dz -0.3 mm (centre 1.0091 vs 1.0093), rel tilt 0.3 deg; in-hand shift",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (215 mm left)",
+   "place garage -> cube_cushion: ik_fail left: 50/50 grasps reachable, 0 grasp-place pairs; right: 0/50 grasps re",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (215 mm left)"
+  ],
+  "garage_drift_mm": [
+   191.0
+  ],
+  "first_held": {
+   "mouse": 114,
+   "alarm": 168
+  },
+  "lost": [
+   {
+    "item": "alarm",
+    "step": 171,
+    "seg": "pick alarm"
+   }
+  ],
+  "tier_items": 2,
+  "tier_step": 196,
+  "alarm_max_tilt_after_release": 0.5,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100004,
+  "score": 0.5,
+  "success": false,
+  "steps": 567,
+  "garage_idx": 11,
+  "final": {
+   "mouse": true,
+   "keyboard": false,
+   "garage": false,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 21.0,
+  "garage_up_deg": 36.7,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": -1.8,
+  "order": [
+   "place alarm -> drawer",
+   "place mouse -> mousemat",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place alarm -> drawer: ok xy err 0.2 mm, dz -0.2 mm (centre 1.0091 vs 1.0093), rel tilt 0.4 deg; in-hand shift",
+   "place mouse -> mousemat: ok xy err 0.3 mm, dz -0.9 mm (centre 0.7844 vs 0.7853), rel tilt 0.6 deg; in-hand shi",
+   "place garage -> cube_cushion: place_miss xy err 21.2 mm, dz +6.5 mm (centre 0.8669 vs 0.8605), rel tilt 11.2 d",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (210 mm left)",
+   "place garage -> cube_cushion: grasp_slip object rose 2 mm (planned 80), in-hand drift 92 mm [torso torso h 0.5",
+   "push keyboard -> frame: place_miss does not cover frame, 84 mm from the goal"
+  ],
+  "garage_drift_mm": [
+   92.0
+  ],
+  "first_held": {
+   "alarm": 36,
+   "mouse": 157
+  },
+  "lost": [
+   {
+    "item": "alarm",
+    "step": 40,
+    "seg": "pick alarm"
+   },
+   {
+    "item": "mouse",
+    "step": 161,
+    "seg": "pick mouse"
+   }
+  ],
+  "tier_items": 2,
+  "tier_step": 199,
+  "alarm_max_tilt_after_release": 0.6,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100005,
+  "score": 0.0,
+  "success": false,
+  "steps": 137,
+  "garage_idx": 5,
+  "final": {
+   "mouse": false,
+   "keyboard": false,
+   "garage": false,
+   "alarm": false
+  },
+  "garage_xy_err_mm": 316.1,
+  "garage_up_deg": 72.0,
+  "alarm_tilt_deg": 2.2,
+  "keyboard_yaw_deg": 0.0,
+  "order": [
+   "place garage -> cube_cushion",
+   "place alarm -> drawer",
+   "place mouse -> mousemat",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "place alarm -> drawer",
+   "place mouse -> mousemat",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place garage -> cube_cushion: grasp_slip object rose 137 mm (planned 80), in-hand drift 87 mm [slice slice z 0",
+   "place alarm -> drawer: ik_fail left: 6/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachabl",
+   "place mouse -> mousemat: grasp_slip object rose -0 mm (planned 80), in-hand drift 78 mm [box close 1 approach ",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (215 mm left)",
+   "place garage -> cube_cushion: ik_fail left: 12/32 grasps reachable, 0 grasp-place pairs; right: 0/33 grasps re",
+   "place alarm -> drawer: ik_fail left: 6/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachabl",
+   "place mouse -> mousemat: grasp_slip object rose -0 mm (planned 80), in-hand drift 80 mm [box close 1 approach ",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (215 mm left)"
+  ],
+  "garage_drift_mm": [
+   87.0
+  ],
+  "first_held": {},
+  "lost": [],
+  "tier_items": 0,
+  "tier_step": null,
+  "alarm_max_tilt_after_release": null,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100007,
+  "score": 1.0,
+  "success": true,
+  "steps": 443,
+  "garage_idx": 11,
+  "final": {
+   "mouse": true,
+   "keyboard": true,
+   "garage": true,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 7.5,
+  "garage_up_deg": 0.3,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": -4.0,
+  "order": [
+   "place alarm -> drawer",
+   "place mouse -> mousemat",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place alarm -> drawer: ok xy err 0.2 mm, dz -0.3 mm (centre 1.0091 vs 1.0093), rel tilt 0.3 deg; in-hand shift",
+   "place mouse -> mousemat: ok xy err 1.3 mm, dz -0.8 mm (centre 0.7844 vs 0.7851), rel tilt 0.5 deg; in-hand shi",
+   "place garage -> cube_cushion: ik_fail left: screen stopped after 6091 place IKs; left: 61/137 grasps reachable",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (33 mm left)",
+   "place garage -> cube_cushion: ok xy err 9.2 mm, dz +0.8 mm (centre 0.8612 vs 0.8605), rel tilt 1.4 deg; in-han",
+   "push keyboard -> frame: step_budget ended at step 443"
+  ],
+  "garage_drift_mm": [],
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100008,
+  "score": 0.75,
+  "success": false,
+  "steps": 465,
+  "garage_idx": 6,
+  "final": {
+   "mouse": true,
+   "keyboard": true,
+   "garage": false,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 199.2,
+  "garage_up_deg": 9.3,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": -15.3,
+  "order": [
+   "place mouse -> mousemat",
+   "place garage -> cube_cushion",
+   "place alarm -> drawer",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place mouse -> mousemat: ok xy err 0.4 mm, dz -1.5 mm (centre 0.7843 vs 0.7858), rel tilt 0.5 deg; in-hand shi",
+   "place garage -> cube_cushion: place_miss xy err 206.5 mm, dz +5.2 mm (centre 0.8657 vs 0.8605), rel tilt 9.3 d",
+   "place alarm -> drawer: ok xy err 0.2 mm, dz -0.2 mm (centre 1.0091 vs 1.0093), rel tilt 0.4 deg; in-hand shift",
+   "push keyboard -> frame: place_miss does not cover frame, 24 mm from the goal",
+   "place garage -> cube_cushion: ik_fail left: 22/124 grasps reachable, 230 grasp-place pairs; right: 2/123 grasp",
+   "push keyboard -> frame: place_miss does not cover frame, 24 mm from the goal"
+  ],
+  "garage_drift_mm": [],
+  "first_held": {
+   "mouse": 44,
+   "alarm": 179,
+   "keyboard": 313
+  },
+  "lost": [
+   {
+    "item": "alarm",
+    "step": 182,
+    "seg": "pick alarm"
+   }
+  ],
+  "tier_items": 3,
+  "tier_step": 313,
+  "alarm_max_tilt_after_release": 0.6,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100009,
+  "score": 0.5,
+  "success": false,
+  "steps": 182,
+  "garage_idx": 6,
+  "final": {
+   "mouse": true,
+   "keyboard": true,
+   "garage": false,
+   "alarm": false
+  },
+  "garage_xy_err_mm": 412.8,
+  "garage_up_deg": 97.1,
+  "alarm_tilt_deg": 0.6,
+  "keyboard_yaw_deg": -3.9,
+  "order": [
+   "place mouse -> mousemat",
+   "place alarm -> drawer",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame",
+   "place alarm -> drawer",
+   "place garage -> cube_cushion"
+  ],
+  "outcomes": [
+   "place mouse -> mousemat: ok xy err 0.4 mm, dz -0.9 mm (centre 0.7844 vs 0.7853), rel tilt 1.0 deg; in-hand shi",
+   "place alarm -> drawer: ik_fail left: 10/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachab",
+   "place garage -> cube_cushion: ik_fail left: 12/71 grasps reachable, 0 grasp-place pairs; right: 0/71 grasps re",
+   "push keyboard -> frame: ok covers frame, 14 mm from the clear goal after 4 strokes",
+   "place alarm -> drawer: ik_fail left: 52/324 grasps reachable, 0 grasp-place pairs; right: 0/324 grasps reachab",
+   "place garage -> cube_cushion: ik_fail left: 12/71 grasps reachable, 0 grasp-place pairs; right: 0/71 grasps re"
+  ],
+  "garage_drift_mm": [],
+  "first_held": {
+   "mouse": 40,
+   "keyboard": 157
+  },
+  "lost": [],
+  "tier_items": 2,
+  "tier_step": 157,
+  "alarm_max_tilt_after_release": null,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100021,
+  "score": 0.5,
+  "success": false,
+  "steps": 169,
+  "garage_idx": 6,
+  "final": {
+   "mouse": true,
+   "keyboard": false,
+   "garage": false,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 214.9,
+  "garage_up_deg": 0.1,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": 0.0,
+  "order": [
+   "place mouse -> mousemat",
+   "place alarm -> drawer",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place mouse -> mousemat: ok xy err 0.6 mm, dz -1.4 mm (centre 0.7844 vs 0.7858), rel tilt 0.5 deg; in-hand shi",
+   "place alarm -> drawer: ok xy err 0.1 mm, dz -0.3 mm (centre 1.0091 vs 1.0093), rel tilt 0.4 deg; in-hand shift",
+   "place garage -> cube_cushion: ik_fail left: screen stopped after 6100 place IKs; left: 61/137 grasps reachable",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (201 mm left)",
+   "place garage -> cube_cushion: ik_fail left: screen stopped after 6100 place IKs; left: 61/137 grasps reachable",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (201 mm left)"
+  ],
+  "garage_drift_mm": [],
+  "first_held": {
+   "mouse": 40,
+   "alarm": 103
+  },
+  "lost": [
+   {
+    "item": "alarm",
+    "step": 107,
+    "seg": "pick alarm"
+   }
+  ],
+  "tier_items": 2,
+  "tier_step": 139,
+  "alarm_max_tilt_after_release": 0.6,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100022,
+  "score": 0.5,
+  "success": false,
+  "steps": 279,
+  "garage_idx": 7,
+  "final": {
+   "mouse": true,
+   "keyboard": false,
+   "garage": false,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 53.3,
+  "garage_up_deg": 98.7,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": 0.0,
+  "order": [
+   "place alarm -> drawer",
+   "place mouse -> mousemat",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place alarm -> drawer: ok xy err 0.9 mm, dz -0.3 mm (centre 1.0090 vs 1.0093), rel tilt 0.0 deg; in-hand shift",
+   "place mouse -> mousemat: ok xy err 0.7 mm, dz -0.8 mm (centre 0.7844 vs 0.7851), rel tilt 0.5 deg; in-hand shi",
+   "place garage -> cube_cushion: place_miss xy err 32.7 mm, dz +13.7 mm (centre 0.8741 vs 0.8604), rel tilt 42.5 ",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (205 mm left)",
+   "place garage -> cube_cushion: ik_fail left: 5/60 grasps reachable, 113 grasp-place pairs; right: 1/60 grasps r",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (205 mm left)"
+  ],
+  "garage_drift_mm": [],
+  "first_held": {
+   "alarm": 54,
+   "mouse": 136
+  },
+  "lost": [
+   {
+    "item": "alarm",
+    "step": 58,
+    "seg": "pick alarm"
+   },
+   {
+    "item": "alarm",
+    "step": 66,
+    "seg": "pick alarm"
+   }
+  ],
+  "tier_items": 2,
+  "tier_step": 150,
+  "alarm_max_tilt_after_release": 0.9,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100023,
+  "score": 0.5,
+  "success": false,
+  "steps": 281,
+  "garage_idx": 7,
+  "final": {
+   "mouse": true,
+   "keyboard": false,
+   "garage": false,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 654.1,
+  "garage_up_deg": 98.9,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": 0.0,
+  "order": [
+   "place garage -> cube_cushion",
+   "place mouse -> mousemat",
+   "place alarm -> drawer",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place garage -> cube_cushion: ik_fail left: 36/36 grasps reachable, 0 grasp-place pairs; right: 0/36 grasps re",
+   "place mouse -> mousemat: ok xy err 0.2 mm, dz -0.9 mm (centre 0.7844 vs 0.7853), rel tilt 0.6 deg; in-hand shi",
+   "place alarm -> drawer: ok xy err 0.3 mm, dz -0.3 mm (centre 1.0091 vs 1.0093), rel tilt 0.3 deg; in-hand shift",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (228 mm left)",
+   "place garage -> cube_cushion: ik_fail left: 36/36 grasps reachable, 0 grasp-place pairs; right: 0/36 grasps re",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (228 mm left)"
+  ],
+  "garage_drift_mm": [],
+  "first_held": {
+   "mouse": 75,
+   "alarm": 160
+  },
+  "lost": [
+   {
+    "item": "mouse",
+    "step": 81,
+    "seg": "pick mouse"
+   },
+   {
+    "item": "alarm",
+    "step": 170,
+    "seg": "pick alarm"
+   }
+  ],
+  "tier_items": 2,
+  "tier_step": 253,
+  "alarm_max_tilt_after_release": 0.5,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100024,
+  "score": 1.0,
+  "success": true,
+  "steps": 371,
+  "garage_idx": 6,
+  "final": {
+   "mouse": true,
+   "keyboard": true,
+   "garage": true,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 7.1,
+  "garage_up_deg": 0.4,
+  "alarm_tilt_deg": 0.1,
+  "keyboard_yaw_deg": -2.1,
+  "order": [
+   "place mouse -> mousemat",
+   "place alarm -> drawer",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place mouse -> mousemat: ok xy err 0.6 mm, dz -1.4 mm (centre 0.7844 vs 0.7858), rel tilt 0.5 deg; in-hand shi",
+   "place alarm -> drawer: ok xy err 0.2 mm, dz -0.3 mm (centre 1.0091 vs 1.0093), rel tilt 0.2 deg; in-hand shift",
+   "place garage -> cube_cushion: ok xy err 7.2 mm, dz +0.3 mm (centre 0.8608 vs 0.8605), rel tilt 0.7 deg; in-han",
+   "push keyboard -> frame: step_budget ended at step 371"
+  ],
+  "garage_drift_mm": [],
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100025,
+  "score": 0.75,
+  "success": false,
+  "steps": 392,
+  "garage_idx": 8,
+  "final": {
+   "mouse": true,
+   "keyboard": false,
+   "garage": true,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 2.1,
+  "garage_up_deg": 1.0,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": 6.5,
+  "order": [
+   "place mouse -> mousemat",
+   "place alarm -> drawer",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place mouse -> mousemat: ok xy err 0.2 mm, dz -0.8 mm (centre 0.7844 vs 0.7851), rel tilt 0.4 deg; in-hand shi",
+   "place alarm -> drawer: ok xy err 12.2 mm, dz +1.1 mm (centre 1.0104 vs 1.0093), rel tilt 5.0 deg; in-hand shif",
+   "place garage -> cube_cushion: ok xy err 3.4 mm, dz +0.3 mm (centre 0.8559 vs 0.8557), rel tilt 1.9 deg; in-han",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (36 mm left)",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (36 mm left)"
+  ],
+  "garage_drift_mm": [],
+  "first_held": {
+   "mouse": 50,
+   "alarm": 117,
+   "garage": 259
+  },
+  "lost": [
+   {
+    "item": "alarm",
+    "step": 120,
+    "seg": "pick alarm"
+   }
+  ],
+  "tier_items": 3,
+  "tier_step": 264,
+  "alarm_max_tilt_after_release": 8.6,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100026,
+  "score": 0.25,
+  "success": false,
+  "steps": 223,
+  "garage_idx": 8,
+  "final": {
+   "mouse": true,
+   "keyboard": false,
+   "garage": false,
+   "alarm": false
+  },
+  "garage_xy_err_mm": 281.3,
+  "garage_up_deg": 94.0,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": 0.0,
+  "order": [
+   "place garage -> cube_cushion",
+   "place mouse -> mousemat",
+   "place alarm -> drawer",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "place alarm -> drawer",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place garage -> cube_cushion: collision descend: ik_fail: line waypoint 4/5 unreachable (err 7.0 mm / 2.9 deg)",
+   "place mouse -> mousemat: ok xy err 0.3 mm, dz -1.5 mm (centre 0.7843 vs 0.7858), rel tilt 0.5 deg; in-hand shi",
+   "place alarm -> drawer: ik_fail left: 76/324 grasps reachable, 18 grasp-place pairs; right: 0/324 grasps reacha",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (234 mm left)",
+   "place garage -> cube_cushion: ik_fail right: 1/127 grasps reachable, 0 grasp-place pairs; left: 0/127 grasps r",
+   "place alarm -> drawer: ik_fail left: 76/324 grasps reachable, 18 grasp-place pairs; right: 0/324 grasps reacha",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (234 mm left)"
+  ],
+  "garage_drift_mm": [],
+  "first_held": {
+   "mouse": 180
+  },
+  "lost": [],
+  "tier_items": 1,
+  "tier_step": 194,
+  "alarm_max_tilt_after_release": null,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100027,
+  "score": 0.75,
+  "success": false,
+  "steps": 387,
+  "garage_idx": 5,
+  "final": {
+   "mouse": true,
+   "keyboard": true,
+   "garage": false,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 321.5,
+  "garage_up_deg": 0.0,
+  "alarm_tilt_deg": 0.0,
+  "keyboard_yaw_deg": -4.5,
+  "order": [
+   "place mouse -> mousemat",
+   "place alarm -> drawer",
+   "place garage -> cube_cushion",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion"
+  ],
+  "outcomes": [
+   "place mouse -> mousemat: ok xy err 1.2 mm, dz -0.9 mm (centre 0.7844 vs 0.7853), rel tilt 0.8 deg; in-hand shi",
+   "place alarm -> drawer: ok xy err 0.3 mm, dz -0.3 mm (centre 1.0091 vs 1.0093), rel tilt 0.2 deg; in-hand shift",
+   "place garage -> cube_cushion: grasp_slip object rose 10 mm (planned 80), in-hand drift 75 mm [slice slice z 0.",
+   "push keyboard -> frame: ok covers frame; no stroke towards the clear goal (29 mm left)",
+   "place garage -> cube_cushion: ik_fail left: 61/61 grasps reachable, 0 grasp-place pairs; right: 0/61 grasps re"
+  ],
+  "garage_drift_mm": [
+   75.0
+  ],
+  "first_held": {
+   "mouse": 49,
+   "alarm": 120,
+   "keyboard": 323
+  },
+  "lost": [
+   {
+    "item": "alarm",
+    "step": 127,
+    "seg": "pick alarm"
+   }
+  ],
+  "tier_items": 3,
+  "tier_step": 323,
+  "alarm_max_tilt_after_release": 0.4,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100028,
+  "score": 0.75,
+  "success": false,
+  "steps": 506,
+  "garage_idx": 5,
+  "final": {
+   "mouse": true,
+   "keyboard": true,
+   "garage": false,
+   "alarm": true
+  },
+  "garage_xy_err_mm": 180.5,
+  "garage_up_deg": 0.0,
+  "alarm_tilt_deg": 0.1,
+  "keyboard_yaw_deg": -2.0,
+  "order": [
+   "place mouse -> mousemat",
+   "place garage -> cube_cushion",
+   "place alarm -> drawer",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion"
+  ],
+  "outcomes": [
+   "place mouse -> mousemat: ok xy err 0.3 mm, dz -0.9 mm (centre 0.7844 vs 0.7853), rel tilt 0.6 deg; in-hand shi",
+   "place garage -> cube_cushion: grasp_slip object rose 3 mm (planned 80), in-hand drift 99 mm [slice slice z 0.0",
+   "place alarm -> drawer: ok xy err 0.1 mm, dz -0.3 mm (centre 1.0091 vs 1.0093), rel tilt 0.3 deg; in-hand shift",
+   "push keyboard -> frame: ok covers frame, 4 mm from the clear goal after 7 strokes",
+   "place garage -> cube_cushion: ik_fail left: 22/54 grasps reachable, 216 grasp-place pairs; right: 0/54 grasps "
+  ],
+  "garage_drift_mm": [
+   99.0
+  ],
+  "first_held": {
+   "mouse": 50,
+   "alarm": 158,
+   "keyboard": 281
+  },
+  "lost": [
+   {
+    "item": "alarm",
+    "step": 161,
+    "seg": "pick alarm"
+   },
+   {
+    "item": "keyboard",
+    "step": 361,
+    "seg": "push keyboard 3"
+   }
+  ],
+  "tier_items": 3,
+  "tier_step": 281,
+  "alarm_max_tilt_after_release": 0.7,
+  "run": "panelB_a851a88"
+ },
+ {
+  "seed": 100029,
+  "score": 0.25,
+  "success": false,
+  "steps": 317,
+  "garage_idx": 8,
+  "final": {
+   "mouse": true,
+   "keyboard": false,
+   "garage": false,
+   "alarm": false
+  },
+  "garage_xy_err_mm": 121.8,
+  "garage_up_deg": 94.8,
+  "alarm_tilt_deg": 113.9,
+  "keyboard_yaw_deg": 6.1,
+  "order": [
+   "place mouse -> mousemat",
+   "place garage -> cube_cushion",
+   "place alarm -> drawer",
+   "push keyboard -> frame",
+   "place garage -> cube_cushion",
+   "place alarm -> drawer",
+   "push keyboard -> frame"
+  ],
+  "outcomes": [
+   "place mouse -> mousemat: ok xy err 0.1 mm, dz -1.5 mm (centre 0.7843 vs 0.7858), rel tilt 0.5 deg; in-hand shi",
+   "place garage -> cube_cushion: place_miss xy err 4.5 mm, dz +1.8 mm (centre 0.8575 vs 0.8557), rel tilt 13.3 de",
+   "place alarm -> drawer: grasp_slip object rose 26 mm (planned 100), in-hand drift 76 mm [box close 0 approach -",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (204 mm left)",
+   "place garage -> cube_cushion: ik_fail left: 0/88 grasps reachable, 0 grasp-place pairs; right: 0/88 grasps rea",
+   "place alarm -> drawer: grasp_slip object rose 60 mm (planned 80), in-hand drift 33 mm [box close 0 approach -1",
+   "push keyboard -> frame: ik_fail keyboard: no complete push sequence (206 mm left)"
+  ],
+  "garage_drift_mm": [],
+  "first_held": {
+   "mouse": 64,
+   "garage": 205
+  },
+  "lost": [
+   {
+    "item": "mouse",
+    "step": 68,
+    "seg": "pick mouse"
+   },
+   {
+    "item": "garage",
+    "step": 207,
+    "seg": "place garage tail"
+   }
+  ],
+  "tier_items": 2,
+  "tier_step": 205,
+  "alarm_max_tilt_after_release": null,
+  "run": "panelB_a851a88"
+ }
+]

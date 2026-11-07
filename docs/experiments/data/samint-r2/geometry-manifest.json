@@ -1,0 +1,662 @@
+[
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100000",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "842abefe8c615f4722d236cbeb27ca303da92664c753427a82370decc51a586e",
+      "gt_cam_head.png": "dbca02e6c94c878034771c08e289dc52673d5b8fea802706f3a03ecea7bca111",
+      "gt_cam_left_wrist.png": "8a706d5ddcfaa25977b50d170f9c41c68c4fc6b93aed7612cbcebab1e0586db2",
+      "gt_cam_right_wrist.png": "4d51b96f8a99eb17f0defb34c0fe0d33b1cc33e10716051444ab48b7907cb38e"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100001",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "5d0016853ee2f52b46a229f54ac24c2f1511c920e35ce42302942fdbd748ed90",
+      "gt_cam_head.png": "b7eddb858582d3aa0e79434d2016be9ab07a5f7ad30f74d468b7553be2fb75df",
+      "gt_cam_left_wrist.png": "8a706d5ddcfaa25977b50d170f9c41c68c4fc6b93aed7612cbcebab1e0586db2",
+      "gt_cam_right_wrist.png": "c06fe680062bbd678ae876bb15187e0bdae89018fc8583ce4559914c549f61a7"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100002",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "7bc9ffcefbae3feb9654e1b6b46776501597d88f775934a0b99f5710be29a897",
+      "gt_cam_head.png": "d164245885390a06bcd226116061068ea8eefa3c0393fb3eefa8ba4b5d961643",
+      "gt_cam_left_wrist.png": "8a706d5ddcfaa25977b50d170f9c41c68c4fc6b93aed7612cbcebab1e0586db2",
+      "gt_cam_right_wrist.png": "26356df9296d9fa20044f4d416f8f069b78b5b6aa79d2b736045302e1016c265"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100003",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "94153f767a59944abc1af3725ab13eef366a520f8ec91ffb1bb51674a933cd71",
+      "gt_cam_head.png": "09e5fa28607278dba13a9c1b6546c1388ba9a9dfa2a44ccb5b41f9cef77ffb6a",
+      "gt_cam_left_wrist.png": "8a706d5ddcfaa25977b50d170f9c41c68c4fc6b93aed7612cbcebab1e0586db2",
+      "gt_cam_right_wrist.png": "5ce967b5e2a382e4db91e243a6155bafd48525cc743e08b0635d1ee29600ff3f"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_match_and_pick_from_conveyor_waistAr1_waistgain1_100004",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "fdc2e353bd46f86e98cd64097370e90f2dd3f02800873c0de573573ee350f80b",
+      "gt_cam_head.png": "04950e7bfc8d66e3fc67371811d7abb0fb836d5b077d375d78a89bcf0f5e98a7",
+      "gt_cam_left_wrist.png": "8a706d5ddcfaa25977b50d170f9c41c68c4fc6b93aed7612cbcebab1e0586db2",
+      "gt_cam_right_wrist.png": "a0adb46968b5afed8d9cc2da6af57855bb65084973e6a6a8a76aadd343d67b3d"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100000",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "973863c74715bd1cdda0b843ebcea4f4c533c0a60b2733b904130dfe18d1e1e5",
+      "gt_cam_head.png": "c890bf8d37c199f97a9243af643320244c1c90a06a39d8e38d38b6ab66936f29",
+      "gt_cam_left_wrist.png": "fc60a5c076b9bcdde678f00565a17c155a845585068402a8b451f59903fd4bf3",
+      "gt_cam_right_wrist.png": "b048fd7eed395f62234a9131b936567e4507bc855eac9566f2bc49db75f4f42b"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100001",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "06ae2350489da2a6e339c06e366eb1f7b77e79583ee7e766ddb46f558b0ed4c7",
+      "gt_cam_head.png": "002c89b0cb041ce7a565024bd4979ed42b6ffeffce32624c1f33336270183192",
+      "gt_cam_left_wrist.png": "6963536a54309c5dcd0e62d7f22e0eeecfb62909d71c6aed6d052346af722d32",
+      "gt_cam_right_wrist.png": "6ce25eca854a66b0c8d416b4759b9040f3be9c2c11a1356f2a0bdd9163901bbf"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100002",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "ae8bc65c21a081acdded1c70f2258a0a8adb3efbeed23b5b4c805081c692facf",
+      "gt_cam_head.png": "7654fbe0f87adf95763a95d741b5dd182c3fa938126585256da58527c6f028a1",
+      "gt_cam_left_wrist.png": "3bb2088fbf56fb8d4dcc5eb4f3acf940acccd8695814aea9de24d7dbfa11f5d8",
+      "gt_cam_right_wrist.png": "23fdd0be7c2bd12f6db27a45559e797a6de087ddc122e4340ab48d6b98f24546"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100003",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "0a4750d34ef658f4e81f3be0bf68d9f0ed9a7d7038dfee3d0fd74ab306ad065b",
+      "gt_cam_head.png": "0413c21bd6525f6c21493153be7da303ed5d884bba534d5fa2b9cb010ff0799f",
+      "gt_cam_left_wrist.png": "d451c47dded22e6385b67c398c518ede9fe16558731fef0425ed85accf181ee4",
+      "gt_cam_right_wrist.png": "b9bbcbbda863a804fb8dca464ae9bb76342eb2325e399f3e1726879fd64421d0"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pick_from_conveyor_by_image_waistAr1_waistguard1_100004",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "b465672be1693255398cc236255eb469d81d4c3010822fa1be9c065d33e18eac",
+      "gt_cam_head.png": "cde741d794bab7fa8a1c0bb3b45a7b2bb515deebb437916048f0d23202d90b71",
+      "gt_cam_left_wrist.png": "0a107fec3ac3b15266eec338c68c5fda7cf2b5184b7b841f750ffa74739d811b",
+      "gt_cam_right_wrist.png": "23fdd0be7c2bd12f6db27a45559e797a6de087ddc122e4340ab48d6b98f24546"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100005",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "1a1ce732b4c6dea5e2b363794e2a2813606f3dc97fcd73d5a37eaa32135fbfe3",
+      "gt_cam_head.png": "3511cb435eafd893f6a62035fa14ba87293d199605547350777b88b587a91152",
+      "gt_cam_left_wrist.png": "3b96516ce49d321c5057d75314a30f42ba4e618f18cf8c1be57467065b140eaa",
+      "gt_cam_right_wrist.png": "423a9272ada2188b79a4faa56c9b6c59600000069a0321cf5cc493c166316c80"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100006",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "08bf05f8577b14e7fd29f989fb56c3aafeedf5dba5aa0fae5c451f1e63a0576d",
+      "gt_cam_head.png": "bee7f8df8ead86cc676dbe713219ecd0a43c4c56de3625798c7ad5c47517bff1",
+      "gt_cam_left_wrist.png": "da3873db8a4959251cf65310b45e4027a091ec1e1f4b96854b193cf9a5a7dff5",
+      "gt_cam_right_wrist.png": "15f8be808e4f709cb451628f8f20ff7c9ecc6a98f71fcbcf1187bb044a6fca81"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100007",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "aa7e10ca90261c489993b90177c52d9bdfdb9b811f5d0d816eb4ba3ab3423ef3",
+      "gt_cam_head.png": "8786ab1c9608a4a0484e887c09b7418acb8c3d9a19b20ce540dcdc2a93df8193",
+      "gt_cam_left_wrist.png": "dd4863d10ea183437da127e83cdd71342da92e8ce48a41443d1fd0c239f29c05",
+      "gt_cam_right_wrist.png": "e1d77e42d5022a98f1b01faefdfb84421faf3822c887e1ea7efbb6326aa57d02"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100008",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "49eeb6e8fc5ffb83f02abaa4ed36edfee289369c18db5592abc1ba2bf9332fb5",
+      "gt_cam_head.png": "2da7768a089ffa6aec07c2eb777abba93bbb34f3713d762e44f18440b50aa176",
+      "gt_cam_left_wrist.png": "170b0afd678fc37c0af45cfab63f467f95e7989b95d98d609eb76778f7651659",
+      "gt_cam_right_wrist.png": "30fd2c109b9c071c061bf5192c0a8105dd5403002269793b1b4c420e62179a84"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifysg_numoff_100009",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "92847347b5d8205e77813f76c9a903d461097d06fa23dc5cec33d369f62d82f4",
+      "gt_cam_head.png": "3b90428659ca237ff2f97492684ef7adf7d5df4448aad1e7d563452f5956e08b",
+      "gt_cam_left_wrist.png": "0941a9ca05be7495fd392d13315809f8239665c416a34b85a980fc3c49030c7b",
+      "gt_cam_right_wrist.png": "5e6fc5276e44fc8cda2342b194734803481690c05b4a7144fd9c2fbff970b4ec"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100005",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "60397a1434799c8fa6882c19b713df9fe0e00ac6793d96b5ce05b48fd78d4a0b",
+      "gt_cam_head.png": "d5d1cd9c6fe77576b3416dac76650212065a8bd5528273305529da6b788da23a",
+      "gt_cam_left_wrist.png": "90eb1e297dd82af62b0dfcd354b857dcd02efcfaef65e0e860e985696b78a588",
+      "gt_cam_right_wrist.png": "46514e856bbe562a58e6a6fa93e26620cf204614b2e65e00a48fc18566d39cc2"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100006",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "a2dfc095f5b03f7e96c502d62ba9b71432aacbca7de3cf557085915296e9b624",
+      "gt_cam_head.png": "55c53620bc489d9d275c430c8dd41c50532a849ad93d46fe0d2d7b7cad9bc0f1",
+      "gt_cam_left_wrist.png": "26e05e07e64265fd27a621aa2e883ca654f6fe2554c9256dc1273a91033b4ce6",
+      "gt_cam_right_wrist.png": "d7fa09c98b916397a482ad9659e242752f833d64c2e0d4d03f3ee167ad799bfa"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100007",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "bbeefb93a1b503758eea5eb83f7379840de7781eff2454a87598975f25e30ef6",
+      "gt_cam_head.png": "07685d7ac2eaef3013ef6f92e82e5dea55f86bf7791365aa6c9289b81b59a5f4",
+      "gt_cam_left_wrist.png": "bf9a190cbf9dfe4039c3ddbfaf2bc4af4f2233b34e973860b0602c845371f584",
+      "gt_cam_right_wrist.png": "0ae529440310a629f525a758e676077de36c984ab6e1d9cdd07c88ef288609ea"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100008",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "24454058eb1bdc48cc9b1d578d08b1360cb2aaa4c85c034eaeb8aa810f896c34",
+      "gt_cam_head.png": "3a87b93e5dfdbea3d29b48c00e5a4bca7b39b4b1a084ce2da1b67607a67daccf",
+      "gt_cam_left_wrist.png": "e3ba97f455a65df50de37aab79f9ce78f47415ebe06953650ca758aa2ace001f",
+      "gt_cam_right_wrist.png": "7ff930f6cbbfce28ce5105e49bd4b0e7cc4aa20de94a5ebe381b9ee9ca2b5be9"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_classifylangsg_numoff_100009",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "2fd2009f6f668fa0c273fe28f9d444e5bcd099ce994895768fa16386abb11bb9",
+      "gt_cam_head.png": "5bbe10895a02ead5c40d99015d4ec01c8ebd99c7e77315066e18c64fb413fc7e",
+      "gt_cam_left_wrist.png": "600c39a30d596e4fddead5de83971f5acab8ad5c8e9e12e08a685f6584bf88ec",
+      "gt_cam_right_wrist.png": "db2a2d5e715b4f9b8cc231ed957044b7cccf055eab9cd52508c3a9df8719671d"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100000",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "d168766d3e64215b5f0030e5d219a16bfe3924b53ea81c29e98cdf00963b59ca",
+      "gt_cam_head.png": "374866edf8c6eb680db6ac27a8ce039988afc0e5df27d370bfa2cfec91328907",
+      "gt_cam_left_wrist.png": "4c723d32aab54103b45692eabfcc7fdd5b00bcc3196f52d3c4de9b7be43f4acf",
+      "gt_cam_right_wrist.png": "4a9c17b3eb67735a96cc25153bcde433e47a3b7386946db43649ef284668d7f4"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100000",
+    "frame": "look",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "d168766d3e64215b5f0030e5d219a16bfe3924b53ea81c29e98cdf00963b59ca",
+      "gt_cam_head.png": "2425bfcc4c248e50d4f67784b771a649eba8b84eeba7bc02a783b13aef104664",
+      "gt_cam_left_wrist.png": "5658837589e8bc39db2391e531a616de4039a96fe1a56c8d17db82dd28fa17ca",
+      "gt_cam_right_wrist.png": "5872e7efeb6f16306d9cfcf7c66d40260e9889a83007715085df2580b6cc20d1"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100001",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "afdc63575056d9ed835d5ba2db0d313f5503836eaf97c86a5ec98d9fc1ead7b5",
+      "gt_cam_head.png": "ac60d7e6126963608377eb1e8113b3476694b44ec88c970e24f22790420c2a9c",
+      "gt_cam_left_wrist.png": "1f55740f4cc4d03918d6ddbf7e420b1936450ce31218067e5045b012e28ae1f4",
+      "gt_cam_right_wrist.png": "ea0ec4f665d0b5c622a96d15926a48ef4a4bac37452d16f58d22d10022928bb1"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100001",
+    "frame": "look",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "afdc63575056d9ed835d5ba2db0d313f5503836eaf97c86a5ec98d9fc1ead7b5",
+      "gt_cam_head.png": "f2ce12fba00523fb4f6fe3e1b013744e6539ca9fd4e92d6e005ff99b6144d8de",
+      "gt_cam_left_wrist.png": "b7421d5435b9d7d6e1c527d4ebc5a8a21654b9dd941b2c0dc8a106fdaf3cadc4",
+      "gt_cam_right_wrist.png": "3eac0cd131d3c7cd9c53a36fc7576f8626ae60980a6dc7e3837e1d6c3eb956e4"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100002",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "3eb5d1a4bf0750fcc2eeb58bd6598b38bad86ceb356c6b5c318562a916fa7d3d",
+      "gt_cam_head.png": "e8f21d7ffb7a100a930513ef21af7f900e49680759e21a3d68231ea62bb24c1e",
+      "gt_cam_left_wrist.png": "e70d63929c35f358eb12d4565d5a5fbc1c93fbda8d1f92590f532d864fb201ab",
+      "gt_cam_right_wrist.png": "dd3228fe8f89fc45a0ed40f387dc2b4c3693aeb69d9a3ea62e72d876ecbab920"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100003",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "a5c434a4fc01ea81bea276b03f7dc7449735ba57c162bdfeb3e9e7475be706f9",
+      "gt_cam_head.png": "c2c16d8259991038b616da1e3d8e39e2b4c6520324d91c7722521953d55d8e2f",
+      "gt_cam_left_wrist.png": "fdb4b6cdca8b65840990f4f820e0cfe7389afa2981fb922bf97fcf3ad8036c48",
+      "gt_cam_right_wrist.png": "7edc8a37c46e03044217af1db99ef97218384e995398043dce039974af5c1b36"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_coin_off_100004",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "c2652d3d228f43741edf632995341d22b208f7d68dd06ffc79281b836485da93",
+      "gt_cam_head.png": "5d24b7784815ebe99f9da4a6445b3e14ee26e5136037d1e5a6eff87c4b66864d",
+      "gt_cam_left_wrist.png": "2cb14323377b785508905a23ee52d55ddd99a447175a7b0f61f57c81e5c6f947",
+      "gt_cam_right_wrist.png": "dd3228fe8f89fc45a0ed40f387dc2b4c3693aeb69d9a3ea62e72d876ecbab920"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100006",
+    "frame": "frame0",
+    "sha256": "3856bf4c1f6f2d11d249b105e4568929421ffd4072aa9ad16504b5e8918bd537",
+    "scoring_sha256": {
+      "gt.json": "7bff1b76508fcd165f8073990977779b5e145065ba1aeba1e114710aa03621e9",
+      "gt_cam_head.png": "0132fb0cac79883ed2ec3ad32c327a0473835020c0029812a4dbd92be3f11ba6",
+      "gt_cam_left_wrist.png": "3a1a6e64d1b6cc6c6def7e97e7f071272ab884671fa7a068219d383950987952",
+      "gt_cam_right_wrist.png": "07d3e3b61b6cc6e87f706c58d507656147a12b65ba0d59073921a2d3350ff9d0"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100008",
+    "frame": "frame0",
+    "sha256": "3856bf4c1f6f2d11d249b105e4568929421ffd4072aa9ad16504b5e8918bd537",
+    "scoring_sha256": {
+      "gt.json": "63b3e9b02c0871bac97a7deddb5d849c089e8dda6d6d4baf9f4811fe7bdf6251",
+      "gt_cam_head.png": "83538a47fc5800d4e27f5d8863802fb080f5ee40c81c0fa84421c6339bf3dc07",
+      "gt_cam_left_wrist.png": "3a1a6e64d1b6cc6c6def7e97e7f071272ab884671fa7a068219d383950987952",
+      "gt_cam_right_wrist.png": "5ffd7b29cc0d89babc9f0b3b4bfba94bea1dadf15447dde9df653d2fac57180e"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100009",
+    "frame": "frame0",
+    "sha256": "3856bf4c1f6f2d11d249b105e4568929421ffd4072aa9ad16504b5e8918bd537",
+    "scoring_sha256": {
+      "gt.json": "354cce25ea63f6d3d9ff4e7650918237f3aa843f2a37b2b45b1f093ed1317a87",
+      "gt_cam_head.png": "671138bece6e8122e02da3e66882ca12f4cf20b6cf4c87e77da4a6b673385b82",
+      "gt_cam_left_wrist.png": "915f6c654be21f2dcdf801c895d525b785fd8a3540aeca28c7c2de439db7da43",
+      "gt_cam_right_wrist.png": "dd3228fe8f89fc45a0ed40f387dc2b4c3693aeb69d9a3ea62e72d876ecbab920"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_filleggsg_rb_100023",
+    "frame": "frame0",
+    "sha256": "9c881f662632a0f49a7354e593933f65e8870e39b0bb029f4a53395d6f4c7492",
+    "scoring_sha256": {
+      "gt.json": "711a6a365271a31fb911324b60d8b09d10ad4bf7695a48cc98b5600b2ab0286f",
+      "gt_cam_head.png": "25d70172bbe11d3e8f05a4b9b39052a3dd3eacac753b327ba0643c8c70be1ed8",
+      "gt_cam_left_wrist.png": "3a1a6e64d1b6cc6c6def7e97e7f071272ab884671fa7a068219d383950987952",
+      "gt_cam_right_wrist.png": "cb83d235fd4076d82f5832bb17934987c9b2e2424a34adf5e156d0e3a8cc7f39"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fillpensg_fpliftA_v15_100005",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "77963c65e99f2dcccbec1beae8a82292aed46c718fa526164c819515b1d527b8",
+      "gt_cam_head.png": "8d83fd9292568217488fb6fa3782b2e891ee8ebee8bc3955de64b3f377373ff2",
+      "gt_cam_left_wrist.png": "21238b172f3a30970ff521566541950d7d7a32b8a0d25ada7f10f4521b5e03b2",
+      "gt_cam_right_wrist.png": "dd3228fe8f89fc45a0ed40f387dc2b4c3693aeb69d9a3ea62e72d876ecbab920"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100021",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "f271d2e3fb6a4ef2cba2ca835ba716aba7282f1101c138eecb2e5790dc067d0c",
+      "gt_cam_head.png": "ece0b63f66d7c2692c4c7444d4d1b33d60f2eb51980ac1f1cbc4a2312dc2290e",
+      "gt_cam_left_wrist.png": "0e2db61573deec4c00eef6d614c8911cd87b66b645ddfb54db2b0666b9bc0ff8",
+      "gt_cam_right_wrist.png": "98b58f3d4e72a53d5ce9edf900980f3608e670ed7f07fb594c3795693b426a04"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100021",
+    "frame": "look",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "f271d2e3fb6a4ef2cba2ca835ba716aba7282f1101c138eecb2e5790dc067d0c",
+      "gt_cam_head.png": "0fe81dbc256e49e342ef00bbdbaef3f7dc45754a14228171aa62e6c8f813a77a",
+      "gt_cam_left_wrist.png": "80219992edf957c11009ceb8b78804add033e5e6b7f77e1a1a55e91ced7d5950",
+      "gt_cam_right_wrist.png": "96112705e7a07fccc325cec40c7c94c33535ae32fc74c6c20f40b047e30b41c2"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100022",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "918a8bbb01c015f153cc87bc98347119406132927bb6f6e36a9721d1e6ef4c27",
+      "gt_cam_head.png": "f48749144090d68c6d66ec67a7789e42bf74b146d88fe56a957a52121107cf67",
+      "gt_cam_left_wrist.png": "c5a62c37dc7918bf5ce4f3995df0093e0d5165f9656dc70892919870018f6737",
+      "gt_cam_right_wrist.png": "f7012e1ea63a4fbc1cd7d551113b03fbe9c1d07224e57f83ee38cdb075e93801"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100022",
+    "frame": "look",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "918a8bbb01c015f153cc87bc98347119406132927bb6f6e36a9721d1e6ef4c27",
+      "gt_cam_head.png": "09e2a44f136dc20ee6fd34d4ef3bc646b6a2705a9018d61caefad4fdd8efdbd4",
+      "gt_cam_left_wrist.png": "615d2955e282936560355674a34a48d09dd139fd83d54462691de0511ffd3f68",
+      "gt_cam_right_wrist.png": "80aa89050ea33daf7755911c497dace4c7df0c586aadffcdf57863838a0cb131"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100023",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "11b6d6ddc35409dea6b25a5deab9302e26f7ddf61cd2fafb680b7160cb3ce9be",
+      "gt_cam_head.png": "346062d27592beecef6eb88d2f227ad5b832a0783d3ac85d9751b60943fd3fed",
+      "gt_cam_left_wrist.png": "f9e0e798276b6b4918a6ae6c56d74ccb9d74b9a31d0111f60b2000464ace3cdb",
+      "gt_cam_right_wrist.png": "9ee2b6ce979f866b44f62c42ad73a40d96f1b3d9466d7eb45323e28f34bd8345"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_fill_pen_holder_penAr1_penoriginal_100024",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "8126ee680f52e3c8cf316b54947ed7b68e3c087eaaab7463614e0c7f8c0771dc",
+      "gt_cam_head.png": "b4b94909aad199e20b94410818d506c5ac427f227ec549310fdccac9850f74a5",
+      "gt_cam_left_wrist.png": "5545cee4350772cdd6e883dec38e9f907efcf608184804afb202b24cff726d77",
+      "gt_cam_right_wrist.png": "656ef9298cb543538c04ec4ee5ba7e7993e4b29e528fe64d9781501ffaad1d09"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_r2_100000",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "30c9388e7ffc611003ad17a7edef51b8fe79f421b0ad246be01b56c60d0008c5",
+      "gt_cam_head.png": "e5e731aa35a5d531f2d4567ac77b3a6bdc5a559c20f007ce7816970143f26f3e",
+      "gt_cam_left_wrist.png": "96436f34f2d07b757edf1f53ae262ad8fcc8dc9247c13fb9a4d34537afb9a0f4",
+      "gt_cam_right_wrist.png": "6917664de2058394e7faa876c12e74809ac1ea2f1643b9cb967817878bfca514"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_home_100001",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "50284a0d4ddaeaaaa75ada194a6a485fde751c68bd3e978b8f0c358349e9fbce",
+      "gt_cam_head.png": "5637f367d5daea1cf837acb6438a3fe69c5696bb63f81c2e07a9124d733cb63c",
+      "gt_cam_left_wrist.png": "ac031ffd562d0d723231c51d5f984a98022bf2122d64a05ddf72eda9724dbe73",
+      "gt_cam_right_wrist.png": "db310609afdd81e75f2d0db2d067fdab6ed8fcd92d26637bcefa37ae1e5d8c16"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_dev_home_100002",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "da55152efc46c035b6ec11405cb4a90c5185c20a32a4eca2df96f73dc33958d5",
+      "gt_cam_head.png": "0d4a2fb9518d4e9733b2ba5cfad0080905c66648a1e38499445b2fda53729237",
+      "gt_cam_left_wrist.png": "5b5ea14af3598f359f0b40da70a43c017c09f63bf7a4f28745acf28c0badc668",
+      "gt_cam_right_wrist.png": "2bdfdad48c0d2ab84d6f0ab91b064097e68961db0a7c90343d0bac80ac5b5d89"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_bundleoff_100006",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "56333b120e78edfed8552b1addf9727497328f1069a563ce9b9659445cc88119",
+      "gt_cam_head.png": "f293f4633bfab0607709693c5b8cc9db2083f4e4c1161e29eb5b9761f64df7e9",
+      "gt_cam_left_wrist.png": "fd1f8e3bba33f9d7f8aaad1ccf53cdbcc723357f06d92e017dd4853205ab2471",
+      "gt_cam_right_wrist.png": "4a95655dfd8b36abc61622ac7ff02a9a90c4548c8a9350280138ed9d91679de2"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_imitatesg_bundleoff_100007",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "a7a78c9ed8c3120a404a2165ecd496dadb429354b6a8e769e1b3c446cba37e0a",
+      "gt_cam_head.png": "5d648536a947c8bb325762acb3f58515973104092ba4db66792fea3c7c942d0e",
+      "gt_cam_left_wrist.png": "c6507728f3b84eae6a4e1f65df04399ebba8b6e18b5acacac214a20b8dd4cdf2",
+      "gt_cam_right_wrist.png": "a9e9004b3d1a2d3857ce8c222ca906832ec8007d92649c02abb745b238ea8d0c"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fm_100000",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "778975d2e48a2b2200fe58175694c328e7bc5d9ec59721d7a6b894b8e521a2f7",
+      "gt_cam_head.png": "6e9732d7fcfbe0d9c819d85f5025aa5556ecbc0768257e9df38090183363b69f",
+      "gt_cam_left_wrist.png": "af29e09405bc5d05063412cb2f16b7669bf25dff85dc98932e0cf95583831ad4",
+      "gt_cam_right_wrist.png": "9124a26b1741dda73fa8e8f0d1e2c501dee6044743b9268da1a71f2e525a240f"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fm_100000",
+    "frame": "look",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "778975d2e48a2b2200fe58175694c328e7bc5d9ec59721d7a6b894b8e521a2f7",
+      "gt_cam_head.png": "076eff90eff7309f967c72398e4fad942e5c6d35a6b763ee0cc061fabeb091fa",
+      "gt_cam_left_wrist.png": "2979076e330301921838a59092a258a61746e77e29b7f0deef4b85e0546c46a5",
+      "gt_cam_right_wrist.png": "fc30455ac9a960f812af2d897d73cfa800b691b321a2429cd90a21c6fd196cad"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fmoff_100001",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "ec643cc8ce93e53c0a6a584adc2bcfcb98e174706618d02471e1d41d709fd2b5",
+      "gt_cam_head.png": "9b1880f298c7cce9a65809b3682e33e466c806be1d99b36ce45980c33bd51143",
+      "gt_cam_left_wrist.png": "14473b690e08e6fc9cd654b8d10e944024c200056ecdf81ce3c79aa199d7d35e",
+      "gt_cam_right_wrist.png": "b8529a1a0f482af00e73bdee5396ebcf950b7b2d604ff0208386f02c3b15065e"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_fmoff_100001",
+    "frame": "look",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "ec643cc8ce93e53c0a6a584adc2bcfcb98e174706618d02471e1d41d709fd2b5",
+      "gt_cam_head.png": "3c99e68ec0ee5edbf8e12681d043a3cf22b8d05d4b9fe100f01768b459ec92af",
+      "gt_cam_left_wrist.png": "ceaac2dcf70bc0ce71ec9c92ad1572a57156d52f2e096098f06a902420b91bca",
+      "gt_cam_right_wrist.png": "339ccfbb43b093d9794a1871215e7b5374a7622625435a805b23092281a05c3e"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100002",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "f00c02c93c5c95330b24d4999392e8f7b428ac067da877216fca7e0c77e1a1d9",
+      "gt_cam_head.png": "786c13e0985ed075e0c58d41124f45f598cf24b219b50010cbefb3924ecb362a",
+      "gt_cam_left_wrist.png": "f87bdce04b79c7dd7007f777c26c35e76867aaed98657421c1e40d92ce99bde6",
+      "gt_cam_right_wrist.png": "6690365523eedba79fdbb4a19bfa3a798e48d9810ad6d345aaa7e2b78e505130"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100003",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "3b7fad6b88508961158253ed8c67fefa7f7c36bda51cd6f4abfb8ccd7779316c",
+      "gt_cam_head.png": "7ef6eda51bf98c402aa14889487e9f7fa9a95a4f9c3cb36e4bf9695b55ef30f6",
+      "gt_cam_left_wrist.png": "d584299d868a8c62034aefa9b06b16683b957798388095b920c265bcb8c81e00",
+      "gt_cam_right_wrist.png": "d97a5216e3793ca46dc306738b2f3b0091069abf481d1fc54f987929ab3c090e"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_organize_gcoff_100004",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "136c9ff3f38daa52e13198c769d8a6ae64dc09a1aa7e46f6541711b5ed4d2efa",
+      "gt_cam_head.png": "69cd18a2657d00e9ae433bbbb0b6d8d677a095244ff062e5760b3e3727421a92",
+      "gt_cam_left_wrist.png": "c312104e9e6184a1d65c5b5d74073e03eef6bff5fba727fa43433e49b68e4467",
+      "gt_cam_right_wrist.png": "3092a6542bb16f0cf9a70d076375cef3b06712e198c6934479a2e311f1331729"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100005",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "0608f371e1ca33c96351fffb5473559139ffe4ee8807f84417c2f0c7fd4d209f",
+      "gt_cam_head.png": "ebab6ee72686513a575df2cf028ec3a8e3ae5360f5c8688022a439ee05841100",
+      "gt_cam_left_wrist.png": "c545fd0a5b44e418216c72a2c993d242e6dff65a3033640d54a6584c65244515",
+      "gt_cam_right_wrist.png": "4f29db65b0e880bf263f4409632b0cc7c36cf238df207cb5ae46ee67581674b2"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100006",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "8cf25e1e4cfd40dbf89f55635d5427d66f39b09da0f3a97acd0e93931ec03f94",
+      "gt_cam_head.png": "4f5ba55b9ce7b1408fe92340a6e88550dc637479daa91d6316dfc52ee68ff792",
+      "gt_cam_left_wrist.png": "07600003871e15cd90d15a89801e6d9e2ce51fcbe2e3053255e955883bc69a1c",
+      "gt_cam_right_wrist.png": "4cee5dfcf90a8783a68acfe6af196abafcea4de0060eb8da55108ba615c8e695"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100007",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "a447b32ccf83e3a12eca8d6ece0ca2b8aa03e10b0e4524b7490b1fe716e62d2c",
+      "gt_cam_head.png": "374af662f6cf326d69d7024966690f495489c67dff42dbfc04b8ba54819903be",
+      "gt_cam_left_wrist.png": "766227b2d3496c3eb6fd1d0163c41c28c9ed8fea5a6289b7017fd8d2f8d735e2",
+      "gt_cam_right_wrist.png": "5b28cf0e5f7e21c2e7aea0bf30f220faa1c1ea5a7e5307e284169d88e63573f7"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100008",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "d3a49412860bcf1ee293f5c8e5840f049592a8b335ff27f800c919df068b8baf",
+      "gt_cam_head.png": "01bec5b48057c5b9211d51c8fd0be1dcddbab27953dc70ce98c248a12b3f6292",
+      "gt_cam_left_wrist.png": "9389cec2a8b059de653db313470fc8c4cb8e559dec3996a060e9897703fbeded",
+      "gt_cam_right_wrist.png": "1d1237a72b02bda348c873d881e7f3e904673a70e0a19e840cf31c261715c2c5"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_pourlangsg_ovloff_100009",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "97c303e8f49baa384faad36ef056d6a314b2e5a3256c01e6a00ee6fc45709d9e",
+      "gt_cam_head.png": "c1f396c8d9fd2433f09f203ca0878491210e8b5a95e02357004a5c838ab6ec1e",
+      "gt_cam_left_wrist.png": "7a6c603d6c24e0039cdc3e4f932004d10df0b9e19b62a31ec82bc8395d992a23",
+      "gt_cam_right_wrist.png": "71a57f67d14eabe8bbd34b67b5d36637e913b81b45fbbb58a83141da52dc0748"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100000",
+    "frame": "frame0",
+    "sha256": "ddc2a488d33172efb0f656f12f21c0b28f8e724a23f4be930434f5614040dbe6",
+    "scoring_sha256": {
+      "gt.json": "77286b55e9a742cc8dfe63a6ab098d547eee3ef4c7413e4f53056384684baf18",
+      "gt_cam_head.png": "5315c23a6abe9505495a1152d85228c76cbf5271b2ec9b6fdf54bfb07d7bd51a",
+      "gt_cam_left_wrist.png": "ee2acc894234065cc215eaa0f2f85e0df67737ac46b8e20d4c5598a21f3b6fc3",
+      "gt_cam_right_wrist.png": "f7df2fcc0042adb674ea5ba9eb65b4beed517c01596ba00d2cdf169258b51776"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100001",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "374df5bd6bd99ea681f16f8f8290c23a82aeb0ac02270f3be85b1ee3d2708830",
+      "gt_cam_head.png": "1ec9c9a48045684df1f0d812c727959b7c1d96e98c7687ce8f196a1877c3403d",
+      "gt_cam_left_wrist.png": "9e97a7bc507f4cab3d50c068c7158be3345a6a10ba20bf4c9805bbd0bc3c1874",
+      "gt_cam_right_wrist.png": "f585143eaf91b5553056263d4cafcd7e1d173ca980edb2ea2996a22537c25eed"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100002",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "826be5ec5a5559420b64b75838617734b58b71953c35e7aafa192a22e94e9f20",
+      "gt_cam_head.png": "81c3e34d53177dfe6bc909b89bd3063b608814c5b092c2267048cb5a3032335e",
+      "gt_cam_left_wrist.png": "3a1a6e64d1b6cc6c6def7e97e7f071272ab884671fa7a068219d383950987952",
+      "gt_cam_right_wrist.png": "948a738b9a092328b970d291ddb23e96e64232e09612fb978bb95aac2342e054"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100003",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "335f79b8c9a70f230c25e65808cd7f61bead519f710bba47901d5891040ea41a",
+      "gt_cam_head.png": "11b29b6820edfec95968fc5abbb3d13823095e1da51ab39b1714f32c6fa8dc5d",
+      "gt_cam_left_wrist.png": "2d1e13557c297df773882debc5f6cf773cf2da8f75c5b09be24fafb23e024478",
+      "gt_cam_right_wrist.png": "9dfd5e0be52f739fa82f75429a2aba9371c40ec2ee50b96f2d2aba535fbb5576"
+    }
+  },
+  {
+    "run": "/home/haptics/dojo-data/integ-c4/runs2/c4b_bottles_gcoff_100004",
+    "frame": "frame0",
+    "sha256": "6cecc2fff0aa6024cb654c4902a91b14368c1527e6898016b6068d739841182a",
+    "scoring_sha256": {
+      "gt.json": "cebe5a3942fa69bf381870a167db6dd7dcada78db6bf0f8dd8bfca913e022172",
+      "gt_cam_head.png": "19f595466b0e8f9fb666af4c977e842546754f98add55fab85beac5bdd55e2e0",
+      "gt_cam_left_wrist.png": "31dcd668b8e7c121eaedd42878caf1f079978cb273fe02c5a3a7e7e0087ffdd0",
+      "gt_cam_right_wrist.png": "a6097ed428437de153b14fe723fbf30cc9b95673b8e9c4610da079377af794fe"
+    }
+  }
+]

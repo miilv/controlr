@@ -1,0 +1,67 @@
+{
+ "selected": {
+  "deposit_coin": [
+   100000,
+   100001,
+   100002,
+   100003,
+   100004,
+   100005,
+   100006,
+   100007,
+   100008,
+   100009,
+   100020,
+   100021,
+   100022,
+   100023,
+   100024,
+   100025,
+   100026,
+   100027,
+   100028,
+   100029
+  ],
+  "stack_blocks": [
+   100000,
+   100001,
+   100002,
+   100003,
+   100004
+  ],
+  "insert_key": [
+   100001,
+   100002,
+   100004,
+   100007,
+   100008
+  ],
+  "play_tic_tac_toe": [
+   100000,
+   100001,
+   100002,
+   100003,
+   100004
+  ]
+ },
+ "dropped": {
+  "deposit_coin": {},
+  "stack_blocks": {},
+  "insert_key": {
+   "100000": "dropped: settled record not stable",
+   "100003": "dropped: settled record not stable",
+   "100005": "dropped: settled record not stable",
+   "100006": "dropped: settled record not stable",
+   "100009": "dropped: settled record not stable",
+   "100020": "dropped: settled record not stable",
+   "100021": "dropped: settled record not stable",
+   "100022": "dropped: settled record not stable",
+   "100023": "dropped: settled record not stable",
+   "100024": "dropped: settled record not stable",
+   "100025": "dropped: settled record not stable",
+   "100026": "dropped: settled record not stable",
+   "100027": "dropped: settled record not stable"
+  },
+  "play_tic_tac_toe": {}
+ }
+}

@@ -219,3 +219,134 @@ supplementary. Cup is gated by its post-collection parity proof, Xylophone by
 the ordinary camera rule, language by both registered gain screens. No verdict,
 adoption, candidate or default change is made by dispatch. The original POUR
 verdict remains **NOT ADOPTED**.
+
+## Registered performance verdict — PASS / NOT ADOPTED
+
+The complete fresh panel passes the **registered performance gates**. This is
+not general-system adoption clearance. The hard rule introduced during collection
+is reviewed separately below; no candidate, policy, default or routing changed.
+All 80 rows completed rc 0, last valid arm **2026-11-07T19:28:48Z**. The frozen
+manifest and input SHA256s match; exactly 80 unique starts, no retries/exclusions
+and no wall caps. Original POUR remains **FAIL / NOT ADOPTED**; no panels are pooled.
+
+| cell | pairs | A pooled | B pooled | Δ | success flips (B / A) | score wins / losses (≥10 pts) | successes A / B |
+|---|---|---|---|---|---|---|---|
+| pour_by_language (gain) | 20 | 0.0 | 35.0 | +35.0 | 6 / 0 | 11 / 0 | 0 / 6 |
+| pour_liquid_into_cup (parity; score descriptive) | 10 | 10.0 | 30.0 | +20.0 | 3 / 1 | 3 / 1 | 1 / 3 |
+| play_Xylophone (strong guard) | 10 | 90.0 | 100.0 | +10.0 | 1 / 0 | 1 / 0 | 9 / 10 |
+| language, full-success-only | 20 | 0.0 | 30.0 | +30.0 | 6 / 0 | 6 / 0 | 0 / 6 |
+
+**Language:** official +35>=5, 11 wins>=2×0 losses,net 11>=2; strict full-success-only
++30>=5, 6 wins>=2×0,net 6>=2. Both screens pass. B has six 100-point successes,
+five 20-point partials and nine zeros; partials are not called full successes.
+
+**Cup parity PASSES**, without a camera-score gate: all 20 loaded configurations
+resolve pace v1, each pair's complete RuntimeConfig is identical, and both arms
+resolve the same pour_bottle/spout_back 0.010 parameters with pair_moves disabled.
+Zero budget-pour actions and zero lever-specific writes are established by this
+unreachable budget branch in every loaded v1 configuration and corroborated by
+all traces: 16 completed legacy pour_bottle calls, zero lean/budget calls or
+budget-call log mentions. Four interrupted calls lack a completed ported event;
+absence alone is not the proof—the loaded config plus frozen resolver/adapter
+excludes budget execution there too. Ordinary perception/predicted writes differ
+and are reported, not recast as lever-specific writes. Cup score 10→30, 3/1 wins/
+losses is descriptive only and is not evidence of a cup treatment effect.
+
+**Strong Xylophone PASSES** the ordinary camera rule: mean +10>=−5, success-flip
+losses 0<=1 win. Its full-score and score win counts are descriptive; no extra
+strong-guard gate is added.
+
+### Spread, paired bootstrap and spend
+
+Mean±sample SD A/B: language 0±0 /35±44.43; language full-success-only
+0±0 /30±47.02; cup 10±31.62 /30±48.30; Xylophone 90±31.62 /100±0.
+Paired-layout percentile bootstrap 95% CIs for B−A, 10,000 resamples,RNG seed 0:
+language **[17,54]** points; full-success-only **[10,50]**; cup **[−20,60]**;
+Xylophone **[0,30]**. Intervals are descriptive, not additional gates.
+The evidence snapshot retains all paired ids/deltas and sample spread.
+
+**Actual routes:** 80/80 call logs and transcript starts name
+claude/claude-sonnet-5-5, at least two logical calls per row. Report aggregates
+cross-check call records without double counting; static deployment labels are
+not evidence. Spend: **441 logical Claude calls; 6,237,897 prompt / 396,222 completion / 223,445 reasoning / 5,095,108 cache-read tokens**.
+By cell: 246 language, 128 cup, 67 Xylophone calls. Reasoning/cache-read are subsets,
+not extra tokens. All 48 no-JSON error entries remain included; recovered HTTP
+retries/usage are unobservable. Monetary billing is not logged.
+Analysis/physics audit makes zero additional controller/perception API calls.
+
+### Motion-only scope proof and supplementary audit
+
+**Write adoption gate: N/A, by the registered proof.** All 233 frozen source/
+settings/dependency hash checks remain unchanged. Each row's complete config
+matches the frozen expected RuntimeConfig; the only treatment setting on gain
+is motion pace. Writer implementation/settings/acceptance/schema are common,
+and the per-row inventory contains only existing perception/predicted paths.
+Observed downstream count/output differences do not trigger a gate.
+
+| cell | ordinary writes A / B | inventory |
+|---|---|---|
+| language | 45 /41 | perception 43/34; predicted 2/7 |
+| cup parity | 8 /8 | predicted 8/7; perception 0/1 |
+| Xylophone | 4 /3 | perception |
+
+The unchanged #417 identity-instrument audit is **supplementary only, not a
+gate**. It is replaying 109 logged writes across 58 write-bearing episodes
+(25,099 identical physics actions through each final write). The other 22
+episodes log zero writes. Its raw counts, z, exact-frame coverage, fallback
+identity and live-close fidelity diagnostics will be appended below when it
+finishes; they cannot change this registered performance decision. Known
+initial-tight/ported-grasp anchoring limitations remain disclosed; no
+harmlessness certificate is inferred from exact frames.
+
+### B versus the RSI reachability bar
+
+| system / comparison | official score | n | full successes |
+|---|---:|---:|---:|
+| POUR re-test B, camera | **35.0** |20|6/20|
+| RSI fixed-program yardstick on our dev layouts | **100.0** |5|5/5|
+
+B is **65 points below** the RSI bar. Source:
+[data/rsi-yardstick/per_cell.json](data/rsi-yardstick/per_cell.json),
+with [frozen reference](data/pour-camera-retest/rsi-reference.json).
+This is unpaired: there are zero identical input hashes between these draws.
+The differing fixed-program/perception system and sample sizes make this a
+reachability reference, not a matched camera comparison. RSI's task-keyed policy
+is not an adoptable board entry under the hard rule.
+
+### General-system HARD RULE: no adoption as tested
+
+[General-system rule](../journal/2026-11-07-general-system-rule.md).
+
+The speed/drain/lift/untilt/overlap knobs behind **ported_pour_pace=budget are
+general in nature** and are candidates for a general pour-skill parameter.
+The exact tested package is not yet an adoption-ready general-system integration.
+
+**The dispatch it rides on is effectively task-keyed.** It does not literally
+look up a task_id in pour_order.route; nevertheless, the opt-in route matches
+exactly three colour bottle-to-bowl clauses from the benchmark template and
+dispatches a hidden route-only skill ([frozen route](https://github.com/miilv/controlr/blob/066e9c8f34c727d9bbfdfa1c219e7c6a78366a45/dojo/skills/pour_order.py), [frozen registry](https://github.com/miilv/controlr/blob/066e9c8f34c727d9bbfdfa1c219e7c6a78366a45/dojo/skills/library.py)). The deterministic RuleSupervisor and
+task-named perception vocabulary/catalogue selection do not satisfy the required
+model-planner choice of a shared general skill. Instruction-regex task recognition
+does not make that one general system.
+
+Adoption therefore needs, before any candidate flag is changed:
+1. Expose geometry-grounded general pour(source,target,amount/stop condition,pace)
+   and arbitrary ordered composition in the **shared skill library**, chosen by
+   the one model planner from instruction plus observations. Retire the
+   exactly-three template route and task-named perception selection.
+2. Use the same shared catalogue, perception, prompts and inference procedure
+   across tasks. Encode pacing/overlap in physical skill parameters, not a
+   task-keyed policy switch. Review last-pour reserve/home handling: its current
+   comments rely on the checker completing at an upright edge. General completion
+   and safe return budgets must use physical postconditions, not checker/config
+   values or evaluator termination as a failure oracle.
+3. Validate that integrated general path on fresh layouts and varied single/
+   multi-pour instructions, source/target geometries and retained guards. This
+   legacy routed panel alone does not certify transfer to that system.
+
+No implementation or new evaluation is dispatched here. No candidate fields are
+changed, and no adoption is made.
+
+Evidence: [verdict](data/pour-camera-retest/camera-verdict.json),
+[post-collection scope/parity proof](data/pour-camera-retest/scope-postcollection.json),
+[actual route ledger](data/pour-camera-retest/route-checks.json).

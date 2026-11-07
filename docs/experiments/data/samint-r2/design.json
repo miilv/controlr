@@ -1,0 +1,126 @@
+{
+  "status": "FROZEN_BEFORE_INFERENCE",
+  "component_commit": "68cc25e817f84c948cd460d3f7dd898083c0eac8",
+  "prompts": {
+    "generic": [
+      "object",
+      "container",
+      "tool"
+    ],
+    "max_phrase_words": 6
+  },
+  "filters": {
+    "ray_gap_m": 0.04,
+    "reprojection_coverage": 0.25,
+    "min_baseline_m": 0.05,
+    "min_ray_sine": 0.05,
+    "support_tolerance_m": 0.025,
+    "table_z_m": 0.765,
+    "support_xy_overlap": 0.1,
+    "size_min_factor": 0.5,
+    "size_max_factor": 2.0,
+    "agreement_iou": 0.1,
+    "minimum_score": 0.5,
+    "mask_samples": 128
+  },
+  "filter_bit_order": [
+    "multiview",
+    "support",
+    "size",
+    "agreement",
+    "score"
+  ],
+  "combinations": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31
+  ],
+  "images": 180,
+  "recordings": 60,
+  "tasks_scoring_only": 11,
+  "frame_manifest_sha256": "c30959fa4ccae99e0dda1e2d6d7b3f0f13cb6b00bbfe9df33a78e2d278f98d5b",
+  "instructions_sha256": "f7c9171923a63b25123229f695a297da18b5568c9e819e99822c24bff9b05b12",
+  "catalogue_sha256": "0c49bf1d05d435f24c37ab3981fb1a7bb4de9dc663b785958768f937c2489cb1",
+  "geometry_manifest_sha256": "7f50f1edc2664687a3e5ae9018d8f8699fbed37c977c19437265f5f87e0375f2",
+  "sam_model": "sam3",
+  "sam_threshold": 0.2,
+  "v2b_confidence": 0.25,
+  "sam_self_dedup_iou": 0.5,
+  "union_dedup_iou": 0.5,
+  "unknown_geometry": "reject when geometry-dependent filter enabled",
+  "unknown_size_label": "use global envelope of every catalogue asset",
+  "pair_matching": "all mask pairs; no label/task/identity pruning",
+  "geometry_inputs": [
+    "RGB masks",
+    "camera K/T_world_cam",
+    "global table plane",
+    "all catalogue category/name/extents for size only"
+  ],
+  "forbidden_inputs": [
+    "task identity",
+    "task config",
+    "checker values",
+    "GT",
+    "depth not recorded",
+    "task-specific candidate pools",
+    "catalogue prompt sweep"
+  ],
+  "overall_gain_at_least": {
+    "micro": 0.05,
+    "macro": 0.05
+  },
+  "harm_gate": {
+    "any_task_camera_phase": true,
+    "recall_drop": 0.05,
+    "mean_IoU_drop": 0.02,
+    "phantoms_added_per_image": 0.5,
+    "phantoms_added_total": 2
+  },
+  "latency_s": {
+    "cam_head": 2.0,
+    "cam_left_wrist": 1.0,
+    "cam_right_wrist": 1.0
+  },
+  "latency_gate": "maximum observed charged frame time and maximum two-client full-prompt RPC time; startup/warmup separately reported; no percentile waiver",
+  "geometry_latency": "charge other two views base+SAM+self-dedup plus common geometry CPU and selected per-view filter CPU; no free peer results",
+  "scaling": "registered prefixes of 1,3,6,12,full prompts on maximum-count instruction; 3 single +2 simultaneous requests per camera/count",
+  "closest_ranking": [
+    "fewest failed gate families: gains/harms/latency/baseline reference",
+    "fewest harm groups",
+    "largest min(micro gain,macro gain)",
+    "lower worst latency/budget ratio",
+    "fewest filters",
+    "lowest bits"
+  ],
+  "camera_condition": "all offline gates and end-to-end task/checker-free path pass; new camera prereg and frozen manifest before locked append; STOP never removed",
+  "LLM_calls": 0
+}

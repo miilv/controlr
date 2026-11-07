@@ -410,3 +410,37 @@ Once-only fresh salted re-test; full 20 gain + 10 pairs per original guard.
   completion **276,236**, reasoning **149,318**, cache-read **4,854,578** tokens.
   Token usage is absent for 28 held-look calls, so token totals are lower bounds;
   reasoning/cache are subsets. Analysis/audit made no new LLM calls.
+
+## POUR camera re-test — registered gates PASS / NOT ADOPTED
+
+[Full verdict and general-system review](../experiments/2026-11-07-pour-camera-retest-prereg.md#registered-performance-verdict--pass--not-adopted).
+
+| cell | pairs | A pooled | B pooled | Δ | success flips (B / A) | score wins / losses (≥10 pts) | successes A / B |
+|---|---|---|---|---|---|---|---|
+| pour_by_language (gain) | 20 | 0.0 | 35.0 | +35.0 | 6 / 0 | 11 / 0 | 0 / 6 |
+| pour_liquid_into_cup (parity; score descriptive) | 10 | 10.0 | 30.0 | +20.0 | 3 / 1 | 3 / 1 | 1 / 3 |
+| play_Xylophone (strong guard) | 10 | 90.0 | 100.0 | +10.0 | 1 / 0 | 1 / 0 | 9 / 10 |
+| language, full-success-only | 20 | 0.0 | 30.0 | +30.0 | 6 / 0 | 6 / 0 | 0 / 6 |
+
+- Both language screens pass:+35 with11/0 score wins/losses; full-only+30,6/0.
+  Sample SD A/B:0/44.43; full0/47.02. Paired bootstrap95% CIs[17,54]/[10,50].
+- Cup **parity proof passes** on20 rows: identical full config/v1 skill parameters,
+  zero budget-pour actions and lever-specific writes. Its10→30 score is not gated.
+- Xylophone strong guard90→100 passes mean/flip bounds; cup/Xylophone CIs
+  [−20,60]/[0,30] (10,000 paired resamples,seed0).
+- Write gate **N/A by motion-only source/settings/inventory proof**. Ordinary
+  writer counts differ without creating a trigger. The #417 supplementary
+  identity audit is running109 writes/58 prefixes, never a gate.
+- All80 rc0; actual Sonnet call/transcript routes verified; no reruns/exclusions
+  or wall caps. Last valid arm 2026-11-07T19:28:48Z. Spend: **441 logical Claude calls; 6,237,897 prompt / 396,222 completion / 223,445 reasoning / 5,095,108 cache-read tokens**.
+  Reasoning/cache are subsets;48 no-JSON error entries retained; recovered HTTP
+  retries unobservable.
+- **B35(n20) versus RSI100(n5): −65 points**, unpaired reachability yardstick
+  with no common input hashes. RSI's task-keyed fixed programs are not board-legal.
+- Under the **general-system HARD RULE**, budget is a reusable physical pour
+  parameter candidate, but the tested exactly-three-clause/route-only dispatch
+  is task-specialized. It cannot be adopted as-is. It needs a model-planner-selected
+  general pour skill/arbitrary composition in one shared library/perception,
+  physical completion/return criteria and fresh integrated validation.
+
+Original POUR verdict unchanged. No candidate/default/routing change or adoption.

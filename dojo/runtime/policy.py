@@ -393,6 +393,19 @@ class RuntimeConfig:
     # ``library.arrange``'s place order (``Skills.arrange_order``): near (today: nearest the arms first) | big_first (the
     # largest object first, while the table is emptiest) | push_big_first (the pushes first, then big_first)
     arrange_order: str = "near"
+    # stream ORG2 (``dojo.skills.push_plan``; ``Skills`` mirrors, all default off): push_contact off | pair (open two-
+    # fingertip strokes along the support's axes); push_plan off | sequence (the whole stroke sequence planned for both
+    # axis orders); arrange_retry off | once (every failed arrange step once more after the others); ``push_goal`` also
+    # takes clear and ``arrange_order`` push_first (pushes first, then the places nearest first)
+    push_contact: str = "off"
+    push_plan: str = "off"
+    arrange_retry: str = "off"
+    # stream ORG2 (``dojo.skills.torso``): grasp_torso off | on; stand_offset off | base; retreat_axis off | on
+    grasp_torso: str = "off"
+    stand_offset: str = "off"
+    retreat_axis: str = "off"
+    place_via: str = "off"          # stream ORG2: off | clear (``torso.clear_vias``)
+    slip_avoid: str = "off"         # stream ORG2: off | on (``skills.slip_penalty``)
     # Additional face-contact approach tilts, with fingertip position preserved.
     push_approach: str = "off"
     arrange_hover: str = "off"
@@ -559,11 +572,11 @@ class RuntimeConfig:
     # taker inserts the coin with its planned in-hand pose) | on (the taker's insertion asks for the in-hand read at the
     # pre-insert hover; with held_pose "request" that is the only place that reads). 5.1 rb 100006: 11 mm off, jammed
     disc_handover_read: str = "off"
-    # deposit_coin's contact sequence (COIN2, ``dojo.skills.coin_contact``; G3 ``--skill-attr``), all "off" = today:
+    # the thin-object-in-holder contact sequence (COIN2, ``dojo.skills.coin_contact``; G3 ``--skill-attr``), all "off" = today:
     # disc_align "walls" (squeeze the holder's walls, read the strict-v2 official jaw value at three yaws, rewrite the
-    # coin + holder plane; needs the official key), disc_snap "on" (close on the walls, rise, the pads close onto the coin
+    # object + holder plane; needs the official key), disc_snap "on" (close on the walls, rise, the pads close onto the object
     # as the fingertips clear them), disc_lift "shallow" (4 mm per step lift, slow carry), disc_seat "table" (press the
-    # held coin onto the table, deeper into the pads), disc_release "staged" (in-hand read at the hover, release in
+    # held object onto the table, deeper into the pads), disc_release "staged" (in-hand read at the hover, release in
     # stages), disc_reserve "on" (a pick starts only with 80 / 150 steps left, same-arm / cross-arm)
     disc_align: str = "off"
     disc_snap: str = "off"
@@ -756,7 +769,12 @@ class RuntimePolicy:
                 or self.cfg.drop_verdict not in ("belief", "release")
                 or not set(self.cfg.put_into_opts or ()) <= {"spot", "patient", "sequence", "unblock", "gentle"}
                 or self.cfg.place_surface not in ("bbox", "mesh") or self.cfg.push_order not in ("greedy", "lookahead")
-                or self.cfg.push_goal not in ("centre", "cover", "cover_obb")
+                or self.cfg.push_goal not in ("centre", "cover", "cover_obb", "clear")
+                or self.cfg.push_contact not in ("off", "pair") or self.cfg.push_plan not in ("off", "sequence")
+                or self.cfg.arrange_retry not in ("off", "once")
+                or self.cfg.grasp_torso not in ("off", "on") or self.cfg.stand_offset not in ("off", "base")
+                or self.cfg.retreat_axis not in ("off", "on") or self.cfg.place_via not in ("off", "clear")
+                or self.cfg.slip_avoid not in ("off", "on")
                 or self.cfg.fill_guard not in ("off", "geometry")
                 or (self.cfg.fill_guard == "geometry" and any(getattr(self.cfg, k) != "off" for k in
                     ("fill_grasp", "fill_holder", "fill_drop", "fill_insert")))
@@ -783,7 +801,7 @@ class RuntimePolicy:
                 or self.cfg.arrange_route not in ("off", "lateral")
                 or self.cfg.arrange_hover not in ("off", "low")
                 or self.cfg.push_approach not in ("off", "tilted")
-                or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
+                or self.cfg.arrange_order not in ("near", "big_first", "push_big_first", "push_first") or self.cfg.push_stroke not in ("face", "press")
                 or self.cfg.headset_retry not in ("legacy", "sites")
                 or self.cfg.headset_lift not in ("legacy", "slow")
                 or self.cfg.headset_hold not in ("legacy", "loaded")
@@ -1155,6 +1173,14 @@ class RuntimePolicy:
             sk_.slot_place = cfg.slot_place
             sk_.slot_carry_read = cfg.slot_carry_read
             sk_.arrange_order = cfg.arrange_order
+            sk_.push_contact = cfg.push_contact
+            sk_.push_plan = cfg.push_plan
+            sk_.arrange_retry = cfg.arrange_retry
+            sk_.grasp_torso = cfg.grasp_torso
+            sk_.stand_offset = cfg.stand_offset
+            sk_.retreat_axis = cfg.retreat_axis
+            sk_.place_via = cfg.place_via
+            sk_.slip_avoid = cfg.slip_avoid
             sk_.push_approach = cfg.push_approach
             sk_.arrange_hover = cfg.arrange_hover
             sk_.arrange_route = cfg.arrange_route
