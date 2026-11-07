@@ -40,6 +40,13 @@
   "repeat": 1,
   "episode_cap_minutes": 25,
   "pair_order": "AB when selected id minus 100050 is even, BA when odd; task order gain, parity guard, strong guard",
-  "selection": "first n default two-pass stable records by ascending id; no selection on camera/demo outcome; invalid demos block launch",
-  "queue": "append-only tail after all existing rows under queue2.txt.lock"
+  "selection": "gain/stack: first n two-pass stable inputs ascending; imitate: first five ascending passing BOTH two-pass stability and unchanged standard demo validation, input validity only; retain all failures",
+  "queue": "append-only tail after all existing rows under queue2.txt.lock",
+  "demo_eligibility_amendment": {
+    "lead_authorized": true,
+    "speed": 1.25,
+    "first_failed_id": 100050,
+    "reason": "unstable; 3/5 supports placed after all four standard order tries",
+    "backlog_demo_failure_rate_threshold": 0.3
+  }
 }

@@ -150,7 +150,16 @@ deployment, lever and route stay fixed. **Nearest-GT results are supplementary**
 and must be reported alongside, never silently substituted for the registered
 primary identity instrument. If fallback applies, label the current nearest-GT
 instrument as primary and report its association diagnostics separately.
-No retroactive re-scoring of the previous verdict under this registration.
+The nearest-GT supplementary column is always retained; if fallback applies,
+it coincides with the fallback primary counts. A metadata-only recorder,
+started before queue insertion, reads only public PR merge metadata and lane
+start timestamps, never outcomes. It fixes the eligible merge SHA immediately
+when available (or the fallback at the first-start cutoff), records
+`compute6:~/dojo-data/kong-retest-1107/audit-instrument.json`, and amends the
+remote dispatch receipt with the applied instrument. The timestamp cutoff and
+selection rule above are immutable even if GitHub evidence is temporarily
+unavailable. No retroactive re-scoring of the previous verdict under this
+registration.
 
 ## Call estimate, queue and receipt
 
@@ -175,3 +184,102 @@ already be on main before any row is queued.
 
 **Dispatch receipt:** pending preparation; no re-test camera rows queued by
 this registration commit.
+
+## Lead-authorized demo-input amendment (before any row is queued)
+
+The lead prospectively amended input eligibility after fresh imitation id
+**100050** failed normal demo validation at speed 1.25 after all four standard
+order tries: **unstable, only 3/5 support objects placed**. This is input
+preparation evidence, not a camera outcome. No re-test row has been queued.
+
+For the imitation parity guard (and any cell requiring a demo), select the
+**first five ascending fresh ids that pass BOTH default two-pass presettle /
+applicable raw-check AND the standard demo validation**, using input validity
+only, never a camera/policy outcome. Keep speed **1.25**, normal order tries,
+validation and the existing fresh salt / 100050–100099 candidate pool. Retain
+every failed raw/settled/demo attempt and its exact failure reason in the
+manifest. This explicitly supersedes the earlier fixed-five/demo-failure
+launch blocker and permits ascending refill to restore the registered n=5.
+No speed escalation, cherry-picking or n reduction is authorized.
+
+The gain-cell, guard and decision-rule sections remain unchanged. If the
+imitation demo failure rate exceeds 30% of attempted demo inputs, record the
+input-validity landmine in BACKLOG with numerator/denominator and reasons.
+
+## Preparation freeze (before queue insertion)
+
+All **20 gain / 5 parity / 5 strong** identities are prepared and frozen on
+`ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e`. Gain ids **100050–100069** and
+stack ids **100050–100054** all passed unchanged two-pass settling without
+refill. Imitation ids **100051–100055** pass both settling and standard demo
+validation at 1.25. Rejected **100050** is retained with all four normal order
+tries, the unstable flag and 3/5 supports placed. Demo failure rate **1/6
+(16.7%)** does not exceed the registered 30% BACKLOG threshold.
+
+[Manifest](data/kong-scoped-retest/manifest.json), SHA256
+`844d0ea503d8be6cf3aaf879a711f6eb4144fe813f0e053e7cd0a95a2a360a70`.
+It freezes all attempted raw/settled records, validation indices, five valid
+demos, every failed id/reason, all 60 planned rows and AB/BA order.
+[Shared pins](data/kong-scoped-retest/shared-freeze.json) retain both design
+versions, prereg/amendment commits, deployment source hashes, current package
+parity, catalogue/background/calibration/checkpoint hashes and operational
+scripts. Current packages have `diff={}`; all eleven checked deployment source
+files match the frozen commit. Nine focused scoping tests pass on that exact
+deployment. [Effective-config/Skills snapshots](data/kong-scoped-retest/parity-proof.json)
+match for both guards; the required post-collection proof remains pending.
+[All input selection attempts](data/kong-scoped-retest/selection.json).
+
+The instrument PR is not yet published/merged at this freeze. The registered
+merge-before-first-start rule and pinned fallback are unchanged. The public
+metadata recorder is healthy and will put the applied instrument/merge SHA in
+`~/dojo-data/kong-retest-1107/audit-instrument.json` and the remote dispatch
+receipt before the verdict; it never reads episode outcomes. No re-test row
+has yet been queued, and no camera verdict is made here.
+
+## Dispatch receipt — 2026-11-07 07:38:49Z
+
+**Appended 60 rows, queue positions 79–138 (one-based at insertion), after all
+78 existing tie rows.** The append held `queue2.txt.lock`; the prior queue
+bytes are an exact unchanged prefix. No existing row was reordered, rewritten
+or held, and no lane/cap/STOP settings changed. All 30 new pairs remain adjacent
+in the frozen AB/BA order. Both already running tie arms remain untouched.
+
+- Preregistration/index/design on main **25ab63a0**, prospective input
+  amendment **0de2aad4**, complete preparation freeze **73560a60**: all before
+  insertion. [Machine-readable receipt](data/kong-scoped-retest/dispatch.json).
+- Existing rows **78**, appended **60**, queue total **138**. **60/60** new
+  rows verified for explicit `claude/claude-sonnet-5-5`, pinned deployment,
+  arm config, loaded layout and pair adjacency. This is a dispatch route check;
+  actual call-log/transcript/report route proof remains required after collection.
+- Queue SHA256 before:
+  `5a2ea474ac721ac936908bd8f1cf9502dd4d2b2e8f8870029a178350289aa2b9`.
+- Queue SHA256 after:
+  `ac2d1f602234b41a8ae7d9b67d883fb363985cd014ae2e0cffe958d66eb86aae`.
+- Manifest SHA256:
+  `844d0ea503d8be6cf3aaf879a711f6eb4144fe813f0e053e7cd0a95a2a360a70`.
+- Appended-row file SHA256:
+  `97e50bd318d55f7e92a9bd1c95e41e89a3e5baf9b93af3e90aef38b47b13368c`.
+- Rough two-lane ETA: **14:25Z first re-test row, 16:47Z final row**, 7 November.
+  Estimated existing queued/active occupancy **48,749 lane-seconds**, new block
+  **17,065 lane-seconds (~4.74 lane-hours)**. Based on recent tie timings and
+  prior Sonnet per-cell means; admission, startup, time caps and infra retries
+  can delay it. The preregistered cap ceiling remains 25 new camera lane-hours.
+
+### Audit instrument status at dispatch
+
+No `fix/audit-identity` PR was published/merged at insertion and no re-test row
+had started. Accordingly the [dispatch-time instrument snapshot](data/kong-scoped-retest/audit-instrument-at-dispatch.json)
+is **registered_pending_cutoff**, not a claim that the future cutoff already
+occurred. Its fallback is pinned to
+`ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e`; the immutable registered rule uses
+the identity PR's full merge SHA if merged before the first re-test start.
+
+The metadata-only recorder remains active. The authoritative applied-instrument
+receipt is `compute6:~/dojo-data/kong-retest-1107/audit-instrument.json`;
+it also amends that directory's `dispatch.json` and `notes.log` with the applied
+instrument, full commit, merge/selection/start timestamps, without reading
+outcomes. Once fixed, it stops. The instrument choice is determined by the
+precommitted merge/start cutoff, never by outcomes; the final applied pin must
+be included with the later verdict. Nearest-GT results remain supplementary
+under the registered conditional instrument rule. No camera outcome was read
+for this dispatch and no verdict/adoption/default change is made.

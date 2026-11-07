@@ -1,0 +1,60 @@
+{
+  "inserted_utc": "2026-11-07T07:38:49.681109+00:00",
+  "prereg_commit": "25ab63a0",
+  "existing_rows": 78,
+  "appended_rows": 60,
+  "positions_1_based": [
+    79,
+    138
+  ],
+  "queue_sha256_before": "5a2ea474ac721ac936908bd8f1cf9502dd4d2b2e8f8870029a178350289aa2b9",
+  "queue_sha256_after": "ac2d1f602234b41a8ae7d9b67d883fb363985cd014ae2e0cffe958d66eb86aae",
+  "manifest_sha256": "844d0ea503d8be6cf3aaf879a711f6eb4144fe813f0e053e7cd0a95a2a360a70",
+  "new_rows_sha256": "97e50bd318d55f7e92a9bd1c95e41e89a3e5baf9b93af3e90aef38b47b13368c",
+  "existing_prefix_byte_identical": true,
+  "route_checked_rows": 60,
+  "route": "claude/claude-sonnet-5-5",
+  "deployment": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+  "active_jobs": [
+    {
+      "name": "c6b_imitatesg_tieAr1_100022",
+      "elapsed_s": 334,
+      "estimated_remaining_s": 420
+    },
+    {
+      "name": "c6b_imitatesg_tieBr1_100022",
+      "elapsed_s": 875,
+      "estimated_remaining_s": 0
+    }
+  ],
+  "expected_start_utc": "2026-11-07T14:25:04.065554+00:00",
+  "expected_finish_utc": "2026-11-07T16:47:16.565554+00:00",
+  "estimated_queued_lane_s": 48749,
+  "estimated_block_lane_s": 17065,
+  "timing_basis": {
+    "tie_recent_mean_seconds": {
+      "imitatesg": 753.55,
+      "makekongsg": 139.1,
+      "stackblockssg": 162.3
+    },
+    "new_block_previous_sonnet_mean_seconds": {
+      "makekongsg": 139.1,
+      "imitatesg": 987.8,
+      "stackblockssg": 162.3
+    },
+    "lanes": 2,
+    "qualification": "rough occupancy estimate; shared admission/startup/caps/infra may delay; 25 lane-hour camera-cap ceiling"
+  },
+  "audit_instrument": {
+    "state": "registered_pending_cutoff",
+    "primary_if_unmerged": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+    "identity_branch": "fix/audit-identity",
+    "rule": "identity PR merged before first re-test start -> merge SHA; else current fallback; no outcome-based choice",
+    "supplementary": "nearest-GT",
+    "first_start": null,
+    "recorded_utc": "2026-11-07T07:26:22.885821+00:00",
+    "recorder_sha256": "a8ff712f4259b600df3bc422f710ee5cfeee3f1d7d57205a991bf0d4a3d85e4b",
+    "outcomes_read": false
+  },
+  "audit_instrument_receipt": "/home/robotics/dojo-data/kong-retest-1107/audit-instrument.json"
+}
