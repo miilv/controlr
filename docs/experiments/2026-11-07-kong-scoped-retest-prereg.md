@@ -235,3 +235,51 @@ metadata recorder is healthy and will put the applied instrument/merge SHA in
 `~/dojo-data/kong-retest-1107/audit-instrument.json` and the remote dispatch
 receipt before the verdict; it never reads episode outcomes. No re-test row
 has yet been queued, and no camera verdict is made here.
+
+## Dispatch receipt — 2026-11-07 07:38:49Z
+
+**Appended 60 rows, queue positions 79–138 (one-based at insertion), after all
+78 existing tie rows.** The append held `queue2.txt.lock`; the prior queue
+bytes are an exact unchanged prefix. No existing row was reordered, rewritten
+or held, and no lane/cap/STOP settings changed. All 30 new pairs remain adjacent
+in the frozen AB/BA order. Both already running tie arms remain untouched.
+
+- Preregistration/index/design on main **25ab63a0**, prospective input
+  amendment **0de2aad4**, complete preparation freeze **73560a60**: all before
+  insertion. [Machine-readable receipt](data/kong-scoped-retest/dispatch.json).
+- Existing rows **78**, appended **60**, queue total **138**. **60/60** new
+  rows verified for explicit `claude/claude-sonnet-5-5`, pinned deployment,
+  arm config, loaded layout and pair adjacency. This is a dispatch route check;
+  actual call-log/transcript/report route proof remains required after collection.
+- Queue SHA256 before:
+  `5a2ea474ac721ac936908bd8f1cf9502dd4d2b2e8f8870029a178350289aa2b9`.
+- Queue SHA256 after:
+  `ac2d1f602234b41a8ae7d9b67d883fb363985cd014ae2e0cffe958d66eb86aae`.
+- Manifest SHA256:
+  `844d0ea503d8be6cf3aaf879a711f6eb4144fe813f0e053e7cd0a95a2a360a70`.
+- Appended-row file SHA256:
+  `97e50bd318d55f7e92a9bd1c95e41e89a3e5baf9b93af3e90aef38b47b13368c`.
+- Rough two-lane ETA: **14:25Z first re-test row, 16:47Z final row**, 7 November.
+  Estimated existing queued/active occupancy **48,749 lane-seconds**, new block
+  **17,065 lane-seconds (~4.74 lane-hours)**. Based on recent tie timings and
+  prior Sonnet per-cell means; admission, startup, time caps and infra retries
+  can delay it. The preregistered cap ceiling remains 25 new camera lane-hours.
+
+### Audit instrument status at dispatch
+
+No `fix/audit-identity` PR was published/merged at insertion and no re-test row
+had started. Accordingly the [dispatch-time instrument snapshot](data/kong-scoped-retest/audit-instrument-at-dispatch.json)
+is **registered_pending_cutoff**, not a claim that the future cutoff already
+occurred. Its fallback is pinned to
+`ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e`; the immutable registered rule uses
+the identity PR's full merge SHA if merged before the first re-test start.
+
+The metadata-only recorder remains active. The authoritative applied-instrument
+receipt is `compute6:~/dojo-data/kong-retest-1107/audit-instrument.json`;
+it also amends that directory's `dispatch.json` and `notes.log` with the applied
+instrument, full commit, merge/selection/start timestamps, without reading
+outcomes. Once fixed, it stops. The instrument choice is determined by the
+precommitted merge/start cutoff, never by outcomes; the final applied pin must
+be included with the later verdict. Nearest-GT results remain supplementary
+under the registered conditional instrument rule. No camera outcome was read
+for this dispatch and no verdict/adoption/default change is made.
