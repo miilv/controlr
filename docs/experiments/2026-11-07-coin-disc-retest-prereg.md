@@ -87,3 +87,45 @@ predicts 6.17M prompt, 276k completion, 143k reasoning (included in completion),
 remaining headroom is unknown, so this is not a claim of sufficient quota.
 No live calls are needed for preparation. Actual calls/tokens at dispatch and
 queue positions/hashes will be appended as a receipt without computing a verdict.
+
+## Preparation freeze and non-dispatch receipt — 7 Nov 03:18Z
+
+**Dispatch blocked before camera collection.** All 20 deposit_coin, 10
+play_tic_tac_toe and 10 stack_blocks layouts passed default two-pass presettle.
+insert_key primary blocks passed 0/5 and 3/5; its one reserved refill passed
+2/5. Thus only 5/10 key pairs are available. Ten key records failed pass 2.
+No tolerances were relaxed and no raw fallback was applied. All four cells use
+settled inputs, matching the original disc panel; none is a raw-running cell
+requiring --raw-check. Reserved unused raw blocks remain uncollected.
+
+The registered single-refill limit therefore blocks the whole dispatch. A
+prospective request to the lead to authorize additional fresh key-only refill
+blocks is pending; no such block has been generated. No camera outcome was read.
+This is a preparation shortfall, not a camera verdict or an additional re-test.
+
+- [Preparation manifest](data/coin-disc-retest-1107/manifest-preparation-blocked.json):
+  SHA256 `0290417dee87fd6c76f3b1c4e97265bd898292650409ec8d50b9717724c329be`. Explicitly complete=false / dispatch_blocked=true;
+  freezes 70 generated raw records, preparation indices, 45 valid selected layouts,
+  resolved configs, code and 2,536 catalog/background/model asset file hashes.
+- [Provisional rows](data/coin-disc-retest-1107/rows-preparation-blocked.txt):
+  90 rows for available pairs only, **not queued or authorized as a partial panel**.
+  Every provisional row passed the explicit Sonnet route check; resolved A/B
+  configs differ only in disc_hold_evidence. Full requested panel remains 100 rows.
+- [Non-dispatch receipt](data/coin-disc-retest-1107/non-dispatch-receipt.json):
+  **0 rows appended; no positions; ETA not scheduled**. Under queue flock at
+  2026-11-07T03:18:42Z, the queue contained 117 existing rows.
+  SHA256 before and after (unchanged): `c62fcb6894b505d27177bef065f142016efb8f0927547f4a14f4c77a228aa4d3`.
+- Preparation/main registration commit: `a4563552`, before any generation.
+  Deployment remains original clean `416a2a03`, containing merged #382.
+  Salts file SHA256 `df7dd668feff16f9c749fe3ab9e0f806bc6e8cd98e150faf4430c11652e493c3`.
+- Actual re-test/model-probe spend: **0 logical calls, 0 tokens**.
+  Estimate for eventual complete panel stays **433 logical Claude calls**.
+  Historical disc jobs occupied 11,226 seconds / 38 rows (mean 295.4 seconds):
+  approximately 8.2 lane-hours for 100 rows, before retries and queue waits.
+  Two lanes would need roughly 4.1 elapsed hours for this panel alone.
+
+Raw/loaded records, indices and all preparation logs remain under
+`compute4:~/dojo-data/coin-disc-retest-1107/`. Physics preparation is finished,
+its locks released, and the existing lanes continue unchanged. Parent prep
+processes were stopped only by their own recorded PID while waiting with no
+child active; the completed first block was retained without regeneration.

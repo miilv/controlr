@@ -1,0 +1,19 @@
+{
+  "status": "blocked_before_dispatch",
+  "utc": "2026-11-07T03:18:42Z",
+  "reason": "insert_key has 5/10 valid pairs after the sole reserved refill; prospective lead authorization required",
+  "rows_appended": 0,
+  "positions": [],
+  "queue_snapshot_rows": 117,
+  "queue_sha256_before": "c62fcb6894b505d27177bef065f142016efb8f0927547f4a14f4c77a228aa4d3",
+  "queue_sha256_after": "c62fcb6894b505d27177bef065f142016efb8f0927547f4a14f4c77a228aa4d3",
+  "manifest_sha256": "0290417dee87fd6c76f3b1c4e97265bd898292650409ec8d50b9717724c329be",
+  "actual_logical_calls": 0,
+  "actual_tokens": {
+    "prompt": 0,
+    "completion": 0,
+    "reasoning": 0,
+    "cache_read": 0
+  },
+  "eta": "not scheduled; full panel needs five further valid key layouts"
+}
