@@ -995,6 +995,27 @@ See [the install recipe](../baselines/rsi/INSTALL.md). CPU tests mock telemetry
 and verify admission, credential isolation, portable commands and input hashes.
 Running a recipe still requires current permission for the destination box.
 
+### General instruction/catalogue mask proposals
+
+`dojo.perception.general_masks.propose(image, instruction, index, v2b, sam, cfg)`
+is the task-free component API. Its inputs are RGB, the actual episode instruction,
+the one shared catalogue index and the two detector clients. `GeneralMaskConfig`
+contains one uniform set of model/confidence/deduplication parameters for every
+episode. There is no task key, registry selector, checker or task-config input.
+Catalogue category labels and caption names are global; catalogue geometry, roles
+and placement priors are ignored. Generic grammatical chunks add instruction
+object phrases. All catalogue labels are included on every call. Existing v2b
+identities precede score-ordered SAM proposals during mask-IoU de-duplication;
+SAM proposals carry candidate categories and text, never exact asset identities.
+
+This API is an offline component, with no runtime activation or default change.
+It does not make the downstream task-prior inverse-layout fitter board-compliant.
+`scripts/perception/sam/general_eval.py` validates the frozen image/layout hashes
+and passes GT/task metadata only to scoring after prediction. `general_summary.py`
+requires the complete panel, checks the rerun v2b reference and evaluates the
+prospectively frozen all-cell harm gates. Historical task-bank scores are references
+only. An offline gate failure prohibits camera dispatch for that configuration.
+
 ### Task-scoped SAM camera proposals and shared service
 
 **Diagnostic-only; prohibited for a board candidate.** `sam_task_routes` and
@@ -1078,3 +1099,17 @@ SAM parity guard, inspect every `vocab_explain.candidates` entry as well as the 
 vocabulary and record routing counters. A final inactive vocabulary alone does not
 prove that an earlier candidate estimate made zero SAM requests. An active bank
 in a guard's candidate exploration blocks the zero-request parity proof.
+
+### Sort-into-containers evidence tools
+
+`scripts/perception/classify3/` (dev only, GT read after the fact for scoring):
+- `replay_job.sh`: physics-only `m95_replay.py --full` of recorded camera rows on a compute3 light lock;
+- `stage_audit.py`: per GT instance the first failing stage, and the skill's own `truth_in` records against physics;
+- `release_rest_offline.py`: container tests on every recorded release;
+- `candidates_offline.py`: evidence-ledger candidates against the missed instances;
+- `frame0_e2e.py` / `e2e_job.sh`: the perception service's frame-0 estimate re-run on recorded frames under a general
+  `DOJO_PERCEPTION_CFG`, with v2b and optionally a SAM server; B1 on CPU (`DOJO_GL=0`, ~6 min per frame);
+- `g3_job.sh`: a scoped G3 panel.
+
+Two pitfalls: the eval's per-episode `perception` block misreads numbered series (score series cells from a replay),
+and G3 `--belief-drop` does not fit the ported skills (their picks fail).

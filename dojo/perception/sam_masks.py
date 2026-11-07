@@ -172,11 +172,16 @@ class SamClient:
 
 
 class LocalSam:
-    """The server's models in this process, with ``SamClient``'s ``points`` interface (offline evals: one GPU process
+    """The server's models in this process, with ``SamClient``'s text/points interface (offline evals: one GPU process
     for SAM + DINOv2 + renders, no socket). ``models``: e.g. ["sam2.1_small"]."""
 
     def __init__(self, models: list[str], M=None):
         self.M = M if M is not None else _Models(models)
+
+    def text(self, img: np.ndarray, prompts: list[str], thr: float = 0.4, model: str = "sam3.1") -> list[SamMask]:
+        r = self.M.handle({"op": "text", "model": model, "prompts": list(prompts), "thr": float(thr),
+                           "key": image_key(img)}, np.ascontiguousarray(img, np.uint8))
+        return [SamMask(unpack(m, s), sc, p) for m, s, sc, p in r["masks"]]
 
     def points(self, img: np.ndarray, uv: np.ndarray, model: str = "sam2.1_small", multimask: bool = True) -> list[SamMask]:
         uv = np.asarray(uv, float).reshape(-1, 2)

@@ -654,6 +654,17 @@ class RuntimeConfig:
     # (classify_into_bins_p1: sorts the named / largest groups, leaves the rest on the table) | p2 (classify_into_bins_p2:
     # p1, and a carry v3 refuses is tried once more from higher up, then the object is put back and the arm homed)
     ported_classify: str = "v3b"
+    # the general sort-into-containers skill's options (``sort_into_containers``: p2's mechanics); either one set, the
+    # sort route runs that skill with it. sort_contain: root (p2's "in the container" test on the object's root) |
+    # bottom (on its lowest point: a believed object let go into a container keeps its in-hand orientation);
+    # sort_park: off | home (the idle arm goes home before every one-arm carry) | blocked (only after a carry the other
+    # arm blocked, then one more try). Journal 2026-11-07-dojo-classify3
+    sort_contain: str = "root"
+    sort_park: str = "off"
+    # the episode's persistent per-instance evidence (``dojo.perception.evidence``): off | log (every estimate record
+    # feeds it: unexplained object-sized regions kept as candidates until a look resolves them, identity votes kept
+    # apart from pose writes; events + report ``evidence``, no world write). Journal 2026-11-07-dojo-classify3
+    instance_evidence: str = "off"
     # ... the pacing of pour_order's pours (pour_by_language; stream H): v1 (the vendored pour_bottle) | lean
     # (pour_bottle_lean: the tilt-up to 90 deg and the untilt at normal speed, a 12-step drain, no home between pours):
     # ``planner.POUR_PACE``. A single pour (pour_liquid) keeps v1's pace either way | overlap (v1's stages at 0.8 of the
@@ -820,6 +831,8 @@ class RuntimePolicy:
                 or self.cfg.ported_swap not in ("fixed", "reach") or self.cfg.ported_drag not in ("v1", "turn")
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
+                or self.cfg.sort_contain not in ("root", "bottom") or self.cfg.sort_park not in ("off", "home", "blocked")
+                or self.cfg.instance_evidence not in ("off", "log")
                 or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap", "budget")
                 or self.cfg.ported_pour_profile not in ("off", "sparse", "via", "checked")
                 or self.cfg.plan_profile not in ("legacy", "recover")
@@ -845,6 +858,8 @@ class RuntimePolicy:
                                                                                       "pickup": self.cfg.ported_pickup,
                                                                                       "pour_aim": self.cfg.ported_pour_aim,
                                                                                       "classify": self.cfg.ported_classify,
+                                                                                      "sort_contain": self.cfg.sort_contain,
+                                                                                      "sort_park": self.cfg.sort_park,
                                                                                       "pour_untilt": self.cfg.ported_pour_untilt}))
         self.supervisor = supervisor or RuleSupervisor(self.cfg.max_attempts, self.cfg.max_replans)
         self.program = program
@@ -919,6 +934,10 @@ class RuntimePolicy:
         self.report = {"config": asdict(self.cfg), "info_dropped": dropped, "skill": None, "looks": [], "agentic": [],
                        "events": [], "records": {}, "decisions": [], "history": [], "verify": None,
                        "result": None, "error": None, "timings": {}}
+        self._ledger = None
+        if self.cfg.instance_evidence == "log" and self.cfg.mode == "perception":
+            from dojo.perception.evidence import Ledger
+            self._ledger = Ledger()
 
     def next(self, obs: dict) -> dict:
         clean, gt = check_obs(obs, self.cfg.mode)
@@ -1203,6 +1222,7 @@ class RuntimePolicy:
             sk_.ported_drag = cfg.ported_drag
             sk_.ported_pour_aim = cfg.ported_pour_aim
             sk_.ported_classify = cfg.ported_classify
+            sk_.sort_contain, sk_.sort_park = cfg.sort_contain, cfg.sort_park
             sk_.ported_pour_pace = cfg.ported_pour_pace
             sk_.ported_pour_profile = cfg.ported_pour_profile
             sk_.nest_verify = cfg.nest_verify
@@ -1480,7 +1500,32 @@ class RuntimePolicy:
         rec, self._glyph_reads, evs = persist_reads(rec, getattr(self, "_glyph_reads", {}))
         for e in evs:
             self.report["events"].append({"kind": "glyph_persist", "stage": stage, "step": self.bridge.steps_used, **e})
+        self._evidence(rec, stage)
         return rec
+
+    def _evidence(self, rec: dict, stage: str) -> None:
+        """``instance_evidence: log``: every estimate record feeds the episode's evidence ledger
+        (``dojo.perception.evidence``: unexplained object-sized regions kept as candidates, identity votes per label);
+        logging only (events ``candidate`` / ``identity_vote``, report ``evidence``), the world is never written."""
+        led = getattr(self, "_ledger", None)
+        if led is None:
+            return
+        try:
+            n0 = len(led.events)
+            led.update(rec, int(self.bridge.steps_used), self._half_extent)
+            for e in led.events[n0:]:
+                self.report["events"].append({**e, "stage": stage})
+            self.report["evidence"] = led.summary()
+        except Exception as ex:  # noqa: BLE001 (a log must never take the episode down)
+            self.report["events"].append({"kind": "evidence_error", "stage": stage, "error": f"{type(ex).__name__}: {ex}"[:200]})
+
+    def _half_extent(self, key: str):
+        """(hx, hy) of an asset's box (the catalogue / RoboDojo metadata), None when unknown."""
+        try:
+            typ, cat, idx = key.split("/")
+            return self.assets().get(typ, cat, int(idx)).extents[:2] / 2
+        except Exception:  # noqa: BLE001
+            return None
 
     def _merge_glyph(self, prov, label: str, g: dict) -> None:
         """A wrist view's glyph read (perception ``refine``'s ``glyph``) merged into the belief. A numeral's digit:
