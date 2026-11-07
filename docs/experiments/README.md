@@ -6,7 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
-| 2026-11-07 | [pour-camera-prereg](2026-11-07-pour-camera-prereg.md) | Does budget pacing turn fresh G3 feasibility into camera success? | Frozen: 20 language +10 single-cup +10 Xylophone pairs /80 Sonnet rows; 40/41 valid inputs, one retained settle failure; manifest committed before priority insertion |
+| 2026-11-07 | [pour-camera-prereg](2026-11-07-pour-camera-prereg.md) | Does budget pacing turn fresh G3 feasibility into camera success? | Queued 80 Sonnet rows at positions 2–81, 09:32Z: 20 language +10 single-cup +10 Xylophone pairs; started tie mate preserved, KONG +80; frozen manifest on main before dispatch; no verdict |
 | 2026-11-07 | [BYIMG R3 reliability](2026-11-07-byimg-g3-r3.md) | Can guarded fixed-wrist carry and phase-aware acquisition stabilize lift-first? | 16 fresh pairs: B-r2 18.75±40.31 (3/16) → B-r3 0±0 (0/16), 0 wins/3 losses; rejected; numeric contact/IK limits |
 | 2026-11-07 | [BYIMG native-5.1 perception spec](2026-11-07-byimg-perception-spec.md) | What must compute6 capture and pass before camera evaluation? | Parked: native image readiness, fixture background and six-label/causal-track gates; 4 GPU-hour allowance; no dispatch |
 | 2026-11-07 | [kong-scoped-retest-prereg](2026-11-07-kong-scoped-retest-prereg.md) | Does scoped kong relocation pass its one fresh-layout re-test under refined audit/parity gates? | Queued 60 Sonnet rows at tail, positions 79–138: 20 kong + 5 imitation parity + 5 stack strong; frozen fresh inputs, instrument cutoff registered; verdict later |

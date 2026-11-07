@@ -238,6 +238,8 @@ has yet been queued, and no camera verdict is made here.
 
 ## Dispatch receipt — 2026-11-07 07:38:49Z
 
+queue position moved later by the lead for POUR; no input/config change
+
 **Appended 60 rows, queue positions 79–138 (one-based at insertion), after all
 78 existing tie rows.** The append held `queue2.txt.lock`; the prior queue
 bytes are an exact unchanged prefix. No existing row was reordered, rewritten

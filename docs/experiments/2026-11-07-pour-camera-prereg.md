@@ -161,9 +161,9 @@ lead-authorized position-only change in its preregistration, with no input or
 config change. Capture active jobs, protected prefix, positions, queue SHA256
 before/after, new-row and manifest hashes, insertion UTC and ETA in the receipt.
 
-**Receipt:** pending frozen preparation. No POUR camera row is queued by this
-registration commit. The complete manifest and effective configs must be on
-main before insertion; the operational receipt is committed immediately after.
+**Receipt:** dispatched at **2026-11-07 09:32:22 UTC**, positions **2–81**.
+The complete manifest/effective configs were on main before insertion. See the
+receipt below; this registration's original commit queued no rows.
 
 ## Preparation freeze before queue insertion
 
@@ -225,3 +225,42 @@ are unchanged. Rechecking 224 frozen dependency/input descriptors passed.
 Only the operational parser and manifest metadata changed; the amended complete
 manifest above is committed to main before a second insertion attempt. No model
 calls or camera outcomes informed this correction.
+
+## Dispatch receipt — 2026-11-07 09:32:22 UTC
+
+The [machine-readable receipt](data/pour-camera/dispatch.json) records the
+atomic insertion under admission then queue locks. The **80 POUR rows occupy
+positions 2–81** of 201 rows at insertion, immediately before
+`c6b_imitatesg_tieAr1_100027`. Position 1 remains
+`c6b_imitatesg_tieBr2_100026`, the queued mate of the already-started A arm;
+no started tie pair was split. All 121 old rows retain their exact bytes and
+relative order. No lane, cap, STOP, service or other process was changed.
+
+- Initial preregistration/design/index main commit: **4ee384aa**.
+- Complete input freeze main commit: **c1b4170a**; retry-parser amendment and
+  final freeze main commit: **52c210c0**, both before successful insertion.
+- Queue SHA256 before:
+  `8982b6594c9e71c148d93b4f1e2add0f024a7d32458c3ca2fe815b7d9b1cfd9d`.
+- Queue SHA256 after:
+  `a62eeac27670bf43a8e0018562b1b8ada0d82ce19b5263243200f79d3ed3e3df`.
+- Final manifest SHA256:
+  `84f2697c888a300c1ca5abbc71fcf773a5992b82c607ebd144839cd34490ef93`.
+- New-row file SHA256:
+  `a9dff9ed41421f28edfac6206de42b755fb03ce03c18e15fc265d3ac18b4b8c3`.
+
+All **60 KONG re-test rows moved +80 positions**, from 62–121 to 142–201 at
+this snapshot. The lead-authorized position-only note is added to its prereg;
+its inputs/configs are untouched. Both active tie jobs remain untouched.
+Snapshot hash/order checks passed again after insertion; all 80 POUR rows
+were still queued at verification, with exactly one explicit Sonnet pin each.
+The bounded metadata-only route monitor (PID **1022472**, recorded under
+`~/dojo-data/pour-cam/route-monitor.pid`) is alive, with zero violations and
+zero model calls of its own. Actual per-row call evidence is pending as jobs
+start; every row must still pass that check before qualification.
+
+Rough two-lane ETA: first POUR work around **09:45 UTC**, block completion
+around **14:05 UTC on 7 November**. The receipt uses recent timing metadata for
+existing work and 480/300/300-second language/cup/Xylophone planning values
+for this new block. Startup, admission, cap use and infrastructure retries can
+delay it; unchanged caps allow up to 33.3 summed lane-hours for the new rows
+before retries. There is no camera verdict, adoption or default/candidate change.
