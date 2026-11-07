@@ -39,3 +39,32 @@ Public metadata: 8/9/10 all mass 0.22 kg; friction 0.32/0.45/0.45; depth
 72.28/80.64/78.30 mm; bridge local z 85/80/90 mm. Do not infer grip-force limits
 from mass/friction alone. Complete the baseline and use actual per-shape lift,
 carry and support measurements to select the next mechanism.
+
+## Selected pilot prototype before new actions
+
+Frozen baseline on all ten new pilots: **standard4/5, random2/5**. The failures
+are standard48 (asset2), random47/48 (asset10), random49 (asset9).
+Standard48: right26 mm cup pinch has patch1.0/depth and quality0.17 yet is
+loose14.9 mm; subsequent left39 mm picks rise3/80 mm. Random47 stages with a
+35 mm right pinch (4.9 mm lift drift), then left35 mm rises39/80 mm with40 mm
+drift; the existing whole-method rejection discards every untried antipodal
+site. A no-action-change repeat's stage lands17.6 mm off and remains a
+place_miss under the original15 mm verifier. Random48 has only16 wide grasps,
+one endpoint pair and no full approach. Random49's80 mm pinch drifts37 mm;
+no alternative antipodal site is tried. These are pilot observations only.
+
+Prototype two default-off switches: `headset_grasp=cups` adds the existing
+geometry-verified18–35 mm broad/deep cup proposals to the wide bank even when
+no stage succeeded; all IK/collision and physical verification remain. It
+must not mark a failed stage as successful or infer a hold. `headset_retry=sites`
+remembers failed **object-frame site + approach + closing axis per arm**, not
+an entire method, and allows up to four physical staging attempts and four
+hang attempts, each checked anew from the measured state. Candidate sites
+within15 mm, closing axes within20 deg (finger flips equivalent) and approaches
+within30 deg of a failed site are excluded. Existing800-step/reserve bounds
+remain; no retry after budget/end or a placement miss, and no loosened hold,
+place or table tolerance. Legacy modes keep their exact prior budgets/filters.
+
+First screen the four failed pilot records, then all new pilots plus the
+original seven/cell if supported. Any final bundle/source and fresh panel
+must be registered separately before generation. No camera or model calls.
