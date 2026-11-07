@@ -25,7 +25,12 @@ Report: [experiments/2026-11-07-classify3.md](../experiments/2026-11-07-classify
    - Identity votes, kept apart from pose writes.
    - `RuntimeConfig.instance_evidence=log` records them from every estimate record.
    - Offline, candidates cover 12 of 29 missed language instances; the consumer (look, add, re-plan) is the next build.
-5. **G3 true state on the same layouts:** p2 67.5 / 53.3. The arm results are in the report.
+5. **G3 true state on the same layouts:**
+   - p2: 67.5 / 53.3;
+   - contain=bottom: identical on every layout;
+   - park home: 94.0 / 40.0 (classify 4 wins / 0 losses, language 2 / 4);
+   - park blocked: 67.5 / 56.7.
+   The camera A/B pre-registers B = A + `sort_contain=bottom` only.
 
 ## Landmines found
 

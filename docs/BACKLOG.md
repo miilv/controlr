@@ -597,8 +597,11 @@ Default-off routing/shared service implemented by [SAMINT](journal/2026-11-07-sa
   the candidates cover 12 / 29 language misses at ~1 object-sized phantom per row plus the merged shadow region.
 - [ ] **dojo skills: the sort skill's carries are refused by the idle arm and by neighbours** (G3 true state, 20 dev
   layouts: of 74 refused transits, other arm 30, an object 20, a basket wall 15; cars lose most: 26 / 35 placed).
-  `sort_into_containers(park_other="home")` addresses the first (`RuntimeConfig.sort_park`, default off; result in the
-  CLASSIFY3 report). p2's physics ceiling on these layouts is 67.5 / 53.3 against the RSI bar 100 / 88.
+  `sort_into_containers(park_other=...)` (`RuntimeConfig.sort_park`, default off) tried two parks in G3. `home`
+  (before every carry) gives classify 67.5 → 94.0 (4 / 0 pairs) but language 53.3 → 40.0 (2 / 4). `blocked` (after a
+  refusal, one retry) fired 1-2 times and changed little (67.5 / 56.7), because most refusals happen in p2's fallback /
+  high-retry paths. Next: keep the idle arm out of every carry path's swept volume without extra homing. p2's physics
+  ceiling on these layouts is 67.5 / 53.3 against the RSI bar 100 / 88.
 - [ ] **dojo G3: `--belief-drop` (heldsim) breaks the ported skills' picks.** With it, classify_into_bins_p2's picks
   fail ("held: false", the object stays on the table) where true state succeeds, so mode B cannot emulate the camera's
   release beliefs for ported skills. heldsim's attach model was built for our Skills library; check what the
