@@ -67,10 +67,15 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
     def fake_transfer(lab, targets, **kw):
         if kw.get("place_kw") is not None:
             seen.setdefault("carry", kw["place_kw"]["approach_rad"])
+        seen.setdefault("pick_kw", kw.get("pick_kw"))
+        candidates = kw["grasps"]("left")
+        seen.setdefault("widths", [g.width for g in candidates])
         seen.setdefault("rank", kw.get("pair_rank"))            # the hang plan's own call (relay legs come after)
         from dojo.skills.skills import SkillResult
         return SkillResult(False, "transfer", "ik_fail", 0, None, note="right: 0/1 grasps reachable, 0 grasp-place pairs")
-    for flag, expect in ((False, None), ("on", "fn")):
+    monkeypatch.setattr(L, "G_hang", lambda *a: [SimpleNamespace(width=0.025, method="thin"),
+                                               SimpleNamespace(width=0.04, method="wide")])
+    for flag, expect, seat in ((False, None, "off"), ("on", "fn", "off"), (False, None, "on")):
         seen.clear()
         stand = ObjectState("stand", "Geometry", "headset_stand", 0, np.array([-0.2, -0.1, Z]), np.array([1.0, 0, 0, 0]),
                             AssetInfo(key="Geometry/headset_stand/00000", bbox_min=np.array([-0.02, -0.02, 0.0]),
@@ -80,10 +85,12 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
                          AssetInfo(key="Rigid/headset/00000", bbox_min=np.full(3, -0.05), bbox_max=np.full(3, 0.05),
                                    active_functional={"headband_bridge": {"frame": [[0.0, 0.0, 0.05, 1, 0, 0, 0]]}}))
         w = WorldState("", "", {"stand": stand, "headset": hs}, {}, {})
-        sk = SimpleNamespace(world=w, refresh=lambda: w, log=lambda m: None, hang_wide=flag, hang_cradle="strict", hang_carry_slow=True,
+        sk = SimpleNamespace(world=w, refresh=lambda: w, log=lambda m: None, hang_wide=flag, hang_cradle="strict", hang_carry_slow=True, headset_seat=seat,
                              coll=SimpleNamespace(include=set(), parts={}, held_skip={}), plan_transfer=fake_transfer,
                              bank=lambda: None, held={"left": None, "right": None})
         L.hang_on_hooks(sk, ["headset"], "stand", "support_cradle", "headband_bridge")
+        assert seen["pick_kw"] == ({"squeeze": 8} if seat == "on" else None)
+        assert seen["widths"] == ([0.04] if seat == "on" else [0.025, 0.04])
         assert seen["carry"] == L.HANG_CARRY  # the slow-carry probe must not affect cradles
         r = seen.get("rank")
         if expect is None:
@@ -91,3 +98,29 @@ def test_hang_wide_ranks_wide_grasps_first(monkeypatch):
         else:
             wide, narrow = SimpleNamespace(width=0.04), SimpleNamespace(width=0.025)
             assert r(wide, None, None, None) == 0.0 and r(narrow, None, None, None) == L.HANG_WIDE_RANK
+
+
+def test_headset_seating_uses_measured_hold_and_keeps_thread_target():
+    from dojo.skills.library import hang_release_target
+    # A slipped hold: TCP is 3 cm to one side and 2 cm above the bridge.
+    T_obj, T_rel = np.eye(4), np.eye(4)
+    T_obj[:3, 3] = [0.2, 0.1, 1.1]
+    T_rel[:3, 3] = [-0.03, 0, -0.02]
+    original = T_obj.copy()
+    for cradle, seat, offset in ((True, False, 0.02), (True, True, 0.006),
+                                 (False, True, 0), (False, False, 0)):
+        tcp = hang_release_target(T_obj, T_rel, cradle=cradle, seat=seat)
+        bridge = tcp @ T_rel
+        assert np.allclose(bridge[:3, 3], T_obj[:3, 3] + [0, 0, offset])
+    assert np.array_equal(T_obj, original)
+
+
+def test_headset_seat_defaults_and_runtime_mirror():
+    import inspect
+    from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
+    from dojo.skills.g3 import SKILL_ATTRS
+    from dojo.skills.skills import Skills
+    assert RuntimeConfig().headset_seat == 'off'
+    assert SKILL_ATTRS['headset_seat'] == ('off', 'on')
+    assert 'self.headset_seat = "off"' in inspect.getsource(Skills.__init__)
+    assert 'sk_.headset_seat = cfg.headset_seat' in inspect.getsource(RuntimePolicy)

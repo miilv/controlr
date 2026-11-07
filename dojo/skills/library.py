@@ -3559,6 +3559,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
     # a handle (a loop) is threaded over a hook's arm; any other point (a headband's bridge) is lowered onto its support
     # from above and let go 2 cm over it (it settles; the point need only end within a few cm)
     thread = "handle" in handle_tag.lower()
+    seat = not thread and getattr(sk, "headset_seat", "off") == "on"
     carry_rad = HANG_CARRY * (0.5 if thread and getattr(sk, "hang_carry_slow", False) in (True, "on") else 1.0)
     if not thread:
         hooks = [(i, H, None) for i, H, _ in hooks]
@@ -3641,7 +3642,9 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
             # lamp), and its via path over the top hook was out of reach
             r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=8, pair_rank=wide_rank,
                                  grasps=(lambda a, o=o: [g for g in G_hang(sk, o, a)
-                                                         if g.method not in slipped.get(o.label, ())]),
+                                                         if g.method not in slipped.get(o.label, ())
+                                                         and (not seat or g.width >= HANG_WIDE_W)]),
+                                 **({"pick_kw": {"squeeze": 8}} if seat else {}),
                                  place_kw={"pre_h": 0.03, "release": False, "approach_rad": carry_rad, "purpose": "hang"}, q_start=q_start,
                                  lift_to_pre=high)
             if isinstance(r, SkillResult) and not re.search(r"[1-9]\d* grasp-place pairs", r.note):
@@ -3768,9 +3771,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
             # slide along the hook's arm (measured grasp), lower onto it, let go, back out along the approach
             w = sk.refresh()
             T_rel = inv_T(sk.kin.tcp(arm, w.arms[arm].q)) @ w.obj(lab).T
-            T_on = T_obj @ inv_T(T_rel)
-            if hooks_by[hi][2] is None:
-                T_on[2, 3] += 0.02           # lowered onto a support from above: let go over it
+            T_on = hang_release_target(T_obj, T_rel, cradle=hooks_by[hi][2] is None, seat=seat)
             mv = sk.motion.line(arm, sk.ex.q[arm], T_on, 0.04, "hang_slide", gripper=CLOSED, check=False)
             T_dn = T_on.copy()
             T_dn[2, 3] -= 0.006
@@ -3786,7 +3787,7 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                 plan.move(mv, "slide")
             if dn.segments:
                 plan.move(dn, "lower")
-            plan.hold(2, "settle").grip(OPEN, 3, "release").hold(2, "let_go")
+            plan.hold(12 if seat else 2, "settle").grip(OPEN, 3, "release").hold(8 if seat else 2, "let_go")
             if bk.segments:
                 plan.move(bk, "retreat")
             sk.ex.run({arm: plan}, name=f"hang {lab}")
@@ -3815,6 +3816,17 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
     if failed:
         return {"ok": False, "stage": "hang", "note": f"done {done}, failed {failed}"}
     return {"ok": True, "stage": "hang"}
+
+
+def hang_release_target(T_obj, T_rel, *, cradle: bool, seat: bool):
+    """TCP target from the measured hold; seating removes the legacy 14 mm release drop.
+
+    The following lower segment subtracts 6 mm. Threaded hooks retain their target.
+    """
+    T_on = T_obj @ inv_T(T_rel)
+    if cradle:
+        T_on[2, 3] += 0.006 if seat else 0.02
+    return T_on
 
 
 def handle_point(o, handle_tag: str = "handle") -> np.ndarray:
