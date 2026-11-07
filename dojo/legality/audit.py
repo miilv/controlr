@@ -103,6 +103,9 @@ TASK_SYMBOLS = {"TASK_CONFIGS", "perception_vocabulary", "VOCABULARIES", "vocabu
                 "task_config", "tasks_json"}
 TASK_ACCESSORS = {'task_map', 'label_groups', 'label_candidates', 'instance_range', 'fixed_slot_labels',
                   'scene_keys', 'public_constants', 'task_candidates', 'load_sets', '_placement_prior', 'quota_lists'}
+# Concrete predicate identified by the partner hybrid re-check; provenance debt,
+# not a general ban on physical containment predicates.
+AUDITED_CHECKER_MODULES = {'dojo.skills.ported.skills.pour_p1.skill_robodojo'}
 CHECKER_ATTRS = ("reward_manager", "func_parser", "take_action_cnt", "end_flag", "obs_manager")
 DATA_PATHS = re.compile(r"tasks\.json|task/RoboDojo/(config|tasks)|Eval_Layout|Assets/Traj|\.settled\.json|layout_file|"
                         r"settled_index|(?:^|/)(?:Traj|logs?|runs)(?:/|$)")
@@ -307,6 +310,12 @@ def scan_function(idx: Index, key, rx: re.Pattern) -> list[str]:
     reflective_lines = {node.lineno + i for i, line in enumerate(src.splitlines())
                         if key in p.reflective_ok and line.strip() == p.reflective_ok[key].strip()}
     out = []
+    if len(pinned) > 1:
+        out.append('pinned carrier line is ambiguous: re-audit it')
+        pinned.clear()
+    if len(reflective_lines) > 1:
+        out.append('pinned reflective line is ambiguous: re-audit it')
+        reflective_lines.clear()
     if key in p.carriers and not pinned:
         out.append("pinned carrier line changed: re-audit it")
     if key in p.reflective_ok and not reflective_lines:
@@ -319,11 +328,15 @@ def scan_function(idx: Index, key, rx: re.Pattern) -> list[str]:
             cache_dicts.add(id(n.func.value))
     for n in ast.walk(node):
         if isinstance(n, ast.Constant) and isinstance(n.value, str):
-            m_ = rx.search(n.value)
-            if m_:
-                out.append(f"task name in a string: {m_.group(0)!r} (line {n.lineno})")
-            if DATA_PATHS.search(n.value):
-                out.append(f"task data path: {n.value[:60]!r} (line {n.lineno})")
+            # Pin a multiline literal to the actual offending line, never its
+            # opening triple quote. Inventory every match, not only the first.
+            def literal_line(offset):
+                return min(getattr(n, 'end_lineno', n.lineno),
+                           n.lineno + n.value[:offset].count('\n'))
+            for hit in rx.finditer(n.value):
+                out.append(f"task name in a string: {hit.group(0)!r} (line {literal_line(hit.start())})")
+            for hit in DATA_PATHS.finditer(n.value):
+                out.append(f"task data path: {hit.group(0)!r} (line {literal_line(hit.start())})")
         if isinstance(n, ast.Attribute):
             if n.attr in INSTRUCTION_ATTRS and n.lineno not in pinned:
                 out.append(f".{n.attr} read (line {n.lineno})")
@@ -352,6 +365,10 @@ def scan_function(idx: Index, key, rx: re.Pattern) -> list[str]:
         local = _imports([x for x in ast.walk(node) if isinstance(x, (ast.Import, ast.ImportFrom))], key[0], key[0] in idx.packages)
         for n in ast.walk(node):
             if isinstance(n, ast.Call):
+                loader = n.func.attr if isinstance(n.func, ast.Attribute) else n.func.id if isinstance(n.func, ast.Name) else ''
+                if loader in {'spec_from_file_location', 'exec_module', 'import_module', 'SourceFileLoader'} or (
+                        loader == 'run_path' and isinstance(n.func, ast.Attribute) and isinstance(n.func.value, ast.Name) and n.func.value.id == 'runpy'):
+                    out.append(f'dynamic code loader {ast.unparse(n.func)} (line {n.lineno})')
                 known = isinstance(n.func, ast.Name) and idx.resolve(key[0], n.func.id, local)
                 if isinstance(n.func, ast.Attribute):
                     known = bool(idx.methods.get(n.func.attr))
@@ -362,6 +379,12 @@ def scan_function(idx: Index, key, rx: re.Pattern) -> list[str]:
                 if not known:
                     out.append(f"unresolved call {ast.unparse(n.func)} (line {n.lineno})")
     if p.scan_globals:
+        if key[0] in AUDITED_CHECKER_MODULES:
+            if getattr(node, 'name', '') == '_in_target':
+                out.append(f'audited checker-shaped acceptance predicate (line {node.lineno})')
+            for item in ast.walk(node):
+                if isinstance(item, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'verified' for t in item.targets):
+                    out.append(f'audited checker predicate drives verified outcome (line {item.lineno})')
         if getattr(node, 'name', '') in {'tower_from_boards', 'declare_kong', 'copy_demonstration',
                                          'play_board_game', 'row_by_size', 'align_in_row', 'sweep_into'}:
             out.append(f'benchmark composite (line {node.lineno})')
@@ -404,14 +427,16 @@ def audit_callgraph(roots=None, profile: Profile | None = None, names=None) -> l
 
 
 def _walk(idx: Index, roots, rx) -> list[Violation]:
-    out = []
+    out = {}
+    def record(v):
+        out.setdefault((v.func, v.why), v)
     graph_cache, scan_cache = {}, {}
     for r in roots:
         k = _key(r)
         if k not in idx.funcs:
             k = idx.resolve(k[0], k[1], {}) or k
         if k not in idx.funcs:
-            out.append(Violation(r, r, "entry point not in the index (cannot be audited)", [r]))
+            record(Violation(r, r, "entry point not in the index (cannot be audited)", [r]))
             continue
         parent = {k: None}
         q = deque([k])
@@ -433,12 +458,12 @@ def _walk(idx: Index, roots, rx) -> list[Violation]:
                             while x is not None:
                                 chain.append(f"{x[0]}:{x[1]}")
                                 x = parent[x]
-                            out.append(Violation(r, f"{m}:<module>", f"imports task / checker module {mod} "
+                            record(Violation(r, f"{m}:<module>", f"imports task / checker module {mod} "
                                                  f"(line {n.lineno})", list(reversed(chain))))
         for key in parent:
             if key not in scan_cache:
                 scan_cache[key] = scan_function(idx, key, rx)
-            probs = scan_cache[key]
+            probs = [why for why in scan_cache[key] if (f"{key[0]}:{key[1]}", why) not in out]
             if not probs:
                 continue
             chain, x = [], key
@@ -446,7 +471,7 @@ def _walk(idx: Index, roots, rx) -> list[Violation]:
                 chain.append(f"{x[0]}:{x[1]}")
                 x = parent[x]
             for why in probs:
-                out.append(Violation(r, f"{key[0]}:{key[1]}", why, list(reversed(chain))))
+                record(Violation(r, f"{key[0]}:{key[1]}", why, list(reversed(chain))))
     for resource in idx.p.resources:
         rel = str(Path(resource).relative_to(idx.p.root_dir))
         for line, text in enumerate(Path(resource).read_text().splitlines(), 1):
@@ -459,13 +484,8 @@ def _walk(idx: Index, roots, rx) -> list[Violation]:
             if re.search(r'checker|scorer', text, re.I):
                 whys.append(f'checker provenance (line {line})')
             for why in whys:
-                out.append(Violation('resource:' + rel, rel + ':<resource>', why, ['resource:' + rel]))
-    seen, uniq = set(), []
-    for v in out:                                  # one line per (function, why), kept with the first path found
-        if (v.func, v.why) not in seen:
-            seen.add((v.func, v.why))
-            uniq.append(v)
-    return uniq
+                record(Violation('resource:' + rel, rel + ':<resource>', why, ['resource:' + rel]))
+    return list(out.values())
 
 
 def reachable(roots=None, profile: Profile | None = None) -> set:

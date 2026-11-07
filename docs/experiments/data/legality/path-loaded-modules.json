@@ -1,0 +1,2956 @@
+{
+ "main": {
+  "modules": [
+   {
+    "module": "controlr.robot.so101.arm_id",
+    "file": "controlr/robot/so101/arm_id.py",
+    "sha256": "a5b19d045c23a1b0be00117d72bd890c54727dd4c28601aef7bfd657a6b66ead",
+    "roots": [
+     "controlr.robot.so101.arm_id:<module>",
+     "controlr.robot.so101.arm_id:_get",
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:candidate_ports",
+     "controlr.robot.so101.arm_id:find",
+     "controlr.robot.so101.arm_id:format_scores",
+     "controlr.robot.so101.arm_id:holder",
+     "controlr.robot.so101.arm_id:load_calib",
+     "controlr.robot.so101.arm_id:read_port",
+     "controlr.robot.so101.arm_id:read_ports",
+     "controlr.robot.so101.arm_id:score"
+    ]
+   },
+   {
+    "module": "controlr.robot.so101.protocol",
+    "file": "controlr/robot/so101/protocol.py",
+    "sha256": "eb7ed8b15d0f75a9fe16df3840941f199b88556c4c3bc4c4d83abb8734549218",
+    "roots": [
+     "controlr.robot.so101.protocol:<module>",
+     "controlr.robot.so101.protocol:RemoteError.__init__",
+     "controlr.robot.so101.protocol:authkey_from_env",
+     "controlr.robot.so101.protocol:error",
+     "controlr.robot.so101.protocol:ok",
+     "controlr.robot.so101.protocol:request",
+     "controlr.robot.so101.protocol:unwrap"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.classify_into_bins.skill_robodojo",
+    "file": "dojo/skills/ported/skills/classify_into_bins/skill_robodojo.py",
+    "sha256": "a97b700f194480fa8a4abbd2f5a7fc401cb66f516155f786327faf77b96d41af",
+    "roots": [
+     "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb",
+     "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo",
+    "file": "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py",
+    "sha256": "12c6022d6f32313ba2f87a14605bf811e5519585e82e9ef18efcbdd2c5366b91",
+    "roots": [
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:TierAView.__getattr__",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:TierAView.__init__",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:TierAView.held_look",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:TierAView.obs",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:cont_of",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:fixed_map",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:fold90",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:footprint",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:in_bin",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:keep_groups",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:nearest_cont",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:norm",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:on_table",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:parse_map",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:raw_of",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:run",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:scene",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:steps_for"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo",
+    "file": "dojo/skills/ported/skills/classify_into_bins_p2/skill_robodojo.py",
+    "sha256": "a9afbefb7e5adeeb88389f9cd8d53dbef6212150d116043240e54b0c5ece3f84",
+    "roots": [
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:TierAView.__getattr__",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:TierAView.__init__",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:TierAView.held_look",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:TierAView.obs",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:cont_of",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:fixed_map",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:fold90",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:footprint",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:in_bin",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:keep_groups",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:nearest_cont",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:norm",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:on_table",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:parse_map",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:put_back_held",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:raw_of",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:run",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:scene",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:steps_for"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo",
+    "file": "dojo/skills/ported/skills/classify_into_bins_v3b/skill_robodojo.py",
+    "sha256": "33d0529b00c508913c878f735ba19732b5b8f4069bfd21bda01f030d62f19dac",
+    "roots": [
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:TierAView.__getattr__",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:TierAView.__init__",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:TierAView.held_look",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:TierAView.obs",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:cont_of",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:fixed_map",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:fold90",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:footprint",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:in_bin",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:nearest_cont",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:norm",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:on_table",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:parse_map",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:raw_of",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:run",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:scene",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:steps_for"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.colour_order",
+    "file": "dojo/skills/ported/skills/colour_order.py",
+    "sha256": "7c4e31aa79a245ce871832d7442bd68f38795f587efbe040513ead3a62f05c1a",
+    "roots": [
+     "dojo.skills.ported.skills.colour_order:<module>",
+     "dojo.skills.ported.skills.colour_order:cat_matches",
+     "dojo.skills.ported.skills.colour_order:colour_of",
+     "dojo.skills.ported.skills.colour_order:colour_words",
+     "dojo.skills.ported.skills.colour_order:colours_in",
+     "dojo.skills.ported.skills.colour_order:ground",
+     "dojo.skills.ported.skills.colour_order:load_sibling",
+     "dojo.skills.ported.skills.colour_order:parse_inst",
+     "dojo.skills.ported.skills.colour_order:parse_pairs"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo",
+    "file": "dojo/skills/ported/skills/cover_uncover_v2/skill_robodojo.py",
+    "sha256": "733ea44600c536c14d72a77ed26768caf634b419ef3ee19f7d1ee58155caab96",
+    "roots": [
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:ang",
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:cover_reverse",
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:parse_uncover",
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:run",
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:zaxis"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.lift.skill_robodojo",
+    "file": "dojo/skills/ported/skills/lift/skill_robodojo.py",
+    "sha256": "94dbf88b20cd44aba26292335f01de360c43bb34c8d192c17ea8d91ba64204c4",
+    "roots": [
+     "dojo.skills.ported.skills.lift.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.lift.skill_robodojo:_held",
+     "dojo.skills.ported.skills.lift.skill_robodojo:_measure",
+     "dojo.skills.ported.skills.lift.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pick.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pick/skill_robodojo.py",
+    "sha256": "f7dd28d975877e5fab30ba44f230fe945f57e90e5c079de227ff085edc6da556",
+    "roots": [
+     "dojo.skills.ported.skills.pick.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pick.skill_robodojo:_choose",
+     "dojo.skills.ported.skills.pick.skill_robodojo:_grasps",
+     "dojo.skills.ported.skills.pick.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.pick.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pick_up.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pick_up/skill_robodojo.py",
+    "sha256": "0575b79432e20288515f8a5d3a51e6ed89b77d24b7e9ce055022d9340bd78c05",
+    "roots": [
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:_base",
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:_forms",
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:_ground",
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:_height",
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.place_on.skill_robodojo",
+    "file": "dojo/skills/ported/skills/place_on/skill_robodojo.py",
+    "sha256": "3e78b933dfd184bd9622012280ab6ce6bad3d1749d0c2bec94801c3942a0642b",
+    "roots": [
+     "dojo.skills.ported.skills.place_on.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_ground",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_held_by",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_hh",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_home",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_pick_arms",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_place_arms",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_reach_ok",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_stage_point",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_top",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:is_stacked",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:obj_yaw",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:pick_then_place",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:place_held",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:qmul",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:r4",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:rot2",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:run",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:stack",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:tilt_deg",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:tool_yaw",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:wrap"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag.skill_robodojo",
+    "file": "dojo/skills/ported/skills/planar_drag/skill_robodojo.py",
+    "sha256": "b5e1a1ee9ae37ee156f45ad0d24b3aa27012ad166efd40721a58e3fc9b004d56",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_base_turn",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_ground",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_leg",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_leg_check",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_measure",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_move_planar",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_plan",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_pose",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_reach1",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_short",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:rotz",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:run",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:tilt_of",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:wrap",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:yaw_of"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo",
+    "file": "dojo/skills/ported/skills/planar_drag_p1/skill_robodojo.py",
+    "sha256": "dde1193599557dfe0cbaf4e39b5e7d3ea91da8fd6e51db1846a206abb5646fe5",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_base_turn",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_ground",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_leg",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_leg_check",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_measure",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_move_planar",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_plan",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_pose",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_reach1",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_short",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_turn_by_feasibility",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:rotz",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:run",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:tilt_of",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:wrap",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:yaw_of"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_rgb.belief",
+    "file": "dojo/skills/ported/skills/planar_drag_rgb/belief.py",
+    "sha256": "5eac75fa33a2526edacc59b88667fbd884d79e786f0910ad31c8f6f23db155a9",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:<module>",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot.__getattr__",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot.__init__",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot._attach",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot._detach",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot._flange",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot._propagate",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot._real_obs",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot.gripper",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot.obs",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot.return_home",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:quat_of",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:rotm",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:yaw_quat"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo",
+    "file": "dojo/skills/ported/skills/planar_drag_rgb/skill_robodojo.py",
+    "sha256": "ad46a5dc00958b3a79e90522034f0747e3d5aee221a637cdc76d6cbf9e97aadc",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_load",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_objects",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_pd",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict",
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/belief_strict.py",
+    "sha256": "ad1095ab7622957830a01804a6d8fb199e3a392bf2796ecd703fa434e86879f5",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:<module>",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:BeliefRobotStrict.__init__",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:BeliefRobotStrict.gripper",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:BeliefRobotStrict.return_home",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:scrub"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_rgb_strict.relay",
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/relay.py",
+    "sha256": "34221765b3ee470bae9e05f0402848aeeeff40d503e2fd97c809be9c1b35c4ca",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:<module>",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:RelayState.__init__",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:RelayState.engaged_by_args",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:RelayState.status",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_all_sequences",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_arm_sequences",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_finish",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_info",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_relay_plan",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_seg_dist",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_unit",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_wrap",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_yaws",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:axis_candidates",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:estimate",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:fits",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:install",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:leg",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:line_candidate",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:plan",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:search"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo",
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/skill_robodojo.py",
+    "sha256": "3c8c193f092fa9242353da1d83a31474dae1355963ab9a5d19bb2f508edc55ef",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_load",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_objects",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_pd",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_relay_state",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_rl",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pour.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pour/skill_robodojo.py",
+    "sha256": "30f3fd4364f7682aca17061f6029c9e645a1c43cbe5451d1bbcf5ed6e92d1a16",
+    "roots": [
+     "dojo.skills.ported.skills.pour.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.__init__",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.axis",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.holds",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.lowest",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.set_hand",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.set_spout",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.world",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_balls",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_in_target",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_match",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_pour_dir",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_pour_pose",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_q_roll",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_reach_chain",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_short",
+     "dojo.skills.ported.skills.pour.skill_robodojo:ang",
+     "dojo.skills.ported.skills.pour.skill_robodojo:axq",
+     "dojo.skills.ported.skills.pour.skill_robodojo:qmul",
+     "dojo.skills.ported.skills.pour.skill_robodojo:r4",
+     "dojo.skills.ported.skills.pour.skill_robodojo:rotm",
+     "dojo.skills.ported.skills.pour.skill_robodojo:run",
+     "dojo.skills.ported.skills.pour.skill_robodojo:vq"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pour_bottle.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pour_bottle/skill_robodojo.py",
+    "sha256": "28bb05aef0c3aeaeb8efc7b1c9eb6ed91408d2aa7c50316148b10ff917dd527c",
+    "roots": [
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:_cat_hit",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:bottle_class",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:ground",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:mouth_radius",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pour_bottle_lean/skill_robodojo.py",
+    "sha256": "7fb2923cf881493285143a56b4ff40c6870cd84528856ced793bb992cf1a74dc",
+    "roots": [
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:_cat_hit",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:bottle_class",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:companion_plan",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:ground",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:mouth_radius",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pour_bottle_v2/skill_robodojo.py",
+    "sha256": "c8ef3acd162655775b1d0251c54ad0c07cd8ab1c7b154a30dc228062782b6512",
+    "roots": [
+     "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:_cat_hit",
+     "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:bottle_class",
+     "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:ground",
+     "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:load_pour",
+     "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:mouth_radius",
+     "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pour_bottle_v5/skill_robodojo.py",
+    "sha256": "46042a5856e5f3a860528c6e9470acb323d9a4d529c056bf81d7fa89b5ff0f63",
+    "roots": [
+     "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:_cat_hit",
+     "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:bottle_class",
+     "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:ground",
+     "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:load_pour",
+     "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:mouth_radius",
+     "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:put_down",
+     "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pour_in_order_v5.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pour_in_order_v5/skill_robodojo.py",
+    "sha256": "a4ad58bef49305d26d0d4d84cbb09fc059297a2f4433b413734417d99f65509b",
+    "roots": [
+     "dojo.skills.ported.skills.pour_in_order_v5.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pour_in_order_v5.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.pour_in_order_v5.skill_robodojo:_tilt",
+     "dojo.skills.ported.skills.pour_in_order_v5.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pour_p1.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pour_p1/skill_robodojo.py",
+    "sha256": "a6d345c545bba8f93fa00a34dee22a626e9b48aba8abc3e2ec0bc286f6bb6ba8",
+    "roots": [
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.__init__",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.axis",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.holds",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.lowest",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.set_hand",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.set_spout",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.world",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_balls",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_in_target",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_match",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_pour_dir",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_pour_pose",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_q_roll",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_reach_chain",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_short",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:ang",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:axq",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:qmul",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:r4",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:rotm",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:run",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:vq"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin.skill_robodojo",
+    "file": "dojo/skills/ported/skills/put_into_bin/skill_robodojo.py",
+    "sha256": "85b11f1522891cb2b709678e6913f40abf450179899639ac7ba234488ba16142",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_box",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_cands",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_drop",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_in_bin",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_move",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_pick",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_plan_pick",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_reach",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_relay",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo",
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb/skill_robodojo.py",
+    "sha256": "6bd33828482f00d9f5611f6d663738fed036dc8426abdb474810b6f8508a932d",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_axq",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_drop_arms",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_qmul",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:bel",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:do_direct",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:do_relay",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:drop_over",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:make_drop_belief",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:pib",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:plan_core",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:po",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:records",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:run",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:tilt_quat"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo",
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict/skill_robodojo.py",
+    "sha256": "4f51138f9f1d3c8ffb361c97146857235b36689c92f2c70ae383119065fb153d",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_axq",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_drop_arms",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_qmul",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:bel",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:do_direct",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:do_relay",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:drop_over",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:make_drop_belief",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:pib",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:plan_core",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:po",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:records",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:run",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:tilt_quat"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo",
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v2/skill_robodojo.py",
+    "sha256": "06382eb9837c5df70de15d07b70f722c70174a39db9992ecd73cb78f95f07265",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:H",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:P",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:S",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_axq",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_box_pts",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_budget",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_crosses_edge",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_load",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_move2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_mv",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_obstacles",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_path_conflicts",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_qmul",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_rect_box_overlap",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_rect_corners",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:aperture_cmd",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:corners_world",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:drop_arms2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:drop_in",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:fold90",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:grasp_cands",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:gripper_clear",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:gripper_pts",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:held_corners_flange",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:nudge",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:on_table",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:pick2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:plan2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:plan_pick2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:qmat",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:relay2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:run",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:safe_carry",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:survey",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:tool_quat",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:tool_yaw_of",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:wall_boxes"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk",
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v3/fk.py",
+    "sha256": "3590ee2438924823f909fd4daa80ce38797bf911b2dfe9a8fb04545459743a01",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:<module>",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:_axang",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:_rpy",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:chain",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:fk_check",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:flange",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:joint_line",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:link_points",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:tcp"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo",
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v3/skill_robodojo.py",
+    "sha256": "245eb7205e269684045e47805d7df183117dfd18b7ad0be548c72e45bcc9146f",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:FK",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:V",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_held_flange_pts",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_hit",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_load",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_move3",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_on_table",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_placed_entry",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_reach_q",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_rotz",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_side_held",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_state",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_yaw_of_quat",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:build_obstacles",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:carry3",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:drop_in3",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:drop_side",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:held_points",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:home_safe",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:path_clear",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:pick3",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:plan_legs",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:plan_pick3",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:put_back",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:relay_side",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:run",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:side_cands"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.return_home.skill",
+    "file": "dojo/skills/ported/skills/return_home/skill.py",
+    "sha256": "6c7495eb3738499bb607756f5f053e0755135e6f820230afba45f3dad7e00cad",
+    "roots": [
+     "dojo.skills.ported.skills.return_home.skill:<module>",
+     "dojo.skills.ported.skills.return_home.skill:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.return_home_budget.skill_robodojo",
+    "file": "dojo/skills/ported/skills/return_home_budget/skill_robodojo.py",
+    "sha256": "8822b954fbdd16a70502b96e42f89692ebf5c0650234554128ea2da3546b706c",
+    "roots": [
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:_qangle",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:_qmat",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:_slerp",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:full_cost",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:grip_steps",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:near_target",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:run",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:trapezoid_steps"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.skilllib",
+    "file": "dojo/skills/ported/skills/skilllib.py",
+    "sha256": "3b0f7582febfb9044d94db01ce932436bac3359d2631dcd1b47a48ff1ecc8a5b",
+    "roots": [
+     "dojo.skills.ported.skills.skilllib:<module>",
+     "dojo.skills.ported.skills.skilllib:aabb",
+     "dojo.skills.ported.skills.skilllib:carry_height",
+     "dojo.skills.ported.skills.skilllib:eef_pos",
+     "dojo.skills.ported.skills.skilllib:horizontal_axes",
+     "dojo.skills.ported.skills.skilllib:need_privileged",
+     "dojo.skills.ported.skills.skilllib:obstacle_boxes",
+     "dojo.skills.ported.skills.skilllib:quat2mat",
+     "dojo.skills.ported.skills.skilllib:resolve",
+     "dojo.skills.ported.skills.skilllib:xy_clearance",
+     "dojo.skills.ported.skills.skilllib:yaw_for_closing_axis"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.swap_poses.skill",
+    "file": "dojo/skills/ported/skills/swap_poses/skill.py",
+    "sha256": "a793bfaefb809687f17cef8b7d6bee33847c1fbe74e309ed59067ae08f039209",
+    "roots": [
+     "dojo.skills.ported.skills.swap_poses.skill:<module>",
+     "dojo.skills.ported.skills.swap_poses.skill:_carry",
+     "dojo.skills.ported.skills.swap_poses.skill:_obs",
+     "dojo.skills.ported.skills.swap_poses.skill:_pair",
+     "dojo.skills.ported.skills.swap_poses.skill:_pick",
+     "dojo.skills.ported.skills.swap_poses.skill:_place",
+     "dojo.skills.ported.skills.swap_poses.skill:_pose",
+     "dojo.skills.ported.skills.swap_poses.skill:_resolve",
+     "dojo.skills.ported.skills.swap_poses.skill:_stage_ok",
+     "dojo.skills.ported.skills.swap_poses.skill:_variant_cost",
+     "dojo.skills.ported.skills.swap_poses.skill:rotz",
+     "dojo.skills.ported.skills.swap_poses.skill:run",
+     "dojo.skills.ported.skills.swap_poses.skill:wrap",
+     "dojo.skills.ported.skills.swap_poses.skill:yaw_of"
+    ]
+   },
+   {
+    "module": "scripts.skills.articulation_links",
+    "file": "scripts/skills/articulation_links.py",
+    "sha256": "8cecfc0714c6ba95f3921e1b02662b8a473150cf9b55392348898b7871017af6",
+    "roots": [
+     "scripts.skills.articulation_links:<module>",
+     "scripts.skills.articulation_links:_quat_R",
+     "scripts.skills.articulation_links:main",
+     "scripts.skills.articulation_links:read_links"
+    ]
+   }
+  ],
+  "loader_sites": [
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "controlr.robot.so101.server:<module>",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 40)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.bridge.backend:RobotServerBackend.step",
+     "controlr.robot.so101.server:Camera.fresh",
+     "controlr.robot.so101.server:<module>"
+    ],
+    "file": "controlr/robot/so101/server.py",
+    "line": 40,
+    "category": "dynamic_code",
+    "evidence": "_spec = importlib.util.spec_from_file_location(\"so101_protocol\", Path(__file__).with_name(\"protocol.py\"))",
+    "clean_reachable": false,
+    "key": "ded3f6fad978e39b37d3ecb43c097137c6f40949c7613ae2f6e30e2fb18d0e3f"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "controlr.robot.so101.server:<module>",
+    "why": "dynamic code loader _spec.loader.exec_module (line 42)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.bridge.backend:RobotServerBackend.step",
+     "controlr.robot.so101.server:Camera.fresh",
+     "controlr.robot.so101.server:<module>"
+    ],
+    "file": "controlr/robot/so101/server.py",
+    "line": 42,
+    "category": "dynamic_code",
+    "evidence": "_spec.loader.exec_module(P)  # type: ignore[union-attr]",
+    "clean_reachable": false,
+    "key": "dcbdeec874025140b1ac961a743f523c57eb65bb87fe4a13adb04b112bfc1a3f"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "controlr.robot.so101.server:<module>",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 43)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.bridge.backend:RobotServerBackend.step",
+     "controlr.robot.so101.server:Camera.fresh",
+     "controlr.robot.so101.server:<module>"
+    ],
+    "file": "controlr/robot/so101/server.py",
+    "line": 43,
+    "category": "dynamic_code",
+    "evidence": "_spec = importlib.util.spec_from_file_location(\"so101_arm_id\", Path(__file__).with_name(\"arm_id.py\"))",
+    "clean_reachable": false,
+    "key": "9668482fd7c826adfe9534ac54345fde4144506ef433cb1fe5dedce6998b2956"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "controlr.robot.so101.server:<module>",
+    "why": "dynamic code loader _spec.loader.exec_module (line 45)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.bridge.backend:RobotServerBackend.step",
+     "controlr.robot.so101.server:Camera.fresh",
+     "controlr.robot.so101.server:<module>"
+    ],
+    "file": "controlr/robot/so101/server.py",
+    "line": 45,
+    "category": "dynamic_code",
+    "evidence": "_spec.loader.exec_module(arm_id)  # type: ignore[union-attr]",
+    "clean_reachable": false,
+    "key": "1d4a0ffa804ebcc109b5ccd9c07ab860ab2c59cb1bd747cf67446465f2cf9bb8"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.simlab.proxy_eval:load_policy",
+    "why": "dynamic code loader importlib.import_module (line 243)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.simlab.proxy_eval:ProxyEpisode.step",
+     "dojo.simlab.proxy_eval:<module>",
+     "dojo.simlab.proxy_eval:main",
+     "dojo.simlab.proxy_eval:load_policy"
+    ],
+    "file": "dojo/simlab/proxy_eval.py",
+    "line": 243,
+    "category": "dynamic_code",
+    "evidence": "return getattr(importlib.import_module(mod), cls)()",
+    "clean_reachable": false,
+    "key": "3f4736ed9cf667a366af220221a978f667298d5be90357db213ceb4ea9e172a1"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:<module>",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 16)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.simlab.proxy_eval:ProxyEpisode.step",
+     "dojo.agent.loop:AgentLoop.run",
+     "dojo.agent.loop:AgentLoop._state_line",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:BeliefRobotStrict.gripper",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:<module>"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/belief_strict.py",
+    "line": 16,
+    "category": "dynamic_code",
+    "evidence": "_spec = importlib.util.spec_from_file_location(\"rgb_belief_ro_for_strict\", _p)",
+    "clean_reachable": false,
+    "key": "d7f7ef172f796b1115db8c49d69ce14085513d879fdc25320a4b810a2b26252a"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:<module>",
+    "why": "dynamic code loader _spec.loader.exec_module (line 18)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.simlab.proxy_eval:ProxyEpisode.step",
+     "dojo.agent.loop:AgentLoop.run",
+     "dojo.agent.loop:AgentLoop._state_line",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:BeliefRobotStrict.gripper",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:<module>"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/belief_strict.py",
+    "line": 18,
+    "category": "dynamic_code",
+    "evidence": "_spec.loader.exec_module(_B)",
+    "clean_reachable": false,
+    "key": "b11eb6115b4088412205f9b4890155a32c66ba31d3ef7911e1036e063f57b3b7"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.runtime.eval:load_policy_factory",
+    "why": "dynamic code loader importlib.import_module (line 273)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.perception.bgperc:BackgroundPerceiver.step",
+     "dojo.runtime.perception_service:_Perception.cfg",
+     "dojo.runtime.eval:GTProbe.update",
+     "dojo.runtime.eval:<module>",
+     "dojo.runtime.eval:main",
+     "dojo.runtime.eval:load_policy_factory"
+    ],
+    "file": "dojo/runtime/eval.py",
+    "line": 273,
+    "category": "dynamic_code",
+    "evidence": "return getattr(importlib.import_module(mod), cls)",
+    "clean_reachable": false,
+    "key": "891e03c321a6c2623dacb5ffd648fc08bb3e891f218cb0937c58a858544d6f68"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.agent.registry:resolve",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 277)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.runtime.belief:KinematicBelief.step",
+     "dojo.agent.replay_probe:_StubResult.get",
+     "dojo.agent.replay_probe:<module>",
+     "dojo.agent.replay_probe:main",
+     "dojo.agent.robo:Robo.skill",
+     "dojo.agent.registry:resolve"
+    ],
+    "file": "dojo/agent/registry.py",
+    "line": 277,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"harness_skill_{se.name}\", f)",
+    "clean_reachable": false,
+    "key": "406db218e46310fda11312534de90c050d263cbb9795aa0b6b2a6e17694734d6"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.agent.registry:resolve",
+    "why": "dynamic code loader spec.loader.exec_module (line 279)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.runtime.belief:KinematicBelief.step",
+     "dojo.agent.replay_probe:_StubResult.get",
+     "dojo.agent.replay_probe:<module>",
+     "dojo.agent.replay_probe:main",
+     "dojo.agent.robo:Robo.skill",
+     "dojo.agent.registry:resolve"
+    ],
+    "file": "dojo/agent/registry.py",
+    "line": 279,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "6aafc31d9249973d39536df74f81065441157b9c3fcb895c1ed1efa88d4d451e"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.agent.registry:resolve",
+    "why": "dynamic code loader importlib.import_module (line 272)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.runtime.belief:KinematicBelief.step",
+     "dojo.agent.replay_probe:_StubResult.get",
+     "dojo.agent.replay_probe:<module>",
+     "dojo.agent.replay_probe:main",
+     "dojo.agent.robo:Robo.skill",
+     "dojo.agent.registry:resolve"
+    ],
+    "file": "dojo/agent/registry.py",
+    "line": 272,
+    "category": "dynamic_code",
+    "evidence": "return getattr(importlib.import_module(mod), fn)",
+    "clean_reachable": false,
+    "key": "6141c2460120c320f005ce0a945016f370a6f68aa01c9b13c5818b53d10d08d8"
+   },
+   {
+    "root": "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill",
+    "func": "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 1007)",
+    "path": [
+     "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill"
+    ],
+    "file": "dojo/skills/ported/harness_robot.py",
+    "line": 1007,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"ported_skill_{name}_{time.time_ns()}\", path)",
+    "clean_reachable": false,
+    "key": "c6008db73493c98bede70250eb724f001049600c1b00d8c307704f708b42fd3b"
+   },
+   {
+    "root": "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill",
+    "func": "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill",
+    "why": "dynamic code loader spec.loader.exec_module (line 1011)",
+    "path": [
+     "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill"
+    ],
+    "file": "dojo/skills/ported/harness_robot.py",
+    "line": 1011,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(mod)",
+    "clean_reachable": false,
+    "key": "6026b72b509462a42b66818682f79ca40761e54489ce1703d0d8703347023d31"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb",
+    "func": "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 28)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins/skill_robodojo.py",
+    "line": 28,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(\"put_into_bin_rgb_ro_cib\", p)",
+    "clean_reachable": false,
+    "key": "d3fab6e4b22f64c90bc3a0eba8b59283c6f89642e3329611fe139d8685917752"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb",
+    "func": "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb",
+    "why": "dynamic code loader spec.loader.exec_module (line 30)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins/skill_robodojo.py",
+    "line": 30,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "1850b8a7d6cdb2ff82396f2784d54afe25529e930bd319334a78effc25eecfb9"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 200)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py",
+    "line": 200,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"cib_old_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "b2daaf7d101e7929e39b9a1a10db0f43bd40e8e502596a4ea030b13697a2267d"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old",
+    "why": "dynamic code loader spec.loader.exec_module (line 202)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py",
+    "line": 202,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "e197c94a9f97c5cf20e0c385141fb60822d243d08ba169282278c416742e90e9"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 47)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py",
+    "line": 47,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pib_v3b_tierA_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "28182ee6d80a560a7b59c85894c250b725ae42186020ce6a9ae8dfbed8d8ff42"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3",
+    "why": "dynamic code loader spec.loader.exec_module (line 49)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py",
+    "line": 49,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "2ca56bc210908e1fb72ca4782731692f7fa6cc60aa51198e209c079fd489ab3b"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 238)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p2/skill_robodojo.py",
+    "line": 238,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"cib_old_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "87fb1dd5686db5110e1236b36b7ed7b487fa877507f06763015319789f50c5b9"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old",
+    "why": "dynamic code loader spec.loader.exec_module (line 240)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p2/skill_robodojo.py",
+    "line": 240,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "8d1638d2d21bac693e858aa7f8e150842abac5559c89f134646c916d13c577ec"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 54)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p2/skill_robodojo.py",
+    "line": 54,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pib_v3b_tierA_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "4a91f773b023fc77d7a2824689dd96e874ea9188ea2b35345c256d4e642e605c"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3",
+    "why": "dynamic code loader spec.loader.exec_module (line 56)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p2/skill_robodojo.py",
+    "line": 56,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "3e007e68bf382c8e6da6b68c167cc271ea8dcebcd7aed1f4712a5ace4aa97a72"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 183)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_v3b/skill_robodojo.py",
+    "line": 183,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"cib_old_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "4cbd58a117e07ddcc79201f24a68099d60e78085bcf41a98c62d253f1945d9c0"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old",
+    "why": "dynamic code loader spec.loader.exec_module (line 185)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_v3b/skill_robodojo.py",
+    "line": 185,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "b455e49cf423bb475d39542baf7dba864a67dd0d68fe5b37574a96451c69ad99"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 41)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_v3b/skill_robodojo.py",
+    "line": 41,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pib_v3b_tierA_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "de8f30f12e363d7d2c18086e52e8d7b2bda363fdb17a492840a3b71c83cc9b93"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3",
+    "why": "dynamic code loader spec.loader.exec_module (line 43)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_v3b/skill_robodojo.py",
+    "line": 43,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "f1e6de38217eb0955237777cbd2156698b012826a9ffd0a0033205d48e322ac8"
+   },
+   {
+    "root": "dojo.skills.ported.skills.colour_order:load_sibling",
+    "func": "dojo.skills.ported.skills.colour_order:load_sibling",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 82)",
+    "path": [
+     "dojo.skills.ported.skills.colour_order:load_sibling"
+    ],
+    "file": "dojo/skills/ported/skills/colour_order.py",
+    "line": 82,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"sib_{name}_{os.getpid()}_{id(path)}\", path)",
+    "clean_reachable": false,
+    "key": "7b91b7a1a0acbcf243f4d24bd894737aaf614e4bccc878ab735b4acaa74fa838"
+   },
+   {
+    "root": "dojo.skills.ported.skills.colour_order:load_sibling",
+    "func": "dojo.skills.ported.skills.colour_order:load_sibling",
+    "why": "dynamic code loader spec.loader.exec_module (line 84)",
+    "path": [
+     "dojo.skills.ported.skills.colour_order:load_sibling"
+    ],
+    "file": "dojo/skills/ported/skills/colour_order.py",
+    "line": 84,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(mod)",
+    "clean_reachable": false,
+    "key": "f38cb54e0779ffc71788c5ff32286809ea37b89b0130c52c358b97cf6e98160e"
+   },
+   {
+    "root": "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_bl",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 28)",
+    "path": [
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb/skill_robodojo.py",
+    "line": 28,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(name, p)",
+    "clean_reachable": false,
+    "key": "8183f4c01524277acb8e558b07314e13882445b37d7745e0b9128dc3397e6d72"
+   },
+   {
+    "root": "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_bl",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 30)",
+    "path": [
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb/skill_robodojo.py",
+    "line": 30,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "b9cf79b4719b2ed5eedb0ce7584c0cf56eccbc64a67aa7dcfdc7fb4f5e9d279d"
+   },
+   {
+    "root": "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_bl",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 44)",
+    "path": [
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/skill_robodojo.py",
+    "line": 44,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(name, p)",
+    "clean_reachable": false,
+    "key": "533078b83d0750eba07083af9da5440e1ef96728b9261c28f264d8f815b5ac11"
+   },
+   {
+    "root": "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_bl",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 46)",
+    "path": [
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/skill_robodojo.py",
+    "line": 46,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "c6aef4831ab307fd495153ed499849f550df4306ff0a45a9dc80a42f9a20d9ce"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 51)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle/skill_robodojo.py",
+    "line": 51,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pour_ro_bottle_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "f79883f7b5444090c31052e25ebd4073f5f6d5c2ef44b24da06701dc590af2bc"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour",
+    "why": "dynamic code loader spec.loader.exec_module (line 53)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle/skill_robodojo.py",
+    "line": 53,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "d440e548c86b60b4bbe3b9530eb8c788bbec7e5ca99e2ffea31353881487d9f6"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 57)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle_lean/skill_robodojo.py",
+    "line": 57,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pour_ro_bottle_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "42bb5c087a027f986a0ed71c6afa04ebd709d9f21d68388300dc861a8a962a76"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour",
+    "why": "dynamic code loader spec.loader.exec_module (line 59)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle_lean/skill_robodojo.py",
+    "line": 59,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "df84ec06fadeaa266ee9fc5f073db23e67b95218995e2a1707abc1686f209054"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:load_pour",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 38)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle_v2/skill_robodojo.py",
+    "line": 38,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pour_ro_bottle_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "85a0164e2f769112b3bc68eaf80668fa29eac4e85ab02721098bbb33295d2f5f"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:load_pour",
+    "why": "dynamic code loader spec.loader.exec_module (line 40)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle_v2.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle_v2/skill_robodojo.py",
+    "line": 40,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "4d724f88d9a76d4a66115f67603d04a6b1c217ba60d3ce2e65bae8fdd08a8a12"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:load_pour",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 61)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle_v5/skill_robodojo.py",
+    "line": 61,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pour_ro_bottle_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "cb15d06f45dccd07ec2b840ec9f242d4fb11408ad48dd6082a7d22cd48f40888"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:load_pour",
+    "why": "dynamic code loader spec.loader.exec_module (line 63)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle_v5.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle_v5/skill_robodojo.py",
+    "line": 63,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "0710de4235706e1fdfa88ae50d509f432b893099dee6e255715426c9e57c1164"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 45)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb/skill_robodojo.py",
+    "line": 45,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"{key}_ro_next3\", p)",
+    "clean_reachable": false,
+    "key": "cacac583b75b42ec91f70503a0ed36853d5711c2bd603093a0fa2054a6eafe57"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 47)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb/skill_robodojo.py",
+    "line": 47,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "34cd7147cb2758c50a69b91310734f4af9322ac781f019992c9d2e6d8f25a886"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 54)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict/skill_robodojo.py",
+    "line": 54,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"{key}_ro_strict\", p)",
+    "clean_reachable": false,
+    "key": "aa3dfbd5125487c83708494434e0c982b496f75e752e0a033838a0aa476cdbd8"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 56)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict/skill_robodojo.py",
+    "line": 56,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "56f74bf4d4e598ff7e6f056431732721553960546f0f2b14d7ba3b596e68d588"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:H",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 78)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:H",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v2/skill_robodojo.py",
+    "line": 78,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"{key}_ro_basket_r1\", os.path.join(HERE, rel))",
+    "clean_reachable": false,
+    "key": "39cee7b97e51be305f6e73883505e7d6a8b1f27d0252378c7e1a64e07dd0d06c"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:H",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 80)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:H",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v2/skill_robodojo.py",
+    "line": 80,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "aab6f67ee1e7bbf5a6783256b1d0228eda710784f43eb8d32912ee7d215bc155"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:FK",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 63)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:FK",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v3/skill_robodojo.py",
+    "line": 63,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(name, os.path.join(HERE, rel))",
+    "clean_reachable": false,
+    "key": "3c19aad48a8615c35b7dbaf67dafe286c4073011b59cd7546db93f25d74c9cb6"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:FK",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 65)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:FK",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v3/skill_robodojo.py",
+    "line": 65,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "c3a0752739a9aebbbc0a0ee93bcd40f75dcff995c481585ce88e47d3b6d885eb"
+   }
+  ]
+ },
+ "dc19": {
+  "modules": [
+   {
+    "module": "controlr.robot.so101.arm_id",
+    "file": "controlr/robot/so101/arm_id.py",
+    "sha256": "a5b19d045c23a1b0be00117d72bd890c54727dd4c28601aef7bfd657a6b66ead",
+    "roots": [
+     "controlr.robot.so101.arm_id:<module>",
+     "controlr.robot.so101.arm_id:_get",
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:candidate_ports",
+     "controlr.robot.so101.arm_id:find",
+     "controlr.robot.so101.arm_id:format_scores",
+     "controlr.robot.so101.arm_id:holder",
+     "controlr.robot.so101.arm_id:load_calib",
+     "controlr.robot.so101.arm_id:read_port",
+     "controlr.robot.so101.arm_id:read_ports",
+     "controlr.robot.so101.arm_id:score"
+    ]
+   },
+   {
+    "module": "controlr.robot.so101.protocol",
+    "file": "controlr/robot/so101/protocol.py",
+    "sha256": "eb7ed8b15d0f75a9fe16df3840941f199b88556c4c3bc4c4d83abb8734549218",
+    "roots": [
+     "controlr.robot.so101.protocol:<module>",
+     "controlr.robot.so101.protocol:RemoteError.__init__",
+     "controlr.robot.so101.protocol:authkey_from_env",
+     "controlr.robot.so101.protocol:error",
+     "controlr.robot.so101.protocol:ok",
+     "controlr.robot.so101.protocol:request",
+     "controlr.robot.so101.protocol:unwrap"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.classify_into_bins.skill_robodojo",
+    "file": "dojo/skills/ported/skills/classify_into_bins/skill_robodojo.py",
+    "sha256": "a97b700f194480fa8a4abbd2f5a7fc401cb66f516155f786327faf77b96d41af",
+    "roots": [
+     "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb",
+     "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo",
+    "file": "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py",
+    "sha256": "12c6022d6f32313ba2f87a14605bf811e5519585e82e9ef18efcbdd2c5366b91",
+    "roots": [
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:TierAView.__getattr__",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:TierAView.__init__",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:TierAView.held_look",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:TierAView.obs",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:cont_of",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:fixed_map",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:fold90",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:footprint",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:in_bin",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:keep_groups",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:nearest_cont",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:norm",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:on_table",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:parse_map",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:raw_of",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:run",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:scene",
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:steps_for"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo",
+    "file": "dojo/skills/ported/skills/classify_into_bins_p2/skill_robodojo.py",
+    "sha256": "a9afbefb7e5adeeb88389f9cd8d53dbef6212150d116043240e54b0c5ece3f84",
+    "roots": [
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:TierAView.__getattr__",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:TierAView.__init__",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:TierAView.held_look",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:TierAView.obs",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:cont_of",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:fixed_map",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:fold90",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:footprint",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:in_bin",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:keep_groups",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:nearest_cont",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:norm",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:on_table",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:parse_map",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:put_back_held",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:raw_of",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:run",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:scene",
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:steps_for"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo",
+    "file": "dojo/skills/ported/skills/classify_into_bins_v3b/skill_robodojo.py",
+    "sha256": "33d0529b00c508913c878f735ba19732b5b8f4069bfd21bda01f030d62f19dac",
+    "roots": [
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:TierAView.__getattr__",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:TierAView.__init__",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:TierAView.held_look",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:TierAView.obs",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:cont_of",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:fixed_map",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:fold90",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:footprint",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:in_bin",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:nearest_cont",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:norm",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:on_table",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:parse_map",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:raw_of",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:run",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:scene",
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:steps_for"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.colour_order",
+    "file": "dojo/skills/ported/skills/colour_order.py",
+    "sha256": "7c4e31aa79a245ce871832d7442bd68f38795f587efbe040513ead3a62f05c1a",
+    "roots": [
+     "dojo.skills.ported.skills.colour_order:<module>",
+     "dojo.skills.ported.skills.colour_order:cat_matches",
+     "dojo.skills.ported.skills.colour_order:colour_of",
+     "dojo.skills.ported.skills.colour_order:colour_words",
+     "dojo.skills.ported.skills.colour_order:colours_in",
+     "dojo.skills.ported.skills.colour_order:ground",
+     "dojo.skills.ported.skills.colour_order:load_sibling",
+     "dojo.skills.ported.skills.colour_order:parse_inst",
+     "dojo.skills.ported.skills.colour_order:parse_pairs"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo",
+    "file": "dojo/skills/ported/skills/cover_uncover_v2/skill_robodojo.py",
+    "sha256": "733ea44600c536c14d72a77ed26768caf634b419ef3ee19f7d1ee58155caab96",
+    "roots": [
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:ang",
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:cover_reverse",
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:parse_uncover",
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:run",
+     "dojo.skills.ported.skills.cover_uncover_v2.skill_robodojo:zaxis"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.lift.skill_robodojo",
+    "file": "dojo/skills/ported/skills/lift/skill_robodojo.py",
+    "sha256": "94dbf88b20cd44aba26292335f01de360c43bb34c8d192c17ea8d91ba64204c4",
+    "roots": [
+     "dojo.skills.ported.skills.lift.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.lift.skill_robodojo:_held",
+     "dojo.skills.ported.skills.lift.skill_robodojo:_measure",
+     "dojo.skills.ported.skills.lift.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pick.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pick/skill_robodojo.py",
+    "sha256": "f7dd28d975877e5fab30ba44f230fe945f57e90e5c079de227ff085edc6da556",
+    "roots": [
+     "dojo.skills.ported.skills.pick.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pick.skill_robodojo:_choose",
+     "dojo.skills.ported.skills.pick.skill_robodojo:_grasps",
+     "dojo.skills.ported.skills.pick.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.pick.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pick_up.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pick_up/skill_robodojo.py",
+    "sha256": "0575b79432e20288515f8a5d3a51e6ed89b77d24b7e9ce055022d9340bd78c05",
+    "roots": [
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:_base",
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:_forms",
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:_ground",
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:_height",
+     "dojo.skills.ported.skills.pick_up.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.place_on.skill_robodojo",
+    "file": "dojo/skills/ported/skills/place_on/skill_robodojo.py",
+    "sha256": "3e78b933dfd184bd9622012280ab6ce6bad3d1749d0c2bec94801c3942a0642b",
+    "roots": [
+     "dojo.skills.ported.skills.place_on.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_ground",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_held_by",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_hh",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_home",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_pick_arms",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_place_arms",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_reach_ok",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_stage_point",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:_top",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:is_stacked",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:obj_yaw",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:pick_then_place",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:place_held",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:qmul",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:r4",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:rot2",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:run",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:stack",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:tilt_deg",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:tool_yaw",
+     "dojo.skills.ported.skills.place_on.skill_robodojo:wrap"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag.skill_robodojo",
+    "file": "dojo/skills/ported/skills/planar_drag/skill_robodojo.py",
+    "sha256": "b5e1a1ee9ae37ee156f45ad0d24b3aa27012ad166efd40721a58e3fc9b004d56",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_base_turn",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_ground",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_leg",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_leg_check",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_measure",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_move_planar",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_plan",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_pose",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_reach1",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:_short",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:rotz",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:run",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:tilt_of",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:wrap",
+     "dojo.skills.ported.skills.planar_drag.skill_robodojo:yaw_of"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo",
+    "file": "dojo/skills/ported/skills/planar_drag_p1/skill_robodojo.py",
+    "sha256": "dde1193599557dfe0cbaf4e39b5e7d3ea91da8fd6e51db1846a206abb5646fe5",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_base_turn",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_ground",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_leg",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_leg_check",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_measure",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_move_planar",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_plan",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_pose",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_reach1",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_short",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:_turn_by_feasibility",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:rotz",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:run",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:tilt_of",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:wrap",
+     "dojo.skills.ported.skills.planar_drag_p1.skill_robodojo:yaw_of"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_rgb.belief",
+    "file": "dojo/skills/ported/skills/planar_drag_rgb/belief.py",
+    "sha256": "5eac75fa33a2526edacc59b88667fbd884d79e786f0910ad31c8f6f23db155a9",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:<module>",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot.__getattr__",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot.__init__",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot._attach",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot._detach",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot._flange",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot._propagate",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot._real_obs",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot.gripper",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot.obs",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:BeliefRobot.return_home",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:quat_of",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:rotm",
+     "dojo.skills.ported.skills.planar_drag_rgb.belief:yaw_quat"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo",
+    "file": "dojo/skills/ported/skills/planar_drag_rgb/skill_robodojo.py",
+    "sha256": "ad46a5dc00958b3a79e90522034f0747e3d5aee221a637cdc76d6cbf9e97aadc",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_load",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_objects",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_pd",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict",
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/belief_strict.py",
+    "sha256": "ad1095ab7622957830a01804a6d8fb199e3a392bf2796ecd703fa434e86879f5",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:<module>",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:BeliefRobotStrict.__init__",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:BeliefRobotStrict.gripper",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:BeliefRobotStrict.return_home",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:scrub"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_rgb_strict.relay",
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/relay.py",
+    "sha256": "34221765b3ee470bae9e05f0402848aeeeff40d503e2fd97c809be9c1b35c4ca",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:<module>",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:RelayState.__init__",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:RelayState.engaged_by_args",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:RelayState.status",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_all_sequences",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_arm_sequences",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_finish",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_info",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_relay_plan",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_seg_dist",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_unit",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_wrap",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:_yaws",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:axis_candidates",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:estimate",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:fits",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:install",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:leg",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:line_candidate",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:plan",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.relay:search"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo",
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/skill_robodojo.py",
+    "sha256": "3c8c193f092fa9242353da1d83a31474dae1355963ab9a5d19bb2f508edc55ef",
+    "roots": [
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_load",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_objects",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_pd",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_relay_state",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_rl",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pour.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pour/skill_robodojo.py",
+    "sha256": "30f3fd4364f7682aca17061f6029c9e645a1c43cbe5451d1bbcf5ed6e92d1a16",
+    "roots": [
+     "dojo.skills.ported.skills.pour.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.__init__",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.axis",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.holds",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.lowest",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.set_hand",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.set_spout",
+     "dojo.skills.ported.skills.pour.skill_robodojo:Cup.world",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_balls",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_in_target",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_match",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_pour_dir",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_pour_pose",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_q_roll",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_reach_chain",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.pour.skill_robodojo:_short",
+     "dojo.skills.ported.skills.pour.skill_robodojo:ang",
+     "dojo.skills.ported.skills.pour.skill_robodojo:axq",
+     "dojo.skills.ported.skills.pour.skill_robodojo:qmul",
+     "dojo.skills.ported.skills.pour.skill_robodojo:r4",
+     "dojo.skills.ported.skills.pour.skill_robodojo:rotm",
+     "dojo.skills.ported.skills.pour.skill_robodojo:run",
+     "dojo.skills.ported.skills.pour.skill_robodojo:vq"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pour_bottle.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pour_bottle/skill_robodojo.py",
+    "sha256": "28bb05aef0c3aeaeb8efc7b1c9eb6ed91408d2aa7c50316148b10ff917dd527c",
+    "roots": [
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:_cat_hit",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:bottle_class",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:ground",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:mouth_radius",
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pour_bottle_lean/skill_robodojo.py",
+    "sha256": "0a481350e5cddb369ae447b931f18f17ae900585ba74d3a691d664fcd06baad9",
+    "roots": [
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:_cat_hit",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:bottle_class",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:companion_plan",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:ground",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:mouth_radius",
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.pour_p1.skill_robodojo",
+    "file": "dojo/skills/ported/skills/pour_p1/skill_robodojo.py",
+    "sha256": "a6d345c545bba8f93fa00a34dee22a626e9b48aba8abc3e2ec0bc286f6bb6ba8",
+    "roots": [
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.__init__",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.axis",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.holds",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.lowest",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.set_hand",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.set_spout",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:Cup.world",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_balls",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_in_target",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_match",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_pour_dir",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_pour_pose",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_q_roll",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_reach_chain",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_resolve",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:_short",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:ang",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:axq",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:qmul",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:r4",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:rotm",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:run",
+     "dojo.skills.ported.skills.pour_p1.skill_robodojo:vq"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin.skill_robodojo",
+    "file": "dojo/skills/ported/skills/put_into_bin/skill_robodojo.py",
+    "sha256": "85b11f1522891cb2b709678e6913f40abf450179899639ac7ba234488ba16142",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_box",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_cands",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_drop",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_in_bin",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_move",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_obs",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_pick",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_plan_pick",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_reach",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:_relay",
+     "dojo.skills.ported.skills.put_into_bin.skill_robodojo:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo",
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb/skill_robodojo.py",
+    "sha256": "6bd33828482f00d9f5611f6d663738fed036dc8426abdb474810b6f8508a932d",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_axq",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_drop_arms",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_qmul",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:bel",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:do_direct",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:do_relay",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:drop_over",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:make_drop_belief",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:pib",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:plan_core",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:po",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:records",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:run",
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:tilt_quat"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo",
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict/skill_robodojo.py",
+    "sha256": "4f51138f9f1d3c8ffb361c97146857235b36689c92f2c70ae383119065fb153d",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_axq",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_drop_arms",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_qmul",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:bel",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:do_direct",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:do_relay",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:drop_over",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:make_drop_belief",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:pib",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:plan_core",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:po",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:records",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:run",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:tilt_quat"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo",
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v2/skill_robodojo.py",
+    "sha256": "06382eb9837c5df70de15d07b70f722c70174a39db9992ecd73cb78f95f07265",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:H",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:P",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:S",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_axq",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_box_pts",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_budget",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_crosses_edge",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_load",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_move2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_mv",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_obstacles",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_path_conflicts",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_qmul",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_rect_box_overlap",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_rect_corners",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:aperture_cmd",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:corners_world",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:drop_arms2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:drop_in",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:fold90",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:grasp_cands",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:gripper_clear",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:gripper_pts",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:held_corners_flange",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:nudge",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:on_table",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:pick2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:plan2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:plan_pick2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:qmat",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:relay2",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:run",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:safe_carry",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:survey",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:tool_quat",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:tool_yaw_of",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:wall_boxes"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk",
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v3/fk.py",
+    "sha256": "3590ee2438924823f909fd4daa80ce38797bf911b2dfe9a8fb04545459743a01",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:<module>",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:_axang",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:_rpy",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:chain",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:fk_check",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:flange",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:joint_line",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:link_points",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.fk:tcp"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo",
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v3/skill_robodojo.py",
+    "sha256": "245eb7205e269684045e47805d7df183117dfd18b7ad0be548c72e45bcc9146f",
+    "roots": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:FK",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:V",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_held_flange_pts",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_hit",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_load",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_move3",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_on_table",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_placed_entry",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_reach_q",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_rotz",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_side_held",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_state",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_yaw_of_quat",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:build_obstacles",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:carry3",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:drop_in3",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:drop_side",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:held_points",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:home_safe",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:path_clear",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:pick3",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:plan_legs",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:plan_pick3",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:put_back",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:relay_side",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:run",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:side_cands"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.return_home.skill",
+    "file": "dojo/skills/ported/skills/return_home/skill.py",
+    "sha256": "6c7495eb3738499bb607756f5f053e0755135e6f820230afba45f3dad7e00cad",
+    "roots": [
+     "dojo.skills.ported.skills.return_home.skill:<module>",
+     "dojo.skills.ported.skills.return_home.skill:run"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.return_home_budget.skill_robodojo",
+    "file": "dojo/skills/ported/skills/return_home_budget/skill_robodojo.py",
+    "sha256": "8822b954fbdd16a70502b96e42f89692ebf5c0650234554128ea2da3546b706c",
+    "roots": [
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:<module>",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:_qangle",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:_qmat",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:_slerp",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:full_cost",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:grip_steps",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:near_target",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:run",
+     "dojo.skills.ported.skills.return_home_budget.skill_robodojo:trapezoid_steps"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.skilllib",
+    "file": "dojo/skills/ported/skills/skilllib.py",
+    "sha256": "3b0f7582febfb9044d94db01ce932436bac3359d2631dcd1b47a48ff1ecc8a5b",
+    "roots": [
+     "dojo.skills.ported.skills.skilllib:<module>",
+     "dojo.skills.ported.skills.skilllib:aabb",
+     "dojo.skills.ported.skills.skilllib:carry_height",
+     "dojo.skills.ported.skills.skilllib:eef_pos",
+     "dojo.skills.ported.skills.skilllib:horizontal_axes",
+     "dojo.skills.ported.skills.skilllib:need_privileged",
+     "dojo.skills.ported.skills.skilllib:obstacle_boxes",
+     "dojo.skills.ported.skills.skilllib:quat2mat",
+     "dojo.skills.ported.skills.skilllib:resolve",
+     "dojo.skills.ported.skills.skilllib:xy_clearance",
+     "dojo.skills.ported.skills.skilllib:yaw_for_closing_axis"
+    ]
+   },
+   {
+    "module": "dojo.skills.ported.skills.swap_poses.skill",
+    "file": "dojo/skills/ported/skills/swap_poses/skill.py",
+    "sha256": "a793bfaefb809687f17cef8b7d6bee33847c1fbe74e309ed59067ae08f039209",
+    "roots": [
+     "dojo.skills.ported.skills.swap_poses.skill:<module>",
+     "dojo.skills.ported.skills.swap_poses.skill:_carry",
+     "dojo.skills.ported.skills.swap_poses.skill:_obs",
+     "dojo.skills.ported.skills.swap_poses.skill:_pair",
+     "dojo.skills.ported.skills.swap_poses.skill:_pick",
+     "dojo.skills.ported.skills.swap_poses.skill:_place",
+     "dojo.skills.ported.skills.swap_poses.skill:_pose",
+     "dojo.skills.ported.skills.swap_poses.skill:_resolve",
+     "dojo.skills.ported.skills.swap_poses.skill:_stage_ok",
+     "dojo.skills.ported.skills.swap_poses.skill:_variant_cost",
+     "dojo.skills.ported.skills.swap_poses.skill:rotz",
+     "dojo.skills.ported.skills.swap_poses.skill:run",
+     "dojo.skills.ported.skills.swap_poses.skill:wrap",
+     "dojo.skills.ported.skills.swap_poses.skill:yaw_of"
+    ]
+   },
+   {
+    "module": "scripts.skills.articulation_links",
+    "file": "scripts/skills/articulation_links.py",
+    "sha256": "8cecfc0714c6ba95f3921e1b02662b8a473150cf9b55392348898b7871017af6",
+    "roots": [
+     "scripts.skills.articulation_links:<module>",
+     "scripts.skills.articulation_links:_quat_R",
+     "scripts.skills.articulation_links:main",
+     "scripts.skills.articulation_links:read_links"
+    ]
+   }
+  ],
+  "loader_sites": [
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "controlr.robot.so101.server:<module>",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 40)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.bridge.backend:RobotServerBackend.step",
+     "controlr.robot.so101.server:Camera.fresh",
+     "controlr.robot.so101.server:<module>"
+    ],
+    "file": "controlr/robot/so101/server.py",
+    "line": 40,
+    "category": "dynamic_code",
+    "evidence": "_spec = importlib.util.spec_from_file_location(\"so101_protocol\", Path(__file__).with_name(\"protocol.py\"))",
+    "clean_reachable": false,
+    "key": "ded3f6fad978e39b37d3ecb43c097137c6f40949c7613ae2f6e30e2fb18d0e3f"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "controlr.robot.so101.server:<module>",
+    "why": "dynamic code loader _spec.loader.exec_module (line 42)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.bridge.backend:RobotServerBackend.step",
+     "controlr.robot.so101.server:Camera.fresh",
+     "controlr.robot.so101.server:<module>"
+    ],
+    "file": "controlr/robot/so101/server.py",
+    "line": 42,
+    "category": "dynamic_code",
+    "evidence": "_spec.loader.exec_module(P)  # type: ignore[union-attr]",
+    "clean_reachable": false,
+    "key": "dcbdeec874025140b1ac961a743f523c57eb65bb87fe4a13adb04b112bfc1a3f"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "controlr.robot.so101.server:<module>",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 43)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.bridge.backend:RobotServerBackend.step",
+     "controlr.robot.so101.server:Camera.fresh",
+     "controlr.robot.so101.server:<module>"
+    ],
+    "file": "controlr/robot/so101/server.py",
+    "line": 43,
+    "category": "dynamic_code",
+    "evidence": "_spec = importlib.util.spec_from_file_location(\"so101_arm_id\", Path(__file__).with_name(\"arm_id.py\"))",
+    "clean_reachable": false,
+    "key": "9668482fd7c826adfe9534ac54345fde4144506ef433cb1fe5dedce6998b2956"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "controlr.robot.so101.server:<module>",
+    "why": "dynamic code loader _spec.loader.exec_module (line 45)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.bridge.backend:RobotServerBackend.step",
+     "controlr.robot.so101.server:Camera.fresh",
+     "controlr.robot.so101.server:<module>"
+    ],
+    "file": "controlr/robot/so101/server.py",
+    "line": 45,
+    "category": "dynamic_code",
+    "evidence": "_spec.loader.exec_module(arm_id)  # type: ignore[union-attr]",
+    "clean_reachable": false,
+    "key": "1d4a0ffa804ebcc109b5ccd9c07ab860ab2c59cb1bd747cf67446465f2cf9bb8"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.simlab.proxy_eval:load_policy",
+    "why": "dynamic code loader importlib.import_module (line 243)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.simlab.proxy_eval:ProxyEpisode.step",
+     "dojo.simlab.proxy_eval:<module>",
+     "dojo.simlab.proxy_eval:main",
+     "dojo.simlab.proxy_eval:load_policy"
+    ],
+    "file": "dojo/simlab/proxy_eval.py",
+    "line": 243,
+    "category": "dynamic_code",
+    "evidence": "return getattr(importlib.import_module(mod), cls)()",
+    "clean_reachable": false,
+    "key": "3f4736ed9cf667a366af220221a978f667298d5be90357db213ceb4ea9e172a1"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:<module>",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 16)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.simlab.proxy_eval:ProxyEpisode.step",
+     "dojo.agent.loop:AgentLoop.run",
+     "dojo.agent.loop:AgentLoop._state_line",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:BeliefRobotStrict.gripper",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:<module>"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/belief_strict.py",
+    "line": 16,
+    "category": "dynamic_code",
+    "evidence": "_spec = importlib.util.spec_from_file_location(\"rgb_belief_ro_for_strict\", _p)",
+    "clean_reachable": false,
+    "key": "d7f7ef172f796b1115db8c49d69ce14085513d879fdc25320a4b810a2b26252a"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:<module>",
+    "why": "dynamic code loader _spec.loader.exec_module (line 18)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.simlab.proxy_eval:ProxyEpisode.step",
+     "dojo.agent.loop:AgentLoop.run",
+     "dojo.agent.loop:AgentLoop._state_line",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:BeliefRobotStrict.gripper",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.belief_strict:<module>"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/belief_strict.py",
+    "line": 18,
+    "category": "dynamic_code",
+    "evidence": "_spec.loader.exec_module(_B)",
+    "clean_reachable": false,
+    "key": "b11eb6115b4088412205f9b4890155a32c66ba31d3ef7911e1036e063f57b3b7"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.runtime.eval:load_policy_factory",
+    "why": "dynamic code loader importlib.import_module (line 273)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.perception.bgperc:BackgroundPerceiver.step",
+     "dojo.runtime.perception_service:_Perception.cfg",
+     "dojo.runtime.eval:GTProbe.update",
+     "dojo.runtime.eval:<module>",
+     "dojo.runtime.eval:main",
+     "dojo.runtime.eval:load_policy_factory"
+    ],
+    "file": "dojo/runtime/eval.py",
+    "line": 273,
+    "category": "dynamic_code",
+    "evidence": "return getattr(importlib.import_module(mod), cls)",
+    "clean_reachable": false,
+    "key": "891e03c321a6c2623dacb5ffd648fc08bb3e891f218cb0937c58a858544d6f68"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.agent.registry:resolve",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 277)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.runtime.belief:KinematicBelief.step",
+     "dojo.agent.replay_probe:_StubResult.get",
+     "dojo.agent.replay_probe:<module>",
+     "dojo.agent.replay_probe:main",
+     "dojo.agent.robo:Robo.skill",
+     "dojo.agent.registry:resolve"
+    ],
+    "file": "dojo/agent/registry.py",
+    "line": 277,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"harness_skill_{se.name}\", f)",
+    "clean_reachable": false,
+    "key": "406db218e46310fda11312534de90c050d263cbb9795aa0b6b2a6e17694734d6"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.agent.registry:resolve",
+    "why": "dynamic code loader spec.loader.exec_module (line 279)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.runtime.belief:KinematicBelief.step",
+     "dojo.agent.replay_probe:_StubResult.get",
+     "dojo.agent.replay_probe:<module>",
+     "dojo.agent.replay_probe:main",
+     "dojo.agent.robo:Robo.skill",
+     "dojo.agent.registry:resolve"
+    ],
+    "file": "dojo/agent/registry.py",
+    "line": 279,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "6aafc31d9249973d39536df74f81065441157b9c3fcb895c1ed1efa88d4d451e"
+   },
+   {
+    "root": "controlr.robot.so101.arm_id:assign",
+    "func": "dojo.agent.registry:resolve",
+    "why": "dynamic code loader importlib.import_module (line 272)",
+    "path": [
+     "controlr.robot.so101.arm_id:assign",
+     "controlr.robot.so101.arm_id:format_scores",
+     "dojo.simlab.motion:Mover.joints",
+     "dojo.simlab.motion:Mover.joint_paths",
+     "dojo.simlab.motion:Mover._step",
+     "dojo.runtime.belief:KinematicBelief.step",
+     "dojo.agent.replay_probe:_StubResult.get",
+     "dojo.agent.replay_probe:<module>",
+     "dojo.agent.replay_probe:main",
+     "dojo.agent.robo:Robo.skill",
+     "dojo.agent.registry:resolve"
+    ],
+    "file": "dojo/agent/registry.py",
+    "line": 272,
+    "category": "dynamic_code",
+    "evidence": "return getattr(importlib.import_module(mod), fn)",
+    "clean_reachable": false,
+    "key": "6141c2460120c320f005ce0a945016f370a6f68aa01c9b13c5818b53d10d08d8"
+   },
+   {
+    "root": "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill",
+    "func": "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 967)",
+    "path": [
+     "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill"
+    ],
+    "file": "dojo/skills/ported/harness_robot.py",
+    "line": 967,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"ported_skill_{name}_{time.time_ns()}\", path)",
+    "clean_reachable": false,
+    "key": "c6008db73493c98bede70250eb724f001049600c1b00d8c307704f708b42fd3b"
+   },
+   {
+    "root": "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill",
+    "func": "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill",
+    "why": "dynamic code loader spec.loader.exec_module (line 971)",
+    "path": [
+     "dojo.skills.ported.harness_robot:HarnessRobot.cmd_skill"
+    ],
+    "file": "dojo/skills/ported/harness_robot.py",
+    "line": 971,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(mod)",
+    "clean_reachable": false,
+    "key": "6026b72b509462a42b66818682f79ca40761e54489ce1703d0d8703347023d31"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb",
+    "func": "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 28)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins/skill_robodojo.py",
+    "line": 28,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(\"put_into_bin_rgb_ro_cib\", p)",
+    "clean_reachable": false,
+    "key": "d3fab6e4b22f64c90bc3a0eba8b59283c6f89642e3329611fe139d8685917752"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb",
+    "func": "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb",
+    "why": "dynamic code loader spec.loader.exec_module (line 30)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins.skill_robodojo:_rgb"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins/skill_robodojo.py",
+    "line": 30,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "1850b8a7d6cdb2ff82396f2784d54afe25529e930bd319334a78effc25eecfb9"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 200)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py",
+    "line": 200,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"cib_old_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "b2daaf7d101e7929e39b9a1a10db0f43bd40e8e502596a4ea030b13697a2267d"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old",
+    "why": "dynamic code loader spec.loader.exec_module (line 202)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py",
+    "line": 202,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "e197c94a9f97c5cf20e0c385141fb60822d243d08ba169282278c416742e90e9"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 47)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py",
+    "line": 47,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pib_v3b_tierA_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "28182ee6d80a560a7b59c85894c250b725ae42186020ce6a9ae8dfbed8d8ff42"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3",
+    "why": "dynamic code loader spec.loader.exec_module (line 49)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p1.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py",
+    "line": 49,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "2ca56bc210908e1fb72ca4782731692f7fa6cc60aa51198e209c079fd489ab3b"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 238)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p2/skill_robodojo.py",
+    "line": 238,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"cib_old_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "87fb1dd5686db5110e1236b36b7ed7b487fa877507f06763015319789f50c5b9"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old",
+    "why": "dynamic code loader spec.loader.exec_module (line 240)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p2/skill_robodojo.py",
+    "line": 240,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "8d1638d2d21bac693e858aa7f8e150842abac5559c89f134646c916d13c577ec"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 54)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p2/skill_robodojo.py",
+    "line": 54,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pib_v3b_tierA_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "4a91f773b023fc77d7a2824689dd96e874ea9188ea2b35345c256d4e642e605c"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3",
+    "why": "dynamic code loader spec.loader.exec_module (line 56)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_p2.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_p2/skill_robodojo.py",
+    "line": 56,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "3e007e68bf382c8e6da6b68c167cc271ea8dcebcd7aed1f4712a5ace4aa97a72"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 183)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_v3b/skill_robodojo.py",
+    "line": 183,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"cib_old_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "4cbd58a117e07ddcc79201f24a68099d60e78085bcf41a98c62d253f1945d9c0"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old",
+    "func": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old",
+    "why": "dynamic code loader spec.loader.exec_module (line 185)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_old"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_v3b/skill_robodojo.py",
+    "line": 185,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "b455e49cf423bb475d39542baf7dba864a67dd0d68fe5b37574a96451c69ad99"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 41)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_v3b/skill_robodojo.py",
+    "line": 41,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pib_v3b_tierA_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "de8f30f12e363d7d2c18086e52e8d7b2bda363fdb17a492840a3b71c83cc9b93"
+   },
+   {
+    "root": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3",
+    "func": "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3",
+    "why": "dynamic code loader spec.loader.exec_module (line 43)",
+    "path": [
+     "dojo.skills.ported.skills.classify_into_bins_v3b.skill_robodojo:load_v3"
+    ],
+    "file": "dojo/skills/ported/skills/classify_into_bins_v3b/skill_robodojo.py",
+    "line": 43,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "f1e6de38217eb0955237777cbd2156698b012826a9ffd0a0033205d48e322ac8"
+   },
+   {
+    "root": "dojo.skills.ported.skills.colour_order:load_sibling",
+    "func": "dojo.skills.ported.skills.colour_order:load_sibling",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 82)",
+    "path": [
+     "dojo.skills.ported.skills.colour_order:load_sibling"
+    ],
+    "file": "dojo/skills/ported/skills/colour_order.py",
+    "line": 82,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"sib_{name}_{os.getpid()}_{id(path)}\", path)",
+    "clean_reachable": false,
+    "key": "7b91b7a1a0acbcf243f4d24bd894737aaf614e4bccc878ab735b4acaa74fa838"
+   },
+   {
+    "root": "dojo.skills.ported.skills.colour_order:load_sibling",
+    "func": "dojo.skills.ported.skills.colour_order:load_sibling",
+    "why": "dynamic code loader spec.loader.exec_module (line 84)",
+    "path": [
+     "dojo.skills.ported.skills.colour_order:load_sibling"
+    ],
+    "file": "dojo/skills/ported/skills/colour_order.py",
+    "line": 84,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(mod)",
+    "clean_reachable": false,
+    "key": "f38cb54e0779ffc71788c5ff32286809ea37b89b0130c52c358b97cf6e98160e"
+   },
+   {
+    "root": "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_bl",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 28)",
+    "path": [
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb/skill_robodojo.py",
+    "line": 28,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(name, p)",
+    "clean_reachable": false,
+    "key": "8183f4c01524277acb8e558b07314e13882445b37d7745e0b9128dc3397e6d72"
+   },
+   {
+    "root": "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_bl",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 30)",
+    "path": [
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb/skill_robodojo.py",
+    "line": 30,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "b9cf79b4719b2ed5eedb0ce7584c0cf56eccbc64a67aa7dcfdc7fb4f5e9d279d"
+   },
+   {
+    "root": "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_bl",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 44)",
+    "path": [
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/skill_robodojo.py",
+    "line": 44,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(name, p)",
+    "clean_reachable": false,
+    "key": "533078b83d0750eba07083af9da5440e1ef96728b9261c28f264d8f815b5ac11"
+   },
+   {
+    "root": "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_bl",
+    "func": "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 46)",
+    "path": [
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_bl",
+     "dojo.skills.ported.skills.planar_drag_rgb_strict.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/planar_drag_rgb_strict/skill_robodojo.py",
+    "line": 46,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "c6aef4831ab307fd495153ed499849f550df4306ff0a45a9dc80a42f9a20d9ce"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 51)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle/skill_robodojo.py",
+    "line": 51,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pour_ro_bottle_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "f79883f7b5444090c31052e25ebd4073f5f6d5c2ef44b24da06701dc590af2bc"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour",
+    "why": "dynamic code loader spec.loader.exec_module (line 53)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle/skill_robodojo.py",
+    "line": 53,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "d440e548c86b60b4bbe3b9530eb8c788bbec7e5ca99e2ffea31353881487d9f6"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 57)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle_lean/skill_robodojo.py",
+    "line": 57,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"pour_ro_bottle_{os.getpid()}_{time.time_ns()}\", p)",
+    "clean_reachable": false,
+    "key": "42bb5c087a027f986a0ed71c6afa04ebd709d9f21d68388300dc861a8a962a76"
+   },
+   {
+    "root": "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour",
+    "func": "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour",
+    "why": "dynamic code loader spec.loader.exec_module (line 59)",
+    "path": [
+     "dojo.skills.ported.skills.pour_bottle_lean.skill_robodojo:load_pour"
+    ],
+    "file": "dojo/skills/ported/skills/pour_bottle_lean/skill_robodojo.py",
+    "line": 59,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "df84ec06fadeaa266ee9fc5f073db23e67b95218995e2a1707abc1686f209054"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 45)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb/skill_robodojo.py",
+    "line": 45,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"{key}_ro_next3\", p)",
+    "clean_reachable": false,
+    "key": "cacac583b75b42ec91f70503a0ed36853d5711c2bd603093a0fa2054a6eafe57"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 47)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb/skill_robodojo.py",
+    "line": 47,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "34cd7147cb2758c50a69b91310734f4af9322ac781f019992c9d2e6d8f25a886"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 54)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict/skill_robodojo.py",
+    "line": 54,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"{key}_ro_strict\", p)",
+    "clean_reachable": false,
+    "key": "aa3dfbd5125487c83708494434e0c982b496f75e752e0a033838a0aa476cdbd8"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 56)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict/skill_robodojo.py",
+    "line": 56,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "56f74bf4d4e598ff7e6f056431732721553960546f0f2b14d7ba3b596e68d588"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:H",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 78)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:H",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v2/skill_robodojo.py",
+    "line": 78,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(f\"{key}_ro_basket_r1\", os.path.join(HERE, rel))",
+    "clean_reachable": false,
+    "key": "39cee7b97e51be305f6e73883505e7d6a8b1f27d0252378c7e1a64e07dd0d06c"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:H",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 80)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:H",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v2.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v2/skill_robodojo.py",
+    "line": 80,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "aab6f67ee1e7bbf5a6783256b1d0228eda710784f43eb8d32912ee7d215bc155"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:FK",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_load",
+    "why": "dynamic code loader importlib.util.spec_from_file_location (line 63)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:FK",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v3/skill_robodojo.py",
+    "line": 63,
+    "category": "dynamic_code",
+    "evidence": "spec = importlib.util.spec_from_file_location(name, os.path.join(HERE, rel))",
+    "clean_reachable": false,
+    "key": "3c19aad48a8615c35b7dbaf67dafe286c4073011b59cd7546db93f25d74c9cb6"
+   },
+   {
+    "root": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:FK",
+    "func": "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_load",
+    "why": "dynamic code loader spec.loader.exec_module (line 65)",
+    "path": [
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:FK",
+     "dojo.skills.ported.skills.put_into_bin_rgb_strict_v3.skill_robodojo:_load"
+    ],
+    "file": "dojo/skills/ported/skills/put_into_bin_rgb_strict_v3/skill_robodojo.py",
+    "line": 65,
+    "category": "dynamic_code",
+    "evidence": "spec.loader.exec_module(m)",
+    "clean_reachable": false,
+    "key": "c3a0752739a9aebbbc0a0ee93bcd40f75dcff995c481585ce88e47d3b6d885eb"
+   }
+  ]
+ }
+}

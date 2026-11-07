@@ -18,3 +18,12 @@ leak; their presence is not permission to use those paths in a board entry.
 The partner implementation is now the single base. The inventory’s proposed-additions
 section records our small extensions and tests for the move to robot-harness. This PR does
 not introduce another general library or attempt to retire the blocked controllers.
+
+The hybrid re-check adds explicit roots for every vendored Python module/callable,
+including helpers without run(), all cmd_* handlers and known adjacent file-loader
+targets. The inventory publishes module/root hashes and dynamic-loader findings.
+The active candidate pour_p1 containment/tilt verified predicate is a concrete
+checker-shaped blocker, now tested and labelled. Carrier/reflective pins are unique
+single lines; multiline literals point to each offending line. The production
+RuntimeProvider perception/checkpoint path is exercised with poisoned instructions
+and a negative-control read, rather than relying only on GTProvider fixtures.

@@ -110,3 +110,53 @@ def test_evaluator_termination_and_historical_log_sources_are_inventoried(tmp_pa
     found = A.audit_callgraph(profile=p, names=['make_kong'])
     assert any('termination feedback surface' in v.why for v in found)
     assert sum('task data path' in v.why for v in found) == 2
+
+
+def test_carrier_pin_is_one_line_and_duplicate_lines_fail_closed(tmp_path):
+    p = profile(tmp_path, {'pkg/entry.py': 'def run(obj):\n    x = obj.instruction\n    return obj.instruction.lower()\n'})
+    p.carriers = {('pkg.entry', 'run'): 'x = obj.instruction'}
+    found = A.audit_callgraph(profile=p, names=['make_kong'])
+    assert not any(v.why == '.instruction read (line 2)' for v in found)
+    assert any(v.why == '.instruction read (line 3)' for v in found)
+    (tmp_path / 'pkg/entry.py').write_text('def run(obj):\n    x = obj.instruction\n    x = obj.instruction\n')
+    found = A.audit_callgraph(profile=p, names=['make_kong'])
+    assert any('carrier line is ambiguous' in v.why for v in found)
+    assert sum('.instruction read' in v.why for v in found) == 2
+
+
+def test_path_loaded_helpers_are_explicit_roots_even_without_run(tmp_path):
+    from dojo.legality.profiles import controlr_inference
+    path = tmp_path / 'dojo/skills/ported/skills/hidden/helper.py'
+    path.parent.mkdir(parents=True)
+    path.write_text('def acceptance(x):\n    return "make_kong", "task/RoboDojo/tasks/check.py"\n')
+    p = controlr_inference(tmp_path)
+    target = 'dojo.skills.ported.skills.hidden.helper:acceptance'
+    assert target in p.roots
+    found = A.audit_callgraph([target], p, names=['make_kong'])
+    assert any(v.root == target and 'task data path' in v.why for v in found)
+
+
+def test_unknown_dynamic_loader_is_not_silently_certified(tmp_path):
+    p = profile(tmp_path, {'pkg/entry.py': 'import importlib.util\ndef run(path):\n    return importlib.util.spec_from_file_location("external", path)\n'})
+    found = A.audit_callgraph(profile=p, names=['make_kong'])
+    assert any(v.why.startswith('dynamic code loader') for v in found)
+
+
+def test_reviewed_vendored_checker_predicate_is_detected(tmp_path):
+    from dojo.legality.profiles import controlr_inference
+    path = tmp_path / 'dojo/skills/ported/skills/pour_p1/skill_robodojo.py'
+    path.parent.mkdir(parents=True)
+    path.write_text('def _in_target(bounds, pos):\n    return pos[2] > bounds[0][2]\ndef run(robot):\n    verified = _in_target(robot.bounds, robot.pos)\n    return verified\n')
+    p = controlr_inference(tmp_path)
+    root = 'dojo.skills.ported.skills.pour_p1.skill_robodojo:run'
+    found = A.audit_callgraph([root], p, names=['make_kong'])
+    assert any(v.why.startswith('audited checker-shaped acceptance predicate') for v in found)
+    assert any(v.why.startswith('audited checker predicate drives verified outcome') for v in found)
+
+
+def test_multiline_exemptions_pin_the_offending_line_and_each_match(tmp_path):
+    p = profile(tmp_path, {'pkg/entry.py': 'def run():\n    """generic opener\n    make_kong\n    stack_blocks\n    task/RoboDojo/config/hidden.yml\n    """\n'})
+    found = A.audit_callgraph(profile=p, names=['make_kong', 'stack_blocks'])
+    assert any(v.why == "task name in a string: 'make_kong' (line 3)" for v in found)
+    assert any(v.why == "task name in a string: 'stack_blocks' (line 4)" for v in found)
+    assert any(v.why.startswith('task data path:') and '(line 5)' in v.why for v in found)

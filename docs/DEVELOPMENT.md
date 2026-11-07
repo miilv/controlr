@@ -1055,7 +1055,9 @@ in a guard's candidate exploration blocks the zero-request parity proof.
 The engine in `dojo/legality/audit.py` is shared with the partner team. Its profiles
 include their `controlr-glib` and our `dojo/legality/profiles.py:controlr_inference`.
 The latter indexes source without importing inference code and covers the planner,
-supervisor, runtime, registered/dynamic skills, perception and known prompt inputs.
+supervisor, runtime, registered/dynamic skills, perception and known prompt inputs. Every vendored path-loaded module/helper and cmd_* handler
+is an explicit root; unknown/external loader sites remain findings. The inventory
+includes a hashed path-loaded module/root manifest.
 Run `uv run python scripts/legality/scan.py --output /tmp/legality.json`, or add
 `--check --base-ref origin/main` for enforcement. `--root CHECKOUT` audits a different
 source snapshot. `--candidate FILE` records the exact candidate flags/parsed overrides;
@@ -1068,7 +1070,8 @@ harmless line-number moves. Neither keys nor budgets may grow. Bootstrap is perm
 only when the base has no scanner/baseline. Remove exemptions as code is retired;
 never regenerate the baseline to make CI green. Historical exemptions are debt, not
 a certificate of board eligibility. Engine carrier/reflective exceptions are pinned
-to exact source lines; a changed pin is a finding.
+to one exact source line; duplicate matches fail closed, and a changed pin is a
+finding. Multiline literals pin their offending lines, not opening quotes.
 
 The general-system directories `dojo/general/`, `dojo/skills/general/`,
 `dojo/perception/general/` and `dojo/runtime/general/` are automatically roots.
@@ -1088,7 +1091,10 @@ The runtime tests use the shared `InstructionSentinel` / `InstructionRead`, plus
 our test-only task-data tripwires in `scripts/legality/sentinel.py`. Mock runtime
 and FakeLLM episodes keep instruction text available to planning while poisoning task
 identity. Explicit-argument skills also run with the sentinel inside their instruction
-field. Alias calls, cached loaders and task-data files are guarded; sticky hits survive
+field. Production-mode tests poison RuntimeProvider and bridge observations after
+planning, rebuild Skills through the runtime factory, and exercise the real resync
+and perception-checker path with only the external service mocked. GT access raises.
+Alias calls, cached loaders and task-data files are guarded; sticky hits survive
 swallowed exceptions. Negative controls expose legacy schema fallback and the internal
 ported instruction leak. Passing tests does not certify untested skills or the real
 perception service. Partner glib-specific tests skip explicitly when glib is absent;

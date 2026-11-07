@@ -19,15 +19,16 @@ and [parsed overrides/hash](data/legality/candidate-config.json), including subm
 ported routes and all five new_routes. This removes the audit's truncated-JSON limit.
 
 `dojo/legality/profiles.py:controlr_inference` indexes our `dojo/` and `controlr/`
-code without importing it. Main has 66 declared roots, D-C19 63: planner, supervisor,
+code without importing it. Main has 521 declared roots, D-C19 502: planner, supervisor,
 runtime entry/setup, model-agent runtime, perception, all local registered skills,
-dynamic ported run entry points and the internal observation boundary. Imported
+every callable/module in the path-loaded ported subtree, known adjacent file-loader
+targets, all cmd_* handlers and the internal observation boundary. Imported
 global dispatch tables and known agent/perceiver prompt resources are also scanned.
 This is a conservative superset of candidate reachability, not a claim that every
 flagged branch ran. Candidate overrides are recorded, never executed. Old source
 line numbers in either review must not be applied to current main.
 
-Reproduce by extracting `git archive REF dojo controlr skills` into an empty
+Reproduce by extracting `git archive REF dojo controlr skills scripts/skills/articulation_links.py` into an empty
 CHECKOUT, then running:
 
 ```bash
@@ -53,26 +54,40 @@ comments are review evidence. These counts must not be reported as proven board 
 
 | Category | Main | D-C19 |
 |---|---:|---:|
+| reflection | 51 | 39 |
+| unresolved | 31670 | 29742 |
 | checker_module | 1 | 1 |
-| unresolved | 30956 | 29071 |
-| instruction_or_identity | 97 | 96 |
-| task_name | 296 | 283 |
-| checker_provenance | 173 | 164 |
+| task_data | 93 | 90 |
+| checker_provenance | 174 | 165 |
 | checker_tolerance | 59 | 57 |
-| reflection | 46 | 34 |
-| identity_source | 3 | 3 |
-| task_vocabulary | 75 | 75 |
-| task_switch | 86 | 65 |
-| task_data | 90 | 87 |
-| termination | 3 | 3 |
+| task_switch | 88 | 67 |
 | checker_state | 53 | 51 |
+| termination | 3 | 3 |
+| task_vocabulary | 75 | 75 |
+| task_name | 331 | 317 |
+| dynamic_code | 49 | 45 |
+| identity_source | 3 | 3 |
+| instruction_or_identity | 97 | 96 |
 | benchmark_composite | 6 | 6 |
+| checker_predicate | 2 | 2 |
 
 Complete machine-readable, grouped inventories:
 [main CSV](data/legality/main.csv.gz), [D-C19 CSV](data/legality/dc19.csv.gz).
 Both include category, audit/review group, identity-source disposition, file:line,
 entry point, deep symbol, full call path, reason and exact source evidence.
 Use `gzip -dc docs/experiments/data/legality/main.csv.gz` to inspect them.
+
+## Path-loaded code coverage
+
+Every `.py` module under `ported/skills/**` is an explicit extra root, including
+helper files and functions without `run()`. Every `HarnessRobot.cmd_*` handler is
+rooted, including the `cmd_skill` dispatcher and nested loaders. Known local
+file-loaded helpers outside that subtree are included too. No ordinary import
+edge is assumed for those files. See the complete [module/root/hash manifest](data/legality/path-loaded-modules.json)
+for both snapshots. Dynamic import/spec/exec sites are separately inventoried as
+`dynamic_code`; arbitrary/external targets remain unresolved and cannot be
+certified by this audit. The manifest is a conservative superset, not a claim
+that all these modules execute in the candidate.
 
 ## Identity-source policy
 
@@ -130,6 +145,17 @@ rules cannot establish numeric/semantic provenance from a bare literal.
 Locations above are symbol anchors in our tree; exact per-snapshot lines are in the
 CSVs (the audit's old line numbers do not match current main).
 
+### Concrete path-loaded checker blocker
+
+`ported_plan` with candidate `ported_pour=full` selects `pour_p1`; the reflective
+`HarnessRobot.cmd_skill` loads `ported/skills/pour_p1/skill_robodojo.py`. Its
+`_in_target` at line 182 supplies the ball-membership count at 424; the `verified`
+assignment at 436 requires all balls in that footprint, cup tilt <=15 degrees,
+and home (or ended). This matches the concrete checker-shaped path in the partner
+hybrid re-check and **blocks board entry**. Both predicate and outcome assignment
+now have `checker_predicate` inventory signals. Generic instruction sentinels alone
+cannot detect this geometric/checker knowledge.
+
 ## Risky evidence requiring provenance review
 
 - **Checker-shaped tolerances:** `skills/tiles.py` (`ON_PAD`, heading/reach banks,
@@ -159,6 +185,7 @@ CSVs (the audit's old line numbers do not match current main).
 
 
 
+
 ## Proposed additions to send back to the partner
 
 All additions extend the shared engine/profile; there is no second call-graph engine.
@@ -166,7 +193,9 @@ All additions extend the shared engine/profile; there is no second call-graph en
 - **Imported global constants and dispatch tables:** opt-in module nodes connect
   reachable functions to imported globals. A clean wrapper cannot hide a task
   table in another module. Relative/package imports and re-exported registry roots
-  are resolved; a planted imported global demonstrates this case.
+  are resolved; a planted imported global demonstrates this case. All path-loaded
+  modules/helpers and cmd_* handlers are explicit roots; unknown targets have
+  dynamic-loader findings. The reviewed pour_p1 predicate has a regression case.
 - **Opaque/dynamic calls:** our profile reports unresolved calls rather than
   silently certifying them. This is deliberately conservative, including external
   dependencies; it explains the large separate unresolved inventory.
@@ -178,7 +207,9 @@ All additions extend the shared engine/profile; there is no second call-graph en
   writing logs or transport shutdown alone is not a violation.
 - **Pin scope:** reflective and carrier exemptions match their exact stripped
   source line. One approved reflective call cannot exempt a second dynamic read
-  elsewhere in the function. Changed pins are themselves findings.
+  elsewhere in the function. Duplicate matching lines fail closed as ambiguous.
+  Multiline literals pin each offending line, not the opening quote. Changed pins
+  are themselves findings.
 - **General-path enforcement:** first-path deduplication must not hide a dependency
   also reached from a new general root. The wrapper separately checks reachability
   from those roots; no legacy exemption can certify that dependency. Exemption
@@ -195,7 +226,12 @@ The partner's glib-specific tests are preserved with explicit skips when glib is
 absent; their planted-violation, spelling and sentinel tests run in this tree.
 Our added fixtures cover the gaps above. Mock runtime episodes exercise the rule
 planner and FakeLLM agent with raw instruction text permitted; stacking/arrangement
-also run with the shared sentinel **inside** explicit-argument skills. Negative
+also run with the shared sentinel **inside** explicit-argument skills. Production
+`RuntimePolicy` tests poison `RuntimeProvider.instruction` and subsequent bridge
+observations after planning, rebuild Skills through the production factory, and
+exercise real `RuntimeProvider.resync -> _Checker` calls with a mocked perception
+service. GT access raises; a planted perception-checkpoint read raises
+`InstructionRead`. Both `error` and `error_handled` must be absent in positive cases. Negative
 controls still expose unknown-instruction schema fallback and the internal ported
 instruction leak. They document blockers, not exemptions. The external perception
 mock cannot certify the real perception service; static findings show it is not clean.

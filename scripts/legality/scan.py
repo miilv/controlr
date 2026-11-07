@@ -20,7 +20,7 @@ from dojo.legality.profiles import GENERAL, controlr_inference
 
 
 def category(why):
-    for prefix, cat in [('task name', 'task_name'), ('task data', 'task_data'),
+    for prefix, cat in [('audited checker', 'checker_predicate'), ('dynamic code loader', 'dynamic_code'), ('task name', 'task_name'), ('task data', 'task_data'),
                         ('imports task', 'checker_module'), ('task symbol', 'task_vocabulary'),
                         ('task switch', 'task_switch'), ('checker-shaped', 'checker_tolerance'),
                         ('termination feedback', 'termination'), ('checker provenance', 'checker_provenance'), ('benchmark composite', 'benchmark_composite'), ('category-index', 'identity_source'),
@@ -59,7 +59,11 @@ def inventory(root=ROOT):
         row['key'] = hashlib.sha256(json.dumps([file, qual, re.sub(r' \(line \d+\)', '', v.why), evidence]).encode()).hexdigest()
         rows.append(row)
     return {'profile': profile.name, 'roots': profile.roots,
-            'counts': dict(Counter(r['category'] for r in rows)), 'findings': rows}
+            'counts': dict(Counter(r['category'] for r in rows)), 'findings': rows,
+            'path_loaded_modules': sorted({r.split(':')[0] for r in profile.roots
+                                           if '.ported.skills.' in r or r.startswith('scripts.skills.articulation_links:')
+                                           or r.startswith('controlr.robot.so101.protocol:')
+                                           or r.startswith('controlr.robot.so101.arm_id:')})}
 
 
 def gate(rows, allowlist, previous=None):

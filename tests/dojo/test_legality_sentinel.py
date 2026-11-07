@@ -113,3 +113,65 @@ def test_explicit_argument_skills_accept_the_shared_instruction_sentinel(monkeyp
             result = library.arrange(sk, [('place', 'block_0', 'block_1')])
     assert not hits
     assert result is not None
+
+
+@pytest.mark.parametrize('skill,leak', [('stack_objects', False), ('arrange', False), ('stack_objects', True)])
+def test_production_provider_perception_checkpoint_and_skill_instruction_sentinel(monkeypatch, skill, leak):
+    """Real RuntimePolicy -> RuntimeProvider(mode=perception) -> _Checker -> service mock.
+
+    Planning/setup may read the raw instruction. Poison provider and subsequent
+    observations at the explicit-argument program seam, before rebuilding Skills.
+    """
+    from dojo.legality.audit import sentinel
+    from dojo.runtime.belief import RuntimeProvider
+    from dojo.skills import library
+    env = _env()
+    pc = Perception([o['pos'] for o in env.objects])
+    seen = {'refresh': 0, 'checks': 0, 'entered': False}
+    refresh = RuntimeProvider.refresh
+    def tracked_refresh(self, *args, **kwargs):
+        seen['refresh'] += 1
+        return refresh(self, *args, **kwargs)
+    monkeypatch.setattr(RuntimeProvider, 'refresh', tracked_refresh)
+    def forbidden_gt(*args, **kwargs):
+        raise AssertionError('production sentinel test entered GT')
+    monkeypatch.setattr(RuntimeProvider, '_gt_objects', forbidden_gt)
+
+    def program(ctx):
+        assert type(ctx.prov) is RuntimeProvider and ctx.prov.mode == 'perception'
+        token = sentinel()
+        ctx.prov.instruction = token
+        ctx.prov.task = TaskIdentity()
+        observe = ctx.bridge.observe
+        monkeypatch.setattr(ctx.bridge, 'observe', lambda: {**observe(), 'instruction': token})
+        check = pc.check
+        def checkpoint(frame, objects, fold):
+            assert frame['instruction'] is token
+            seen['checks'] += 1
+            if leak:
+                frame['instruction'].lower()  # planted production-boundary read
+            return check(frame, objects, fold)
+        monkeypatch.setattr(pc, 'check', checkpoint)
+        sk = ctx.make_skills(ctx.sk)
+        assert sk.provider is ctx.prov
+        ctx.prov.resync(ctx.bridge.observe())  # exercise the production perception checker
+        seen['entered'] = True
+        if skill == 'stack_objects':
+            result = library.stack_objects(sk, ['block_0', 'block_1', 'block_2'])
+        else:
+            result = library.arrange(sk, [('place', 'block_0', 'block_1')])
+        assert result is not None
+        return {'ok': True}
+
+    policy = RuntimePolicy(RuntimeConfig(mode='perception', verify='off', vocab_explain=False),
+                           assets=FakeAssets(), perception_client=pc, program=program)
+    with instruction_only(monkeypatch) as hits:
+        report = run_episode(policy, FakeEpisode(env, task=TaskIdentity()), 'perception')
+    assert not hits, hits
+    assert seen['refresh'] >= 2 and seen['checks'] >= 1
+    if leak:
+        assert not seen['entered']
+        assert 'InstructionRead' in (report.get('error') or ''), report
+    else:
+        assert seen['entered']
+        assert report['error'] is None and report.get('error_handled') is None, report
