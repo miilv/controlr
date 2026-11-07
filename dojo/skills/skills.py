@@ -272,6 +272,8 @@ class Skills:
         skill then calls ``refresh()`` and re-plans the descent. None (GT mode) = no refine."""
         self.belt_lift = "off"
         self.belt_first = "off"
+        self.belt_first_recover = "off"
+        self.belt_first_phase = "off"
         self.belt_target = "off"
         self.env = env
         self.provider = provider

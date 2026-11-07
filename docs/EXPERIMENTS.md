@@ -80,10 +80,21 @@ both of these hold:
    - Run `scripts/perception/m95_score.py audit` on physics-only replays of both arms.
    - It compares every belief write the report logs (refines, post_place moves, any `before7` / `after7` event) with
      GT at that step.
+   - GT identity is fixed at the first consumed pick/grasp-close; earlier unambiguous matches within 10 mm are provisional, and nearest-object fallback use is reported.
    - A write is **harmful** when it adds **more than 2 mm** of error to the tracked object (3-D, with z reported
-     apart), and helpful when it removes as much. The tracked object is the GT object of the label's group nearest
-     the pre-write belief.
-   - Compare B's harmful and helpful counts per writer with A's.
+     apart), and helpful when it removes as much. The tracked object is the label's persistently associated GT instance; a later retry never reassigns it.
+   - Compare B's harmful and helpful counts per writer with A's, under these per-writer conditions:
+     - **A writer that also writes in A** passes when B's harmful rate (harmful ÷ writes) is at most 5 percentage
+       points above A's. Raw totals are reported but not gated. Once an arm takes a different action, the two
+       trajectories diverge, so a downstream writer's raw count mostly measures how long the episode ran and what it
+       looked at, not harm.
+     - **A writer new in B** (zero writes in A) passes when its helpful writes are at least **2 ×** its harmful ones.
+       Against A's zero, any harmful write would otherwise count as an excess, so every new read would fail by
+       construction.
+     - Judge both conditions on the cells where the lever acts, pooled across them. A parity guard (§ Camera A/B
+       decision rule) is covered by its parity proof: its writes are reported but not gated.
+     - Pre-registrations written before 2026-11-07 07:00 UTC keep the raw-count gate ("no excess per writer"). Each
+       A/B keeps the rule it was registered with.
 2. **Rendered A/B.** The paired rendered run passes (success / score, n and spread as in §1).
 
 An offline "+N fixed / 0 broken" on grasp-time events (`m95_score.py table`) is evidence, not a qualifier on its own.
@@ -106,6 +117,14 @@ the default is:
      each A/B keeps the rule it was registered with.
 2. **Guard cells:** on every guard cell, B's pooled score is no more than 5 points below A's, and B has no more flip
    losses than wins.
+   - **Parity guards for scoped levers:** the pre-registration can prove a lever inactive on a guard cell. The proof
+     needs an identical resolved config and identical skill parameters in both arms, plus zero lever actions and zero
+     lever writes on every guard episode, checked from the logs after collection. That cell is then a **parity
+     guard**: the parity proof is its gate, and its camera score is reported but not gated. On a high-variance cell
+     at 5 pairs, a single success moves the pooled score by about 20 points, so a camera bound there would only gate
+     noise. Pre-registrations written from 2026-11-07 07:00 UTC may use parity guards.
+   - At least one **strong guard** (a cell the candidate solves at 90 % or more) still runs and is gated as usual. It
+     catches crashes and infrastructure-level regressions that a parity proof cannot see.
 3. **Re-tests:** a lever rejected with a positive pooled delta may be re-tested **once**, on layouts it has never
    run on, under a fresh pre-registration. Never re-run it on the same ids.
 

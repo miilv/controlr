@@ -334,6 +334,12 @@
   `Dynamic/conveyor/00001`, build its background in a separate frozen calibration set, and validate
   belt foreground and moving rider tracks before camera A/B. compute3 cannot render on driver 595.99;
   do not substitute 6.0 proxy frames or modify its drivers.
+  The parked [compute6 execution spec](experiments/2026-11-07-byimg-perception-spec.md)
+  fixes independent fresh calibration/measurement inputs, native RGB/optional depth capture,
+  image-buffer readiness, exact fixture-key/background provenance, six-label/photo scoring and
+  causal belt-track gates. Reserve one drained camera lane for an estimated four GPU-hours and
+  20 GB; no dispatch or agentic model budget is authorized. A similarly named directory is not
+  evidence of a usable native background; validate its pixels, provenance and runtime selection.
 - [ ] **dojo skills: pick_from_conveyor_by_image, the lift binds** (stream H after C, parked; journal
   2026-10-29-dojo-h95-conveyor-image). On my v15 dev draws C's belt_deposit scores 1/20: 14 episodes end at the lift
   with the target already in the basket. A horizontal hook under the handle bar (`belt_lift` "hook", branch
@@ -354,6 +360,24 @@
   general solution. Carry retention and partial target lifts now bind; all new switches remain off.
   No camera spec/jobs or board change. A future lever needs grasp-family/retry and carry-path evidence
   on fresh layouts, rather than another unchanged-bundle retest.
+  [Round 3](experiments/2026-11-07-byimg-g3-r3.md) rejects the guarded bundle: 16 fresh pairs,
+  B-r2 **18.75±40.31 (3/16)** versus B-r3 **0±0 (0/16)**, 0 wins/3 losses/13 ties.
+  Nine fixed-wrist planners find no inset path; a loaded-lift attempt leaves its bottom 762.2 mm.
+  It separates transient native latches from
+  released stability: skill-only continued R2 100012 ends at 14.3 mm rise, while 100017 stays at 119.7 mm.
+  Fresh target-hold screens are 5/10 initially and 6/10 on the frozen recovery prefix; the adaptive
+  spent-layout 7/10 is not independent evidence. Full squeeze, thin-rider approach settling,
+  a planning-only pull fallback and fixed-wrist inset carry remain default-off. A second rim
+  produces a released native latch on glue but ends with 42.6–50 mm bottom gaps (>40 mm);
+  raising before release reaches an 868 mm bottom which falls 51 mm under load. Horizontal hooks
+  retain 43–103 mm command/actual error after long settling; underside/fork approaches hit native
+  IK or contact-tracking limits. G3's unconditional `planner.solve → finish()` also opens both
+  grippers/homes both arms, undoing a maintained basket hold; direct-skill continuations bypass
+  that cleanup and do not prove a full-controller endpoint. Full-planner R2 100017 reproduces
+  latch 304, but finish+100 holds leaves target rise **-32.1 mm**, basket bottom 758.5 mm,
+  inside=1/lift=0. A future bundle needs a separately
+  guarded final-hold policy. Next: identify blocking contact pairs and establish a rim/handle
+  attachment that withstands load before another fresh comparison. Do not widen joint bounds.
 - [ ] **dojo skills: pick_from_conveyor_by_image, the basket lifted level with the target in it** (stream C, parked;
   journal/2026-10-29-dojo-conveyor-deposit.md). The checker wants the target on the basket's bottom 8 cm above its
   start. A rim pinch holds the basket 40 deg tilted. `belt_deposit` (default off) stops it on the belt, drags it toward
@@ -366,6 +390,11 @@
   photo), even with the `Dynamic_conveyor_00001` background installed. Every episode ends at step 3/700 (integ-c4
   round 2, 7f29156, 4 rows; journal 2026-10-28-dojo-integ-c4-round2 §3).
   BYIMG adds a separately default-off `basket_image` observed-roles route; it creates no objects.
+  The [compute6 readiness spec](experiments/2026-11-07-byimg-perception-spec.md) first distinguishes
+  an absent image buffer from valid RGB with zero detections, audits the exact Dynamic_conveyor_00001
+  background and frozen-fold binding, then tests all six labels and the visually read photo identity.
+  Background repair alone is not assumed to solve the empty record. Keep this parked until camera
+  lanes drain; no proxy substitution, GT belief repair or new model calls.
   On compute6, first record and inspect frame 0 plus an unobstructed board view; require all six roles
   (basket, pictured target, three distractors, photo) with geometry and photo identity evidence.
   Audit why B1 and the agentic record stay empty even with the right background. Test the route on
@@ -1078,8 +1107,15 @@
   so the ring was let go tilted on the top (G3 `--mode-b`, 2 mm belief offsets: 0.6 / 0.6 / 0.1). Pegs now pass
   `guard_lag` 1.2 mm / `guard_seated` 1.5 mm and retry a piece left tilted. The real fix is a held-object or peg
   measurement at the hover, like plug_in_charger's.
-  Candidate `peg_held_read` requests the existing held-pose protocol with a 0.5 mm gate; camera adoption remains open
+  Candidate `peg_held_read` requests the existing held-pose protocol with a 0.5 mm gate
   ([TOY diagnosis](journal/2026-11-05-dojo-toy-held-hover.md), [pre-registration](experiments/2026-11-05-toy-held-read-ab.md)).
+  It ran two camera tests: +6 in the wave, then +8 with flips 5/2 on its fresh re-test. It is NOT ADOPTED: the
+  registered raw-count write gate fails, and the one re-test is used up (journal 2026-11-06-ab-wave-verdicts, lead
+  note of 7 Nov 08:00Z).
+  - Next lever: a **hover-only transactional read** ([mechanism](journal/2026-11-07-dojo-peg-mechanism.md)). It
+    drops the show-time reads, whose "harmful" writes were instrument artefacts (#417).
+  - It needs a fresh camera A/B under the refined gates: about 20 play_stacking_toy pairs plus guards, roughly
+    330 Claude calls.
   GPU validation is blocked by the compute3 driver outage. KitLogWatch omitted the CUDA-unavailable failure while
   the environment ran software PhysX; require hardware/startup-log checks before accepting those rows as G3 evidence.
   - Seated blind (v4.6), a ring pushed 30-50 mm down the peg on a predicted pose binds and tilts: 0/5, 0.30. v4.7 threads
@@ -1190,4 +1226,6 @@
 
 - ~~**Relocation write audit coverage:** `RuntimePolicy._relocate_laid` emits resulting pos only; `m95_score.py audit` does not ingest it. Add explicit pre/post write coverage before collecting the [scoped KONG camera A/B](experiments/2026-11-07-kong-scoped-relocate-prereg.md); an audit omitting these writes cannot qualify the lever.~~ Instrumentation completed in #411; paired replay outcomes remain required by the preregistration.
 
-- **Actor-relocation audit identity association:** the nearest-pre-write/group rule can select a standing neighbour after the tracked tile has fallen. In the [scoped KONG audit](experiments/2026-11-07-kong-scoped-relocate-prereg.md), two `mahjong7_0` writes are judged against GT `mahjong8_0` (44.3→66.2 mm), while a same-label diagnostic improves 46.31→1.64 mm. Preserve registered flags; review a general identity-aware audit before interpreting these as actual relocation harm. No controller change or retrospective threshold tuning.
+- [x] ~~**Actor-relocation audit identity association:** the nearest-pre-write/group rule can select a standing neighbour after the tracked tile has fallen. In the [scoped KONG audit](experiments/2026-11-07-kong-scoped-relocate-prereg.md), two `mahjong7_0` writes are judged against GT `mahjong8_0` (44.3→66.2 mm), while a same-label diagnostic improves 46.31→1.64 mm. Preserve registered flags; review a general identity-aware audit before interpreting these as actual relocation harm. No controller change or retrospective threshold tuning.~~ Fixed by `AuditIdentity`: chronological tight anchors, first-pick/grasp-close finalization and persistent physical identity; nearest fallbacks are counted. Registered verdicts are not revised.
+
+- [x] ~~**Held-pose audit before pose includes arm transport:** cached world pose was compared with the new attachment at the show TCP.~~ The logger now projects the prior attachment at the same current measured arm pose, preserving the raw `before_sync7`; live actions/beliefs are unchanged and covered by a FakeLLM/mock episode.

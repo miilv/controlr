@@ -436,6 +436,12 @@ deadline have different startup/overrun semantics; report them explicitly.
   make_kong's stand at the release of the drawn tile. A read or confirm planned AFTER the final placement never runs,
   and the tile was used unread. Read before the final place, on a spot the checker does not score
   (`library.kong_draw_read`'s read spot).
+- **A native success latch does not prove a stable released placement.** For a conveyor
+  container, archive the first latch, the release segment and an independently measured
+  post-chain hold. A development-only continuation may suppress success termination while
+  retaining failure/step-limit stops; label it unscored and keep the official G3 panel on
+  the unmodified native environment. A later read of latched stage count cannot establish
+  current containment or lift. Check the unlatched geometry and report both outcomes.
 - **`classify_mask` needs the arm mask.** The digit / operator margins were calibrated without the crops it refuses:
   masks cut by the image border (`edge`) and masks whose 3-px ring is >= 30 % arm (`robot`, only when `robot=` is
   passed: `~known` of a B1 view or `render.robot_mask`). Without `robot=`, a tile half hidden by the gripper is read
@@ -797,3 +803,16 @@ With `headset_retry=sites`, a failed measured-attachment place re-plan puts
 the object down and rejects that pickup site instead of carrying a nominal
 attachment. Legacy retry retains the original fallback.
 
+### Write-audit identity and held transport
+
+Held-pose `belief_write.before7` is the prior attachment synchronized to the current measured TCP; `before_sync7`
+retains the cached raw world pose. Computing the synchronized prior is logging-only and does not add a live belief
+synchronization or observation. `m95_score.py audit` associates labels chronologically: unambiguous <=10 mm proximity
+anchors are provisional until the first consumed pick or saved grasp-close evidence finalizes the identity. Subsequent
+retries cannot rebind it. Every row records its association source/step and fallback flag; `association.json` counts
+fallbacks and missing body geometry. A missing already-anchored GT object fails rather than selecting a neighbour.
+
+`scripts/perception/audit_supplementary.py` re-scores copied frozen ledgers against saved exact write frames without
+starting a simulator. It accepts frozen body-bounds/group caches, and keeps the 2 mm body-centre definitions unchanged.
+Its optional legacy-show repair records exact-flange versus commanded-anchor-FK provenance; approximate legacy
+reconstructions are supplementary diagnostics, never retroactive qualification of a registered verdict.

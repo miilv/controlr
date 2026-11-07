@@ -1,0 +1,1440 @@
+{
+  "panel": "Sonnet primary",
+  "counts": {
+    "helpful": 16,
+    "neutral": 11,
+    "harmful": 2
+  },
+  "writes": 29,
+  "rows": [
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100000__sonnet",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 44,
+      "label": "mahjong8_0",
+      "before": [
+        -0.092,
+        0.05,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.097,
+        0.0050000000000000044,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 47.9,
+      "err_after_mm": 6.6,
+      "z_before_mm": -0.3,
+      "z_after_mm": -0.3,
+      "gt": [
+        -0.0911,
+        0.0021,
+        0.7816
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100000__sonnet",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 48,
+      "label": "mahjong8_0",
+      "before": [
+        -0.097,
+        0.0050000000000000044,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0945,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 6.4,
+      "err_after_mm": 3.3,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0912,
+        0.0021,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100000__sonnet",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 52,
+      "label": "mahjong8_0",
+      "before": [
+        -0.0945,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0945,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 3.3,
+      "err_after_mm": 3.3,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0912,
+        0.0021,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "neutral"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100001__sonnet",
+      "task": "make_kong",
+      "layout_id": 100001,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 32,
+      "label": "mahjong5_0",
+      "before": [
+        0.0,
+        0.05,
+        0.7813688962436897
+      ],
+      "after": [
+        1.734723475976807e-18,
+        0.012500000000000004,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 43.1,
+      "err_after_mm": 8.4,
+      "z_before_mm": -6.6,
+      "z_after_mm": -6.6,
+      "gt": [
+        -0.0006,
+        0.0074,
+        0.788
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100001__sonnet",
+      "task": "make_kong",
+      "layout_id": 100001,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 36,
+      "label": "mahjong5_0",
+      "before": [
+        1.734723475976807e-18,
+        0.012500000000000004,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 10.6,
+      "err_after_mm": 0.4,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0025,
+        0.0022,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100001__sonnet",
+      "task": "make_kong",
+      "layout_id": 100001,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 40,
+      "label": "mahjong5_0",
+      "before": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 0.4,
+      "err_after_mm": 0.4,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0025,
+        0.0022,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "neutral"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100002__sonnet",
+      "task": "make_kong",
+      "layout_id": 100002,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 32,
+      "label": "mahjong7_0",
+      "before": [
+        -0.05085760498046877,
+        0.047830200195312464,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.04835760498046877,
+        0.0028302001953124656,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 44.3,
+      "err_after_mm": 66.2,
+      "z_before_mm": -16.1,
+      "z_after_mm": -16.1,
+      "gt": [
+        -0.0921,
+        0.0498,
+        0.7975
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "harmful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100002__sonnet",
+      "task": "make_kong",
+      "layout_id": 100002,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 36,
+      "label": "mahjong7_0",
+      "before": [
+        -0.04835760498046877,
+        0.0028302001953124656,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.04835760498046877,
+        0.0028302001953124656,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 1.5,
+      "err_after_mm": 1.5,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0474,
+        0.0017,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong7_0",
+      "gt_moving": false,
+      "verdict": "neutral"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100003__sonnet",
+      "task": "make_kong",
+      "layout_id": 100003,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 32,
+      "label": "mahjong5_0",
+      "before": [
+        0.0,
+        0.05,
+        0.7813688962436897
+      ],
+      "after": [
+        1.734723475976807e-18,
+        0.012500000000000004,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 43.1,
+      "err_after_mm": 8.4,
+      "z_before_mm": -6.6,
+      "z_after_mm": -6.6,
+      "gt": [
+        -0.0006,
+        0.0074,
+        0.788
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100003__sonnet",
+      "task": "make_kong",
+      "layout_id": 100003,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 36,
+      "label": "mahjong5_0",
+      "before": [
+        1.734723475976807e-18,
+        0.012500000000000004,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 10.6,
+      "err_after_mm": 0.4,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0025,
+        0.0022,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100003__sonnet",
+      "task": "make_kong",
+      "layout_id": 100003,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 40,
+      "label": "mahjong5_0",
+      "before": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 0.4,
+      "err_after_mm": 0.4,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0025,
+        0.0022,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "neutral"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100004__sonnet",
+      "task": "make_kong",
+      "layout_id": 100004,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 32,
+      "label": "mahjong6_0",
+      "before": [
+        0.0455878667831421,
+        0.04700817680358887,
+        0.7813688962436897
+      ],
+      "after": [
+        0.0455878667831421,
+        0.004508176803588872,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 45.3,
+      "err_after_mm": 2.8,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        0.0451,
+        0.0017,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong6_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100004__sonnet",
+      "task": "make_kong",
+      "layout_id": 100004,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 36,
+      "label": "mahjong6_0",
+      "before": [
+        0.0455878667831421,
+        0.004508176803588872,
+        0.7813688962436897
+      ],
+      "after": [
+        0.0455878667831421,
+        0.0020081768035888695,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 2.9,
+      "err_after_mm": 0.7,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        0.045,
+        0.0017,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong6_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100000__sonnet",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 32,
+      "label": "mahjong5_0",
+      "before": [
+        0.0,
+        0.05,
+        0.7813688962436897
+      ],
+      "after": [
+        1.734723475976807e-18,
+        0.012500000000000004,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 43.1,
+      "err_after_mm": 8.4,
+      "z_before_mm": -6.6,
+      "z_after_mm": -6.6,
+      "gt": [
+        -0.0006,
+        0.0074,
+        0.788
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100000__sonnet",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 36,
+      "label": "mahjong5_0",
+      "before": [
+        1.734723475976807e-18,
+        0.012500000000000004,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 10.6,
+      "err_after_mm": 0.4,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0025,
+        0.0022,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100000__sonnet",
+      "task": "make_kong",
+      "layout_id": 100000,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 40,
+      "label": "mahjong5_0",
+      "before": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 0.4,
+      "err_after_mm": 0.4,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0025,
+        0.0022,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "neutral"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100001__sonnet",
+      "task": "make_kong",
+      "layout_id": 100001,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 32,
+      "label": "mahjong5_0",
+      "before": [
+        0.0,
+        0.05,
+        0.7813688962436897
+      ],
+      "after": [
+        1.734723475976807e-18,
+        0.012500000000000004,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 43.1,
+      "err_after_mm": 8.4,
+      "z_before_mm": -6.6,
+      "z_after_mm": -6.6,
+      "gt": [
+        -0.0006,
+        0.0074,
+        0.788
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100001__sonnet",
+      "task": "make_kong",
+      "layout_id": 100001,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 36,
+      "label": "mahjong5_0",
+      "before": [
+        1.734723475976807e-18,
+        0.012500000000000004,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 10.6,
+      "err_after_mm": 0.4,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0025,
+        0.0022,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100001__sonnet",
+      "task": "make_kong",
+      "layout_id": 100001,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 40,
+      "label": "mahjong5_0",
+      "before": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0024999999999999988,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 0.4,
+      "err_after_mm": 0.4,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0025,
+        0.0022,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong5_0",
+      "gt_moving": false,
+      "verdict": "neutral"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100002__sonnet",
+      "task": "make_kong",
+      "layout_id": 100002,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 40,
+      "label": "mahjong8_0",
+      "before": [
+        -0.092,
+        0.05,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.09949999999999999,
+        0.05000000000000001,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 32.1,
+      "err_after_mm": 33.0,
+      "z_before_mm": -16.3,
+      "z_after_mm": -16.3,
+      "gt": [
+        -0.092,
+        0.0224,
+        0.7977
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "neutral"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100002__sonnet",
+      "task": "make_kong",
+      "layout_id": 100002,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 44,
+      "label": "mahjong8_0",
+      "before": [
+        -0.09949999999999999,
+        0.05000000000000001,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.097,
+        0.0050000000000000044,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 48.6,
+      "err_after_mm": 6.6,
+      "z_before_mm": -0.3,
+      "z_after_mm": -0.3,
+      "gt": [
+        -0.0911,
+        0.0021,
+        0.7816
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100002__sonnet",
+      "task": "make_kong",
+      "layout_id": 100002,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 48,
+      "label": "mahjong8_0",
+      "before": [
+        -0.097,
+        0.0050000000000000044,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0945,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 6.4,
+      "err_after_mm": 3.3,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0912,
+        0.0021,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100002__sonnet",
+      "task": "make_kong",
+      "layout_id": 100002,
+      "success": false,
+      "score": 0.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 52,
+      "label": "mahjong8_0",
+      "before": [
+        -0.0945,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0945,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 3.3,
+      "err_after_mm": 3.3,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0912,
+        0.0021,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "neutral"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100003__sonnet",
+      "task": "make_kong",
+      "layout_id": 100003,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 32,
+      "label": "mahjong7_0",
+      "before": [
+        -0.05085760498046877,
+        0.047830200195312464,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.04835760498046877,
+        0.0028302001953124656,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 44.3,
+      "err_after_mm": 66.2,
+      "z_before_mm": -16.1,
+      "z_after_mm": -16.1,
+      "gt": [
+        -0.0921,
+        0.0498,
+        0.7975
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "harmful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100003__sonnet",
+      "task": "make_kong",
+      "layout_id": 100003,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 36,
+      "label": "mahjong7_0",
+      "before": [
+        -0.04835760498046877,
+        0.0028302001953124656,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.04835760498046877,
+        0.0028302001953124656,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 1.5,
+      "err_after_mm": 1.5,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0474,
+        0.0017,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong7_0",
+      "gt_moving": false,
+      "verdict": "neutral"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100004__sonnet",
+      "task": "make_kong",
+      "layout_id": 100004,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 40,
+      "label": "mahjong8_0",
+      "before": [
+        -0.092,
+        0.05,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.09949999999999999,
+        0.05000000000000001,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 32.1,
+      "err_after_mm": 33.0,
+      "z_before_mm": -16.3,
+      "z_after_mm": -16.3,
+      "gt": [
+        -0.092,
+        0.0224,
+        0.7977
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "neutral"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100004__sonnet",
+      "task": "make_kong",
+      "layout_id": 100004,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 44,
+      "label": "mahjong8_0",
+      "before": [
+        -0.09949999999999999,
+        0.05000000000000001,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.097,
+        0.0050000000000000044,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 48.6,
+      "err_after_mm": 6.6,
+      "z_before_mm": -0.3,
+      "z_after_mm": -0.3,
+      "gt": [
+        -0.0911,
+        0.0021,
+        0.7816
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100004__sonnet",
+      "task": "make_kong",
+      "layout_id": 100004,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 48,
+      "label": "mahjong8_0",
+      "before": [
+        -0.097,
+        0.0050000000000000044,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0945,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 6.4,
+      "err_after_mm": 3.3,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0912,
+        0.0021,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "helpful"
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100004__sonnet",
+      "task": "make_kong",
+      "layout_id": 100004,
+      "success": true,
+      "score": 1.0,
+      "replay_score": 0.0,
+      "writer": "watch_relocate",
+      "step": 52,
+      "label": "mahjong8_0",
+      "before": [
+        -0.0945,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "after": [
+        -0.0945,
+        0.0025000000000000022,
+        0.7813688962436897
+      ],
+      "q_before": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "q_after": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "err_before_mm": 3.3,
+      "err_after_mm": 3.3,
+      "z_before_mm": -0.1,
+      "z_after_mm": -0.1,
+      "gt": [
+        -0.0912,
+        0.0021,
+        0.7815
+      ],
+      "frame_lag": 0,
+      "gt_label": "mahjong8_0",
+      "gt_moving": false,
+      "verdict": "neutral"
+    }
+  ],
+  "harmful_same_label_diagnostics": [
+    {
+      "run": "c6b_makekongsg_kongBr1b1_100002__sonnet",
+      "layout_id": 100002,
+      "step": 32,
+      "belief_label": "mahjong7_0",
+      "registered_gt_label": "mahjong8_0",
+      "registered_error_mm": [
+        44.3,
+        66.2
+      ],
+      "registered_z_mm": [
+        -16.1,
+        -16.1
+      ],
+      "same_label_gt": {
+        "label": "mahjong7_0",
+        "type": "Rigid",
+        "category": "mahjong",
+        "category_idx": 7,
+        "clutter": false,
+        "pos": [
+          -0.04722626134753227,
+          0.0016647123266011477,
+          0.7816004753112793
+        ],
+        "quat": [
+          0.01527485903352499,
+          0.0051003992557525635,
+          -0.0016452888958156109,
+          0.9998689889907837
+        ],
+        "key": "Rigid/mahjong/00007"
+      },
+      "same_label_error_mm": [
+        46.30873655576153,
+        1.6407594910421939
+      ],
+      "same_label_z_mm": [
+        -0.23157895666481298,
+        -0.23157895666481298
+      ],
+      "replay": "/home/robotics/dojo-data/kong-1107/audit-sonnet/replays/c6b_makekongsg_kongBr1b1_100002__sonnet_100002.json.gz",
+      "replay_sha256": "d48a88291614eb333d919dd1b9972b9517a2645449d36a4f9f7548a095ab7e7b",
+      "exact_frame": true
+    },
+    {
+      "run": "c6b_makekongsg_kongBr1b2_100003__sonnet",
+      "layout_id": 100003,
+      "step": 32,
+      "belief_label": "mahjong7_0",
+      "registered_gt_label": "mahjong8_0",
+      "registered_error_mm": [
+        44.3,
+        66.2
+      ],
+      "registered_z_mm": [
+        -16.1,
+        -16.1
+      ],
+      "same_label_gt": {
+        "label": "mahjong7_0",
+        "type": "Rigid",
+        "category": "mahjong",
+        "category_idx": 29,
+        "clutter": false,
+        "pos": [
+          -0.04722626134753227,
+          0.0016647123266011477,
+          0.7816004753112793
+        ],
+        "quat": [
+          0.01527485903352499,
+          0.0051003992557525635,
+          -0.0016452888958156109,
+          0.9998689889907837
+        ],
+        "key": "Rigid/mahjong/00029"
+      },
+      "same_label_error_mm": [
+        46.30873655576153,
+        1.6407594910421939
+      ],
+      "same_label_z_mm": [
+        -0.23157895666481298,
+        -0.23157895666481298
+      ],
+      "replay": "/home/robotics/dojo-data/kong-1107/audit-sonnet/replays/c6b_makekongsg_kongBr1b2_100003__sonnet_100003.json.gz",
+      "replay_sha256": "9ec93c0f657c019c73c2f3c03f5d4610e98effa35c5e9db1265dbd0de94ff8c5",
+      "exact_frame": true
+    }
+  ],
+  "missing_asset_meshes": [],
+  "qualification": "Raw registered nearest-pre-write/group audit unchanged. Same-label diagnostic is supplementary and cannot replace the gate.",
+  "analysis_script_sha256": "d0dfbd5912a218e74e6b2df9b28e890b89d19ec3a9cc4fb69f592e2a5bb8d474"
+}

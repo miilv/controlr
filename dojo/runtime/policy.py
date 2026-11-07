@@ -501,6 +501,8 @@ class RuntimeConfig:
     belt_deposit: str = "off"
     belt_lift: str = "off"
     belt_first: str = "off"
+    belt_first_recover: str = "off"
+    belt_first_phase: str = "off"
     belt_target: str = "off"
     # match_and_pick (``interactive._match_round``, ``Skills.belt_confirm_zone``): off (today) | on (a match counts only
     # once it has ridden 10 cm past the downstream arm's home hand, where the head view reads riders whole; that arm
@@ -736,6 +738,8 @@ class RuntimePolicy:
                 or self.cfg.belt_container not in ("off", "on") or self.cfg.belt_deposit not in ("off", "on")
                 or self.cfg.belt_lift not in ("off", "braced_hook")
                 or self.cfg.belt_first not in ("off", "on")
+                or self.cfg.belt_first_recover not in ("off", "on")
+                or self.cfg.belt_first_phase not in ("off", "on")
                 or self.cfg.belt_target not in ("off", "match")
                 or self.cfg.belt_confirm_zone not in ("off", "on", "uncertain")
                 or self.cfg.disc_handover_read not in ("off", "on") or self.cfg.track_expire not in ("off", "on")
@@ -1095,6 +1099,8 @@ class RuntimePolicy:
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.belt_lift = cfg.belt_lift
             sk_.belt_first, sk_.belt_target = cfg.belt_first, cfg.belt_target
+            sk_.belt_first_recover = cfg.belt_first_recover
+            sk_.belt_first_phase = cfg.belt_first_phase
             sk_.belt_confirm_zone = cfg.belt_confirm_zone
             sk_.disc_handover_read = cfg.disc_handover_read
             sk_.kong_draw_read = cfg.kong_draw_read
@@ -2083,17 +2089,24 @@ class RuntimePolicy:
                                       "view": cfg.get("view"), "s": round(time.perf_counter() - t, 2),
                                       **{k: r.get(k) for k in ("ok", "why", "shift_mm", "turn_deg", "lead_shift_mm", "sigma")}})
         if r.get("ok") and r.get("T_tcp_obj") is not None and arm in prov.belief.attached:
-            lab, _ = prov.belief.attached[arm]
+            lab, prior_attachment = prov.belief.attached[arm]
             audit_held = self.cfg.peg_held_read == "on" and self.report.get("skill") == "stack_on_pegs"
-            before = prov.belief.objects[lab].T.copy() if audit_held else None
+            before_sync = prov.belief.objects[lab].T.copy() if audit_held else None
             prov.belief.attached[arm] = (lab, np.asarray(r["T_tcp_obj"], float))
-            prov.belief.sync_robot(self.bridge.observe()["state"])
+            state = self.bridge.observe()["state"]
+            # Synchronize the prior for logging only. Keep the live attachment update, observation count,
+            # and single sync_robot call exactly as before; no intermediate mutation of the real belief.
+            before = (prov.belief.kin.tcp(arm, np.asarray(state[f"{arm}_arm_joint_state"], float).reshape(-1)[:6])
+                      @ prior_attachment) if audit_held else None
+            prov.belief.sync_robot(state)
             prov.stats["held_pose"] = prov.stats.get("held_pose", 0) + 1
             if before is not None:
                 from dojo.skills.geometry import T_to_pose7
                 self.report["events"].append({"kind": "belief_write", "writer": "held_pose", "label": lab,
                                               "step": self.bridge.steps_used,
                                               "before7": T_to_pose7(before).tolist(),
+                                              "before_sync7": T_to_pose7(before_sync).tolist(),
+                                              "arm": arm,
                                               "after7": T_to_pose7(prov.belief.objects[lab].T).tolist()})
         return r
 

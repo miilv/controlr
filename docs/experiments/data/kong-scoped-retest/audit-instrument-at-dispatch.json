@@ -1,0 +1,11 @@
+{
+  "state": "registered_pending_cutoff",
+  "primary_if_unmerged": "ffb2c151f1d48f5bc68f67b10ab4430b0fd4685e",
+  "identity_branch": "fix/audit-identity",
+  "rule": "identity PR merged before first re-test start -> merge SHA; else current fallback; no outcome-based choice",
+  "supplementary": "nearest-GT",
+  "first_start": null,
+  "recorded_utc": "2026-11-07T07:26:22.885821+00:00",
+  "recorder_sha256": "a8ff712f4259b600df3bc422f710ee5cfeee3f1d7d57205a991bf0d4a3d85e4b",
+  "outcomes_read": false
+}
