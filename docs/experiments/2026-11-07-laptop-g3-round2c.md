@@ -60,3 +60,35 @@ also covers triangles crossing the table with no vertex inside. Missing or
 invalid mesh falls back to the original bbox guard. Record OBB and mesh min z,
 override counts, physical lift/hold and final score on pilot records only.
 No blanket collision-disable, smaller safety margin or unchecked lift is allowed.
+
+## Frozen final panel registration (before generation/outcomes)
+
+Production source **18e70412** screens 7/7 standard and 6/7 random development
+pilots (original two plus five new per cell). On the new pilots alone,
+standard rises 2/5→5/5 and random stays 4/5. The remaining random 100066 71 mm
+grasp rises zero and remains a physical failure. Do not count pilots as panel
+rows. No front-waypoint, deeper-grasp, wider-search or joint-limit change is
+included: the numeric evidence supports the conservative mesh table guard.
+
+Fresh final panel: v15, **variant 15**, salt
+`laptop-round2c-meshtable-2026-11-07-88c48b74`, ids **100085–99** per cell.
+These ids have never been generated/run by this stream. Settle once and pick
+the first ten stable ascending before any policy outcome; hash exact settled
+records and use those files in both arms. Expected ids 100085–94 if stable;
+reserve 95–99 only for predeclared stability/infra exclusions, never score.
+No sealed/protected ids >=100100 and no rendered/proxy jobs.
+
+A: `hang_cradle=straddle`, `headset_seat=off`, `headset_carry=legacy`,
+`headset_grasp=legacy`, `headset_table=bbox`.
+B: same straddle plus `headset_seat=on`, `headset_carry=staged`,
+`headset_grasp=dense`, `headset_table=mesh`.
+No laptop route in either arm; source and all remaining flags identical.
+
+Ten pairs per cell, A/B order alternated by id, separate from every earlier
+panel. Report n, score mean/sample SD, headset credits, full successes, score
+wins/losses/ties, success flips, steps and all infra exclusions. Stopping rule:
+**B earns headset credit on >=7/10 in each cell**. Also require the current
+paired score gain gate for the prospective camera spec: pooled +5 points,
+wins >=2*losses and >=2 net wins; do not silently pool selected panels.
+Two concurrent LAPTOP scopes max, light2/light8, same admission/resource/path
+rules. Zero LLM calls/tokens/spend. No camera dispatch or board change.
