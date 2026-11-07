@@ -231,9 +231,14 @@ POUR_PACE = {"v1": None,
              "overlap": {"tilt_speed": 0.8, "untilt_speed": 0.8, "drain_steps": 12}}
 
 
-def pour_bottle_call(aim: str | None, pace: str | None) -> tuple[str, dict]:
+def pour_bottle_call(aim: str | None, pace: str | None, profile: str = "off") -> tuple[str, dict]:
     """(skill, args) of one liquid pour: the vendored pour_bottle, or pour_bottle_lean under a pace; the aim's
     ``spout_back`` on top (``POUR_AIM``)."""
+    if profile in ("sparse", "via"):
+        args = {"via": profile == "via"}
+        if POUR_AIM.get(aim or "v1") is not None:
+            args["spout_back"] = POUR_AIM[aim]
+        return "pour_bottle_v2", args
     back = POUR_AIM.get(aim or "v1")
     lean = POUR_PACE.get(pace or "v1")
     args = {} if lean is None else dict(lean)
@@ -305,7 +310,7 @@ def ported_plan(instruction: str, world: WorldState, opts: dict | None = None) -
                 return run("pour_p1", **({"untilt": (opts or {})["pour_untilt"]} if (opts or {}).get("pour_untilt") in ("staged", "capped") else {}))
             return run("pour")
         if re.search(r"\bliquid\b|\bwater\b|\bwine\b", text) and not re.search(r"\bfirst\b.*\bsecond\b", text):
-            skill, args = pour_bottle_call((opts or {}).get("pour_aim"), None)     # one pour: always v1's pace
+            skill, args = pour_bottle_call((opts or {}).get("pour_aim"), None, (opts or {}).get("pour_profile", "off"))     # one pour: always v1's pace
             return run(skill, **args)
     # pick one named object up by a height. The object: the one whose PUBLIC asset description is the instruction's
     # phrase (RoboDojo writes the phrase from that file), else the skill's own grounding by category names
@@ -710,7 +715,7 @@ def solve(sk) -> dict:
     p = plan(w.instruction, w, ported=getattr(sk, "ported_routes", "off") == "on"
              and {"swap": getattr(sk, "ported_swap", "fixed"), "drag": getattr(sk, "ported_drag", "v1"),
                   "pour": getattr(sk, "ported_pour", "v1"), "pickup": getattr(sk, "ported_pickup", "v1"),
-                  "pour_aim": getattr(sk, "ported_pour_aim", "v1"), "classify": getattr(sk, "ported_classify", "v3b"),
+                  "pour_aim": getattr(sk, "ported_pour_aim", "v1"), "pour_profile": getattr(sk, "ported_pour_profile", "off"), "classify": getattr(sk, "ported_classify", "v3b"),
                   "pour_untilt": getattr(sk, "ported_pour_untilt", "direct")})
     w.notes["plan"] = {"skill": p.skill, "args": p.args, "why": p.why}
     sk.log(f"[planner] {p.skill} {p.args} ({p.why})")

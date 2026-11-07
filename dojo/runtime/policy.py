@@ -589,6 +589,8 @@ class RuntimeConfig:
     # ``planner.POUR_PACE``. A single pour (pour_liquid) keeps v1's pace either way | overlap (v1's stages at 0.8 of the
     # held joint limit, a 12-step drain, the other arm grasping the next bottle during each pour, no homes)
     ported_pour_pace: str = "v1"
+    # Multi-bottle sparse roll profile, optionally with target-row carry waypoints.
+    ported_pour_profile: str = "off"
     # mode perception: perception's scan pose (both wrists park-and-look at the frozen pose pair, grippers open, then
     # a scan-primary estimate; needs the scan-aware head background). off | trigger (frame 0 has a not-found label,
     # hidden_frac >= 0.2 or risk >= 0.5, and the move costs <= scan_budget_frac of step_lim >= scan_min_step_lim;
@@ -726,6 +728,7 @@ class RuntimePolicy:
                 or self.cfg.ported_pour not in ("v1", "full") or self.cfg.ported_pour_untilt not in ("direct", "staged", "capped") or self.cfg.ported_pickup not in ("v1", "library")
                 or self.cfg.ported_pour_aim not in ("v1", "b10", "b20") or self.cfg.ported_classify not in ("v3b", "p1", "p2")
                 or self.cfg.ported_pour_pace not in ("v1", "lean", "overlap")
+                or self.cfg.ported_pour_profile not in ("off", "sparse", "via")
                 or self.cfg.plan_profile not in ("legacy", "recover")
                 or self.cfg.plan_capture not in ("off", "requests")
                 or self.cfg.plan_solver not in ("routes", "curobo")
@@ -1088,6 +1091,7 @@ class RuntimePolicy:
             sk_.ported_pour_aim = cfg.ported_pour_aim
             sk_.ported_classify = cfg.ported_classify
             sk_.ported_pour_pace = cfg.ported_pour_pace
+            sk_.ported_pour_profile = cfg.ported_pour_profile
             sk_.nest_verify = cfg.nest_verify
             sk_.ported_pour = cfg.ported_pour
             sk_.ported_pour_untilt = cfg.ported_pour_untilt

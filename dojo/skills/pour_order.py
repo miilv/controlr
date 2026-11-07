@@ -55,10 +55,11 @@ def match_colours(words: list[str], objs: list) -> dict | None:
 
 def route(text: str, world, routes) -> tuple | None:
     """("pour_in_order", {"pairs": [[bottle, bowl], ...]}, why) when the route is on and every clause's colours match."""
+    text = " ".join((text or "").lower().split())
     if "pour_order" not in set(routes or ()) or not re.search(r"\bpour\b", text):
         return None
     clauses = CLAUSE.findall(text)
-    if not clauses:
+    if not clauses or len(clauses) != 3 or len({b for b, _ in clauses}) != 3 or len({w for _, w in clauses}) != 3:
         return None
     objs = [o for o in world.task_objects() if o.obj_type == "Rigid"]
     bottles = [o for o in objs if "bottle" in o.category.lower()]
@@ -122,7 +123,7 @@ def pour_in_order(sk, pairs: list, reserve: int | None = None) -> dict:
         sk.refresh()
         from dojo.skills.planner import pour_bottle_call
         pace = getattr(sk, "ported_pour_pace", "v1")
-        skill, args = pour_bottle_call(getattr(sk, "ported_pour_aim", "v1"), pace)
+        skill, args = pour_bottle_call(getattr(sk, "ported_pour_aim", "v1"), pace, getattr(sk, "ported_pour_profile", "off"))
         if skill != "pour_bottle" and i < len(pairs) - 1:
             # a lean pour does not home between pours: the checker banks nothing at home (its arms-home condition is
             # "either arm", and the idle arm never leaves), the next pour starts from the retreat (the skill homes

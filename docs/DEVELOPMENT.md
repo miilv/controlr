@@ -719,3 +719,13 @@ For the opt-in egg endpoint-search experiment, use G3
 `test_egg_grasp_height.py` covers unchanged baseline geometry. Its endpoint screen
 must never bypass the subsequent collision and motion planner. Clear the IK cache
 when entering and leaving a scoped joint envelope: cache keys omit joint limits.
+
+### Multi-bottle pour profiles
+
+`RuntimeConfig.ported_pour_profile` / G3 `--skill-attr ported_pour_profile=...`
+accept `off` (legacy dispatch), `sparse` (Mikhail's multi-bottle v2 roll profile,
+without via points), and `via` (v2 including target-row carry waypoints).
+They supersede `ported_pour_pace` when enabled; `ported_pour_aim` remains independent.
+The existing default-off `new_routes: [pour_order]` / G3 `--routes pour_order`
+routes the three color-named bottle/bowl clauses in instruction order. It refuses
+incomplete or repeated-color assignments. No task/checker labels ground targets.

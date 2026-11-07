@@ -223,6 +223,7 @@ SKILL_ATTRS = {"arrange_route": ("off", "lateral"), "arrange_hover": ("off", "lo
                "stack_reach": ("centre", "grasp"), "nest_height": ("bins", "measured"),
                "kong_draw_read": ("off", "place", "place3"), "kong_draw_first": ("near", "far"),
                "ported_pour_pace": ("v1", "lean", "overlap"),
+               "ported_pour_profile": ("off", "sparse", "via"),
                "nest_verify": ("target", "support"),
                "push_goal": ("centre", "cover", "cover_obb"), "fill_move_lift": ("off", "clear"),
                "fill_guard": ("off", "geometry"), "fill_grasp": ("off", "vertical", "rolled", "rolled_tilt"),

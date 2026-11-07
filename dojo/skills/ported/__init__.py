@@ -28,6 +28,7 @@ TIER_A = {
     "swap_poses": (RESERVE, {}),
     "pour": (RESERVE, {}),
     "pour_bottle": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),     # D-C14
+    "pour_bottle_v2": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),
     "pour_bottle_lean": (RESERVE, {"slip_m": 0.035, "slip_deg": 25.0}),  # H: pour_bottle paced lean, same D-C14 args
     "pick_up": (RESERVE, {}),
     "planar_drag": (RESERVE, {}),
