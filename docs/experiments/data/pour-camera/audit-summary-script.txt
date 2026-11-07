@@ -1,0 +1,25 @@
+import collections,datetime,gzip,hashlib,importlib.util,json,pathlib,sys
+import numpy as np
+H=pathlib.Path.home();R=H/'dojo-data/pour-cam';P=H/'dojo-integ-c6-066e9c8f';sys.path.insert(0,str(P))
+spec=importlib.util.spec_from_file_location('m95',P/'scripts/perception/m95_score.py');sc=importlib.util.module_from_spec(spec);spec.loader.exec_module(sc)
+from dojo.skills.kinematics import X5Kin
+assert (R/'camera-audit.done').exists()
+V=json.loads((R/'camera-verdict.json').read_text());L=[json.loads(l) for l in (R/'writer-ledger.jsonl').read_text().splitlines()];W=[json.loads(l) for l in (R/'audit-scored/writes.jsonl').read_text().splitlines()];arm={x['name']:x['arm'] for x in V['rows']}
+def key(x):return (x['run'],x['writer'],x['label'],x['step'],tuple(x['before']),tuple(x['after']),tuple(x['q_before']),tuple(x['q_after']))
+assert collections.Counter(map(key,L))==collections.Counter(map(key,W)), 'Missing/duplicated writes'
+B=collections.defaultdict(lambda:collections.Counter());z=collections.defaultdict(list)
+for w in W:
+ k=(w['task'],arm[w['run']],w['writer']);B[k].update([w['verdict']]);z[k].append(abs(w['z_after_mm'])-abs(w['z_before_mm']))
+writers=[]
+for (task,a,writer),c in sorted(B.items()):
+ writers.append({'task':task,'arm':a,'writer':writer,'writes':sum(c.values()),**{v:c[v] for v in ['harmful','helpful','neutral','uncertain']},'harmful_rate':c['harmful']/sum(c.values()),'median_delta_abs_z_mm':float(np.median(z[task,a,writer])),'max_delta_abs_z_mm':float(max(z[task,a,writer]))})
+gates=[]
+for writer in sorted({w['writer'] for w in W if w['task']=='pour_by_language'}):
+ a=B['pour_by_language','A',writer];b=B['pour_by_language','B',writer];na=sum(a.values());nb=sum(b.values());passed=(b['harmful']/nb<=a['harmful']/na+0.05+1e-10 if na and nb else b['helpful']>=2*b['harmful'] if not na else True)
+ gates.append({'writer':writer,'A_writes':na,'B_writes':nb,'A_harmful':a['harmful'],'B_harmful':b['harmful'],'B_helpful':b['helpful'],'pass':bool(passed)})
+kin=X5Kin();replays=[]
+for l in (R/'audit-prefix-jobs.jsonl').read_text().splitlines():
+ j=json.loads(l);p=R/'audit-replays'/(j['name']+'.json.gz');rp=json.load(gzip.open(p,'rt'));name=j['name'].rsplit('_',1)[0];row=json.loads(next((H/'dojo-data/integ-c6/runs2'/name).glob('*episodes.jsonl')).read_text().splitlines()[0]);acts=json.load(gzip.open(j['original_actions'],'rt'))['actions'];prefix=json.load(gzip.open(j['actions'],'rt'))['actions'];assert prefix==acts[:j['stop_at_last_write']];fidelity=sc._probe_check(row,rp['frames'],acts,kin)
+ replays.append({'name':name,'prefix_actions':j['stop_at_last_write'],'stopped_at':rp['stopped_at'],'stable':rp['stable'],'sha256':hashlib.sha256(p.read_bytes()).hexdigest(),**fidelity})
+A=json.loads((R/'audit-scored/association.json').read_text());out={'completed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'instrument':V['source_code'],'expected_writes':len(L),'audited_writes':len(W),'exact_step_writes':sum(w['frame_lag']==0 for w in W),'uncertain':sum(w['verdict']=='uncertain' for w in W),'association':A,'writers':writers,'gain_writer_gates':gates,'replays':replays,'replay_prefixes':len(replays),'stable_prefixes':sum(r['stable'] for r in replays),'probe_closes':sum(r['probe_closes'] for r in replays),'probe_agree_2mm':sum(r['probe_agree_2mm'] for r in replays),'worst_probe_mm':max(r['probe_worst_mm'] for r in replays),'gate_pass':all(g['pass'] for g in gates) and all(w['frame_lag']==0 and w['verdict']!='uncertain' for w in W) and not A['missing_body_geometry'],'method':'Identical action prefixes through final write, exact write/consumer/gripper frames, original full reports/actions for persistent identity, 2mm 3D threshold. Full episode reward matching is not tested by truncated prefixes; live close-probe fidelity is reported.'}
+(R/'camera-audit-summary.json').write_text(json.dumps(out,indent=2)+'\n');V['write_audit']=out;V['verdict_computed_utc']=out['completed_utc'];V['qualification_pass']=V['controller_gates_pass'] and out['gate_pass'];V['verdict']='PASS / NOT ADOPTED' if V['qualification_pass'] else 'FAIL / NOT ADOPTED';V['analysis_model_calls']=0;(R/'camera-verdict.json').write_text(json.dumps(V,indent=2)+'\n');print(json.dumps({k:v for k,v in out.items() if k!='replays'},indent=2))

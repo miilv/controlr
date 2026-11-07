@@ -1,0 +1,39 @@
+{
+  "stream": "MATCH2-SCREEN",
+  "role": "diagnostic screen, not an adoption test",
+  "code": "ec865e93f7ac691376b579b6083bfbec75793e83",
+  "deployment": "/home/robotics/dojo-integ-c6-ec865e93",
+  "baseline_candidate": "scripts/dojo/queues/2026-11-06-candidate.txt",
+  "baseline_candidate_sha256": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+  "candidate_robotics_sha256": "f52fe25b8f5931a9a0ac78aea3a5349e1b171f7fe7275e00352e45d87975b1ca",
+  "model": "claude/claude-sonnet-5-5",
+  "task": "match_and_pick_from_conveyor",
+  "ids": [
+    100000,
+    100001,
+    100002,
+    100003,
+    100004,
+    100005,
+    100006,
+    100007,
+    100008,
+    100009
+  ],
+  "salt": "match2-screen-20261107-r1",
+  "salt_sha256": "da470f5188828cb418da034630fea2c1e4171d86e4d3a5161c4012203c38c133",
+  "A_overrides": {
+    "save_belt_look_frames": 6
+  },
+  "B_overrides": {
+    "save_belt_look_frames": 6,
+    "belt_ref": "tracked",
+    "belt_veto": "evidence",
+    "belt_speed": "lock",
+    "belt_high_lift": "on",
+    "belt_retry": "window",
+    "belt_wrist_id": "on"
+  },
+  "order": "AB for even pair ordinals, BA for odd",
+  "repeats_per_arm": 1
+}

@@ -1,0 +1,44 @@
+import collections,datetime,gzip,hashlib,importlib.util,json,pathlib,re,sys
+import numpy as np
+H=pathlib.Path.home();R=H/'dojo-data/pour-cam';P=H/'dojo-integ-c6-066e9c8f';sys.path.insert(0,str(P));RUNS=H/'dojo-data/integ-c6/runs2'
+spec=importlib.util.spec_from_file_location('score',P/'scripts/perception/m95_score.py');sc=importlib.util.module_from_spec(spec);spec.loader.exec_module(sc)
+M=json.loads((R/'replacement-manifest.json').read_text());rows=[];jobs=[];ledger=[]
+def sha(p):return hashlib.sha256(pathlib.Path(p).read_bytes()).hexdigest()
+ends={}
+for p in (H/'dojo-integ-c6-state').glob('lane2_heavy*.log'):
+ for l in p.read_text().splitlines():
+  a=re.match(r'^(\S+) \[[^]]+\] done (\S+) rc=(\d+) lock (\d+) s',l)
+  if a:ends[a[2]]={'done_utc':a[1],'rc':int(a[3]),'lock_s':int(a[4])}
+for x in M['schedule']:
+ n=x['name'];d=RUNS/n;assert ends[n]['rc']==0
+ eps=list(d.glob('*episodes.jsonl'));assert len(eps)==1;e=[json.loads(l) for l in eps[0].read_text().splitlines() if l.strip()];assert len(e)==1;e=e[0];assert e['layout']==x['layout'] and e['layout_id']==x['id']
+ rp=next(d.glob('*report.json.gz'));ap=next(d.glob('*actions.json.gz'));a=json.load(gzip.open(rp,'rt'));diff={k:[v,a['config'].get(k)] for k,v in x['runtime'].items() if a['config'].get(k)!=v};assert not diff,(n,diff)
+ assert sha(x['layout'])==next(f['sha256'] for f in M['files'] if f['path']==x['layout'])
+ calls=[];trans=[];sources={str(p):sha(p) for p in [eps[0],rp,ap,pathlib.Path(x['layout'])]}
+ for f in sorted(d.glob('agentic/**/calls.jsonl')):
+  sources[str(f)]=sha(f)
+  for l in f.read_text().splitlines():
+   c=json.loads(l);assert c['model']==M['model'];calls.append(c)
+ for f in sorted(d.glob('agentic/**/transcript.jsonl')):
+  sources[str(f)]=sha(f)
+  for l in f.read_text().splitlines():
+   c=json.loads(l)
+   if c.get('event')=='start':assert c['model']==M['model'];trans.append(c['model'])
+ assert calls and trans,(n,'missing actual route evidence')
+ assert all(c.get('fn')=='perceive' for c in calls)
+ tokens={k:sum(c.get('tokens',{}).get(k,0) or 0 for c in calls) for k in ['prompt','completion','reasoning','cache_read']};logical=sum(c.get('calls',0) for c in calls)
+ assert logical==sum(c.get('calls',0) for c in a['agentic']);assert tokens=={k:sum(c.get('tokens',{}).get(k,0) or 0 for c in a['agentic']) for k in tokens}
+ writes=sc.belief_writes(a);ledger.extend({'run':n,'task':x['task'],'arm':x['arm'],**w} for w in writes)
+ ported=[ev for ev in a['events'] if ev.get('kind')=='ported'];skills=collections.Counter(ev.get('skill') for ev in ported)
+ rows.append({'name':n,'task':x['task'],'arm':x['arm'],'layout_id':x['id'],'success':e['success'],'score':100*e['score'],'steps':e['steps_used'],'look_steps':e['look_steps'],'n_looks':e['n_looks'],'time_capped':e['time_capped'],'category':e['category'],'why':e.get('why'),'result':a['result'],'wall_s':e['wall_s'],'logical_calls':logical,'tokens':tokens,'writer_counts':dict(collections.Counter(w['writer'] for w in writes)),'ported_skills':dict(skills),'event_counts':dict(collections.Counter(ev['kind'] for ev in a['events'])),'route':{'model':M['model'],'call_records':len(calls),'transcript_starts':len(trans),'mismatches':0},'errors':[z for c in calls for z in c.get('errors',[])],'problems':[z for c in calls for z in c.get('problems',[])],'frozen_config_diff':diff,'source_sha256':sources,**ends[n]})
+ jobs.append({'name':n+'_'+str(x['id']),'task':x['task'],'layout':x['layout'],'actions':str(ap),'snapshot_steps':sorted({int(w['step']) for w in writes}|{int(ev['step']) for ev in a['events'] if isinstance(ev.get('step'),(int,float))})})
+summary={}
+for task in dict.fromkeys(x['task'] for x in rows):
+ rs=[r for r in rows if r['task']==task];ids=sorted({r['layout_id'] for r in rs});paired=[{a:next(r for r in rs if r['layout_id']==i and r['arm']==a) for a in 'AB'} for i in ids];N=len(ids);ix=np.random.default_rng(0).integers(0,N,(10000,N));out={'pairs':N,'arms':{},'paired':[]}
+ for arm in 'AB':
+  r=[p[arm] for p in paired];scores=[x['score'] for x in r];out['arms'][arm]={'mean':float(np.mean(scores)),'sd':float(np.std(scores,ddof=1)),'successes':sum(x['success'] for x in r),'full_mean':100*sum(x['success'] for x in r)/N,'categories':dict(collections.Counter(x['category'] for x in r)),'writes':dict(sum((collections.Counter(x['writer_counts']) for x in r),collections.Counter())),'mean_steps':float(np.mean([x['steps'] for x in r])),'mean_look_steps':float(np.mean([x['look_steps'] for x in r])),'time_caps':sum(x['time_capped'] for x in r)}
+ for kind in ['score','full']:
+  ds=np.array([p['B']['score']-p['A']['score'] if kind=='score' else 100*(int(p['B']['success'])-int(p['A']['success'])) for p in paired]);w=int(sum(ds>=10-1e-8));l=int(sum(ds<=-10+1e-8));delta=float(ds.mean());out[kind]={'delta':delta,'wins':w,'losses':l,'ties':N-w-l,'ci95':np.percentile(ds[ix].mean(axis=1),[2.5,97.5]).tolist(),'deltas':ds.tolist(),'pass':bool(delta>=5 and w>=2*l and w-l>=2) if task=='pour_by_language' else bool(delta>=-5 and l<=w)}
+ out['pass']=out['score']['pass'] and out['full']['pass'];summary[task]=out
+s={'computed_utc':datetime.datetime.now(datetime.timezone.utc).isoformat(),'manifest_sha256':sha(R/'replacement-manifest.json'),'model':M['model'],'rows':rows,'summary':summary,'spend':{'logical_calls':sum(r['logical_calls'] for r in rows),'tokens':{k:sum(r['tokens'][k] for r in rows) for k in tokens}},'infra_refusals_excluded':9,'source_code':M['code'],'route_verified_rows':len(rows),'last_done_utc':max(r['done_utc'] for r in rows),'controller_gates_pass':all(x['pass'] for x in summary.values()),'bootstrap':{'resamples':10000,'seed':0,'unit':'paired layout','interval':'percentile'}}
+(R/'camera-verdict.json').write_text(json.dumps(s,indent=2)+'\n');(R/'audit-jobs.jsonl').write_text(''.join(json.dumps(j)+'\n' for j in jobs));(R/'writer-ledger.jsonl').write_text(''.join(json.dumps(j)+'\n' for j in ledger));print(json.dumps({k:s[k] for k in ['summary','spend','controller_gates_pass','last_done_utc']},indent=2))

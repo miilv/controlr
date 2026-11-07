@@ -337,3 +337,41 @@ supplementary. [Full verdict and applicability proof](../experiments/2026-11-06-
 No candidate or default changed. This was the once-only fresh-layout re-test;
 no further re-test or adoption is authorized. Peg's registered verdict remains
 unchanged, including the separately reported #417 supplementary re-score.
+
+## POUR camera — budget pacing — FAIL / NOT ADOPTED
+
+[Full registered verdict](../experiments/2026-11-07-pour-camera-prereg.md#pour-camera-verdict--fail--not-adopted).
+
+| cell | pairs | A pooled | B pooled | Δ | success flips (B / A) | score wins / losses (≥10 pts) | successes A / B |
+|---|---|---|---|---|---|---|---|
+| pour_by_language (gain) | 20 | 0.0 | 43.0 | +43.0 | 7 / 0 | 15 / 0 | 0 / 7 |
+| pour_liquid_into_cup (guard) | 10 | 60.0 | 50.0 | -10.0 | 1 / 2 | 1 / 2 | 6 / 5 |
+| play_Xylophone (strong guard) | 10 | 80.0 | 90.0 | +10.0 | 1 / 0 | 1 / 0 | 8 / 9 |
+| language, full-success-only | 20 | 0.0 | 35.0 | +35.0 | 7 / 0 | 7 / 0 | 0 / 7 |
+
+- **Gain passes** official +43,15/0 score wins/losses and full-success-only
+  +35,7/0. Eight 20-point partial scores are not counted as full success.
+- **Cup guard fails** −10 <−5 and two paired losses >one win; Xylophone passes.
+  No parity waiver was registered.
+- Sample SD A/B: language 0/43.66,cup 51.64/52.70,Xylophone 42.16/31.62.
+  Paired bootstrap 95% CIs (10,000,seed 0): language [25,62],full [15,55],
+  cup [−40,20],Xylophone [0,30].
+- **Audit FAIL (both gain writers exceed their harmful-rate bounds): 81/81 exact-step writes**,
+  0 uncertain, 46/46 stable
+  prefixes, nearest fallback 5/81.
+  Identity/fidelity coverage limits remain unwaived (one 4.9 mm close mismatch;
+  76 initial-tight/five fallback associations, no first-pick anchor sources).
+  Pacing introduces no writer implementation/config change, but observed count
+  changes trigger the registered audit. Per-writer rates/z and prefix-fidelity
+  limits are in the linked evidence; guard writes are reported.
+- **80/80 rc 0 and actual Sonnet routes**; frozen configs/input hashes match.
+  Nine pre-episode ownership refusals excluded; no controller rerun, exclusion
+  or wall cap. Final valid arm 2026-11-07T13:05:41Z.
+- **Spend:** **467 logical Claude calls**; **6,537,401 prompt / 401,947 completion / 242,154 reasoning / 5,357,603 cache-read tokens**. Reasoning/cache are subsets. All 46 included no-JSON error
+  entries retained; recovered HTTP retries unobservable. Analysis/audit 0 calls.
+- **Absolute B 43 versus D-C19 candidate 0**, +43 points (unpaired historical
+  aggregate context). The actual registered paired A is also 0.
+- **Disclosure:** lead saw original 100000–09 outcomes during refusal diagnosis.
+  Replacement used eligibility/validity only, unchanged salts/recipe.
+
+No adoption or candidate/default change. [Evidence](../experiments/data/pour-camera/camera-verdict.json).

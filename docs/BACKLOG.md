@@ -6,6 +6,15 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **Complete first-grasp identity anchors for ported skills in write audits.**
+  POUR's frozen audit scored all 81 writes, but association sources were 76
+  initial-tight/five nearest fallback, with no consumed-pick/grasp-close anchor
+  source. Ported paths need explicit target/pose attribution at physical close
+  so provisional mappings can be confirmed without nearest reassignment on
+  retries. Freeze/validate an instrument prospectively; do not re-judge POUR
+  with a new one ([verdict](experiments/2026-11-07-pour-camera-prereg.md#pour-camera-verdict--fail--not-adopted)).
+
+
 - [ ] **Camera layout ownership landmine:** every camera A/B prereg and prep
   must select ids only from `OUR_MEASUREMENT_SLICES` (100000–09, 100020–29)
   in `dojo/simlab/paths.py`. A fresh salt does not grant ownership of an id;
