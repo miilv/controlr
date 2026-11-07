@@ -27,3 +27,17 @@ records, ten A/B pairs per cell, same score and 7/10-per-cell reliability rules.
 No panel is dispatched by this development registration. Two concurrent
 physics-only LAPTOP scopes max, light2/light8, 8G/600%, who/GPU admission,
 <=24 GiB GPU used and >=10 GB disk. All existing box/path/zero-LLM rules apply.
+
+## Pilot-only amendment before the coverage probe
+
+Frozen dense+staged baseline on the new pilots: standard 2/5, random 4/5.
+Standard 100067 has 77 grasp/place IK pairs but no full pick/approach in the
+first 24 screened pairs; standard 100069 also never attempts a pick. Standard
+100068 lifts loose (16.6 mm drift), regrasp is retained, then no complete plan.
+Random 100066 tries 71 mm grasps, rises zero and is rejected. Measured joint
+tracking is within 0.08 rad and j5 commands <=0.83 rad: no stop-limited evidence.
+Before motion changes, test up to **96 full plans** on pilots only, retaining
+all IK/collision/physical verification and the existing search/step budgets.
+This is a new bounded-coverage hypothesis motivated by pilot refusals, not an
+individual panel failure. If it finds a pick, record the selected rank/site,
+physical hold and score rather than equating IK pairs with actual coverage.
