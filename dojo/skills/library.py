@@ -3782,7 +3782,8 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
         used.add(hi)
         # tol_xy < LOOSE_OK_TOL: a grasp that shifted in the hand is put down (and the object tried once more)
         r = sk.run_transfer(pp, pl, tol_xy=0.015, tol_tilt=25.0, tol_z=0.05)
-        if getattr(sk, "headset_hold", "legacy") == "loaded" and r.status in ("step_budget", "ended"):
+        if (getattr(sk, "headset_hold", "legacy") == "loaded" and sk.world.obj(lab).category == "headset"
+                and r.status in ("step_budget", "ended")):
             return {"ok": False, "stage": f"hang {lab}", "result": r}
         arm = pp.arm
         if site_mode and r.status in ("loose", "grasp_slip", "grasp_unusable") and sk.held[arm] is None:
