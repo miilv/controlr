@@ -45,7 +45,11 @@ shared_ok() {   # KIND...: each shared side server's PID alive and answering an 
   local k
   for k in "$@"; do
     kill -0 "$(cat "$S/shared/$k.pid" 2>/dev/null)" 2>/dev/null || return 1
-    timeout 15 "$SHARED_PY" "$S/ping_side.py" "$S/shared/$k.sock" >/dev/null 2>&1 || return 1
+    if [[ "$k" == sam ]]; then
+      timeout 15 "$SHARED_PY" "$S/ping_side.py" "$S/shared/$k.sock" "$(cat "$S/shared/sam.model")" >/dev/null 2>&1 || return 1
+    else
+      timeout 15 "$SHARED_PY" "$S/ping_side.py" "$S/shared/$k.sock" >/dev/null 2>&1 || return 1
+    fi
   done
 }
 SHARED_PY="${SHARED_PY:-$REPO/.venv/bin/python}"
@@ -55,9 +59,15 @@ cap_ok() {   # rendered of ours + 1 <= OURS; others + ours + big side servers + 
   local ours=${1:-1}
   local used; used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits | head -1 | tr -d ' ')
   [[ "$used" =~ ^[0-9]+$ ]] || return 1
-  local max_used=16384
+  local max_used=16384 min_free=16223
+  # Only the measured shared-SAM deployment can opt into a 12 GiB lane reservation.
+  # Actual resident SAM memory is already in memory.used/free; count its process once in sides().
+  if [[ "${LANE_SAM_LANE_MIB:-}" == 12288 && -e "$S/side.shared-sam" ]] && shared_ok sam; then
+    min_free=12288
+    max_used=20480
+  fi
   [[ "$STREAM" == integ-c3 ]] && max_used=14336
-  (( used <= max_used && o + m + d + 1 <= ${2:-4} && m + 1 <= ours && ${v:-0} >= 16223 ))
+  (( used <= max_used && o + m + d + 1 <= ${2:-4} && m + 1 <= ours && ${v:-0} >= min_free ))
 }
 # The sole allowed coordination file. No other coord paths are accessed.
 boot_gate() {
@@ -179,14 +189,15 @@ while true; do
   fi
   printf 'pid=%s stream=%s job=%s start=%s cmd=lane2 %s\n' "$$" "$STREAM" "$name" "$(date -u +%FT%TZ)" "$args" > "$LOCK"
   t0=$(date +%s)
-  if [[ -n "$sam" ]]; then
-    side_start sam "$S/sam.$LANE.sock" DOJO_SAM_ADDR 240 \
-      "$repo/.venv/bin/python" -u -m dojo.perception.sam_masks serve --sock "$S/sam.$LANE.sock" --models "$sam" --max-hours 1 \
-      || { side_stop; drop_lock; log "SAM server not ready (see $name.sam.log): $name put back, lane stops"; front "$line"; touch "$S/STOP.$LANE"; break; }
-  fi
   # box-level shared side servers (lead 29 Oct, after #301): $S/shared.on + the same model -> the shared socket, no per-job
   # server (~2.1 GB VRAM back per lane); the lane pings them before and checks PID + ping after the job (shared_ok)
   shared_kinds=()
+  if [[ -n "$sam" ]]; then
+    if [[ ! -e "$S/shared.on" || "$sam" != "$(cat "$S/shared/sam.model" 2>/dev/null)" ]] || ! shared_ok sam; then
+      drop_lock; log "shared SAM missing/model mismatch: $name put back, lane stops"; front "$line"; touch "$S/STOP.$LANE"; break
+    fi
+    jenv+=("DOJO_SAM_ADDR=$S/shared/sam.sock"); shared_kinds+=(sam)
+  fi
   if [[ -e "$S/shared.on" ]]; then
     [[ "$seg" == "$(cat "$S/shared/seg.model" 2>/dev/null)" ]] && { jenv+=("DOJO_SEG_ADDR=$S/shared/seg.sock"); shared_kinds+=(seg); seg=""; }
     [[ -n "$glyph" && "$glyph" == "$(cat "$S/shared/glyph.model" 2>/dev/null)" ]] && { jenv+=("DOJO_GLYPH_ADDR=$S/shared/glyph.sock" "DOJO_GLYPH_ADDR_DIGIT=$S/shared/glyph.sock"); shared_kinds+=(glyph); glyph=""; }

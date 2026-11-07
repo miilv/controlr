@@ -11,6 +11,9 @@
   flag, preserve base v2b identity during union de-duplication, honor SAM API
   minima below the current server's 0.3 processor floor, and measure phantoms
   before any camera A/B ([SAMBAKE](experiments/2026-11-07-sam3-task-prompts.md)).
+Default-off routing/shared service implemented by [SAMINT](journal/2026-11-07-samint.md);
+  keep this item open until the parked camera identity/pose audits qualify the lever.
+
 - [ ] **Persist token usage for agentic held-look calls.** `held_look_impl`
   counts logical calls and records their model, but discards each response's
   token usage before writing `calls.jsonl`. Preserve summed prompt/completion/

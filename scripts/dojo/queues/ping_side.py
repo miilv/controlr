@@ -4,4 +4,8 @@ from multiprocessing.connection import Client
 c = Client(sys.argv[1], family="AF_UNIX")
 c.send({"op": "info"})
 r = c.recv()
-sys.exit(0 if isinstance(r, dict) else 1)
+ok = isinstance(r, dict) and "error" not in r
+if len(sys.argv) > 2:
+    ok = ok and sorted(r.get("models", [])) == sorted(sys.argv[2].split(","))
+c.close()
+sys.exit(0 if ok else 1)
