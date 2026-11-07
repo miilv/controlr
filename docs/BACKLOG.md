@@ -1048,6 +1048,20 @@
   equal-cost two-pair swaps include same-asset matches skipped by `imitate_look=ambiguous` (dev home 100001:
   watch read as garage). Missing detections and unreachable phantom twins remain separate. Pre-registration:
   [IMIT camera A/B](experiments/2026-11-05-imit-tie-look-ab.md). Do not adopt from G3 alone.
+- [ ] **dojo imitation: IMIT2 camera A/B** ([pre-registration](experiments/2026-11-07-imit2-camera-prereg.md),
+  [mechanisms report](experiments/2026-11-07-imit2-mechanisms.md)). `imitate_pairing=cues` (twins by frame-0 colour
+  and size, `dojo.perception.twin_match`): offline twin pairs 64 → 90 % (dev frames) / 71 → 88 % (held-out), plans
+  right with the recorded order 7 → 17 of 42; `imitate_order=persist_elim`: order right 18 → 22 of 42 by elimination
+  (persistence unmeasurable offline); `imitate_carry=reach` / `imitate_retry=refind`: G3 only so far. All default off;
+  needs camera slots from the lead.
+- [ ] **dojo imitation: the wave's imitate config lacks the adopted home wait / kept sides.** The 2026-11-06 wave rows
+  run `imitate_wait=origin` without `imitate_keep_sides`; G3 dev 100007 ended at step 776 on RoboDojo's
+  "our arm left its origin while the support arm is away" query under origin (the arm read still before it was home),
+  and camera re-entries after a false fallen read lost the halves (100021, "no free object like"). Lead's call
+  whether the board's next imitate rows set both.
+- [ ] **dojo imitation: far-side localisation is the next binding stage.** With cue pairing, the remaining twin
+  errors are frame-0 estimates more than 10 cm off (6 % of pairs) and the plans still fail on order (missed or
+  phantom departures) and on camera grasps of far-side objects (air closes in 4 of 10 plan-right rows).
 - [ ] **dojo perception: imitate twin pairing by appearance (B1 `twin_pairing`, default off; legal under D-C17).**
   No gain on the 6 allowed demo layouts (plan right 4/6 either way). Its uncertainty rule is too strict: a Hungarian
   override marked a physically right pair uncertain (100002). Revisit with more demo layouts, and a margin taken from

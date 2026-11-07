@@ -514,6 +514,29 @@ asset. This kind is gated by the switch, and uses the existing identity/pose acc
 three or more pairs and unassigned objects are outside this tie detector. Camera validation must audit the existing
 look writer and budget costs before adoption; G3's perfect identities only test the no-tie path.
 
+### Imitation IMIT2 switches
+
+All default to today's behaviour; G3 mirrors them with `--skill-attr` (`imitate_pairing=cues`, `imitate_order=...`,
+`imitate_carry=reach`, `imitate_retry=refind`).
+
+- `imitate_pairing: cues` — twins by appearance: the runtime wires `provider.twin_costs` (perception op `twin_costs`,
+  `dojo.perception.twin_match`) to the episode start's frame; `copy_demonstration` reads it once before the
+  demonstrator moves anything. Colour histograms and plane-corrected size at each believed pose, one Hungarian
+  assignment, swap margins / ties logged (`twin_costs` event). No belief write. Without a reader (G3) or on a read that
+  does not cover the labels it falls back to `one_to_one`, so G3 cannot measure it; the believed-identity look passes
+  (`imitate_look`, `imitate_tie_look`) do not run when the cue read paired the twins.
+- `imitate_order: persist | elim | persist_elim` — `persist`: the departure read goes back to perception without its
+  gone list, and a spot counts as left after `PERSIST_READS` reads in a row, dated by the first; `elim`: with all but
+  one demonstrator object read leaving, the last one goes last. G3's watch is an arrival read, so only `elim` acts there.
+- `imitate_carry: reach` — for an object `REACH_MARGIN` nearer the other arm's base, `put_in_open` tries the
+  container's arm with centred grasps only, then a table handover by the side arm (phones: the handover first).
+- `imitate_retry: refind` — up to `RETRY_TRIES` puts per twin while `RETRY_MIN_STEPS` remain; after a failed put the
+  low hands rise before going home, and a belief moved > 40 mm from the twin's start spot is proposed back through
+  `provider.confirm_pose` (a belief writer: include `confirm_pose` in the write audit).
+
+Dev scorers for recorded camera rows (spatial GT from our layouts, demo order from the pickle's `aim_label`, never a
+policy input) are in the IMIT2 report; `scripts/skills/imit2_g3.sh` runs our-slice G3 panels on compute3 light locks.
+
 ### Stacking-toy held-ring read
 
 `RuntimeConfig.peg_held_read: on` (default `off`; G3 `--skill-attr peg_held_read=on`) asks the existing held-pose protocol
