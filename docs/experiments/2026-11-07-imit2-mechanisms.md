@@ -7,7 +7,7 @@ by stage, and which of the re-implemented mechanisms move which stage?
 identities already score ~90 on our dev demo layouts.
 
 **Setup**
-- Code: branch `feat/dojo-imit2` (commits b9424c74, 528a3564). New switches, all default off: `imitate_pairing=cues`,
+- Code: branch `feat/dojo-imit2` (G3 arms at 5e2741f1 / b9424c74 / 5f3fa053). New switches, all default off: `imitate_pairing=cues`,
   `imitate_order=persist|elim|persist_elim`, `imitate_carry=reach`, `imitate_retry=refind`
   ([DEVELOPMENT §Imitation IMIT2 switches](../DEVELOPMENT.md)).
 - Camera evidence (read-only, no new camera runs): the 48 c6b `tie` A/B rows on compute6 (ids 100005–09, 100020–26,
@@ -15,7 +15,7 @@ identities already score ~90 on our dev demo layouts.
   (100000–07, canonical and reloc-guard salts) as held-out frame-0 data. Only ids in our slices.
 - GT for scoring only: our own layouts and demo pickles (`aim_label` order). Never a policy input.
 - G3: compute3, physics-only light locks, 17 dev demo layouts (100002, 100004–09, 100020–29), one episode each.
-- Spend: **0 LLM calls**, 0 camera jobs. G3 ~3 × 17 episodes.
+- Spend: **0 LLM calls**, 0 camera jobs. G3 56 episodes (3 × 17 + 5 of a withdrawn first B).
 
 ## 1. Stage split of today's camera candidate (42 usable tie-A/B rows)
 
@@ -75,17 +75,35 @@ Joined with the recorded departure order: **plans right 7 → 17 of 42** (cues),
 
 ## 4. Grasp / carry and repairs (G3, perfect identities)
 
-G3 results: see the table below (filled from compute3 `~/dojo-data/imit2/g3/`).
+| Arm (G3, perfect identities, 17 dev demo layouts, 1 episode each) | mean score | successes | steps median / max | handovers |
+|---|---|---|---|---|
+| A: wave config (`one_to_one`, `imitate_wait=origin`) | **89.1** | 15 / 17 | 1317 / 1573 | 33 |
+| H: A + `imitate_wait=home` + `imitate_keep_sides` (existing switches) | **95.0** | 16 / 17 | 1332 / 1573 | 36 |
+| B2: H + `cues` + `persist_elim` + `reach` + `refind` | **100.0** | 17 / 17 | 1324 / 1573 | 40 |
 
-RESULTS_G3
+- A's losses: 100007 (0): the arm read still at step 772 before the demonstrator was home, ours moved, RoboDojo's
+  query ended the episode at 776 — the home wait fixes it (H). 100029 (15): the right arm's handover of t4 slipped
+  (loose box grasp, 40° tilt), then three air closes where it had fallen; `reach` takes t4 by the container arm with a
+  centred grasp / a clean handover and B2 copies all five.
+- B2 vs A: 2 score wins, 0 losses; vs H: 1 win, 0 losses. In G3 `cues` falls back to `one_to_one` (no reader) and
+  `persist` / `elim` do not act (G3's watch is an arrival read), so B2 − H is `reach` + `refind` alone.
+- A first `reach` version (handover for every far-side object, cross-carry first) was stopped after 5 layouts:
+  100006 has all five of ours on the right, five handovers left the last object 7 steps short (score 50). The
+  version kept tries the container arm with centred grasps first. Dev layouts, not a fresh panel; G3 is
+  bit-deterministic, so one episode per layout.
 
 ## 5. Against the bar
 
 PyRUA-RSI reports 95.3 on its seed 0; the REPRO stream's number on our dev layouts was not published when this was
-written. G3 (perfect perception) reaches the bar's neighbourhood with the existing switches; camera is at 3.1 on the
-same layouts with today's config. Offline, the perception mechanisms here move plan-right from 7 to 21 of 42; even a
-perfect copy of those 21 plans gives at most half the rows full credit, so on this evidence the cell is **not on track
-to the bar on camera** until far-side localisation (phantom estimates, missed departures) and camera grasps are fixed.
+written. **G3 (perfect perception): 100.0 on 17 dev layouts with the bundle**, 95.0 with the existing home / kept-sides
+switches alone — motion and budget are at or above the bar. **Camera: 3.1** on the recorded rows with today's config.
+Offline, the perception mechanisms move plan-right from 7 to 21 of 42 rows; the other 21 rows still have a wrong order
+(missed early departures, phantom far estimates) or a far estimate > 10 cm off. Expected camera score if the 21 right
+plans copy as well as G3: ~50; the bar needs plan-right in ~95 % of rows and camera grasps as good as G3's. So the cell
+is **not shown on track to the bar on camera**; the limits, in order: far-side localisation at frame 0 (phantoms:
+6 % of twin pairs, 11 of 24 order errors), departures missed before the last one (5 of 42 rows), and camera grasp /
+re-entry failures (all 10 plan-right camera rows failed there; the G3-tested `reach` / `refind` / kept sides target
+them but are not camera-measured).
 
 ## Found along the way → BACKLOG
 

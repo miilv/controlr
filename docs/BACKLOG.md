@@ -1052,7 +1052,8 @@
   [mechanisms report](experiments/2026-11-07-imit2-mechanisms.md)). `imitate_pairing=cues` (twins by frame-0 colour
   and size, `dojo.perception.twin_match`): offline twin pairs 64 → 90 % (dev frames) / 71 → 88 % (held-out), plans
   right with the recorded order 7 → 17 of 42; `imitate_order=persist_elim`: order right 18 → 22 of 42 by elimination
-  (persistence unmeasurable offline); `imitate_carry=reach` / `imitate_retry=refind`: G3 only so far. All default off;
+  (persistence unmeasurable offline); G3 17 dev layouts 89.1 (wave config) → 95.0 (+home, kept sides) → 100.0
+  (+reach, refind). All default off;
   needs camera slots from the lead.
 - [ ] **dojo imitation: the wave's imitate config lacks the adopted home wait / kept sides.** The 2026-11-06 wave rows
   run `imitate_wait=origin` without `imitate_keep_sides`; G3 dev 100007 ended at step 776 on RoboDojo's
