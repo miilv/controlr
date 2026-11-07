@@ -116,3 +116,23 @@ as unusable for this transfer, and try another checked site within the same
 four-attempt/800-step bounds. Legacy retry keeps its existing fallback.
 No failed re-plan may be reclassified as a valid carry. Preserve failed
 put-down/budget/end status rather than pretending the gripper is empty.
+
+## Gravity-aligned bridge-carry feasibility probe
+
+If the remaining heavy/cup cases still fail, test a distinct mechanism on
+pilots only: checked upright centre rest, then a front/back bridge pinch and
+carry without the90-degree object turn. An earlier asset8 upright-rest pilot
+was physically stable (0.6 mm xy,-0.5 mm z,1.6 deg tilt through30 steps).
+Require the existing static stability screen; retain native checked staging,
+full opening and physical verification. Generate bridge-centre/nearby grasps
+with mesh opposition, approaches70/80/90 deg from down, closing across bridge
+depth, and no forced poses. Native IK/collision selects the arm/approach.
+
+The stand's top25 mm mesh spans ~105 x75 mm. To keep band-grasp fingers above
+it, carry to bridge point ~60 mm above its functional frame, release40 mm above
+the frame (~25 mm above the physical top), then hold30 steps before grading.
+A prior numeric IK screen finds left80–90 deg bridge approaches reachable at
+that height; vertical approaches are not. This is a genuine gravity seating
+attempt: require final physical support, stable orientation and open hands,
+not transient proximity while falling. Do not change checker thresholds.
+First probe standard48, then random47 if supported. No new panel/source freeze.
