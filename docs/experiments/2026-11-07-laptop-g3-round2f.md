@@ -130,3 +130,16 @@ The paired gain criterion is separate: pooled B−A>=5 points, score wins
 a prospective camera specification; no camera job or board selection is
 authorized. If the observed mechanical target fails, continue pilot work
 and retain this null without rerolling its salt or replacing policy zeros.
+
+## Separate arm-choice feasibility probe
+
+While the final standard development bank plans, use the idle light8 slot
+for one pilot-only probe on **coverage18 standard100030**, already failed by
+source504. Keep source3866 plus a retained in-process recipe: stage with the
+arm opposite the cradle even when the object's centroid favors the cradle
+arm, preserving its lying orientation, actual mesh-ground/25 mm release,
+original four staging/direct-hang attempts and native checks. This tests
+whether centroid-based arm choice hides a physically better cup pickup.
+Do not change the frozen production screen, its gate or the conditional fresh
+candidate. This auxiliary probe cannot be counted among its validation rows;
+any later integration requires a separate source/bundle registration.
