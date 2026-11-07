@@ -165,3 +165,17 @@ def test_multiline_exemptions_pin_the_offending_line_and_each_match(tmp_path):
 def test_path_loaded_class_constants_are_module_code_too(tmp_path):
     p = profile(tmp_path, {'pkg/entry.py': 'class Bank:\n    candidates = "make_kong"\ndef run():\n    return Bank.candidates\n'})
     assert any('task name' in v.why for v in A.audit_callgraph(profile=p, names=['make_kong']))
+
+
+def test_known_pure_leaves_and_field_only_records_are_resolved(tmp_path):
+    p = profile(tmp_path, {'pkg/entry.py': 'from dataclasses import dataclass, field\nimport numpy as np\n@dataclass\nclass Mask:\n    value: list = field(default_factory=list)\ndef run(x):\n    return Mask(list(x)), float(1), np.ascontiguousarray(x)\n'})
+    found = A.audit_callgraph(profile=p, names=['make_kong'])
+    assert not any(v.why.startswith('unresolved') for v in found)
+
+
+def test_leaf_resolution_cannot_hide_callbacks_or_file_reads(tmp_path):
+    p = profile(tmp_path, {'pkg/entry.py': 'import numpy as np\ndef run(float, np, x):\n    return float(x), np.ascontiguousarray(x), np.load(x)\n'})
+    whys = [v.why for v in A.audit_callgraph(profile=p, names=['make_kong'])]
+    assert any('unresolved call float' in v for v in whys)
+    assert any('unresolved call np.ascontiguousarray' in v for v in whys)
+    assert any('unresolved call np.load' in v for v in whys)

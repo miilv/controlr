@@ -200,6 +200,7 @@ class Index:
     def __init__(self, profile: Profile):
         self.p = profile
         self.funcs, self.by_name, self.methods, self.imports, self.mods = {}, {}, {}, {}, {}
+        self.records = set()
         self.packages = {_modname(p, profile.root_dir) for p in profile.index if Path(p).name == '__init__.py'}
         for path in profile.index:
             self.add_module(_modname(path, profile.root_dir), Path(path).read_text())
@@ -226,6 +227,13 @@ class Index:
                 self.funcs[(m, n.name)] = n
                 self.by_name[m][n.name] = n.name
             elif isinstance(n, ast.ClassDef):
+                # A field-only, base-free stdlib dataclass has a generated record
+                # constructor; its defaults/factories are scanned as module code.
+                decorators = [d.func if isinstance(d, ast.Call) else d for d in n.decorator_list]
+                if (not n.bases and len(decorators) == 1 and isinstance(decorators[0], ast.Name)
+                        and self.imports[m].get(decorators[0].id) == ('dataclasses', 'dataclass')
+                        and not any(isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) for f in n.body)):
+                    self.records.add((m, n.name))
                 for f in n.body:
                     if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef)):
                         q = f"{n.name}.{f.name}"
@@ -284,6 +292,24 @@ class Index:
                 out.update((mod, '<module>') for mod in modules if (mod, '<module>') in self.funcs)
         out.discard(key)
         return out
+
+    def resolved_leaf(self, key, expr, local, bound):
+        """Known language/library operations, not exemptions for their callers.
+
+        Shadowed names remain unresolved. Never bless numpy.load/importlib/open.
+        """
+        m, _ = key
+        imp = {**self.imports.get(m, {}), **local}
+        if isinstance(expr, ast.Name) and expr.id not in bound:
+            if expr.id in {'float', 'list'} and expr.id not in imp and expr.id not in self.by_name[m]:
+                return True
+            target = imp.get(expr.id, (m, expr.id))
+        elif isinstance(expr, ast.Attribute) and isinstance(expr.value, ast.Name) and expr.value.id not in bound:
+            module = imp.get(expr.value.id)
+            target = (module, expr.attr) if isinstance(module, str) else None
+        else:
+            return False
+        return target in self.records or target in {('dataclasses', 'field'), ('numpy', 'ascontiguousarray')}
 
     def source(self, key) -> str:
         m, _ = key
@@ -370,6 +396,12 @@ def scan_function(idx: Index, key, rx: re.Pattern) -> list[str]:
                 if TASK_MODULES.search(mod):
                     out.append(f"imports task / checker module {mod} (line {n.lineno})")
     if p.report_unresolved:
+        bound = {n.id for n in ast.walk(node) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
+        bound |= {n.arg for n in ast.walk(node) if isinstance(n, ast.arg)}
+        # Global rebinding also prevents trusting a module alias or builtin.
+        for statement in idx.mods[key[0]][0].body:
+            if isinstance(statement, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                bound |= {n.id for n in ast.walk(statement) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Store)}
         local = _imports([x for x in ast.walk(node) if isinstance(x, (ast.Import, ast.ImportFrom))], key[0], key[0] in idx.packages)
         for n in ast.walk(node):
             if isinstance(n, ast.Call):
@@ -384,6 +416,7 @@ def scan_function(idx: Index, key, rx: re.Pattern) -> list[str]:
                         target = {**idx.imports.get(key[0], {}), **local}.get(n.func.value.id)
                         mod = target if isinstance(target, str) else '.'.join(target) if isinstance(target, tuple) else None
                         known = known or (mod, n.func.attr) in idx.funcs
+                known = known or idx.resolved_leaf(key, n.func, local, bound)
                 if not known:
                     out.append(f"unresolved call {ast.unparse(n.func)} (line {n.lineno})")
     if p.scan_globals:
