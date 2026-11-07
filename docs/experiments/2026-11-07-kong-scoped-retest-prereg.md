@@ -150,7 +150,16 @@ deployment, lever and route stay fixed. **Nearest-GT results are supplementary**
 and must be reported alongside, never silently substituted for the registered
 primary identity instrument. If fallback applies, label the current nearest-GT
 instrument as primary and report its association diagnostics separately.
-No retroactive re-scoring of the previous verdict under this registration.
+The nearest-GT supplementary column is always retained; if fallback applies,
+it coincides with the fallback primary counts. A metadata-only recorder,
+started before queue insertion, reads only public PR merge metadata and lane
+start timestamps, never outcomes. It fixes the eligible merge SHA immediately
+when available (or the fallback at the first-start cutoff), records
+`compute6:~/dojo-data/kong-retest-1107/audit-instrument.json`, and amends the
+remote dispatch receipt with the applied instrument. The timestamp cutoff and
+selection rule above are immutable even if GitHub evidence is temporarily
+unavailable. No retroactive re-scoring of the previous verdict under this
+registration.
 
 ## Call estimate, queue and receipt
 
@@ -175,3 +184,24 @@ already be on main before any row is queued.
 
 **Dispatch receipt:** pending preparation; no re-test camera rows queued by
 this registration commit.
+
+## Lead-authorized demo-input amendment (before any row is queued)
+
+The lead prospectively amended input eligibility after fresh imitation id
+**100050** failed normal demo validation at speed 1.25 after all four standard
+order tries: **unstable, only 3/5 support objects placed**. This is input
+preparation evidence, not a camera outcome. No re-test row has been queued.
+
+For the imitation parity guard (and any cell requiring a demo), select the
+**first five ascending fresh ids that pass BOTH default two-pass presettle /
+applicable raw-check AND the standard demo validation**, using input validity
+only, never a camera/policy outcome. Keep speed **1.25**, normal order tries,
+validation and the existing fresh salt / 100050–100099 candidate pool. Retain
+every failed raw/settled/demo attempt and its exact failure reason in the
+manifest. This explicitly supersedes the earlier fixed-five/demo-failure
+launch blocker and permits ascending refill to restore the registered n=5.
+No speed escalation, cherry-picking or n reduction is authorized.
+
+The gain-cell, guard and decision-rule sections remain unchanged. If the
+imitation demo failure rate exceeds 30% of attempted demo inputs, record the
+input-validity landmine in BACKLOG with numerator/denominator and reasons.
