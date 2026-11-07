@@ -1,0 +1,171 @@
+{
+ "stream": "ORG2-CAM",
+ "code": "83887dae2ee50d582520b60d13191279a5a58f32",
+ "salt": "org2-cam-20261107-b5e37b4b7f230e7873ba6daa18ff1778",
+ "salt_sha256": "2674f92ca85a25a567407d3b061632e25d822ab3314469383ade0779c806cc73",
+ "block": "org2-cam-1",
+ "cells": [
+  {
+   "task": "organize_table",
+   "short": "organizesg",
+   "role": "gain",
+   "pairs": 12,
+   "batches": [
+    [
+     100000,
+     10
+    ],
+    [
+     100020,
+     5
+    ],
+    [
+     100025,
+     5
+    ]
+   ]
+  },
+  {
+   "task": "arrange_largest_number",
+   "short": "largestnumsg",
+   "role": "guard",
+   "pairs": 10,
+   "batches": [
+    [
+     100000,
+     10
+    ],
+    [
+     100020,
+     5
+    ],
+    [
+     100025,
+     5
+    ]
+   ]
+  },
+  {
+   "task": "arrange_largest_number_random",
+   "short": "largestnumrandsg",
+   "role": "guard",
+   "pairs": 10,
+   "batches": [
+    [
+     100000,
+     10
+    ],
+    [
+     100020,
+     5
+    ],
+    [
+     100025,
+     5
+    ]
+   ]
+  },
+  {
+   "task": "store_tools_in_toolbox",
+   "short": "storetoolssg",
+   "role": "guard",
+   "pairs": 10,
+   "batches": [
+    [
+     100000,
+     10
+    ],
+    [
+     100020,
+     5
+    ],
+    [
+     100025,
+     5
+    ]
+   ]
+  },
+  {
+   "task": "fill_pen_holder",
+   "short": "fillpensg",
+   "role": "guard",
+   "pairs": 10,
+   "batches": [
+    [
+     100000,
+     10
+    ],
+    [
+     100020,
+     5
+    ],
+    [
+     100025,
+     5
+    ]
+   ]
+  },
+  {
+   "task": "insert_key",
+   "short": "insertkeysg",
+   "role": "guard",
+   "pairs": 10,
+   "batches": [
+    [
+     100000,
+     10
+    ],
+    [
+     100020,
+     5
+    ],
+    [
+     100025,
+     5
+    ]
+   ]
+  },
+  {
+   "task": "classify_objects",
+   "short": "classifysg",
+   "role": "guard",
+   "pairs": 10,
+   "batches": [
+    [
+     100000,
+     10
+    ],
+    [
+     100020,
+     5
+    ],
+    [
+     100025,
+     5
+    ]
+   ]
+  },
+  {
+   "task": "build_tower",
+   "short": "buildtowersg",
+   "role": "strong_guard",
+   "pairs": 10,
+   "batches": [
+    [
+     100000,
+     10
+    ],
+    [
+     100020,
+     5
+    ],
+    [
+     100025,
+     5
+    ]
+   ]
+  }
+ ],
+ "selection": "per cell, the first `pairs` ids with settled status ok in ascending batch order; a refill batch is generated only when the earlier batches leave the cell short; no outcome-based selection",
+ "ids_allowed": "100000-09, 100020-29 only"
+}
