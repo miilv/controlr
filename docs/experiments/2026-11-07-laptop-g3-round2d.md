@@ -99,3 +99,16 @@ The first staging wrapper did not execute: the skill registry retained the
 original function. Its 0-credit row is a stricter-contact direct-hang probe,
 not evidence for or against staging. Correct the registry binding and require
 a `CENTRE_RESULT`/explicit no-spot record before interpreting the staged run.
+
+## Upright centre-rest feasibility variant
+
+In parallel with the corrected lying-rest probe, test the same checked right
+cup pick to an **upright** centre rest. This changes reach geometry and makes
+a later front/back bridge pinch possible above the table, with no large wrist
+rotation during final carry. Require the existing `rests_stably` geometry
+screen. Sample a fixed centre table grid near (0,-0.22), in addition to legacy
+free spots, and let native full held/hand/scene collision checks validate each
+actual pose; circle-footprint free spots alone can conservatively omit spaces
+in front of an open laptop. Include fixtures as obstacles. No object/fixture
+pose is written or forced. Record selected xy, all refusals, physical rest
+stability and original pick/transfer verdict. No new panel is authorized yet.
