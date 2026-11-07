@@ -66,9 +66,11 @@ def test_conflicting_language_does_not_assign_two_categories_to_one_basket():
     assert assignment(sk.refresh(), sk.kin)[0] == {}
 
 
-def test_drop_refuses_without_executing_unchecked_legs(monkeypatch):
+@pytest.mark.parametrize("blocked_leg", [1, 2, 3])
+def test_drop_refuses_without_executing_unchecked_legs(monkeypatch, blocked_leg):
     from dojo.skills.classify import central_drop
-    from dojo.skills.motion import MoveResult
+    import numpy as np
+    from dojo.skills.motion import MoveResult, Segment
     from dojo.skills.skills import Held
     from dojo.skills.geometry import inv_T
     from dojo.skills.motion import held_box
@@ -81,8 +83,11 @@ def test_drop_refuses_without_executing_unchecked_legs(monkeypatch):
     calls = []
     def refuse(*args, **kwargs):
         calls.append(kwargs)
-        return MoveResult("collision", arm)
+        if len(calls) % blocked_leg == 0:
+            return MoveResult("collision", arm)
+        return MoveResult("reached", arm, [Segment(np.zeros((2, 6)), 0.1)])
     monkeypatch.setattr(sk.motion, "line", refuse)
+    monkeypatch.setattr(sk.motion, "to_pose", refuse)
     def forbidden(*args, **kwargs):
         pytest.fail("a refused central drop must execute no actions")
     monkeypatch.setattr(sk.ex, "run", forbidden)

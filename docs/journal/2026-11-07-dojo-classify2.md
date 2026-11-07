@@ -15,3 +15,10 @@ No camera jobs, LLM calls, sealed records or other users' processes. One light2
 slot under an 8 GB / 600% scope. The prospective protocol, limitations and
 camera-slot request are in [the report](../experiments/2026-11-07-classify2.md).
 Per-instance evidence retention and the thin-watch proposal loss remain open.
+
+Completed: 33 physics rows. Revised tilt/dogleg scores 5/0 on free/language
+classify versus p2 80/100 (n=3/cell). All revised rows abort holding before
+repairs. Per-stage receipts and both source snapshots are committed beside the
+report. REPRO's updated file has n=0 / null for both cells. Draft PR #422 retains
+these unsuccessful probes for review; no score improvement or camera readiness
+is claimed.

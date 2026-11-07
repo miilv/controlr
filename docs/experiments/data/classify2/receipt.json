@@ -1,0 +1,3682 @@
+[
+ {
+  "arm": "A",
+  "task": "classify_objects",
+  "seed": 100000,
+  "score": 1.0,
+  "steps": 326,
+  "success": true,
+  "infra_failure": null,
+  "wall_s": 21.5,
+  "layout_sha256": "a725cd920ff2b0d166f13d4c9e8d462c6f2547d8a1598e3ad212423602cd1b3b",
+  "native": null,
+  "final_placement_geometry": [],
+  "skills": [
+   {
+    "skill": "ported:classify_into_bins_p2",
+    "ok": true,
+    "status": "ok",
+    "steps": 326,
+    "arm": null,
+    "note": ""
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ended",
+    "steps": 0,
+    "arm": null,
+    "note": "episode already ended"
+   }
+  ]
+ },
+ {
+  "arm": "A",
+  "task": "classify_objects",
+  "seed": 100001,
+  "score": 0.4,
+  "steps": 637,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 79.1,
+  "layout_sha256": "34f1b11861c60c04366cde0528a24e0c73143800d5b1d8e1dc7d8abc8ba31909",
+  "native": null,
+  "final_placement_geometry": [],
+  "skills": [
+   {
+    "skill": "ported:classify_into_bins_p2",
+    "ok": false,
+    "status": "logic",
+    "steps": 634,
+    "arm": null,
+    "note": ""
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 0,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "A",
+  "task": "classify_objects",
+  "seed": 100002,
+  "score": 1.0,
+  "steps": 803,
+  "success": true,
+  "infra_failure": null,
+  "wall_s": 68.1,
+  "layout_sha256": "bbd6863b801d452d3afde6213d068a594f5b6b070d1ccac05c1a269e6d35b908",
+  "native": null,
+  "final_placement_geometry": [],
+  "skills": [
+   {
+    "skill": "ported:classify_into_bins_p2",
+    "ok": true,
+    "status": "ok",
+    "steps": 803,
+    "arm": null,
+    "note": ""
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ended",
+    "steps": 0,
+    "arm": null,
+    "note": "episode already ended"
+   }
+  ]
+ },
+ {
+  "arm": "A",
+  "task": "classify_objects_by_language",
+  "seed": 100000,
+  "score": 1.0,
+  "steps": 788,
+  "success": true,
+  "infra_failure": null,
+  "wall_s": 64.7,
+  "layout_sha256": "df7160e57f62871784dd4eb482a145471cee68e1b2a96addd0b5f1b4ce633053",
+  "native": null,
+  "final_placement_geometry": [],
+  "skills": [
+   {
+    "skill": "ported:classify_into_bins_p2",
+    "ok": true,
+    "status": "ok",
+    "steps": 788,
+    "arm": null,
+    "note": ""
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ended",
+    "steps": 0,
+    "arm": null,
+    "note": "episode already ended"
+   }
+  ]
+ },
+ {
+  "arm": "A",
+  "task": "classify_objects_by_language",
+  "seed": 100001,
+  "score": 1.0,
+  "steps": 842,
+  "success": true,
+  "infra_failure": null,
+  "wall_s": 87.5,
+  "layout_sha256": "f0293dfdd2fcd653815d311d38b2177ebecbeaf9660851f0d5d6a7c2ae299371",
+  "native": null,
+  "final_placement_geometry": [],
+  "skills": [
+   {
+    "skill": "ported:classify_into_bins_p2",
+    "ok": true,
+    "status": "ok",
+    "steps": 842,
+    "arm": null,
+    "note": ""
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ended",
+    "steps": 0,
+    "arm": null,
+    "note": "episode already ended"
+   }
+  ]
+ },
+ {
+  "arm": "A",
+  "task": "classify_objects_by_language",
+  "seed": 100002,
+  "score": 1.0,
+  "steps": 620,
+  "success": true,
+  "infra_failure": null,
+  "wall_s": 57.8,
+  "layout_sha256": "9b18ddb65fd562d9b5052b2932d0653160731329635db9998cb20b08a145e100",
+  "native": null,
+  "final_placement_geometry": [],
+  "skills": [
+   {
+    "skill": "ported:classify_into_bins_p2",
+    "ok": true,
+    "status": "ok",
+    "steps": 620,
+    "arm": null,
+    "note": ""
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ended",
+    "steps": 0,
+    "arm": null,
+    "note": "episode already ended"
+   }
+  ]
+ },
+ {
+  "arm": "B",
+  "task": "classify_objects",
+  "seed": 100000,
+  "score": 0.15,
+  "steps": 95,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 5.8,
+  "layout_sha256": "a725cd920ff2b0d166f13d4c9e8d462c6f2547d8a1598e3ad212423602cd1b3b",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "toy_car": "basket1",
+    "watch": "basket2"
+   },
+   "cost": 2.6229656061334863,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket2",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00000",
+     "object_before7": [
+      0.21264633536338806,
+      -0.16660335659980774,
+      0.7786681056022644,
+      0.7650893926620483,
+      -0.1356813609600067,
+      0.6206098794937134,
+      0.10522444546222687
+     ],
+     "object_after7": [
+      0.29138046503067017,
+      0.04489034786820412,
+      0.788742184638977,
+      0.6713797450065613,
+      -0.2402290254831314,
+      0.621944785118103,
+      0.3236108720302582
+     ],
+     "status": "placed",
+     "steps": 54
+    },
+    {
+     "label": "cat1_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 54,
+     "asset": "Rigid/toy_car/00002",
+     "object_before7": [
+      0.1056332066655159,
+      -0.18208906054496765,
+      0.7858936786651611,
+      0.9785109162330627,
+      0.0007317990530282259,
+      0.020935585722327232,
+      0.20512819290161133
+     ],
+     "object_after7": [
+      0.10573502629995346,
+      -0.18225738406181335,
+      0.8624230623245239,
+      0.9785534739494324,
+      0.0054597314447164536,
+      0.021935928612947464,
+      0.2047487497329712
+     ],
+     "status": "still_held",
+     "steps": 25
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket2",
+    "inside": [
+     "basket2"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "place_miss",
+    "steps": 27,
+    "arm": "right",
+    "note": "xy err 14.1 mm, dz -76.2 mm (centre 0.7881 vs 0.8642), rel tilt 26.9 deg; in-hand shift 0.1 mm, re-planned"
+   },
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "ik_fail",
+    "steps": 0,
+    "arm": "right",
+    "note": "approach: target unreachable (no seed converged)"
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 13,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "B",
+  "task": "classify_objects",
+  "seed": 100001,
+  "score": 0.0,
+  "steps": 44,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 2.3,
+  "layout_sha256": "34f1b11861c60c04366cde0528a24e0c73143800d5b1d8e1dc7d8abc8ba31909",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "pen": "basket2",
+    "toy_car": "basket1"
+   },
+   "cost": 5.4395958431788145,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/garage/00015",
+     "object_before7": [
+      -0.27391552925109863,
+      -0.14393335580825806,
+      0.7941256761550903,
+      0.6387231349945068,
+      -0.5853570699691772,
+      -0.336164265871048,
+      0.36930128931999207
+     ],
+     "object_after7": [
+      -0.2737763226032257,
+      -0.14355549216270447,
+      0.871240496635437,
+      0.6383786797523499,
+      -0.5855053067207336,
+      -0.33662325143814087,
+      0.3692438006401062
+     ],
+     "status": "still_held",
+     "steps": 29
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "ik_fail",
+    "steps": 0,
+    "arm": "left",
+    "note": "approach: target unreachable (no seed converged)"
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 12,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "B",
+  "task": "classify_objects",
+  "seed": 100002,
+  "score": 0.0,
+  "steps": 42,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 3.1,
+  "layout_sha256": "bbd6863b801d452d3afde6213d068a594f5b6b070d1ccac05c1a269e6d35b908",
+  "native": {
+   "assignment": {
+    "action_camera": "basket1",
+    "garage": "basket2",
+    "toy_car": "basket0"
+   },
+   "cost": 8.121282647599466,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/action_camera/00001",
+     "object_before7": [
+      -0.3473387658596039,
+      -0.18322685360908508,
+      0.767139732837677,
+      0.9609203934669495,
+      -0.003552754409611225,
+      -0.0010734745301306248,
+      0.2767999768257141
+     ],
+     "object_after7": [
+      -0.34704530239105225,
+      -0.18286223709583282,
+      0.842893660068512,
+      0.9606096148490906,
+      0.007473336067050695,
+      -0.00958508625626564,
+      0.27763551473617554
+     ],
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_2",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_2",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_2",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "ik_fail",
+    "steps": 0,
+    "arm": "left",
+    "note": "approach: target unreachable (no seed converged)"
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 11,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "B",
+  "task": "classify_objects_by_language",
+  "seed": 100000,
+  "score": 0.0,
+  "steps": 44,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 3.4,
+  "layout_sha256": "df7160e57f62871784dd4eb482a145471cee68e1b2a96addd0b5f1b4ce633053",
+  "native": {
+   "assignment": {
+    "pepper": "basket0",
+    "watch": "basket1",
+    "chocolate_bar": "basket2"
+   },
+   "cost": null,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/pepper/00000",
+     "object_before7": [
+      0.21667762100696564,
+      -0.16713164746761322,
+      0.7937871217727661,
+      0.9847775101661682,
+      -0.012500950135290623,
+      -0.01216523814946413,
+      0.17294208705425262
+     ],
+     "object_after7": [
+      0.21666216850280762,
+      -0.16704943776130676,
+      0.8708264827728271,
+      0.9844738841056824,
+      -0.019023720175027847,
+      -0.013270498253405094,
+      0.17399202287197113
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 29
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 12,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "B",
+  "task": "classify_objects_by_language",
+  "seed": 100001,
+  "score": 0.0,
+  "steps": 563,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 30.6,
+  "layout_sha256": "f0293dfdd2fcd653815d311d38b2177ebecbeaf9660851f0d5d6a7c2ae299371",
+  "native": {
+   "assignment": {
+    "watch": "basket0",
+    "car": "basket1",
+    "pepper": "basket2"
+   },
+   "cost": null,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00007",
+     "object_before7": [
+      -0.02809256874024868,
+      -0.08820079267024994,
+      0.7733386754989624,
+      0.7045138478279114,
+      -0.1752392053604126,
+      0.6874746680259705,
+      0.018169015645980835
+     ],
+     "status": "pick_plan",
+     "steps": 0
+    },
+    {
+     "label": "cat0_1",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00005",
+     "object_before7": [
+      0.18447794020175934,
+      -0.14150774478912354,
+      0.7726190090179443,
+      0.6722701191902161,
+      -0.3196403384208679,
+      0.6310136318206787,
+      0.21841400861740112
+     ],
+     "status": "pick_plan",
+     "steps": 0
+    },
+    {
+     "label": "cat0_2",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00004",
+     "object_before7": [
+      0.09861605614423752,
+      -0.18269294500350952,
+      0.7765435576438904,
+      -0.5701971054077148,
+      -0.31232336163520813,
+      0.6743409037590027,
+      -0.35013386607170105
+     ],
+     "object_after7": [
+      -0.2772871255874634,
+      0.06529998034238815,
+      0.7860374450683594,
+      -0.5840210914611816,
+      -0.30196937918663025,
+      0.6676145792007446,
+      -0.34932035207748413
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "placed",
+     "steps": 151
+    },
+    {
+     "label": "cat1_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 151,
+     "asset": "Rigid/car/00010",
+     "object_before7": [
+      0.322323739528656,
+      -0.20215818285942078,
+      0.7766093611717224,
+      0.926680326461792,
+      -0.004805220291018486,
+      -0.004791653715074062,
+      -0.37578916549682617
+     ],
+     "object_after7": [
+      -0.022544989362359047,
+      0.078984335064888,
+      0.7966001629829407,
+      0.9065636396408081,
+      0.062368474900722504,
+      0.16163112223148346,
+      -0.3848739266395569
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "placed",
+     "steps": 123
+    },
+    {
+     "label": "cat1_1",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 274,
+     "asset": "Rigid/car/00012",
+     "object_before7": [
+      -0.3956206440925598,
+      -0.15951533615589142,
+      0.7772115468978882,
+      0.8997746706008911,
+      0.0017735612345859408,
+      0.0024208042304962873,
+      0.43634453415870667
+     ],
+     "object_after7": [
+      -0.05646150931715965,
+      -0.22958235442638397,
+      0.777212381362915,
+      0.8427019715309143,
+      0.0014112452045083046,
+      0.0024834831710904837,
+      0.5383726954460144
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "released",
+     "steps": 129
+    },
+    {
+     "label": "cat1_2",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 403,
+     "asset": "Rigid/car/00013",
+     "object_before7": [
+      -0.19547347724437714,
+      -0.18435589969158173,
+      0.777228593826294,
+      0.8720173835754395,
+      0.004974581301212311,
+      0.0027612652629613876,
+      0.48944181203842163
+     ],
+     "object_after7": [
+      0.003694225801154971,
+      0.07801409065723419,
+      0.8077566027641296,
+      0.6449739933013916,
+      -0.01843205839395523,
+      -0.03222749009728432,
+      0.7633021473884583
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "placed",
+     "steps": 116
+    },
+    {
+     "label": "cat2_0",
+     "basket": "basket2",
+     "repair": 0,
+     "step": 519,
+     "asset": "Rigid/pepper/00001",
+     "object_before7": [
+      -0.08792506158351898,
+      -0.16928142309188843,
+      0.7966096997261047,
+      0.9571333527565002,
+      -2.9812636057613418e-05,
+      0.004144107457250357,
+      -0.28961801528930664
+     ],
+     "object_after7": [
+      -0.08799567818641663,
+      -0.1693706512451172,
+      0.872870683670044,
+      0.9567787647247314,
+      0.005174772348254919,
+      0.0026024729013442993,
+      -0.29075902700424194
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_2",
+    "expected": "basket0",
+    "inside": [
+     "basket0"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [
+     "basket1"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_2",
+    "expected": "basket1",
+    "inside": [
+     "basket1"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_2",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 13,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "B",
+  "task": "classify_objects_by_language",
+  "seed": 100002,
+  "score": 0.0,
+  "steps": 142,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 8.2,
+  "layout_sha256": "9b18ddb65fd562d9b5052b2932d0653160731329635db9998cb20b08a145e100",
+  "native": {
+   "assignment": {
+    "car": "basket0",
+    "chocolate_bar": "basket1",
+    "pepper": "basket2"
+   },
+   "cost": null,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/car/00010",
+     "object_before7": [
+      -0.34795674681663513,
+      -0.18436408042907715,
+      0.7766127586364746,
+      0.961323082447052,
+      -0.0007643416174687445,
+      -0.006612029857933521,
+      0.275342732667923
+     ],
+     "object_after7": [
+      -0.28630536794662476,
+      0.03860263526439667,
+      0.7860057950019836,
+      0.9990366697311401,
+      -0.002302616136148572,
+      -0.006794800516217947,
+      0.0432925783097744
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "placed",
+     "steps": 94
+    },
+    {
+     "label": "cat0_1",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 94,
+     "asset": "Rigid/car/00010",
+     "object_before7": [
+      0.18659599125385284,
+      -0.19712291657924652,
+      0.7766132950782776,
+      0.9787876605987549,
+      -0.003890478517860174,
+      -0.005494600627571344,
+      -0.20476658642292023
+     ],
+     "object_after7": [
+      0.1894329935312271,
+      -0.19865454733371735,
+      0.8486979603767395,
+      0.9479984641075134,
+      0.06821820139884949,
+      0.2512269914150238,
+      -0.18311239778995514
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [
+     "basket0"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 17,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "C",
+  "task": "classify_objects",
+  "seed": 100000,
+  "score": 0.15,
+  "steps": 95,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 5.9,
+  "layout_sha256": "a725cd920ff2b0d166f13d4c9e8d462c6f2547d8a1598e3ad212423602cd1b3b",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "toy_car": "basket1",
+    "watch": "basket2"
+   },
+   "cost": 2.6229656061334863,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket2",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00000",
+     "object_before7": [
+      0.21264633536338806,
+      -0.16660335659980774,
+      0.7786681056022644,
+      0.7650893926620483,
+      -0.1356813609600067,
+      0.6206098794937134,
+      0.10522444546222687
+     ],
+     "object_after7": [
+      0.2907029688358307,
+      0.04565156251192093,
+      0.7887422442436218,
+      0.67955482006073,
+      -0.22397832572460175,
+      0.6279839277267456,
+      0.30606383085250854
+     ],
+     "status": "placed",
+     "steps": 54
+    },
+    {
+     "label": "cat1_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 54,
+     "asset": "Rigid/toy_car/00002",
+     "object_before7": [
+      0.1056332066655159,
+      -0.18208906054496765,
+      0.7858936786651611,
+      0.9785109162330627,
+      0.0007317990530282259,
+      0.020935585722327232,
+      0.20512819290161133
+     ],
+     "object_after7": [
+      0.10573529452085495,
+      -0.18225733935832977,
+      0.8624224662780762,
+      0.9785555601119995,
+      0.005475821439176798,
+      0.02189994789659977,
+      0.20474223792552948
+     ],
+     "status": "still_held",
+     "steps": 25
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket2",
+    "inside": [
+     "basket2"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "place_miss",
+    "steps": 27,
+    "arm": "right",
+    "note": "xy err 13.1 mm, dz -76.2 mm (centre 0.7881 vs 0.8642), rel tilt 24.0 deg; in-hand shift 0.1 mm, re-planned"
+   },
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "ik_fail",
+    "steps": 0,
+    "arm": "right",
+    "note": "approach: ik_fail: line waypoint 8/14 unreachable (err 8.3 mm / 2.5 deg)"
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 13,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "C",
+  "task": "classify_objects",
+  "seed": 100001,
+  "score": 0.0,
+  "steps": 44,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 2.4,
+  "layout_sha256": "34f1b11861c60c04366cde0528a24e0c73143800d5b1d8e1dc7d8abc8ba31909",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "pen": "basket2",
+    "toy_car": "basket1"
+   },
+   "cost": 5.4395958431788145,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/garage/00015",
+     "object_before7": [
+      -0.27391552925109863,
+      -0.14393335580825806,
+      0.7941256761550903,
+      0.6387231349945068,
+      -0.5853570699691772,
+      -0.336164265871048,
+      0.36930128931999207
+     ],
+     "object_after7": [
+      -0.2737763226032257,
+      -0.14355549216270447,
+      0.871240496635437,
+      0.6383786797523499,
+      -0.5855053067207336,
+      -0.33662325143814087,
+      0.3692438006401062
+     ],
+     "status": "still_held",
+     "steps": 29
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "ik_fail",
+    "steps": 0,
+    "arm": "left",
+    "note": "approach: ik_fail: line waypoint 8/11 unreachable (err 6.1 mm / 2.9 deg)"
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 12,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "C",
+  "task": "classify_objects",
+  "seed": 100002,
+  "score": 0.0,
+  "steps": 42,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 3.0,
+  "layout_sha256": "bbd6863b801d452d3afde6213d068a594f5b6b070d1ccac05c1a269e6d35b908",
+  "native": {
+   "assignment": {
+    "action_camera": "basket1",
+    "garage": "basket2",
+    "toy_car": "basket0"
+   },
+   "cost": 8.121282647599466,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/action_camera/00001",
+     "object_before7": [
+      -0.3473387658596039,
+      -0.18322685360908508,
+      0.767139732837677,
+      0.9609203934669495,
+      -0.003552754409611225,
+      -0.0010734745301306248,
+      0.2767999768257141
+     ],
+     "object_after7": [
+      -0.34704530239105225,
+      -0.18286223709583282,
+      0.842893660068512,
+      0.9606096148490906,
+      0.007473336067050695,
+      -0.00958508625626564,
+      0.27763551473617554
+     ],
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_2",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_2",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_2",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "ik_fail",
+    "steps": 0,
+    "arm": "left",
+    "note": "approach: ik_fail: line waypoint 15/22 unreachable (err 7.6 mm / 2.2 deg)"
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 11,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "C",
+  "task": "classify_objects_by_language",
+  "seed": 100000,
+  "score": 0.0,
+  "steps": 44,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 4.4,
+  "layout_sha256": "df7160e57f62871784dd4eb482a145471cee68e1b2a96addd0b5f1b4ce633053",
+  "native": {
+   "assignment": {
+    "pepper": "basket0",
+    "watch": "basket1",
+    "chocolate_bar": "basket2"
+   },
+   "cost": null,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/pepper/00000",
+     "object_before7": [
+      0.21667762100696564,
+      -0.16713164746761322,
+      0.7937871217727661,
+      0.9847775101661682,
+      -0.012500950135290623,
+      -0.01216523814946413,
+      0.17294208705425262
+     ],
+     "object_after7": [
+      0.21666216850280762,
+      -0.16704943776130676,
+      0.8708264827728271,
+      0.9844738841056824,
+      -0.019023720175027847,
+      -0.013270498253405094,
+      0.17399202287197113
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 29
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 12,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "C",
+  "task": "classify_objects_by_language",
+  "seed": 100001,
+  "score": 0.0,
+  "steps": 41,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 4.7,
+  "layout_sha256": "f0293dfdd2fcd653815d311d38b2177ebecbeaf9660851f0d5d6a7c2ae299371",
+  "native": {
+   "assignment": {
+    "watch": "basket0",
+    "car": "basket1",
+    "pepper": "basket2"
+   },
+   "cost": null,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00007",
+     "object_before7": [
+      -0.02809256874024868,
+      -0.08820079267024994,
+      0.7733386754989624,
+      0.7045138478279114,
+      -0.1752392053604126,
+      0.6874746680259705,
+      0.018169015645980835
+     ],
+     "status": "pick_plan",
+     "steps": 0
+    },
+    {
+     "label": "cat0_1",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00005",
+     "object_before7": [
+      0.18447794020175934,
+      -0.14150774478912354,
+      0.7726190090179443,
+      0.6722701191902161,
+      -0.3196403384208679,
+      0.6310136318206787,
+      0.21841400861740112
+     ],
+     "status": "pick_plan",
+     "steps": 0
+    },
+    {
+     "label": "cat0_2",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00004",
+     "object_before7": [
+      0.09861605614423752,
+      -0.18269294500350952,
+      0.7765435576438904,
+      -0.5701971054077148,
+      -0.31232336163520813,
+      0.6743409037590027,
+      -0.35013386607170105
+     ],
+     "object_after7": [
+      0.09907223284244537,
+      -0.1825994998216629,
+      0.8532748818397522,
+      -0.5835160613059998,
+      -0.3024270832538605,
+      0.6670572757720947,
+      -0.3508295714855194
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_2",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_2",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_2",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 10,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "C",
+  "task": "classify_objects_by_language",
+  "seed": 100002,
+  "score": 0.0,
+  "steps": 144,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 11.2,
+  "layout_sha256": "9b18ddb65fd562d9b5052b2932d0653160731329635db9998cb20b08a145e100",
+  "native": {
+   "assignment": {
+    "car": "basket0",
+    "chocolate_bar": "basket1",
+    "pepper": "basket2"
+   },
+   "cost": null,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/car/00010",
+     "object_before7": [
+      -0.34795674681663513,
+      -0.18436408042907715,
+      0.7766127586364746,
+      0.961323082447052,
+      -0.0007643416174687445,
+      -0.006612029857933521,
+      0.275342732667923
+     ],
+     "object_after7": [
+      -0.295999139547348,
+      0.044296592473983765,
+      0.7860311269760132,
+      0.9919393062591553,
+      -0.0017918015364557505,
+      -0.006786048877984285,
+      0.12651917338371277
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "placed",
+     "steps": 96
+    },
+    {
+     "label": "cat0_1",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 96,
+     "asset": "Rigid/car/00010",
+     "object_before7": [
+      0.18659599125385284,
+      -0.19712291657924652,
+      0.7766132950782776,
+      0.9787876605987549,
+      -0.003890786785632372,
+      -0.005494522862136364,
+      -0.2047666311264038
+     ],
+     "object_after7": [
+      0.18943339586257935,
+      -0.19865410029888153,
+      0.8486973643302917,
+      0.9479717016220093,
+      0.0682229995727539,
+      0.2513517141342163,
+      -0.18307818472385406
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [
+     "basket0"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 17,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "D",
+  "task": "classify_objects",
+  "seed": 100000,
+  "score": 0.15,
+  "steps": 95,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 5.8,
+  "layout_sha256": "a725cd920ff2b0d166f13d4c9e8d462c6f2547d8a1598e3ad212423602cd1b3b",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "toy_car": "basket1",
+    "watch": "basket2"
+   },
+   "cost": 2.6229656061334863,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket2",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00000",
+     "object_before7": [
+      0.21264633536338806,
+      -0.16660335659980774,
+      0.7786681056022644,
+      0.7650893926620483,
+      -0.1356813609600067,
+      0.6206098794937134,
+      0.10522444546222687
+     ],
+     "object_after7": [
+      0.2907029688358307,
+      0.04565156251192093,
+      0.7887422442436218,
+      0.67955482006073,
+      -0.22397832572460175,
+      0.6279839277267456,
+      0.30606383085250854
+     ],
+     "status": "placed",
+     "steps": 54
+    },
+    {
+     "label": "cat1_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 54,
+     "asset": "Rigid/toy_car/00002",
+     "object_before7": [
+      0.1056332066655159,
+      -0.18208906054496765,
+      0.7858936786651611,
+      0.9785109162330627,
+      0.0007317990530282259,
+      0.020935585722327232,
+      0.20512819290161133
+     ],
+     "object_after7": [
+      0.10573529452085495,
+      -0.18225733935832977,
+      0.8624224662780762,
+      0.9785555601119995,
+      0.005475821439176798,
+      0.02189994789659977,
+      0.20474223792552948
+     ],
+     "status": "still_held",
+     "steps": 25
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket2",
+    "inside": [
+     "basket2"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "place_miss",
+    "steps": 27,
+    "arm": "right",
+    "note": "xy err 13.1 mm, dz -76.2 mm (centre 0.7881 vs 0.8642), rel tilt 24.0 deg; in-hand shift 0.1 mm, re-planned"
+   },
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "ik_fail",
+    "steps": 0,
+    "arm": "right",
+    "note": "approach: ik_fail: line waypoint 8/14 unreachable (err 8.3 mm / 2.5 deg)"
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 13,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "D",
+  "task": "classify_objects",
+  "seed": 100001,
+  "score": 0.0,
+  "steps": 44,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 2.4,
+  "layout_sha256": "34f1b11861c60c04366cde0528a24e0c73143800d5b1d8e1dc7d8abc8ba31909",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "pen": "basket2",
+    "toy_car": "basket1"
+   },
+   "cost": 5.4395958431788145,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/garage/00015",
+     "object_before7": [
+      -0.27391552925109863,
+      -0.14393335580825806,
+      0.7941256761550903,
+      0.6387231349945068,
+      -0.5853570699691772,
+      -0.336164265871048,
+      0.36930128931999207
+     ],
+     "object_after7": [
+      -0.2737763226032257,
+      -0.14355549216270447,
+      0.871240496635437,
+      0.6383786797523499,
+      -0.5855053067207336,
+      -0.33662325143814087,
+      0.3692438006401062
+     ],
+     "status": "still_held",
+     "steps": 29
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "ik_fail",
+    "steps": 0,
+    "arm": "left",
+    "note": "approach: ik_fail: line waypoint 8/11 unreachable (err 6.1 mm / 2.9 deg)"
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 12,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "D",
+  "task": "classify_objects",
+  "seed": 100002,
+  "score": 0.0,
+  "steps": 42,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 3.0,
+  "layout_sha256": "bbd6863b801d452d3afde6213d068a594f5b6b070d1ccac05c1a269e6d35b908",
+  "native": {
+   "assignment": {
+    "action_camera": "basket1",
+    "garage": "basket2",
+    "toy_car": "basket0"
+   },
+   "cost": 8.121282647599466,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/action_camera/00001",
+     "object_before7": [
+      -0.3473387658596039,
+      -0.18322685360908508,
+      0.767139732837677,
+      0.9609203934669495,
+      -0.003552754409611225,
+      -0.0010734745301306248,
+      0.2767999768257141
+     ],
+     "object_after7": [
+      -0.34704530239105225,
+      -0.18286223709583282,
+      0.842893660068512,
+      0.9606096148490906,
+      0.007473336067050695,
+      -0.00958508625626564,
+      0.27763551473617554
+     ],
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_2",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_2",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_2",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "place",
+    "ok": false,
+    "status": "ik_fail",
+    "steps": 0,
+    "arm": "left",
+    "note": "approach: ik_fail: line waypoint 15/22 unreachable (err 7.6 mm / 2.2 deg)"
+   },
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 11,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "D",
+  "task": "classify_objects_by_language",
+  "seed": 100000,
+  "score": 0.0,
+  "steps": 44,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 4.4,
+  "layout_sha256": "df7160e57f62871784dd4eb482a145471cee68e1b2a96addd0b5f1b4ce633053",
+  "native": {
+   "assignment": {
+    "pepper": "basket0",
+    "watch": "basket1",
+    "chocolate_bar": "basket2"
+   },
+   "cost": null,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/pepper/00000",
+     "object_before7": [
+      0.21667762100696564,
+      -0.16713164746761322,
+      0.7937871217727661,
+      0.9847775101661682,
+      -0.012500950135290623,
+      -0.01216523814946413,
+      0.17294208705425262
+     ],
+     "object_after7": [
+      0.21666216850280762,
+      -0.16704943776130676,
+      0.8708264827728271,
+      0.9844738841056824,
+      -0.019023720175027847,
+      -0.013270498253405094,
+      0.17399202287197113
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 29
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 12,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "D",
+  "task": "classify_objects_by_language",
+  "seed": 100001,
+  "score": 0.0,
+  "steps": 41,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 4.7,
+  "layout_sha256": "f0293dfdd2fcd653815d311d38b2177ebecbeaf9660851f0d5d6a7c2ae299371",
+  "native": {
+   "assignment": {
+    "watch": "basket0",
+    "car": "basket1",
+    "pepper": "basket2"
+   },
+   "cost": null,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00007",
+     "object_before7": [
+      -0.02809256874024868,
+      -0.08820079267024994,
+      0.7733386754989624,
+      0.7045138478279114,
+      -0.1752392053604126,
+      0.6874746680259705,
+      0.018169015645980835
+     ],
+     "status": "pick_plan",
+     "steps": 0
+    },
+    {
+     "label": "cat0_1",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00005",
+     "object_before7": [
+      0.18447794020175934,
+      -0.14150774478912354,
+      0.7726190090179443,
+      0.6722701191902161,
+      -0.3196403384208679,
+      0.6310136318206787,
+      0.21841400861740112
+     ],
+     "status": "pick_plan",
+     "steps": 0
+    },
+    {
+     "label": "cat0_2",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00004",
+     "object_before7": [
+      0.09861605614423752,
+      -0.18269294500350952,
+      0.7765435576438904,
+      -0.5701971054077148,
+      -0.31232336163520813,
+      0.6743409037590027,
+      -0.35013386607170105
+     ],
+     "object_after7": [
+      0.09907223284244537,
+      -0.1825994998216629,
+      0.8532748818397522,
+      -0.5835160613059998,
+      -0.3024270832538605,
+      0.6670572757720947,
+      -0.3508295714855194
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_2",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_2",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_2",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 10,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "D",
+  "task": "classify_objects_by_language",
+  "seed": 100002,
+  "score": 0.0,
+  "steps": 144,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 11.1,
+  "layout_sha256": "9b18ddb65fd562d9b5052b2932d0653160731329635db9998cb20b08a145e100",
+  "native": {
+   "assignment": {
+    "car": "basket0",
+    "chocolate_bar": "basket1",
+    "pepper": "basket2"
+   },
+   "cost": null,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/car/00010",
+     "object_before7": [
+      -0.34795674681663513,
+      -0.18436408042907715,
+      0.7766127586364746,
+      0.961323082447052,
+      -0.0007643416174687445,
+      -0.006612029857933521,
+      0.275342732667923
+     ],
+     "object_after7": [
+      -0.295999139547348,
+      0.044296592473983765,
+      0.7860311269760132,
+      0.9919393062591553,
+      -0.0017918015364557505,
+      -0.006786048877984285,
+      0.12651917338371277
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "placed",
+     "steps": 96
+    },
+    {
+     "label": "cat0_1",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 96,
+     "asset": "Rigid/car/00010",
+     "object_before7": [
+      0.18659599125385284,
+      -0.19712291657924652,
+      0.7766132950782776,
+      0.9787876605987549,
+      -0.003890786785632372,
+      -0.005494522862136364,
+      -0.2047666311264038
+     ],
+     "object_after7": [
+      0.18943339586257935,
+      -0.19865410029888153,
+      0.8486973643302917,
+      0.9479717016220093,
+      0.0682229995727539,
+      0.2513517141342163,
+      -0.18307818472385406
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [
+     "basket0"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 17,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "E",
+  "task": "classify_objects",
+  "seed": 100000,
+  "score": 0.15,
+  "steps": 114,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 10.4,
+  "layout_sha256": "a725cd920ff2b0d166f13d4c9e8d462c6f2547d8a1598e3ad212423602cd1b3b",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "toy_car": "basket1",
+    "watch": "basket2"
+   },
+   "cost": 2.6229656061334863,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket2",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00000",
+     "object_before7": [
+      0.21264633536338806,
+      -0.16660335659980774,
+      0.7786681056022644,
+      0.7650893926620483,
+      -0.1356813609600067,
+      0.6206098794937134,
+      0.10522444546222687
+     ],
+     "object_after7": [
+      0.2927449345588684,
+      0.05201781168580055,
+      0.7884485721588135,
+      0.7380986213684082,
+      -0.17021410167217255,
+      0.6249285340309143,
+      0.18894945085048676
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "placed",
+     "steps": 73
+    },
+    {
+     "label": "cat1_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 73,
+     "asset": "Rigid/toy_car/00002",
+     "object_before7": [
+      0.1056332066655159,
+      -0.18208906054496765,
+      0.7858936786651611,
+      0.9785109162330627,
+      0.0007317990530282259,
+      0.020935585722327232,
+      0.20512819290161133
+     ],
+     "object_after7": [
+      0.10573490709066391,
+      -0.18225786089897156,
+      0.8624229431152344,
+      0.9785528182983398,
+      0.0054993219673633575,
+      0.021931001916527748,
+      0.20475144684314728
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 25
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket2",
+    "inside": [
+     "basket2"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 13,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "E",
+  "task": "classify_objects",
+  "seed": 100001,
+  "score": 0.0,
+  "steps": 141,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 12.8,
+  "layout_sha256": "34f1b11861c60c04366cde0528a24e0c73143800d5b1d8e1dc7d8abc8ba31909",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "pen": "basket2",
+    "toy_car": "basket1"
+   },
+   "cost": 5.4395958431788145,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/garage/00015",
+     "object_before7": [
+      -0.27391552925109863,
+      -0.14393335580825806,
+      0.7941256761550903,
+      0.6387231349945068,
+      -0.5853570699691772,
+      -0.336164265871048,
+      0.36930128931999207
+     ],
+     "object_after7": [
+      -0.3201596438884735,
+      0.071727454662323,
+      0.8107838034629822,
+      -0.39333128929138184,
+      0.7776321172714233,
+      0.4307936131954193,
+      -0.23451155424118042
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "released",
+     "steps": 92
+    },
+    {
+     "label": "cat0_1",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 92,
+     "asset": "Rigid/garage/00015",
+     "object_before7": [
+      0.07696717232465744,
+      -0.151078462600708,
+      0.7941256165504456,
+      0.7342149615287781,
+      -0.671930730342865,
+      -0.06449421495199203,
+      0.07264969497919083
+     ],
+     "object_after7": [
+      0.07691957801580429,
+      -0.15064486861228943,
+      0.8707315921783447,
+      0.7339589595794678,
+      -0.6721682548522949,
+      -0.06455964595079422,
+      0.07298082113265991
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 30
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [
+     "basket0"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 16,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "E",
+  "task": "classify_objects",
+  "seed": 100002,
+  "score": 0.0,
+  "steps": 521,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 46.1,
+  "layout_sha256": "bbd6863b801d452d3afde6213d068a594f5b6b070d1ccac05c1a269e6d35b908",
+  "native": {
+   "assignment": {
+    "action_camera": "basket1",
+    "garage": "basket2",
+    "toy_car": "basket0"
+   },
+   "cost": 8.121282647599466,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/action_camera/00001",
+     "object_before7": [
+      -0.3473387658596039,
+      -0.18322685360908508,
+      0.767139732837677,
+      0.9609203934669495,
+      -0.003552754409611225,
+      -0.0010734745301306248,
+      0.2767999768257141
+     ],
+     "object_after7": [
+      0.01719534397125244,
+      0.07142607122659683,
+      0.7766889333724976,
+      0.9841165542602539,
+      -0.011054803617298603,
+      -0.00016419014718849212,
+      0.1771787703037262
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "placed",
+     "steps": 133
+    },
+    {
+     "label": "cat0_1",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 133,
+     "asset": "Rigid/action_camera/00000",
+     "object_before7": [
+      0.2474653124809265,
+      -0.09618222713470459,
+      0.789126992225647,
+      0.8770739436149597,
+      -0.0005043372511863708,
+      1.4661789464298636e-05,
+      -0.4803551137447357
+     ],
+     "object_after7": [
+      0.04349905997514725,
+      -0.09856867045164108,
+      0.7896217703819275,
+      -0.32137247920036316,
+      0.3826049566268921,
+      0.6995946168899536,
+      -0.5107843279838562
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "released",
+     "steps": 101
+    },
+    {
+     "label": "cat0_2",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 234,
+     "asset": "Rigid/action_camera/00000",
+     "object_before7": [
+      0.18721720576286316,
+      -0.19651111960411072,
+      0.7891270518302917,
+      0.9790579080581665,
+      -0.0004863864742219448,
+      -0.00013314538227859885,
+      -0.20358125865459442
+     ],
+     "object_after7": [
+      -0.02138977311551571,
+      0.02144346758723259,
+      0.794002115726471,
+      0.7974608540534973,
+      0.5399605631828308,
+      -0.15868225693702698,
+      -0.21752852201461792
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "placed",
+     "steps": 129
+    },
+    {
+     "label": "cat1_0",
+     "basket": "basket2",
+     "repair": 0,
+     "step": 363,
+     "asset": "Rigid/garage/00014",
+     "object_before7": [
+      0.010161815211176872,
+      -0.18978233635425568,
+      0.7924543619155884,
+      0.6675774455070496,
+      -0.6325007081031799,
+      -0.3217811584472656,
+      0.22525553405284882
+     ],
+     "object_after7": [
+      0.26000723242759705,
+      0.07596217095851898,
+      0.805616557598114,
+      -0.47367292642593384,
+      0.7258809208869934,
+      0.4639374315738678,
+      -0.1830107420682907
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "released",
+     "steps": 110
+    },
+    {
+     "label": "cat1_1",
+     "basket": "basket2",
+     "repair": 0,
+     "step": 473,
+     "asset": "Rigid/garage/00015",
+     "object_before7": [
+      -0.1946033388376236,
+      -0.2236989140510559,
+      0.7941256165504456,
+      0.6396046280860901,
+      -0.5861647129058838,
+      -0.3347557783126831,
+      0.3677707612514496
+     ],
+     "object_after7": [
+      -0.19438554346561432,
+      -0.22330111265182495,
+      0.8714251518249512,
+      0.6393423080444336,
+      -0.5861825346946716,
+      -0.33549946546554565,
+      0.36752086877822876
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket1",
+    "inside": [
+     "basket1"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_2",
+    "expected": "basket1",
+    "inside": [
+     "basket1"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_2",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_2",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 17,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "F",
+  "task": "classify_objects",
+  "seed": 100000,
+  "score": 0.15,
+  "steps": 116,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 10.6,
+  "layout_sha256": "a725cd920ff2b0d166f13d4c9e8d462c6f2547d8a1598e3ad212423602cd1b3b",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "toy_car": "basket1",
+    "watch": "basket2"
+   },
+   "cost": 2.6229656061334863,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket2",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00000",
+     "object_before7": [
+      0.21264633536338806,
+      -0.16660335659980774,
+      0.7786681056022644,
+      0.7650893926620483,
+      -0.1356813609600067,
+      0.6206098794937134,
+      0.10522444546222687
+     ],
+     "object_after7": [
+      0.2819380760192871,
+      0.05918177217245102,
+      0.7883397340774536,
+      0.7386835217475891,
+      -0.19706234335899353,
+      0.611429750919342,
+      0.2041243314743042
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "placed",
+     "steps": 75
+    },
+    {
+     "label": "cat1_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 75,
+     "asset": "Rigid/toy_car/00002",
+     "object_before7": [
+      0.1056332066655159,
+      -0.18208906054496765,
+      0.7858936786651611,
+      0.9785109162330627,
+      0.0007317990530282259,
+      0.020935585722327232,
+      0.20512819290161133
+     ],
+     "object_after7": [
+      0.10573513060808182,
+      -0.18225741386413574,
+      0.8624224066734314,
+      0.9785528182983398,
+      0.0054725478403270245,
+      0.0219312384724617,
+      0.20475222170352936
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 25
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket2",
+    "inside": [
+     "basket2"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 13,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "F",
+  "task": "classify_objects",
+  "seed": 100001,
+  "score": 0.0,
+  "steps": 143,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 12.7,
+  "layout_sha256": "34f1b11861c60c04366cde0528a24e0c73143800d5b1d8e1dc7d8abc8ba31909",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "pen": "basket2",
+    "toy_car": "basket1"
+   },
+   "cost": 5.4395958431788145,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/garage/00015",
+     "object_before7": [
+      -0.27391552925109863,
+      -0.14393335580825806,
+      0.7941256761550903,
+      0.6387231349945068,
+      -0.5853570699691772,
+      -0.336164265871048,
+      0.36930128931999207
+     ],
+     "object_after7": [
+      -0.31410759687423706,
+      0.07219211757183075,
+      0.8072698712348938,
+      -0.451140433549881,
+      0.7271012663841248,
+      0.45497334003448486,
+      -0.24656705558300018
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "released",
+     "steps": 94
+    },
+    {
+     "label": "cat0_1",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 94,
+     "asset": "Rigid/garage/00015",
+     "object_before7": [
+      0.07696717232465744,
+      -0.151078462600708,
+      0.7941256165504456,
+      0.7342149615287781,
+      -0.671930730342865,
+      -0.06449421495199203,
+      0.07264969497919083
+     ],
+     "object_after7": [
+      0.0769195631146431,
+      -0.15064485371112823,
+      0.8707315325737,
+      0.7339593172073364,
+      -0.6721678376197815,
+      -0.06455971300601959,
+      0.07298057526350021
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 30
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [
+     "basket0"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 16,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "F",
+  "task": "classify_objects",
+  "seed": 100002,
+  "score": 0.0,
+  "steps": 42,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 4.4,
+  "layout_sha256": "bbd6863b801d452d3afde6213d068a594f5b6b070d1ccac05c1a269e6d35b908",
+  "native": {
+   "assignment": {
+    "action_camera": "basket1",
+    "garage": "basket2",
+    "toy_car": "basket0"
+   },
+   "cost": 8.121282647599466,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/action_camera/00001",
+     "object_before7": [
+      -0.3473387658596039,
+      -0.18322685360908508,
+      0.767139732837677,
+      0.9609203934669495,
+      -0.003552754409611225,
+      -0.0010734745301306248,
+      0.2767999768257141
+     ],
+     "object_after7": [
+      -0.34704530239105225,
+      -0.18286223709583282,
+      0.842893660068512,
+      0.9606096148490906,
+      0.007473336067050695,
+      -0.00958508625626564,
+      0.27763551473617554
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_2",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_2",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_2",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 11,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "G",
+  "task": "classify_objects",
+  "seed": 100000,
+  "score": 0.15,
+  "steps": 116,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 10.8,
+  "layout_sha256": "a725cd920ff2b0d166f13d4c9e8d462c6f2547d8a1598e3ad212423602cd1b3b",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "toy_car": "basket1",
+    "watch": "basket2"
+   },
+   "cost": 2.6229656061334863,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket2",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/watch/00000",
+     "object_before7": [
+      0.21264633536338806,
+      -0.16660335659980774,
+      0.7786681056022644,
+      0.7650893926620483,
+      -0.1356813609600067,
+      0.6206098794937134,
+      0.10522444546222687
+     ],
+     "object_after7": [
+      0.2819380760192871,
+      0.05918177217245102,
+      0.7883397340774536,
+      0.7386835217475891,
+      -0.19706234335899353,
+      0.611429750919342,
+      0.2041243314743042
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "placed",
+     "steps": 75
+    },
+    {
+     "label": "cat1_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 75,
+     "asset": "Rigid/toy_car/00002",
+     "object_before7": [
+      0.1056332066655159,
+      -0.18208906054496765,
+      0.7858936786651611,
+      0.9785109162330627,
+      0.0007317990530282259,
+      0.020935585722327232,
+      0.20512819290161133
+     ],
+     "object_after7": [
+      0.10573513060808182,
+      -0.18225741386413574,
+      0.8624224066734314,
+      0.9785528182983398,
+      0.0054725478403270245,
+      0.0219312384724617,
+      0.20475222170352936
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 25
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket2",
+    "inside": [
+     "basket2"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 13,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "G",
+  "task": "classify_objects",
+  "seed": 100001,
+  "score": 0.0,
+  "steps": 143,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 9.9,
+  "layout_sha256": "34f1b11861c60c04366cde0528a24e0c73143800d5b1d8e1dc7d8abc8ba31909",
+  "native": {
+   "assignment": {
+    "garage": "basket0",
+    "pen": "basket2",
+    "toy_car": "basket1"
+   },
+   "cost": 5.4395958431788145,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/garage/00015",
+     "object_before7": [
+      -0.27391552925109863,
+      -0.14393335580825806,
+      0.7941256761550903,
+      0.6387231349945068,
+      -0.5853570699691772,
+      -0.336164265871048,
+      0.36930128931999207
+     ],
+     "object_after7": [
+      -0.31410759687423706,
+      0.07219211757183075,
+      0.8072698712348938,
+      -0.451140433549881,
+      0.7271012663841248,
+      0.45497334003448486,
+      -0.24656705558300018
+     ],
+     "place_status": "released",
+     "place_note": "",
+     "status": "released",
+     "steps": 94
+    },
+    {
+     "label": "cat0_1",
+     "basket": "basket0",
+     "repair": 0,
+     "step": 94,
+     "asset": "Rigid/garage/00015",
+     "object_before7": [
+      0.07696717232465744,
+      -0.151078462600708,
+      0.7941256165504456,
+      0.7342149615287781,
+      -0.671930730342865,
+      -0.06449421495199203,
+      0.07264969497919083
+     ],
+     "object_after7": [
+      0.0769195631146431,
+      -0.15064485371112823,
+      0.8707315325737,
+      0.7339593172073364,
+      -0.6721678376197815,
+      -0.06455971300601959,
+      0.07298057526350021
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 30
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket0",
+    "inside": [
+     "basket0"
+    ],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 16,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ },
+ {
+  "arm": "G",
+  "task": "classify_objects",
+  "seed": 100002,
+  "score": 0.0,
+  "steps": 42,
+  "success": false,
+  "infra_failure": null,
+  "wall_s": 3.4,
+  "layout_sha256": "bbd6863b801d452d3afde6213d068a594f5b6b070d1ccac05c1a269e6d35b908",
+  "native": {
+   "assignment": {
+    "action_camera": "basket1",
+    "garage": "basket2",
+    "toy_car": "basket0"
+   },
+   "cost": 8.121282647599466,
+   "events": [
+    {
+     "label": "cat0_0",
+     "basket": "basket1",
+     "repair": 0,
+     "step": 0,
+     "asset": "Rigid/action_camera/00001",
+     "object_before7": [
+      -0.3473387658596039,
+      -0.18322685360908508,
+      0.767139732837677,
+      0.9609203934669495,
+      -0.003552754409611225,
+      -0.0010734745301306248,
+      0.2767999768257141
+     ],
+     "object_after7": [
+      -0.34704530239105225,
+      -0.18286223709583282,
+      0.842893660068512,
+      0.9606096148490906,
+      0.007473336067050695,
+      -0.00958508625626564,
+      0.27763551473617554
+     ],
+     "place_status": "no_plan",
+     "place_note": "no checked tilt/central carry fits",
+     "status": "still_held",
+     "steps": 28
+    }
+   ]
+  },
+  "final_placement_geometry": [
+   {
+    "label": "cat0_0",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_1",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat0_2",
+    "expected": "basket1",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_0",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_1",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat1_2",
+    "expected": "basket2",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_0",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_1",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   },
+   {
+    "label": "cat2_2",
+    "expected": "basket0",
+    "inside": [],
+    "wrong": false
+   }
+  ],
+  "skills": [
+   {
+    "skill": "finish",
+    "ok": true,
+    "status": "ok",
+    "steps": 11,
+    "arm": null,
+    "note": ""
+   }
+  ]
+ }
+]
