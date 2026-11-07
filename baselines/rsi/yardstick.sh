@@ -29,4 +29,5 @@ while read -r task; do
   bash "$ROOT/run_task.sh" "$task" "$DATA/yardstick-layouts" 10 yardstick
   date -u +%FT%TZ > "$DATA/yardstick/$task.done"
 done < "$DATA/tasks.txt"
+"$PY" "$ROOT/summarize.py" "$DATA/yardstick-layouts" "$DATA"/yardstick/20*T*_* --require-complete > "$DATA/per_cell.json"
 date -u +%FT%TZ > "$DATA/yardstick.done"

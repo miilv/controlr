@@ -70,7 +70,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('layouts', type=Path)
     parser.add_argument('runs', nargs='+', type=Path)
+    parser.add_argument('--require-complete', action='store_true')
     args = parser.parse_args()
     manifest = verify(args.layouts)
     rows = [row for run in args.runs for row in episodes(run, manifest)]
-    print(json.dumps(dict(schema='rsi-yardstick-results/1', per_cell=per_cell(rows)), indent=2))
+    result = per_cell(rows)
+    if args.require_complete and any(cell['n'] != 10 for cell in result.values()):
+        raise SystemExit('incomplete yardstick: exactly ten scored episodes per cell required')
+    print(json.dumps(dict(schema='rsi-yardstick-results/1', per_cell=result), indent=2))
