@@ -134,3 +134,10 @@ mesh falls back to bbox. Arm/finger checks remain; scope restores on exceptions.
 Unit coverage includes real penetration, triangle crossings with no inside
 vertex, unsampled low vertices, disjoint footprint, invalid mesh, hand guard,
 scope cleanup, and unchanged defaults. Wider search is not implemented.
+
+Mesh-table fresh panel source 18e70412: standard A0 ±0 -> B18 ±6.32,
+9/0/1 W/L/T; random A4 ±8.43 -> B10 ±10.54, 3/0/7. Headset credits
+0->9 and 2->5 of ten. All full-task successes zero; 40 valid rows, no
+exclusions. Random reliability fails; continue on independent pilot 100066,
+not individual panel failures. Full local suite 2071 passed /191 skipped,
+934.65 s. No model calls, camera dispatch or board changes.

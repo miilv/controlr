@@ -92,3 +92,27 @@ paired score gain gate for the prospective camera spec: pooled +5 points,
 wins >=2*losses and >=2 net wins; do not silently pool selected panels.
 Two concurrent LAPTOP scopes max, light2/light8, same admission/resource/path
 rules. Zero LLM calls/tokens/spend. No camera dispatch or board change.
+
+## Completed mesh-table panel
+
+Frozen action source **18e70412**, first ten stable 100085–94 per cell. All
+30 draws settled; all 40 episodes valid, no exclusions, missing meshes,
+infrastructure errors or exhausted budgets.
+[Rows, hashes, admissions and recipes](2026-11-07-laptop-g3-round2c-results.json).
+Points are 0–100; SD is sample SD.
+
+| Cell | n pairs | A mean ± SD | B mean ± SD | Headset credits A/B | Full successes A/B | Score W/L/T |
+|---|---:|---:|---:|---:|---:|---:|
+| standard | 10 | 0 ± 0 | 18 ± 6.32 | 0/10 / 9/10 | 0/10 / 0/10 | 9 / 0 / 1 |
+| random | 10 | 4 ± 8.43 | 10 ± 10.54 | 2/10 / 5/10 | 0/10 / 0/10 | 3 / 0 / 7 |
+
+Pooled gain +12 points, 12 wins / 0 losses passes the score gate; **random
+5/10 fails reliability**. Preserve this panel separately, with no selected
+pooling. Only aggregate outcomes were used to decide continuation; return to
+independent random pilot 100066 for the [band diagnosis](2026-11-07-laptop-g3-round2d.md).
+Steps median/max: standard A63.5/138, B253.5/280; random A69/158,
+B146.5/337. Full-success flips 0/0. Laptop route remains unattempted.
+
+Local full suite on the exact action source: **2071 passed / 191 skipped**
+(934.65 s); focused suite 24 passed. Zero model calls/tokens/spend (0/0/$0),
+no camera dispatch and no board change.
