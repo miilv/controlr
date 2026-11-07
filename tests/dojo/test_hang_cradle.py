@@ -116,11 +116,16 @@ def test_headset_seating_uses_measured_hold_and_keeps_thread_target():
 
 
 def test_headset_seat_defaults_and_runtime_mirror():
-    import inspect
+    import pytest
+    from types import SimpleNamespace
+    from dojo.skills.env import KinematicEnv
     from dojo.runtime.policy import RuntimeConfig, RuntimePolicy
     from dojo.skills.g3 import SKILL_ATTRS
     from dojo.skills.skills import Skills
     assert RuntimeConfig().headset_seat == 'off'
     assert SKILL_ATTRS['headset_seat'] == ('off', 'on')
-    assert 'self.headset_seat = "off"' in inspect.getsource(Skills.__init__)
-    assert 'sk_.headset_seat = cfg.headset_seat' in inspect.getsource(RuntimePolicy)
+    sk = Skills(KinematicEnv([]), SimpleNamespace(refresh=_world))
+    assert sk.headset_seat == "off"
+    assert RuntimePolicy(RuntimeConfig(headset_seat="on"), assets=object()).cfg.headset_seat == "on"
+    with pytest.raises(ValueError, match="bad runtime config"):
+        RuntimePolicy(RuntimeConfig(headset_seat="typo"), assets=object())
