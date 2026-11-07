@@ -1,19 +1,18 @@
-# CLASSIFY3 (2026-11-07): classify_into_bins_p2 with a choice of container test (our own wrapper; p2 itself unchanged).
-"""classify_into_bins_p3: p2 (``classify_into_bins_p2``) run with its container test chosen by ``contain``.
+# Our own wrapper (2026-11-07) around the vendored sort mechanics of classify_into_bins_p2 (p2 itself unchanged).
+"""sort_into_containers: sort the scene's objects by category into its containers (a fixed category -> container map from
+the instruction, or a free sort), with p2's grounding, stages, retries, fallbacks and home, and two general options.
 
-run(robot, contain="bottom", park_other="off", **p2 arguments)
+run(robot, contain="root", park_other="off", **p2 arguments)
 
-``contain``:
-  * ``"root"``: p2's own test, the object's root position inside the container's box and below its rim + 10 mm;
-  * ``"bottom"`` (default here): the root's xy inside the box and the object's lowest point (its box's bottom, ``aabb``)
-    below the rim + 10 mm. On the camera the believed pose of an object let go into a basket keeps its in-hand
-    orientation (standing, on its side), so its root sits 15-110 mm above the rim while it rests on the floor: on 20
-    recorded camera rows (journal 2026-11-07-dojo-classify3) 25 of 96 releases that physics had inside read "not in"
-    under the root test, and the skill re-did them (retries, fallbacks, nudges) until the step budget ran out.
+``contain``: how "this object is in that container" is judged from the world state:
+  * ``"root"`` (p2): the object's root position inside the container's box and below its rim + 10 mm;
+  * ``"bottom"``: the root's xy inside the box and the object's lowest point (its box's bottom, ``aabb``) below the
+    rim + 10 mm. A believed object let go into a container keeps its in-hand orientation (standing, on its side), so
+    its root can sit well above the rim while it rests on the floor; the root test then reads a placed object as not
+    placed and the skill re-does it (journal 2026-11-07-dojo-classify3: 23 of 96 releases physics had inside).
 ``park_other``: ``"off"`` (p2) | ``"home"``: before a stage that carries with one arm (direct, drop_held, nudge), the
-other arm goes home (v3's checked ``home_safe``) when it is away from home with open jaws. In G3 with the true state
-(the same 20 dev layouts) the idle arm was the commonest obstacle of a refused carry: 30 of 74 refusals.
-Everything else (grounding, stages, retries, fallbacks, home) is p2's.
+other arm goes home (v3's checked ``home_safe``) when it is away from home with open jaws (the idle arm was the
+commonest obstacle of a refused carry in G3).
 """
 import importlib.util
 import os
@@ -30,7 +29,7 @@ CARRY_STAGES = ("direct", "drop_held", "nudge")
 def load_p2():
     """A fresh private instance of p2 (its module globals are ours to rebind; nothing shared with other runs)."""
     p = os.path.join(HERE, "..", "classify_into_bins_p2", "skill_robodojo.py")
-    spec = importlib.util.spec_from_file_location(f"cib_p2_for_p3_{os.getpid()}_{time.time_ns()}", p)
+    spec = importlib.util.spec_from_file_location(f"cib_p2_for_sort_{os.getpid()}_{time.time_ns()}", p)
     m = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(m)
     return m
@@ -68,7 +67,7 @@ def parking(load_v3, parks: list):
     return load
 
 
-def run(robot, contain="bottom", park_other="off", **kw):
+def run(robot, contain="root", park_other="off", **kw):
     if contain not in CONTAIN:
         return {"ok": False, "verified": False, "error": f"contain must be one of {CONTAIN}, not {contain!r}"}
     if park_other not in PARK:
