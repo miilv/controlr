@@ -140,3 +140,23 @@ introduces no write path. `instance_evidence=log` is identical in both arms and 
 
 REPRO's PyRUA-RSI program on its first five salted layouts ([per_cell.json](data/rsi-yardstick/per_cell.json)): classify
 100 (n = 5), language 88 (n = 5). Those are different layouts from this panel: context, not a gate.
+
+## Dispatch receipt — 2026-11-07 19:20:52Z
+
+The prereg (`77e40828`) and the frozen inputs (`97cddc2a`) were on main before the queue write.
+
+- **Write:** under compute4's `queue2.txt.lock`, by [append.py](data/classify3-camera/append.py).
+  [Machine-readable receipt](data/classify3-camera/dispatch.json).
+- **Before:** the queue held **no row**, only a single newline (1 byte, SHA256 `01ba4719…546b`). lane2.sh stops at a
+  blank first line ("queue empty"), so appending after it would have left the block unreachable. The block therefore
+  replaced the empty queue; no existing row was changed or reordered. The pre-write file is kept at
+  `compute4:~/dojo-data/classify3-cam/meta/queue2.before-classify3.txt`.
+- **After:** 50 rows at positions **1–50**, `c4b_classifysg_cls3Ar1_100020` … `c4b_stackblockssg_cls3Br1_100024`.
+  Queue SHA256 `cd17114c…89ac`, equal to the frozen block.
+- **Route:** `AGENTIC_MODEL=claude/claude-sonnet-5-5` checked on all 50 rows.
+- **Lanes:** STOP was present and **not touched** (mtime 19:11Z). No lane was running, and none was started or
+  resumed; the lead resumes the lanes after the partner's slot (~23:45Z). No SAMINT block was queued: its per-task
+  dispatch is cancelled and its general A/B is not authorized.
+- **Untouched:** no `~/coord` file was read or written, no partner process was touched, no model call was made.
+- **ETA:** start ~23:45Z when the lanes resume. 50 episodes ≈ 6.6 lane-hours ≈ 3.3 h on two lanes, so done around
+  **03:00–03:30Z on 8 Nov**; resource, startup and retry waits can extend it.

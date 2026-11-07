@@ -1,0 +1,23 @@
+{
+ "utc": "2026-11-07T19:20:52.288293+00:00",
+ "host": "compute4",
+ "stream": "CLASSIFY3-CAM",
+ "mode": "queue held no row (only blank lines): replaced by the block",
+ "rows_before": 0,
+ "rows_after": 50,
+ "positions_1_based": [
+  1,
+  50
+ ],
+ "sha256_before": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+ "bytes_before": 1,
+ "sha256_after": "cd17114cdbe8d4bb33111d5ca08f947ef32be48a55ddb8250c8e00d97a0989ac",
+ "block_sha256": "cd17114cdbe8d4bb33111d5ca08f947ef32be48a55ddb8250c8e00d97a0989ac",
+ "first": "c4b_classifysg_cls3Ar1_100020",
+ "last": "c4b_stackblockssg_cls3Br1_100024",
+ "route_checked_rows": 50,
+ "route": "claude/claude-sonnet-5-5",
+ "stop_present": true,
+ "stop_touched": false,
+ "running_lanes": []
+}

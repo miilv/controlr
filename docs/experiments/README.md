@@ -6,7 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
-| 2026-11-07 | [CLASSIFY3 camera prereg](2026-11-07-classify3-camera-prereg.md) | Does the sort skill's lowest-point container test raise the camera score? | REGISTERED; 20 gain pairs + 5 strong/parity; compute4 after the partner slot |
+| 2026-11-07 | [CLASSIFY3 camera prereg](2026-11-07-classify3-camera-prereg.md) | Does the sort skill's lowest-point container test raise the camera score? | QUEUED 19:20Z (compute4 positions 1–50); 20 gain pairs + 5 strong/parity; starts when the lead resumes the lanes |
 | 2026-11-07 | [CLASSIFY3](2026-11-07-classify3.md) | Where the sort-into-containers cells lose on camera; general container test, idle-arm park, evidence ledger | Camera loss: language count (5/10 rows 0) + root container test (31/128 placed read "not in"); bottom test 23→2 false "not in" offline, G3 neutral; idle-arm park home classify 67.5→94 but language 53→40; camera A/B (bottom only) parked |
 | 2026-11-07 | [SAMINT pour camera spec](2026-11-07-samint-pour-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
 | 2026-11-07 | [SAMINT egg camera spec](2026-11-07-samint-egg-camera-spec.md) | Task-scoped SAM proposer camera A/B | PARKED; 20 gain pairs + 10 strong + 5 parity; no dispatch |
