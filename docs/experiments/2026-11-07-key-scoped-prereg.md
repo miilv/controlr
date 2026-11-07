@@ -179,3 +179,43 @@ requirement and both five-pair guard rules remain unchanged. No further
 blocks, retries of failed settles, relaxed validation or outcome-based draws
 are allowed. This amendment is committed before extra generation and before
 any camera collection.
+
+## Frozen prepared panel (before camera collection)
+
+Preparation completed at **2026-11-07 02:09:32Z**. The final authorized block
+has valid ids 100002 and 100004. Only **100002**, the lowest valid id, is added
+to the original nine; 100004 is retained but not evaluated. The n=9 exception
+is unused. Planned camera n is **10 insert_key / 5 plug_in_charger / 5 stack**
+pairs, 40 rows, one repeat per arm. No further layouts will be generated.
+
+All **35 raw-checks passed** (25 key, five charger, five stack). Normal
+settling retained 11/25 key inputs and all ten guards. The selected gain panel
+uses 10/11 valid key inputs. Every exclusion below is a failed settled reload,
+not a camera/skill outcome. Full validation, raw/settled hashes, unused valid
+inputs and selection order are in the [selection record](data/key-scoped/selection.json).
+
+| Key block | Failed settle ids | Selected ids | Unused valid ids |
+|---|---|---|---|
+| key-scoped-1 | 100000 | 100001–100004 | none |
+| key-scoped-2 | 100000, 100001, 100003, 100004 | 100002 | none |
+| key-scoped-refill-1 | 100000, 100001, 100003, 100004 | 100002 | none |
+| key-scoped-refill-2 | 100000, 100002 | 100001, 100003, 100004 | none |
+| key-scoped-refill-3 (lead amendment) | 100000, 100001, 100003 | 100002 | 100004 |
+
+The [full manifest](data/key-scoped/freeze.json) SHA256 is
+`5bbaa131fc2813bc459537bcf088fcbe79d51fb17026adaabf92047370be2305`.
+It pins every selected raw/settled record, validation indices, resolved A/B
+configs, expanded pair order and exact queue-file hash. The chained
+[original preparation freeze](data/key-scoped/pre-generation-freeze.json) and
+[pre-generation amendment freeze](data/key-scoped/amendment-freeze.json)
+retain the environment/code/checkpoint pins and final salt authorization.
+All frozen file hashes were rechecked before staging. Both guard routes
+resolve v1/off in both arms; insert_key resolves v1/off in A and v2/on in B.
+No perception/belief writer changes were introduced during preparation.
+
+Operational evidence remains at `compute6:~/dojo-data/key-1107/`, including
+all failed inputs and attempt logs. Preparation used one admitted light lock
+at a time, made **zero model calls**, changed no shared environment and killed
+no processes. The original worker's deliberate ten-pair assertion blocked
+launch at n=9; only the committed lead amendment enabled the final block.
+Queue insertion and its receipt follow separately; no camera verdict is made.
