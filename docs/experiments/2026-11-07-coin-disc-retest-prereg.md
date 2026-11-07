@@ -129,3 +129,33 @@ Raw/loaded records, indices and all preparation logs remain under
 its locks released, and the existing lanes continue unchanged. Parent prep
 processes were stopped only by their own recorded PID while waiting with no
 child active; the completed first block was retained without regeneration.
+
+## Lead-authorized prospective key refill amendment — 7 Nov
+
+The lead explicitly authorized this amendment before any camera collection.
+Reason: 7/10 primary insert_key layouts failed the unchanged second stability
+pass. The original reserved refill yielded only 2/5 stable records, leaving
+5/10 key pairs. The prior block-on-shortfall clause is superseded ONLY as follows.
+
+Generate at most TWO additional five-record, fresh salted **key-only** blocks:
+`disc-keyrefill2` then `disc-keyrefill3`, with literal salts fixed in the
+[amendment salt file](2026-11-07-coin-disc-retest-amendment-salts.json).
+Use new private roots and ids 100000–04; identity includes the fresh salt.
+Verify never-used identities and raw hashes. Keep the unchanged generator,
+default two-pass presettle, and unchanged --raw-check for raw-running cells
+(none of this panel's cells runs raw). No stability threshold changes or fallback.
+Select stable records ascending by block number then id, based on stability
+only. Retain all original valid records; stop at ten key pairs. No outcomes
+may be inspected or used for selection. No third additional block is authorized.
+
+After these blocks, dispatch ten key pairs if available; otherwise dispatch
+all available stable key pairs if **at least eight**, disclosing reduced guard n.
+If fewer than eight, stop and report to the lead without queueing any panel rows.
+Full registered n now means this prospectively selected key n (8–10), with
+20 gain, 10 tic-tac-toe and 10 stack pairs unchanged. Gain/guard decision
+thresholds, Sonnet in both arms, deployment, config parity and every other
+condition remain unchanged. Record each block's failure rate, including which
+pass failed. If the key second-pass failure rate is much higher than other
+cells, record the preparation landmine in BACKLOG. Freeze the selected panel
+and manifest on main before appending rows. This amendment and its salts must
+also reach main before generating the two new blocks.
