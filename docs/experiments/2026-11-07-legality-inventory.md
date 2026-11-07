@@ -55,16 +55,16 @@ comments are review evidence. These counts must not be reported as proven board 
 | Category | Main | D-C19 |
 |---|---:|---:|
 | reflection | 51 | 39 |
-| unresolved | 31670 | 29742 |
+| unresolved | 31814 | 29884 |
 | checker_module | 1 | 1 |
-| task_data | 93 | 90 |
+| task_data | 99 | 96 |
 | checker_provenance | 174 | 165 |
 | checker_tolerance | 59 | 57 |
 | task_switch | 88 | 67 |
 | checker_state | 53 | 51 |
 | termination | 3 | 3 |
 | task_vocabulary | 75 | 75 |
-| task_name | 331 | 317 |
+| task_name | 335 | 321 |
 | dynamic_code | 49 | 45 |
 | identity_source | 3 | 3 |
 | instruction_or_identity | 97 | 96 |
@@ -182,6 +182,7 @@ cannot detect this geometric/checker knowledge.
 - **Active perception:** tracking based on actual measured motion and held-pose
   reads based on uncertainty can be general. Existing task-conditioned candidate
   pools contaminate that argument (audit §4.4–4.6).
+
 
 
 

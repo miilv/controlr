@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import copy
 import json
 import re
 import sys
@@ -209,7 +210,14 @@ class Index:
         self.by_name[m] = {}
         self.imports[m] = _imports(tree.body, m, m in self.packages)
         if self.p.scan_globals:
-            body = [n for n in tree.body if not isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))]
+            def global_node(n):
+                if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    return None
+                if isinstance(n, ast.ClassDef):
+                    n = copy.copy(n)
+                    n.body = [child for item in n.body if (child := global_node(item)) is not None]
+                return n
+            body = [child for item in tree.body if (child := global_node(item)) is not None]
             synthetic = ast.FunctionDef(name='<module>', args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]),
                                         body=body, decorator_list=[], lineno=1, end_lineno=max(1, len(src.splitlines())))
             self.funcs[(m, '<module>')] = synthetic

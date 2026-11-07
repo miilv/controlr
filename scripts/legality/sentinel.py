@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 import threading
 
-from dojo.legality.audit import InstructionRead, InstructionSentinel, SENTINEL_TEXT, TASK_ACCESSORS
+from dojo.legality.audit import InstructionRead, InstructionSentinel, SENTINEL_TEXT, TASK_ACCESSORS, _boom
 
 SCHEMA_NAMES = TASK_ACCESSORS
 ForbiddenRead = InstructionRead
@@ -32,6 +32,8 @@ def instruction_only(monkeypatch):
     def profile(frame, event, arg):
         if event == 'call':
             code = frame.f_code
+            if code is _boom.__code__:
+                hits.append('instruction sentinel content read')
             filename = code.co_filename.replace('\\', '/')
             if '/dojo/' in filename and (code.co_name in SCHEMA_NAMES or
                     '/dojo/perception/tasks.py' in filename or

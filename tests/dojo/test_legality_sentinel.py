@@ -115,7 +115,7 @@ def test_explicit_argument_skills_accept_the_shared_instruction_sentinel(monkeyp
     assert result is not None
 
 
-@pytest.mark.parametrize('skill,leak', [('stack_objects', False), ('arrange', False), ('stack_objects', True)])
+@pytest.mark.parametrize('skill,leak', [('stack_objects', False), ('arrange', False), ('stack_objects', 'propagate'), ('stack_objects', 'swallow')])
 def test_production_provider_perception_checkpoint_and_skill_instruction_sentinel(monkeypatch, skill, leak):
     """Real RuntimePolicy -> RuntimeProvider(mode=perception) -> _Checker -> service mock.
 
@@ -149,7 +149,11 @@ def test_production_provider_perception_checkpoint_and_skill_instruction_sentine
             assert frame['instruction'] is token
             seen['checks'] += 1
             if leak:
-                frame['instruction'].lower()  # planted production-boundary read
+                try:
+                    frame['instruction'].lower()  # planted production-boundary read
+                except BaseException:
+                    if leak != 'swallow':
+                        raise
             return check(frame, objects, fold)
         monkeypatch.setattr(pc, 'check', checkpoint)
         sk = ctx.make_skills(ctx.sk)
@@ -167,9 +171,12 @@ def test_production_provider_perception_checkpoint_and_skill_instruction_sentine
                            assets=FakeAssets(), perception_client=pc, program=program)
     with instruction_only(monkeypatch) as hits:
         report = run_episode(policy, FakeEpisode(env, task=TaskIdentity()), 'perception')
-    assert not hits, hits
-    assert seen['refresh'] >= 2 and seen['checks'] >= 1
     if leak:
+        assert 'instruction sentinel content read' in hits
+    else:
+        assert not hits, hits
+    assert seen['refresh'] >= 2 and seen['checks'] >= 1
+    if leak == 'propagate':
         assert not seen['entered']
         assert 'InstructionRead' in (report.get('error') or ''), report
     else:

@@ -160,3 +160,8 @@ def test_multiline_exemptions_pin_the_offending_line_and_each_match(tmp_path):
     assert any(v.why == "task name in a string: 'make_kong' (line 3)" for v in found)
     assert any(v.why == "task name in a string: 'stack_blocks' (line 4)" for v in found)
     assert any(v.why.startswith('task data path:') and '(line 5)' in v.why for v in found)
+
+
+def test_path_loaded_class_constants_are_module_code_too(tmp_path):
+    p = profile(tmp_path, {'pkg/entry.py': 'class Bank:\n    candidates = "make_kong"\ndef run():\n    return Bank.candidates\n'})
+    assert any('task name' in v.why for v in A.audit_callgraph(profile=p, names=['make_kong']))

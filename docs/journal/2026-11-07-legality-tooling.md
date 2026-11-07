@@ -27,3 +27,8 @@ checker-shaped blocker, now tested and labelled. Carrier/reflective pins are uni
 single lines; multiline literals point to each offending line. The production
 RuntimeProvider perception/checkpoint path is exercised with poisoned instructions
 and a negative-control read, rather than relying only on GTProvider fixtures.
+
+The asset-path firewall test permits only the auditor's explicit denial-symbol set
+and rejection regex; it still rejects Path/open/list constructions in that module.
+Validation: full unit suite on four workers, 2,317 passed / 214 skipped; final
+combined legality/provider/firewall coverage, 41 passed / 8 glib-only skips.
