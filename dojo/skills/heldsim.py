@@ -141,8 +141,7 @@ class HeldBeliefProvider:
     """See the module doc. ``mode``: None (belief only: no ``held_pose`` / ``show_pose``), "noise" or "gt"."""
 
     def __init__(self, base, env, kin: X5Kin | None = None, mode: str | None = "noise", seed: int = 0,
-                 table: dict | None = None, freeze: bool = False, confirm: bool = False, drop: str | None = None,
-                 release_rest: str = "legacy"):
+                 table: dict | None = None, freeze: bool = False, confirm: bool = False, drop: str | None = None):
         self.base = base
         self.env = env
         self.kin = kin or X5Kin()
@@ -161,8 +160,6 @@ class HeldBeliefProvider:
         self.stats.update({"frozen": 0, "confirm": 0, "confirm_adopted": 0})
         assert drop in (None, "runtime", "fixtures", "fixtures_look"), drop
         self.drop = drop
-        assert release_rest in ("legacy", "container"), release_rest
-        self.release_rest = release_rest     # RuntimeConfig.release_rest, as the runtime belief's ``drop_rest``
         self._pending: dict = {}             # label -> the belief's rest pose (pos, quat) after a release (``drop``)
         self._cmd: dict = {}                 # arm -> last commanded joints
         self.stats.update({"released": 0, "remeasured": 0, "kept": 0})
@@ -292,7 +289,7 @@ class HeldBeliefProvider:
         movables = [x for x in others if x.obj_type != "Geometry"]
         fx = [x for x in others if is_fixture(x)] if fixtures else ()
         rel7 = np.round(np.r_[o.pos, o.quat], 5).tolist()
-        pos, ev = drop_rest(o, movables, fx, container=self.release_rest == "container")
+        pos, ev = drop_rest(o, movables, fx)
         if pos is not None:
             o.pos = pos
         if ev is not None:
