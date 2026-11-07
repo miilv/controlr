@@ -376,6 +376,7 @@ class Skills:
         self.headset_carry = "legacy"
         self.headset_grasp = "legacy"
         self.headset_table = "bbox"
+        self.headset_stage = "off"
         # Opposite handle orientation about its upward axis, after original candidates.
         self.hang_half_turn = False
         self.hang_handle_grasp = False

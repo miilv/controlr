@@ -112,3 +112,26 @@ actual pose; circle-footprint free spots alone can conservatively omit spaces
 in front of an open laptop. Include fixtures as obstacles. No object/fixture
 pose is written or forced. Record selected xy, all refusals, physical rest
 stability and original pick/transfer verdict. No new panel is authorized yet.
+
+## Production-candidate registration before pilot screen
+
+The corrected lying-rest prototype earns the genuine 20-point tier on random
+100066 in 412 steps. Right pick is clean; placement near (0.05,-0.33) has
+2.2 mm xy error and 0.3 mm carry shift. Left rejects an 8.4 mm loose pick,
+re-grasps, then finishes with 0.8 mm carry shift and releases on the cradle.
+The independent upright-rest prototype is also physically stable (0.6 mm xy,
+-0.5 mm z error, 1.6 deg tilt, upright through 30 steps) but is **not included**:
+there is a complete lying-rest hang and no need for another mechanism.
+
+Implement default-off `headset_stage=center`: stage only when the nearest
+pickup arm differs from the nearest cradle arm and xy transfer exceeds 0.40 m.
+Retain the successful lying orientation, native free spots (first eight),
+checked plans (24 full max) and one actual transfer attempt, with original
+verification. After a successful stage only, add the >=0.8-patch, >=6 mm-depth
+18–35 mm cup bank alongside existing wide grasps for hanging; otherwise keep
+the existing dense bank. Retain method-slip filtering, retry limits, slow carry
+and seating. No asset/id dispatch. Screen all seven independent pilots/cell
+(original 30/31 plus 65–69), with the existing mesh+staged+seat+dense profile.
+Only after that screen freeze source/bundle and register new unused panel ids
+100015–29, a new salt/variant, first ten stable ascending; no individual old
+panel failure may be used for development. No panel dispatch under this section.

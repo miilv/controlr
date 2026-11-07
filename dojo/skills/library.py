@@ -3546,6 +3546,10 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
     if mesh_table:
         sk.coll.held_table = "mesh"
     try:
+        if "handle" not in handle_tag.lower() and getattr(sk, "headset_stage", "off") == "center":
+            from dojo.skills.headset import stage_for_cradle
+            staged = stage_for_cradle(sk, objects, rack, hook_tag, handle_tag)
+            return _hang_on_hooks(sk, objects, rack, hook_tag, handle_tag, cup_labels=staged)
         return _hang_on_hooks(sk, objects, rack, hook_tag, handle_tag)
     finally:
         if mesh_table:
@@ -3553,7 +3557,8 @@ def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, hand
         sk.coll.held_skip.pop(rack, None)
 
 
-def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle") -> dict:
+def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle", *,
+                   cup_labels=()) -> dict:
     """Hang each object by its handle on one of the rack's hooks. The handle frame (on the outside of the handle's
     bar) goes onto the hook frame, raised by the handle's hole depth so the hook's arm runs through the hole; hooks
     oriented like the rack's first one. Each object is carried, re-oriented, to just beyond the hook's tip (hole on
@@ -3562,6 +3567,9 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
     dense = "handle" not in handle_tag.lower() and getattr(sk, "headset_grasp", "legacy") == "dense"
 
     def hang_grasps(o, arm):
+        if o.label in cup_labels:
+            from dojo.skills.headset import cup_grasps
+            return cup_grasps(sk, o, arm, handle_tag)
         if dense:
             from dojo.skills.headset import dense_grasps
             return dense_grasps(sk, o, arm)
@@ -3654,10 +3662,10 @@ def _hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, han
                 T_pre[:3, 3] += H[:3, 0] * (tip + HANG_PRE)
             # then lifted to the pre-hang height first: the carry low across the table met the clutter (twin, rand: a
             # lamp), and its via path over the top hook was out of reach
-            r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=24 if dense else 8, pair_rank=wide_rank,
+            r = sk.plan_transfer(lab, [T_pre], yaw_sym=1, ignore=(), max_full=24 if dense or lab in cup_labels else 8, pair_rank=wide_rank,
                                  grasps=(lambda a, o=o: [g for g in hang_grasps(o, a)
                                                          if g.method not in slipped.get(o.label, ())
-                                                         and (not seat or g.width >= HANG_WIDE_W)]),
+                                                         and (not seat or g.width >= HANG_WIDE_W or o.label in cup_labels)]),
                                  **({"pick_kw": {"squeeze": 8}} if seat else {}),
                                  place_kw={"pre_h": 0.03, "release": False, "approach_rad": carry_rad, "purpose": "hang",
                                            **({"approach_staged": True} if not thread and

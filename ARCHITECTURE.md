@@ -653,3 +653,11 @@ original bounds, flags and IK-cache invalidation restore on every exit.
 image-container calls; `off` retains 150 mm. Neither changes match-and-pick.
 These skills consume the existing WorldState and do not add perception or read
 checker state. A terminal environment signal is left to the driver to grade.
+
+The optional `headset_stage=center` path precedes the cradle hang only for
+long transfers between the arms. It uses existing checked pick/place plans to
+rest the object near the table centre, then re-plans from the measured pose.
+A verified rest enables geometry-filtered narrow cup grasps alongside the wide
+bank. No held state is inferred from a plan alone; original physical lift,
+loose-hold and release verification still apply. The default `off` bypasses
+staging and retains the prior candidate bank.

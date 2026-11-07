@@ -400,6 +400,7 @@ class RuntimeConfig:
     headset_carry: str = "legacy"
     headset_grasp: str = "legacy"
     headset_table: str = "bbox"
+    headset_stage: str = "off"
     # Try the opposite handle orientation on threaded hooks (same hole axis).
     hang_half_turn: bool = False
     # Mesh-confirmed pinches on the handle outer bar before body-wall pinches.
@@ -708,6 +709,7 @@ class RuntimePolicy:
                 or self.cfg.arrange_hover not in ("off", "low")
                 or self.cfg.push_approach not in ("off", "tilted")
                 or self.cfg.arrange_order not in ("near", "big_first", "push_big_first") or self.cfg.push_stroke not in ("face", "press")
+                or self.cfg.headset_stage not in ("off", "center")
                 or self.cfg.headset_table not in ("bbox", "mesh")
                 or self.cfg.headset_grasp not in ("legacy", "dense")
                 or self.cfg.headset_carry not in ("legacy", "staged")
@@ -1064,6 +1066,7 @@ class RuntimePolicy:
             sk_.headset_carry = cfg.headset_carry
             sk_.headset_grasp = cfg.headset_grasp
             sk_.headset_table = cfg.headset_table
+            sk_.headset_stage = cfg.headset_stage
             sk_.hang_half_turn = bool(cfg.hang_half_turn)
             sk_.hang_handle_grasp = bool(cfg.hang_handle_grasp)
             sk_.hang_carry_slow = bool(cfg.hang_carry_slow)
