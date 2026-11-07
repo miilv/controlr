@@ -2088,13 +2088,69 @@
     },
     "store_laptop_and_headphones": {
       "dimension": "Generalization",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "82ebf5b2856bbddb98b2c8091f47d78caf82c1a98eb747d262d09a9463775052",
+          "official_score": 0.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T2229304dffb3Z_store_laptop_and_headphones",
+          "steps": 448,
+          "success": false,
+          "task": "store_laptop_and_headphones",
+          "wall_s": 59.52573228802066
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "f5c345a347a2f01827b09ec706e5d99fc7674c4e308c7fff3d3aab6601f88612",
+          "official_score": 20.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T2229304dffb3Z_store_laptop_and_headphones",
+          "steps": 581,
+          "success": false,
+          "task": "store_laptop_and_headphones",
+          "wall_s": 123.37229749700055
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "e2ac28a2080e5ccdd54c851f8bef4306d452bab441db94e9d1066f3f7cd70236",
+          "official_score": 20.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T2229304dffb3Z_store_laptop_and_headphones",
+          "steps": 455,
+          "success": false,
+          "task": "store_laptop_and_headphones",
+          "wall_s": 56.99694933893625
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "d3e7fd7f7c008de46e158967463f130b119b40e5813c08510984e187eb422ffe",
+          "official_score": 20.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T2229304dffb3Z_store_laptop_and_headphones",
+          "steps": 604,
+          "success": false,
+          "task": "store_laptop_and_headphones",
+          "wall_s": 106.26449349103495
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "461a38c76e97c677a34c3b1c2c4233da7e1d3a2b256d52845a29bc778b47249e",
+          "official_score": 0.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T2229304dffb3Z_store_laptop_and_headphones",
+          "steps": 610,
+          "success": false,
+          "task": "store_laptop_and_headphones",
+          "wall_s": 118.15712001000065
+        }
+      ],
+      "n": 5,
+      "official_score": 12.0,
+      "score_sd": 10.954451150103322,
+      "steps": 2698,
       "successes": 0,
-      "wall_s": 0,
+      "wall_s": 464.31659262499306,
       "weight": 0.008333333333333333
     },
     "store_laptop_and_headphones_random": {
