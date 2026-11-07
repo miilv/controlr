@@ -150,6 +150,24 @@ def episode(rep: dict, actions: list[dict]) -> dict:
                          "left_holder": rose, "lost_at": lost_at, "lost_stage": stage if rose or lost_at else None,
                          "slip_mm": round(float(np.linalg.norm(last_rel - rel_s)) * 1000, 1),
                          "peak_rise_mm": round((peak - float(c0[2])) * 1000, 1)})
+    # release: the last open of a hand holding the coin; the coin's pose in the bank's frame there
+    rel = None
+    for c in sorted(rows, key=lambda c: c["open"]):          # the last open of a hand still holding it
+        if c["lost_at"] is None and c["open"] in F:
+            k = c["open"] - 1 if (c["open"] - 1) in F else c["open"]
+            o = obj(F[k], "coin0")
+            if bank:
+                Rb = qR(bank["quat"])
+                loc = Rb.T @ (np.asarray(o["pos"], float) - np.asarray(bank["pos"], float))
+                n_loc = Rb.T @ qR(o["quat"])[:, 2]
+                yb = math.degrees(math.atan2(n_loc[1], n_loc[0])) % 180.0
+                rel = {"step": k, "arm": c["arm"], "xyz_bank_mm": [round(float(v) * 1000, 1) for v in loc],
+                       "normal_yaw_bank_deg": round(yb, 1),
+                       # the slot's plane has its normal along the bank's x (successful coins: 0-3 deg)
+                       "slot_plane_err_deg": round(min(yb, 180.0 - yb), 1),
+                       "across_slot_mm": round(float(loc[0]) * 1000, 1),
+                       "bottom_over_top_mm": round((float(o["pos"][2]) - 0.01425 - (float(bank["pos"][2]) + BANK_EXT[2]))
+                                                   * 1000, 1)}
     last = F[steps[-1]]
     ce = np.asarray(obj(last, "coin0")["pos"], float)
     Re = qR(obj(last, "coin0")["quat"])
@@ -163,7 +181,7 @@ def episode(rep: dict, actions: list[dict]) -> dict:
     else:
         end = "elsewhere"
     return {"name": rep.get("name"), "layout_id": rep.get("layout_id"), "score": rep.get("score"),
-            "steps": rep.get("n_actions"), "end": end, "closes": rows}
+            "steps": rep.get("n_actions"), "end": end, "closes": rows, "release": rel}
 
 
 def main(argv=None):
@@ -171,12 +189,19 @@ def main(argv=None):
     ap.add_argument("replays")
     ap.add_argument("--reports", default=None, help="root with <name>/*_report.json.gz (adds the category)")
     ap.add_argument("--json", default=None)
+    ap.add_argument("--actions-dir", default=None, help="search here (recursively) for the replays' actions by file name")
     a = ap.parse_args(argv)
     out = []
     for p in sorted(glob.glob(os.path.join(a.replays, "*.json.gz"))):
         rep = json.load(gzip.open(p))
-        with gzip.open(rep["actions"] if os.path.exists(rep["actions"]) else
-                       glob.glob(os.path.join(a.reports or "", rep["name"], "*_actions.json.gz"))[0], "rt") as f:
+        cands = ([rep["actions"]] if os.path.exists(rep["actions"]) else []) + \
+            glob.glob(os.path.join(a.reports or "", rep["name"], "*_actions.json.gz")) + \
+            (glob.glob(os.path.join(a.actions_dir, "**", os.path.basename(rep["actions"])), recursive=True)
+             if a.actions_dir else [])
+        if not cands:
+            print(f"{rep['name']}: no actions file, skipped")
+            continue
+        with gzip.open(cands[0], "rt") as f:
             acts = json.load(f)["actions"]
         e = episode(rep, acts)
         if a.reports:
