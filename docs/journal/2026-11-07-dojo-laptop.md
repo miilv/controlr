@@ -1,0 +1,357 @@
+# Laptop stream: headset seating
+
+Read CLAUDE, DEVELOPMENT, ARCHITECTURE, EXPERIMENTS; BACKLOG laptop/headset
+items; October 29 hang/laptop/overhang journal; 62007227; PR #350; branch
+histories (`origin/feat/dojo-gennew-laptop` predates the store module,
+`wip/store-laptop` retains the closed-slab approach); November 5 points table;
+and both compute3 driver/render incidents.
+
+The live task checker sources confirm headset-only 20 points, laptop 80 as
+close + upright + bottom in rack. Close alone cannot score. The existing
+store module's opening prose incorrectly suggests three independent tiers.
+Prioritise the headset. A default-off RuntimeConfig / Skills / G3 switch
+`headset_seat=on` filters slipping narrow cradle grasps, squeezes for eight
+steps, and seats the measured bridge before release. No task-name dispatch,
+checker access, rendering or LLM calls in the action path.
+
+Pre-registration: [panel](../experiments/2026-11-07-laptop-g3.md).
+Private salted variant-11 records, pilots separate from panel. Deployment
+`~/controlr-laptop`, all outputs `~/dojo-data/laptop`. Light7 serial jobs,
+8G/600% user scopes, admission logs, timeout with KILL tail. Root service
+and colleague processes untouched. Local pyflakes reports only pre-existing
+unused imports and a pre-existing placeholder-free f-string.
+
+The first local pytest invocation used a global pytest because dev extras
+were missing; `uv sync --extra dev` corrected the environment. Focused
+headset/laptop tests pass. Full suite started with `uv run pytest -q`.
+
+The first candidate's 41 mm pinch holds pilot 100031 at lift (3.7 mm drift)
+but shifts 113.4 mm in carry. The pre-panel amendment halves the cradle carry
+rate; it still shifts 97.6 mm in that pilot and scores zero. Candidate frozen
+at deployed `58dcf38e` for the panel; later changes are tests/docs only.
+The G3 deployment stamp is explicitly set before the final pilot/panel;
+initial pilots have null G3 `code.commit` (deploy.sh writes `.deployed.json`,
+whereas G3 reads `.deployed_commit`). No ambiguous pilot is in the panel.
+
+Local full suite: 2057 passed / 191 skipped (1089.38 s), started on the first
+candidate before the carry amendment. Final candidate/config/defaults-focused
+suite: 10 passed. Final source also receives PR CI validation. Main was merged
+for current documentation; the running physics deployment remained frozen.
+
+Completed panel: ten pairs per cell, A 0 ± 0 -> B 2 ± 6.32 points in each;
+1 score win / 0 losses / 9 ties each, full success 0/10 in every arm.
+No infrastructure failures or missing meshes. No camera qualification (pooled
++2 < +5), no camera spec/dispatch or board update. Own scopes/processes exited.
+Footprint 130 MB deployment / 2.6 MB data; zero model calls/tokens/spend.
+
+## Round 2: contact during the turn
+
+Lead requested sustained development and two LAPTOP jobs (light7/light8),
+with the same box gates and zero LLM spend. Numeric round-1 pilot audit:
+relative position remains within ~1 mm through 58 degrees of TCP turn.
+Separation from sampled stand mesh falls to ~5 mm at step 95; the headset
+then stays nearly stationary against the stand while TCP-relative drift grows
+past 90 mm. A stationary-pivot fit leaves 44 mm maximum residual; this is
+not explained by a simple free pendulum. The leading mechanism is premature
+stand contact during wrist reorientation, supported by the staged-route probe.
+
+Default-off `headset_carry=staged` separates turn and approach. Standard
+100031's carry drift falls 97.6 -> 1.2 mm and earns 20 points. Random 100030/31
+also score 20 (20.0/5.2 mm carry shift). Standard 100030 remains loose at lift.
+High carries, thin bridge pinches, cup-site ranking, loose continuation and
+excluding failed pinch sites were probed on pilots only; none improved the
+frozen bundle. The weak loose-hold continuation is explicitly not implemented.
+
+The laptop physical closure probe shuts to 0.99 but slides the slab off its
+stand onto the table. Opposite-side tray targets then have left reach failure
+and right table collision. Closed geometry ~179 x 126 x 10 mm; stand top
+sample bbox ~305 x 119 mm. Authored laptop mass is **0.1 kg**, friction **0.45**,
+so the old journal's informal ~1 kg-class description is not an established
+physics fact. Rack endpoint IK/native collision results are reported separately.
+
+Fresh variant-12 salted ids 100070–84 are generated and settled independently
+per cell; selection/hashes and final candidate are pre-registered in the
+[round-2 report](../experiments/2026-11-07-laptop-g3-round2.md). Existing panel
+records are never used for tuning. No camera/board changes or external work
+are touched. Full local suite runs concurrently with settling after source freeze.
+
+Round-2 staged panel (source 43d5882b, fresh variant-12 ids 100070–79):
+standard 4 ±8.43 -> 12 ±10.33 points (4 wins / 0 losses / 6 ties), random
+2 ±6.32 -> 14 ±9.66 (6/0/4). Headset credits A/B 2/10->6/10 and 1/10->7/10;
+full-task success 0 in every arm. All 40 valid, no mesh/infra exclusions.
+This passes the score gain gate, but misses the lead's standard 7/10 target.
+Full suite on staged source: 2061 passed / 191 skipped, 987.22 s.
+
+Returned only to the original loose-hold pilot (not panel failures). A denser
+opposed-face/approach bank finds a 44 mm pinch with 3.0 mm lift drift and
+1.3 mm carry shift, rescuing standard 100030. The standard six approach angles
+miss zero tilt; thirteen include it. New default-off `headset_grasp=dense`
+samples 400 faces and thirteen approaches, retains box/slice proposals at
+>=35 mm and screens 24 full hangs. Original lift/loose checks remain. Fresh
+round-2b panel registration uses new salt, variant 13 and ids 100050–64.
+Another stream owns light7 now; only our waiting wrapper PID was stopped,
+and subsequent work uses light2/light8. No other process is signalled.
+
+The dense bank scores 4/4 original pilots before the second panel. Lift drift
+is 3.0/6.0 mm on standard 100030/31 and 5.3/5.4 mm on random; carry drift
+1.3/3.3 and 4.9/2.5 mm. This is pilot development, not a held-out claim.
+The laptop rack's four right-arm endpoints also pass the rack/scene check;
+thus the blockers are acquiring/supporting the slab and a complete route,
+not a universal upright-pose IK failure. An unbraced horizontal push is
+predicted to slide at ~0.44 N before tipping at ~6–10 N; a fixture changes
+that assumption and is not ruled out. No physical laptop hold was demonstrated.
+
+Production wiring reproduces all four dense-bank pilot credits before panel
+launch. Continuous post-lift to pre-place audits have maximum displacement
+1.66/3.36 mm (standard) and 6.79/2.50 mm (random), not just a small final
+residual after a large swing. These traces are retained under the private
+production-pilot directories. The second fresh panel starts only afterward.
+Final-source local suite: **2063 passed / 191 skipped**, 1041.26 s. Source
+473d64cf also has green GitHub CI; subsequent edits are documentation/data only.
+
+Dense fresh panel source 473d64cf: standard A0 ±0 -> B12 ±10.33, 6 wins /
+0 losses /4 ties; random A2 ±6.32 -> B18 ±6.32, 8/0/2. Headset credits
+0/10->6/10 and 1/10->9/10; all full-task successes zero. Forty valid rows,
+no exclusions/mesh/infra failures. This misses standard reliability despite
+passing the paired score gate. Continue on new pilot ids 100065–69 with
+variant 14 and an independent salt; no individual panel failures are opened
+for tuning. Next panel is reserved for previously unused 100085–99.
+
+New pilots baseline dense+staged: standard 2/5, random 4/5. Standard 100067/69
+never pick; increasing full-plan limit to 96 still produces zero, with 403/389
+pick-plan calls. Instrumented standard 100067/68 shows 119/120 false held-table
+lift refusals respectively. The guard uses held OBB corners even for the sparse
+headset. At a refused first lift waypoint, OBB min z=0.75929 m while full mesh
+min z=0.78473 m; table z=0.765 m. No wrist-stop cause: commands <=0.83 rad,
+tracking <=0.08 rad on these pilots.
+
+Prototype full-mesh table checks rescue both 100067/68 to headset credit.
+Pilot 67 lifts with 5.1 mm drift / carries with 4.4 mm shift; pilot 68 retains
+the first loose rejection, then re-grasps with 2.7 mm drift / 2.6 mm carry.
+New default-off `headset_table=mesh` scopes the guard to cradle hangs. All mesh
+vertices, unchanged tolerance, conservative XY overlap test; missing/invalid
+mesh falls back to bbox. Arm/finger checks remain; scope restores on exceptions.
+Unit coverage includes real penetration, triangle crossings with no inside
+vertex, unsampled low vertices, disjoint footprint, invalid mesh, hand guard,
+scope cleanup, and unchanged defaults. Wider search is not implemented.
+
+Mesh-table fresh panel source 18e70412: standard A0 ±0 -> B18 ±6.32,
+9/0/1 W/L/T; random A4 ±8.43 -> B10 ±10.54, 3/0/7. Headset credits
+0->9 and 2->5 of ten. All full-task successes zero; 40 valid rows, no
+exclusions. Random reliability fails; continue on independent pilot 100066,
+not individual panel failures. Full local suite 2071 passed /191 skipped,
+934.65 s. No model calls, camera dispatch or board changes.
+
+Independent random-100066 cup diagnosis: 16 physical sites total (eight per arm) screened,
+reset each time. Two right 25 mm cup pinches remain suspended through 30 steps
+(patch 1.0, one clean 6.2 mm lift drift), but right cannot reach the cradle;
+left pickups reach commanded poses yet slip. The 13 mm bridge pinch falls
+with jaws closing to zero: stationary pinch-site error ~10->82 mm, rather
+than a maintained pendulum. No verifier exemption is adopted.
+
+A checked centre table rest lets right pick/put down, then left re-grasp and
+hang. Prototype earns 20 in 412 steps with 0.3 mm staging carry shift and
+0.8 mm final carry shift. An upright rest also works physically but is not
+included. One wrapper-registration bug is retained as a direct-hang null,
+not a staging result. New default-off `headset_stage=center` scopes staging
+to >0.40 m transfers whose pickup/cradle favor different arms. Only verified
+stages enable narrow broad-patch cup proposals for hanging; ordinary retry,
+loose-hold and method-slip rules remain. Runtime/Skills/G3 mirror the field.
+
+Production source 7faef88e screens 7/7 standard and 7/7 random on original
+30/31 plus independent 65–69, including random66 in 362 steps. Focused suite
+27 passed; full local suite running. Freeze and register variant-16 fresh
+ids 100015–29 (first ten stable), new salt, ten paired layouts per cell.
+All earlier panels remain separate, no selected pooling or camera dispatch.
+
+Frozen 7faef88e full local suite completes: **2094 passed /191 skipped**,
+974.86 s. The first ten stable fresh records per cell are selected and hashed
+before any panel outcome: ids 100015–24. Both arms use exact settled files;
+paired source/config remain frozen, no laptop route, camera or model calls.
+
+Centre-stage fresh panel source7faef88e: standard A0±0 ->B14±9.66,
+7/0/3 W/L/T; random A0±0 ->B10±10.54,5/0/5. Headset credits0->7 and0->5
+of ten, full successes zero. Forty valid rows, no exclusions; random misses
+reliability. Continue on new independent45–49 variant17 pilots, not individual
+panel failures. Their random shapes8/9/10 and standard2/4/5 expose coverage
+missing from the earlier seven all-asset8 random pilots.
+
+Measured-joint continuous audit of production random66: max attachment drift
+1.97 mm staging,2.74 mm final carry through99.2-degree turn. A transient j1
+command/measurement gap13.9 degrees (-1.745/-1.502 rad) remains; do not claim
+ideal kinematic tracking. Original lift/loose verification stays unchanged.
+
+Independent shape pilots45–49 expose narrow-opening contact: standard48's
+TCP reaches0.03 mm/0.004 degrees yet the object rises15.9 mm before closure.
+Full88 mm opening changes its first lift drift14.9→6.6 mm and staging carry
+shift to1.1 mm. Full-opening plus a true mesh-support rest rescues random47
+and48, while standard48/random49 still fail. A later clean standard48 pickup
+cannot re-plan its measured place; nominal fallback loses258 mm. Opt-in sites
+now puts that hold down rather than carrying an unchecked nominal attachment.
+
+The heavy headset can also be hung via a genuinely different mechanism:
+checked upright table rest, downward bridge pinch (3.3 mm pickup drift),
+fixed-orientation carry, release above the cradle and30 support steps. Its
+horizontal bridge pinch was loose18.1 mm then slipped186 mm. This is a pilot
+success only: standard45 fails static upright-rest stability before moving;
+random49's upright rest misses19.8 mm and9.3 degrees. Keep the bridge recipe
+as feasibility evidence, outside production.
+
+The full-opening/rest source bf6ff63c regresses old-success standard45 and
+random45 at pickup, despite rescuing random47/48. Stop additional dispatch
+from its12/cell development drivers, keeping in-flight/completed rows. The
+continuous random45 trace separates6.4 mm closure movement from5.1 mm load-
+onset movement/4.37-degree rotation; first lift TCP step17.2 mm. A slower
+0.03 rad/step lift rescues the same pilot after rejecting its8.3 mm first
+pickup, then a7.5 mm pick and6.1 mm carry shift earn20. Add a separate opt-in
+headset_lift=slow axis, mirrored in RuntimeConfig/Skills/G3; lift height,
+closure, physical drift thresholds and all original defaults are unchanged.
+
+Integrated source504daaef passes2165 tests/191 skips (1016.77 s). Its slow
+cup screen still regresses standard31: cup25 lifts5.6 mm then loses237.7 mm;
+prior source's wide41 carried3.3 mm. Existing hang_wide=on rescues this pilot
+with unchanged8/30 mm verification after three rejected holds. Rare random47
+remains0: the only feasible full plans are already narrow cup fallbacks.
+
+Random66's new mesh-ground stage has156/390 right pickup endpoints but0
+place pairs at each of8 spots. A25 mm native-checked release clearance above
+the true ground rest restores the full two-arm hang in372 steps: right lift
+6.0 mm/carry1.0 mm, stage4.6 mm xy/−0.9 mm z/0.7 degrees, then left39 mm
+lift2.7 mm/carry4.7 mm; bridge12 mm from cradle after release. Add separate
+opt-in stage mode mesh_clear. It screens at release height, rebuilds a native
+place against ground and repairs refined picks against that same true target.
+The default off and existing centre/mesh-centre contracts remain unchanged;
+54 focused mock tests cover native refusal, repair truth and wrapper scope.
+No production source deployment changes while the source504 screen runs.
+
+Source504 finishes all44 registered development rows: old12/cell9/12 both;
+independent coverage18 standard6/10 and random8/10. All stable/complete meshes,
+no exclusions, no budget exhaustion, full successes0. The standard8/10 gate
+fails; no fresh paired panel is dispatched for504. Archive every row and
+probe, including the action-induced upright-deposit numerical explosion0.
+
+Wide-priority and explicit release-clearance probes address separate observed
+regressions. Freeze source3866ad73 bundle (wide on, mesh_clear, all preceding
+slow/cup/mesh/staged/seat/sites flags). Its full local suite passes2174/191
+(1017.04 s),54 focused. Isolated deployment under controlr-laptop/frozen-round2f
+preserves root504 while it finishes; old/new share only permitted data/public
+assets, at most two actual light2/light8 scopes. Original12+independent10/cell
+new-source screen registered before outcomes; final ids0–14 remain unused.
+
+
+## Wide priority and release-clearance screen completes
+
+Frozen3866ad73 completes44 development episodes: original11/12 standard and
+10/12 random, independent6/10 standard and9/10 random. Standard fails8/10
+admission, so the conditional fresh variant19 protocol remains unexecuted;
+ids100000–14 remain ungenerated. All rows and provenance retained in the
+[wide/clear report](../experiments/2026-11-07-laptop-g3-round2f.md), no infra
+exclusions, full-task successes0. Opposite-arm staging on existing failed
+coverage18 standard30 also scores0. Continue measured loaded-hold diagnosis
+on that pilot before proposing another grasp/admission mechanism. Source3866
+full local suite2174 passed/191 skipped. Zero model spend, no camera dispatch
+or board change. The latest actual paired panel remains standard7/10 and
+random5/10; the user stopping condition has not been reached.
+
+
+## Loaded hold and pendulum diagnosis
+
+Coverage18 standard30's16.3 mm nominal drift is a settled load-onset pendulum:
+closing-axis alignment0.986; one fixed pivot at[11.63,-19.42,-2.17] mm in TCP
+fits steps40–82 within0.93 mm (median0.39). Contact positions were not read;
+nominal material-point movement alone did not prove contact sliding. Standard30
+and31 follow a checked20 mm vertical raise by19.56/19.69 mm with<=0.62 mm and
+0.42-degree relative movement. Original nominal verifiers stay loose.
+
+Add default-legacy headset_hold=loaded, requiring measured stationary stability,
+unsupported following, both native checked legs and original hard slip/lift
+gates before/after. Preserve raw nominal evidence and existing step observers;
+require a checked measured-attachment place. A cached object belief cannot pass.
+Prototypes2/4 earn20, including the original two diagnosed failures, with one
+requiring775/800 steps. Freeze source04132591 for a complete original12 plus
+independent10/cell screen before unused layouts. Gate>=9/12 and>=8/10 each;
+conditional fresh variant20/salt registered before generation, still unexecuted.
+Initial full2193/191 passes; final suite with four more scoping/hard-slip tests
+is running,69 focused pass. No camera/model calls or board changes.
+
+
+## Loaded-proof caller scope correction before fresh generation
+
+Code review finds source041 also attempts proof on30 mm-tolerance table relays
+that already allow a loose lift. This adds steps and returns to that old carry
+path on a refused proof; it does not support the registration's broader claim
+that every refusal precludes carry. Keep the complete G screen, but supersede
+its fresh protocol before drawing any layout. Source10f3e0a8 attempts proof
+only where the original loose rule would put down, preserving tolerant relay
+execution exactly and making every refused new proof go through put-down.
+72 focused mocks pass, including legacy/loaded relay equivalence and strict
+refusal. Freeze separately under controlr-laptop/frozen-round2h; each new cell
+waits for its G predecessor to complete. Same22/cell development gate before
+variant21 fresh salt; ids100000–14 are still ungenerated. No source changes
+in running scopes, no camera/model calls or board change.
+
+
+## Source041 development completes; strict source tests pass
+
+All44 G rows complete: original12/12 standard,11/12 random; independent7/10
+standard,8/10 random. Standard fails8/10 gate; conditional fresh generation
+already superseded on caller review, no variant20 layouts drawn. Raw archive
+retains diagnostics and every row, no episode exclusions or full successes.
+H random completes11/12 original and9/10 independent; H standard now runs
+on the two-worker FIFO after G releases its slot. The proposed ready-parent
+replacement was refused because FIFO had started; original continued, extra
+launcher stopped before any episode/scope. No physics job stopped/duplicated.
+Full H local suite2200 passed/191 skipped in1025.96 s;72 focused pass. All
+action/test files remain identical to10f3e0a8, defaults legacy/off, CI green
+on the pushed source. Fresh variant21 remains gated on H standard completion.
+
+
+## Strict-transfer source admitted to untouched paired validation
+
+Source10f completes44 development rows: original12/12 standard,11/12 random;
+independent8/10 standard,9/10 random. Original gates pass unchanged. No
+exclusions/full successes. Standard34 now earns20 in789/800. Generate30
+registered variant21 raw records at previously unused100000–14. Light2 was
+acquired by IMIT2; cancel only our verified waiting generator wrapper/flock,
+leave that stream alone, and generate on free8. Two free7/8 physics-only
+settlers use unchanged admissions. Freeze both cell manifests before A/B;
+no policy outcomes yet. Local2200/191 and CI green on pushed source. No
+camera/model calls or board change.
+
+
+## Fresh stopping rule achieved; physical work stopped
+
+Source10f3e0a8, variant21 strictload salt, first ten stable100000–09 each cell,
+same settled bytes. Both cells: A0.00 ±0.00→B18.00 ±6.32 points,
+headset0/10→9/10, W/L/T9/0/1, full-task successes0/0. All40 rows valid;
+20/20 attempts per driverrc0, no exclusions/retries/reserves. Both mechanical
+and paired-gain gates pass. Net+0.30 G3 Average points, board unchanged.
+Both B zeros100005 retained; no retuning after the complete panel.
+
+Archive44 development +40 primary rows, exact30 settled JSON texts/hashes,
+source/config/recipes/admissions/attempts. Random all asset8; standard4x7/
+2x1/5x2, no fresh rare9/10 claim. Earlier panels separate. Stop physical
+experiments; all our physics processes exited, other streams/root3613
+untouched. Deployment296 MB/data43 MB,91 GB free.
+
+Full local2200/191 and72 focused mocks pass; controller/tests unchanged10f.
+All new behavior defaults off. Camera spec mechanical gate met but blocked
+on fresh held-observer provenance and renderer host; projected belief cannot
+count as measured evidence. No camera/model calls or board change. Laptop80
+supported pickup remains open, numeric study retained. Finish PR #413 checks
+and conditional merge, without further physics.
+
+
+## Final main integration and check gate
+
+CI on final result commit8b2cbc83 passes, but concurrent main changes cause
+an experiment-index conflict. Merge mainec865e93, preserve both MATCH2 and
+all LAPTOP rows. The incoming code adds off-default belt switches, belt-only
+tracking/helpers and tests. It does not change the headset implementation
+files; those and their tests still match frozen10f exactly. No deployment,
+controller tuning or physics rerun follows the completed panel.
+
+Post-integration72 focused mocks pass. Run the full local suite and CI on
+the integrated head before the already-authorized default-off merge. The
+experimental2200/191 validation remains source-specific; newer whole-repo
+counts include the independent MATCH2 tests.

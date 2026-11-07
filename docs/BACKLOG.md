@@ -169,12 +169,33 @@
   - The camera rows' "all placed but 0" is understood: std 100003 is an arm going home knocking the end-slot doll over
     (`row_home_clear` off: net 0 on the 3 changed seeds); `_random` 100002 is a doll held 48 deg tilted and toppled at
     the release (held state).
-- [ ] **dojo skills: store_laptop: the headset hang plans now; its hold and the laptop's pick do not** (journal
+- [x] ~~**dojo laptop G3: at least7/10 fresh headset-tier credits in both cells.**~~
+  [Strict-transfer panel](experiments/2026-11-07-laptop-g3-round2h.md), source10f:
+  ten pairs/cell, A0→B18 ±6.32 points each,0/10→9/10 credits each,
+  score W/L/T9/0/1 each, full-task successes0. All40 rows valid; original
+  development gates pass unchanged. All new behavior defaults legacy/off;
+  2200 tests pass. Earlier nulls/panels retained separately, no board change.
+- [ ] **dojo laptop headset: camera transfer and rare-shape coverage.**
+  Fresh random is all asset8;9/10 are development coverage only. Retained
+  thin/curved holds still fail. Camera needs fresh measured held poses;
+  cached/projected attachment is not proof, and10f lacks that provenance
+  contract. [Camera spec](experiments/2026-11-07-laptop-camera-ab-spec.md)
+  stays blocked, no dispatch/spend. Laptop80 still needs a supported pick;
+  closing its lid alone earns0.
+- [ ] **dojo transfer endpoint screening ignores release clearance.** `plan_transfer`
+  can reject every endpoint at the ground pose although `plan_place` with release_gap
+  is feasible. Headset `mesh_clear` fixes only its optional staging helper by screening
+  raised then rebuilding/repairing against true ground. General planner unchanged.
+- [ ] **dojo upright-rest stability is a yaw-dependent conservative screen.** Native
+  `rests_stably` uses an axis-aligned support footprint, not contact equilibrium;
+  rejected headset8/10 footprints are8.60/8.00 mm versus14.25/15.91 mm required.
+  A native refusal is not proof that the physical upright rest is impossible.
+- [ ] **dojo skills: store_laptop: laptop pick remains open; G3 headset tier demonstrated** (journal
   2026-10-29-dojo-newskill-hang, store_laptop sections).
   - Done: `hang_cradle` "straddle" (#345) lets the held headset straddle the stand's top, so the hang plans in 16 of
     20 dev rows. G3: 1-2 of 10 rows reach the 0.2 tier.
-  - Still open, the headset: the 24-26 mm band pinches slip; 37-43 mm antipodal pinches hold but the headset slides off
-    the cradle after the release.
+  - Headset: source10f earns9/10 fresh credits per cell against0/10 controls (report above).
+    Camera transfer and thin-band/curved-cup shape coverage remain open.
   - Still open, the laptop stage (80 %), on `wip/store-laptop` (route "store_laptop", off):
     - the checker frames (`artgeom.checker_point`: a base-link functional frame on its link);
     - posed geometry (`Skills.artic_geom` "measured": the lid turned shut);
@@ -183,6 +204,10 @@
     in every G3 attempt (rises 0 mm or falls off the stand). Tried and parked: sliding it to overhang the stand (press
     drags tip it off the stand in 10/20 rows; after a slide no overhang pinch pairs). Left: a two-arm lift, or a pick
     with the lid still open (journal 2026-10-29-dojo-newskill-hang, "the overhang grasp").
+    A [numeric tray/rack study](experiments/2026-11-07-laptop-g3-round2.md) finds both supported
+    tray targets obstructed by the stand, and 0/348 left versus 4/504 right upright IK endpoints.
+    The four right endpoints pass native scene checks: rack reach is not globally impossible.
+    A fixture-supported pivot or two-arm clearance mechanism remains unproven; no laptop panel.
 - [ ] **dojo infra (landmine): a box's perception catalogue can silently miss assets.** `task_map()` drops every
   label whose candidates have no `geom.npz` (one warning in `perception_service.log`), so camera rows of that task
   run perception-blind and end `perception_gross` in seconds. compute4's `~/dojo-perception-data/catalog` lacked W's

@@ -26,7 +26,7 @@ import numpy as np
 
 from dojo.skills.geometry import T_from, angle_between_R, slerp_R
 from dojo.skills.kinematics import TABLE_Z, X5Kin, down_R, tilted_R
-from dojo.skills.world import ObjectState, WorldState, table_contains_xy
+from dojo.skills.world import ObjectState, WorldState, TABLE_X, TABLE_Y, table_contains_xy
 
 # step sizes (rad per env step, max over joints). Twin probe (g3 probe, 2026-10-24): landing error right
 # after the last step 1 / 2 / 3-5 mm at 0.05 / 0.12 / 0.2 rad per step, < 1 mm one step later, 0.1-0.4 mm
@@ -187,6 +187,35 @@ def link_slabs(lk: dict, thick: float = 0.02, min_pts: int = 50) -> list[tuple[n
     return out or [(mn0, mx0)]
 
 
+def held_table_collision(held: HeldBox, T_tcp, mode: str = "bbox") -> bool:
+    """Retain the legacy guard, or use the full mesh against the table plane.
+
+    Mesh mode checks every vertex without shrinking it. A triangle's z minimum
+    is at a vertex; an overlapping XY bbox conservatively covers triangles
+    crossing the table even when all their vertices are outside its footprint.
+    This can reject low geometry beyond a table edge, rather than miss a crossing.
+    Missing/invalid mesh retains the legacy bbox behavior and tolerances.
+    """
+    if mode == "mesh" and held.mesh is not None:
+        try:
+            vertices = np.asarray(held.mesh[0], float)
+        except (TypeError, ValueError):
+            vertices = np.empty((0, 3))
+        if (vertices.ndim == 2 and vertices.shape[1] == 3 and len(vertices)
+                and np.isfinite(vertices).all()):
+            T = T_tcp @ held.T_tcp_obj
+            world = vertices @ T[:3, :3].T + T[:3, 3]
+            if np.isfinite(world).all():
+                lo, hi = world.min(0), world.max(0)
+                overlap = (lo[0] <= TABLE_X[1] and hi[0] >= TABLE_X[0]
+                           and lo[1] <= TABLE_Y[1] and hi[1] >= TABLE_Y[0])
+                return bool(overlap and lo[2] < TABLE_Z - 0.003 and hi[2] > TABLE_Z - 0.3)
+    for p in held.corners_w(T_tcp, shrink=0.002):
+        if table_contains_xy(p) and TABLE_Z - 0.3 < p[2] < TABLE_Z - 0.003:
+            return True
+    return False
+
+
 class Collision:
     """Coarse checks: table clearance for the arm and fingers, gripper/arm/held-object points
     against inflated object OBBs. No self-collision model (X5 IK solutions stay near home)."""
@@ -198,6 +227,7 @@ class Collision:
         self.link_margin = link_margin
         self.finger_margin = finger_margin
         self.obj_margin = obj_margin
+        self.held_table = "bbox"
         self.include: set = set()          # Geometry labels that are obstacles too (a keyhole block, a socket)
         # per-object margins instead of obj_margin (identical slices side by side in a rack: 13 mm between two
         # bread slices, the fingertips need 3.4 mm + clearance there)
@@ -333,10 +363,8 @@ class Collision:
                 if np.all(np.abs((pts - c) @ R) <= h, axis=1).any():
                     return False, f"gripper hits {lab}"
         if held is not None and table:
-            hc = held.corners_w(self.kin.tcp_from_flange(Tf), shrink=0.002)
-            for p in hc:
-                if table_contains_xy(p) and TABLE_Z - 0.3 < p[2] < TABLE_Z - 0.003:
-                    return False, "held object below the table"
+            if held_table_collision(held, self.kin.tcp_from_flange(Tf), self.held_table):
+                return False, "held object below the table"
         return True, ""
 
 

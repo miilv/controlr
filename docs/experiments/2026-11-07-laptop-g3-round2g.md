@@ -1,0 +1,259 @@
+# Laptop G3 round 2g — loaded-hold diagnosis
+
+## Completed development decision
+
+All44 registered source041 episodes complete, with no unstable/missing-mesh
+rows or episode exclusions. Full-task successes0. Original bank12/12 standard
+and11/12 random; independent bank **7/10 standard,8/10 random**. Standard fails
+its8/10 admission gate. Separately, caller review had already superseded the
+fresh registration before generation; it remains unexecuted. No variant20
+layout was generated or rerolled. Continue the separately frozen
+[strict-transfer source](2026-11-07-laptop-g3-round2h.md).
+
+| Development bank | Cell | n | Headset credits | Mean ± sample SD /100 | Full successes |
+|---|---|---:|---:|---:|---:|
+| Original | Standard | 12 | 12 | 20.00 ±0.00 | 0 |
+| Original | Random | 12 | 11 | 18.33 ±5.77 | 0 |
+| Independent coverage18 | Standard | 10 | 7 | 14.00 ±9.66 | 0 |
+| Independent coverage18 | Random | 10 | 8 | 16.00 ±8.43 | 0 |
+
+These are candidate-only development screens, not a paired fresh-panel gain.
+Keep earlier panels/banks separate. [Raw rows, diagnostics, recipes, manifests
+and admissions](2026-11-07-laptop-g3-round2g-results.json) retain every outcome,
+including the nominally loose raw verdicts alongside successful loaded proofs.
+Episode.steps is the actual physical budget counter; raw/proven pick entries
+describe overlapping phases and must not be summed as independent executions.
+Physics-only traces replace rendered videos on this driver; no camera job.
+
+## Fresh registration superseded before generation
+
+The source041 development screen continues to completion and all scores will
+be retained. Its conditional fresh panel is **unexecuted and superseded**:
+caller review found the loaded proof also runs on already-tolerated relays,
+adding steps and allowing a refused proof to fall back to legacy loose carry.
+The [strict-transfer correction](2026-11-07-laptop-g3-round2h.md) preserves
+those relays exactly and proves only pickups the original rule would reject.
+This is a source/protocol correction before any unused layout was drawn,
+not replacement of a fresh policy failure or silent source relabelling.
+
+## Registration before diagnostic actions
+
+The frozen3866 wide/clear candidate passes its original banks (11/12 standard,
+10/12 random) and independent random bank9/10, but standard coverage18 reaches
+only2/5 (maximum7/10). Finish its full registered screen and retain this null;
+its conditional fresh registration remains unexecuted. Ids100000–14 are still
+ungenerated. No salt reroll or fresh-panel failure is used for development.
+
+Standard coverage18 **100030** starts with a43 mm left pinch whose original
+verifier reports16.3 mm nominal in-hand drift. Subsequent pickups/relays fail.
+The opposite-arm pilot also fails: first right26 mm pinch is loose15.5 mm,
+then later attempts slip/fall. Neither result distinguishes initial contact
+centering or pendulum settling from a hold that continues to slide.
+
+On this existing pilot only, execute the **same first coupled checked pick**
+under source3866 and the frozen wide/clear profile. Stop the transfer after
+that pickup, preserve its original verdict, and record actual measured robot
+joints, object transform in TCP, original material pinch point in TCP, actual
+jaw joints and full-mesh table clearance. Hold30 stationary closed-jaw steps.
+If the original pickup is still provisionally held and physically clear of
+the table, plan/check a20 mm vertical raise and return with closed fingers,
+recording the same measurements. Re-run the **unchanged original pick verifier**
+at the end; do not reclassify the result, change a threshold or continue the
+hang. This is a diagnostic, not a scored episode or a new admission rule.
+
+Report root-relative translation/rotation drift and pinch-site drift during
+the loaded stationary/probe phases, clearance and jaw gap. A steady suspended
+hold would support a separately registered feedback/grasp hypothesis; continued
+sliding or falling rejects that explanation. No synthetic attachment, object
+pose write or collision exemption. Both motions require native full checks.
+
+Compute3 physics-only; idle light8 beside the frozen standard screen, at most
+two actual8G/600% scopes with unchanged who/GPU/disk admissions. All writes
+under the existing permitted roots; no camera jobs, board change or model
+calls. No new controller or fresh panel is authorized by this diagnostic.
+
+## Initial diagnostic and loaded challenge amendment
+
+The first run completes the registered lift and30-step hold. Original verdict
+is loose16.3 mm; unchanged final verifier is loose17.7 mm. During30 stationary
+steps root-in-TCP moves at most0.87 mm, rotates1.48 degrees and the original
+material pinch point moves0.49 mm. Last20 steps:0.31 mm/0.23 degrees/0.11 mm.
+The nominal-to-measured rotation is66.9 degrees, and material pinch offset is
+[11.93,-0.79,11.31] mm in approach/closing/cross axes: movement along the
+closing axis is small, but the contact has moved toward the pad end while the
+body rotates. Measured jaw joints are20.91/21.35 mm. Mesh bottom is only5.6 mm
+over the table, so the pre-registered30 mm clearance guard correctly skips
+the challenge. This does not yet prove an unsupported transferable grip.
+
+Retain that trace unchanged. On the **same pilot** repeat the unchanged pick
+and30-step hold, then allow the checked20 mm raise/return when mesh clearance
+is>=3 mm; require the measured peak mesh clearance>=20 mm before interpreting
+this as an unsupported challenge. Record initial/peak/final relative transforms
+and every step, with the original verifier unchanged. Plan both legs before
+execution, no hand/table exemption. Also run the same diagnostic on existing
+failed coverage18 standard100031, in the second idle slot, to distinguish a
+site-specific steady grip from general drift. These remain unscored diagnosis;
+no admission criterion, source action or fresh-panel gate changes. Two initial
+recipe import errors occurred before runner creation/actions; both are retained
+as infrastructure recipe failures, not policy scores.
+
+## Unsupported challenge measurements and selected prototype
+
+Both native raise/return plans pass. Standard30: measured root rises19.56 mm,
+mesh bottom reaches25.08 mm above the table; throughout the challenge root-
+in-TCP deviates at most0.53 mm/0.40 degrees, ending0.54 mm below its starting
+height. Standard31: root rises19.69 mm, bottom reaches92.39 mm, relative drift
+<=0.62 mm/0.42 degrees; original nominal drift14.1→13.6 mm remains loose.
+The original verifier is unchanged in both diagnostics. These physically
+unsupported, following holds justify a separate **loaded-hold proof**, not a
+larger nominal drift threshold or a claim every loose pickup is sound.
+
+Prototype default-off `headset_hold=loaded` (legacy default): only a headset
+pickup already classified `ok=True,status=loose` by the original verifier may
+try it. Keep original hard slip/lift gates. Hold30 closed stationary steps,
+then pre-plan/check a20 mm vertical raise and return, with8 hold steps at
+each endpoint, unchanged orientation and all native scene/hand/mesh checks.
+Sample actual refreshed object/TCP pose at each physical step (preserve any
+existing step observer). Require full-mesh initial clearance>=3 mm, peak>=20 mm,
+measured object rise>=17 mm, all sampled attachment translations<=3 mm and
+rotations<=3 degrees relative to the settled pre-challenge reading. Re-run
+unchanged original verifier at the end; hard slips still reject. Only after
+this loaded proof may a loose result be recorded as `ok` for a measured-
+attachment re-plan; retain the raw nominal drift in its note. Any invalid
+mesh, missing hold, unstable sample, infeasible leg, budget/end or failed
+measured place re-plan must not become a successful hold/carry. No synthetic
+attachment, scoring change or pose write. Normal pickups/other objects/default
+modes execute exactly their old path. Fresh camera observations would be needed
+to transfer this proof beyond G3; a cached belief cannot establish following.
+
+First prototype on the two diagnosed failed pilot records only. If they hang,
+implement and mock-test the default-off mirrored field, then freeze one common
+profile and screen both full original12 and coverage18 ten/cell again. Admission
+remains>=9/12 original and>=8/10 coverage in each cell. Fresh panel needs a
+separate salt/source registration after that gate; all unused ids remain
+untouched. No change to frozen3866 screen or its null decision.
+
+Standard31 prototype earns20 in304 steps: its14.1 mm nominally loose hold
+passes the unsupported proof, measured carry shifts28.1 mm but the measured
+tail/release leaves the bridge23 mm from the cradle. This is a successful
+physical hang, not a rigid-attachment claim. Standard30's first hold passes
+the proof but its measured attachment has no checked place; it is correctly
+put down rather than carried on the nominal plan. Its remaining attempts
+continue unchanged. To avoid mistaking one rescued site for generality,
+add the two other already-failed independent standard pilots34 and38 as
+separate loaded-proof prototypes, on the freed light2 slot. Preserve30's
+outcome regardless. Any integration will be justified as a measured loaded
+proof, not a guaranteed rescue of30, and must pass the full registered
+original12/coverage10 screen before touching any unused layout.
+
+## Production candidate registration before screen outcomes
+
+Freeze action source **0dc59c72**, isolated deployment
+`~/controlr-laptop/frozen-round2g`. The same common F profile gains the single
+new field `headset_hold=loaded`; all defaults remain legacy/off.65 focused
+mock tests pass, including stale observations, sliding, rotation, support,
+invalid mesh, hard-slip rejection, both native-leg refusals and observer
+restoration. The full local suite is running. Implementation additionally
+re-runs the original hard verifier after the stationary phase, updating the
+measured held geometry before native challenge planning; this enforces the
+registered hard gates rather than using a stale held box. Preserve this
+source/recipe difference from3866 prototypes.
+
+Complete both original12/cell and coverage18 first ten/cell (same frozen
+settled hashes as E/F), source0dc in both cells, new r2g-production output
+paths and manifests. Gate>=9/12 original and>=8/10 independent credits in
+**each** cell; complete all44 regardless of early failures. Every policy
+zero is retained, no shape-specific routing, no pooling old candidate rows.
+The remaining3866 prototypes finish on their frozen deployment; a production
+driver may start only once the corresponding LAPTOP slot is free. Two actual
+8G/600% scopes on light2/light8, unchanged who/GPU/disk admissions. No salt,
+layout generation, new panel inspection, camera job, model call or board change
+is authorized by this development registration. A fresh panel still requires
+a separate source/salt registration and both gates first.
+
+Before any production job, narrow the new loaded-proof budget/end early return
+to headset objects, preserving all other-object paths even when the global
+field is set. Freeze **04132591** instead of0dc59c72 for the entire
+production screen; no production outcome has been generated on either source.
+The loaded-proof motions and criteria are unchanged;65 focused tests pass.
+
+Standard30's complete prototype eventually earns20 in775 steps, retaining its
+unusable first measured attachment and later slips. Three later loose10–11 mm
+cup holds pass the same proof; two checked relays precede the final0.8 mm-shift
+carry and1.0 mm xy/1.4-degree pre-release placement. It does not establish a
+cheap or rigid one-grasp solution. Both originally diagnosed pilots now hang;
+production still must pass its unchanged full-bank admission gates.
+
+## Conditional fresh paired-panel registration — before generation
+
+Only execute after both complete production banks pass>=9/12 original and
+>=8/10 coverage credits **in each cell**. Otherwise retain this protocol as
+unexecuted and continue pilot work. Freeze action source04132591 and its
+retained complete source hashes in the isolated G deployment; no config/source
+substitution after gating.
+
+Both conditions use perfect-state G3 mode A, physics only, the same rule plan,
+800-step budget and source. Common hang_cradle=straddle. A explicitly uses
+hang_wide=off, seat=off, carry/grasp/retry/lift/hold=legacy, table=bbox, stage=off.
+B uses the exact F wide/clear bundle plus headset_hold=loaded, unchanged from
+the development screen. No laptop route, model call or perception perturbation.
+
+Draw previously unused ids **100000–14**, v15 **variant20**, salt
+`laptop-round2g-loaded-2026-11-07-88c48b74`, in each cell's original LAPTOP
+namespace. Preflight refuses any existing raw or settled file. F variant19 was
+never generated. Settle each draw once; select the first ten stable ids in
+ascending order before policy outcomes and hash/freeze **both** cell manifests
+before either condition launches. Later stable records are infrastructure
+reserves only. Each A/B pair must use the identical settled bytes. No id>=100100.
+
+Complete ten pairs/cell, alternate A/B order by selected index. At most two
+actual single-episode jobs using light2/light8, 8G/600% user scopes, who/GPU
+before each batch, <=24576 MiB used VRAM and>=10GB disk admission before each
+job. Use7200 s single-episode driver ceilings, without changing controller
+steps. Record every attempt. Confirmed external process/driver/OOM or pre-action
+reset failures may retry that identical pair once, then use the next stable
+reserve with both conditions. Completed no-plan, slip, place miss, step-budget
+or action-induced physics failures remain policy outcomes. Do not replace
+zeros or invent an official score when unavailable; report incomplete instead.
+
+Report n, actual exclusions, A/B means/sample SD on0–100, headset credits,
+full-task successes, score wins/losses/ties and success flips per cell. Retain
+all earlier panels separately, without selecting/pooling favourable rows or
+tuning from individual new-panel failures. Mechanical stopping rule: **B>=7/10
+headset credits in both cells**. Separate gain gate: pooled B−A>=5 points, score
+wins (>=10-point increase)>=2*losses and>=2 net wins. A real gain permits only
+a prospective camera specification, with explicit fresh held-observation
+prerequisites for the loaded proof; no camera dispatch or board selection.
+If the final mechanical target fails, retain this null and resume pilot work,
+without rerolling this salt. No panel or layout is generated by registration.
+
+## Load-onset mechanism fit
+
+A further CPU fit to the retained standard30 trace separates nominal-site
+movement from actual contact sliding. At step82 the relative rotation axis
+in TCP coordinates is[0.155,0.986,-0.059], almost the closing axis. Fit one
+fixed pivot to every relative transform at steps40–82 (least squares with
+rcond1e-6, suppressing the rotation-axis singular value): pivot
+[11.63,-19.42,-2.17] mm in TCP, median residual0.39 mm, maximum0.93 mm.
+This is consistent with pendulum rotation about one pad near its end, not
+continued sliding. Measured jaws stop near21 mm, placing the fitted -19 mm
+closing coordinate near one contact. The earlier16 mm movement of the
+**nominal** material pinch point alone did not prove actual contact sliding;
+that interpretation is qualified by this fixed-pivot fit. Contact locations
+were not read from the simulator. In contrast, the original97.6 mm carry-loss
+trace could not maintain one pivot (43.6 mm maximum residual), so these are
+distinct mechanisms: a settled initial pendulum and later loss/contact change.
+
+The two additional3866+recipe prototypes both remain0: standard38 in408 steps
+(stable first loaded hold has no checked place; later holds slide/slip), and
+standard34 in643 (checked right stage succeeds, several left holds are
+unusable, final clean44 mm pickup cannot afford its219-step place with212
+available). These are retained separately from the source041 production
+screen. Its new early budget/end return avoids the prototype's old release
+tail after a failed place budget; it does not convert that episode to credit.
+The complete prototype set is2/4, not a reliability panel.
+
+Initial local implementation suite:2193 passed/191 skipped,1017.94 s. Final
+suite includes the subsequent four scoping/post-challenge-slip cases and is
+running;69 focused mock cases pass. No physical criteria or production flags
+change between the registered screen and conditional fresh panel.

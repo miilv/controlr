@@ -726,6 +726,38 @@ For the opt-in egg endpoint-search experiment, use G3
 must never bypass the subsequent collision and motion planner. Clear the IK cache
 when entering and leaving a scoped joint envelope: cache keys omit joint limits.
 
+`RuntimeConfig.headset_seat` (default `off`; G3 `headset_seat=on`) changes
+cradle hangs only. It retains grasps at least 35 mm wide, adds eight squeeze
+steps before lift, halves the cradle carry rate, and lowers the measured bridge onto the cradle before
+opening with longer settle pauses. Threaded hooks retain their original pick
+and release behavior. Use with `hang_cradle=straddle` to screen the seating
+change independently of cradle collision feasibility. Missing wide grasps
+refuse the transfer rather than falling back to the slipping narrow pinches.
+
+`RuntimeConfig.headset_carry` defaults to `legacy`; G3 exposes the same enum.
+`staged` scopes a two-leg carry to non-threaded cradle hangs: rotate above the
+held object's current xy, then translate to the hover along a checked Cartesian
+line at fixed orientation. A failed leg rejects the whole placement. This
+retains the existing cradle contact allowance and all hand/arm collision checks;
+it does not enable straddling or change grasp/loose verification by itself.
+
+`RuntimeConfig.headset_grasp` defaults to `legacy`; G3 mirrors it. `dense`
+changes only cradle proposals to 400 opposed-face samples and thirteen
+approach angles, retaining box/slice candidates at widths >=35 mm. It screens
+up to 24 full hang plans instead of eight. Threaded-hook proposals retain
+the legacy generator. This does not bypass physical lift/loose verification
+or enable staged carries, straddling or seating independently.
+
+`RuntimeConfig.headset_table` defaults to `bbox`; G3 mirrors it. `mesh`
+scopes a full-mesh held-object/table check to cradle hangs and restores the
+previous collision mode on return or exception. It retains the arm/finger
+checks and table tolerance. Every catalogue vertex is transformed; any mesh
+XY bbox overlap with the finite table checks global minimum z conservatively,
+covering triangle crossings with no inside vertex. Missing/invalid meshes
+retain the legacy bbox check. This avoids empty OBB corners blocking a lift;
+it is not a smaller margin or an unchecked contact move. Geometry hanging
+outside an edge can be conservatively refused. Native table/obstacle checks
+still validate every planned waypoint. Threaded hooks retain their old mode.
 ### Multi-bottle pour profiles
 
 `RuntimeConfig.ported_pour_profile` / G3 `--skill-attr ported_pour_profile=...`
@@ -782,6 +814,56 @@ restoration/intersection of the temporary measured joint envelope.
 `settle_native_phase.py --ids ...` removes total belt travel from authored
 positions, avoiding the extra horizontal phase introduced by the round-1
 snapshot method; its pure correction has a CPU test.
+
+`headset_stage=center` (default `off`, mirrored by Skills and G3) adds one
+checked table rest when pickup and cradle favor different arms and their xy
+separation exceeds 0.40 m. It tries up to eight native free spots but executes
+at most one transfer in legacy retry mode, retaining the lying orientation and physical verification.
+Only a verified stage enables additional narrow ear-cup proposals: 18–35 mm,
+at least 60 mm below the bridge, broad pad patch and >=6 mm contact depth.
+The original loose-hold and method-slip rejection remain. Staging failures
+return to the ordinary hang planner from the refreshed world; threaded hooks
+never enter this path. `test_headset_stage.py` covers gates, checked planning,
+failed physical holds, scope/defaults and proposal geometry.
+
+
+`headset_grasp=cups` adds geometry-verified narrow cup proposals even before
+a successful stage; `legacy` and `dense` retain their original banks.
+`headset_retry=sites` (default `legacy`) keeps failed pinch neighborhoods in
+the object frame per arm, including the actual refined pick attachment.
+It excludes nearby equivalent approaches/closing axes and permits four physical
+staging and four hang attempts. Plan refusals do not trigger repeated identical
+searches; place/budget/end failures are not retried. Every attempt retains
+native planning and the original lift/loose verifier and episode step budget.
+
+`headset_grasp=cups` opens to the full 88 mm jaw gap before descent; all
+finger/table/scene checks still apply. `headset_stage=mesh_center` preserves
+the centre-stage geometry and sets its rest height from all mesh vertices
+plus 3 mm clearance; invalid geometry uses the previous bbox target.
+With `headset_retry=sites`, a failed measured-attachment place re-plan puts
+the object down and rejects that pickup site instead of carrying a nominal
+attachment. Legacy retry retains the original fallback.
+`headset_lift=slow` (default `legacy`, mirrored in Skills/G3) uses a checked
+0.03 rad/step lift in cradle pickups and staging; threaded hooks keep their
+original lift. Closure, lift height and physical hold thresholds are unchanged.
+`headset_stage=mesh_clear` keeps the mesh-ground target and plans a 25 mm
+release gap. Endpoint screening uses the release pose; the rebuilt full
+place and pickup repair retain the ground target for physical verification.
+Every leg uses native hand, held-object and scene checks.
+
+`headset_hold=loaded` (default `legacy`, mirrored in Skills/G3) can prove a
+nominally loose headset pickup through actual following motion. It applies
+only where the original loose rule would put the object down; tolerant relays
+retain their original execution. Only an originally successful loose lift qualifies: hold30 stationary steps, then
+plan/check a20 mm vertical raise/return with8 steps at each endpoint. Refreshed
+attachment samples must stay within3 mm/3 degrees, the object must rise17 mm
+and its full mesh clear the table20 mm. Original hard rise/30 mm slip gates
+run before and after the challenge. Accepted results retain nominal drift
+in the log and require a measured-attachment place plan. Missing meshes,
+static cached beliefs, unstable holds or failed native paths cannot prove a
+hold. The existing step observer is preserved/restored; default and other
+object transfers execute their old path. This is a G3 mechanical proof;
+camera use needs fresh physical held-pose observations.
 
 ### Write-audit identity and held transport
 

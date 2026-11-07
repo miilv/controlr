@@ -1,0 +1,79 @@
+{
+  "source": "10f3e0a8",
+  "variant": 21,
+  "salt": "laptop-round2h-strictload-2026-11-07-88c48b74",
+  "cells": {
+    "store_laptop_and_headphones": {
+      "A": {
+        "n": 10,
+        "mean": 0.0,
+        "sample_sd": 0.0,
+        "headset_credits": 0,
+        "full_successes": 0,
+        "steps_median": 60.0,
+        "steps_max": 145
+      },
+      "B": {
+        "n": 10,
+        "mean": 18.0,
+        "sample_sd": 6.324555320336759,
+        "headset_credits": 9,
+        "full_successes": 0,
+        "steps_median": 280.5,
+        "steps_max": 422
+      },
+      "paired": {
+        "n": 10,
+        "mean_delta": 18.0,
+        "sample_sd_delta": 6.324555320336759,
+        "wins": 9,
+        "losses": 0,
+        "ties": 1,
+        "headset_win_flips": 9,
+        "headset_loss_flips": 0,
+        "full_success_win_flips": 0,
+        "full_success_loss_flips": 0
+      }
+    },
+    "store_laptop_and_headphones_random": {
+      "A": {
+        "n": 10,
+        "mean": 0.0,
+        "sample_sd": 0.0,
+        "headset_credits": 0,
+        "full_successes": 0,
+        "steps_median": 133.5,
+        "steps_max": 169
+      },
+      "B": {
+        "n": 10,
+        "mean": 18.0,
+        "sample_sd": 6.324555320336759,
+        "headset_credits": 9,
+        "full_successes": 0,
+        "steps_median": 241.5,
+        "steps_max": 338
+      },
+      "paired": {
+        "n": 10,
+        "mean_delta": 18.0,
+        "sample_sd_delta": 6.324555320336759,
+        "wins": 9,
+        "losses": 0,
+        "ties": 1,
+        "headset_win_flips": 9,
+        "headset_loss_flips": 0,
+        "full_success_win_flips": 0,
+        "full_success_loss_flips": 0
+      }
+    }
+  },
+  "decision": {
+    "mechanical": true,
+    "pooled_mean_delta": 18.0,
+    "score_wins": 18,
+    "score_losses": 0,
+    "gain": true,
+    "g3_average_point_delta": 0.3
+  }
+}

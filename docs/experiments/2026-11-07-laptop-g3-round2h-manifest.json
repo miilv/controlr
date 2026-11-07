@@ -1,0 +1,1985 @@
+{
+  "source": "10f3e0a8",
+  "variant": 21,
+  "salt": "laptop-round2h-strictload-2026-11-07-88c48b74",
+  "profiles": {
+    "A": {
+      "hang_cradle": "straddle",
+      "hang_wide": "off",
+      "headset_seat": "off",
+      "headset_carry": "legacy",
+      "headset_grasp": "legacy",
+      "headset_table": "bbox",
+      "headset_stage": "off",
+      "headset_retry": "legacy",
+      "headset_lift": "legacy",
+      "headset_hold": "legacy"
+    },
+    "B": {
+      "hang_cradle": "straddle",
+      "hang_wide": "on",
+      "headset_seat": "on",
+      "headset_carry": "staged",
+      "headset_grasp": "cups",
+      "headset_table": "mesh",
+      "headset_stage": "mesh_clear",
+      "headset_retry": "sites",
+      "headset_lift": "slow",
+      "headset_hold": "loaded"
+    }
+  },
+  "cells": {
+    "store_laptop_and_headphones": {
+      "selected": [
+        {
+          "id": 100000,
+          "sha256": "a9efc4bb3cd285b7f1d62a0d8b87d81d8f8f062bbf3ba06829113ac871d68a71",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100000.settled.json"
+        },
+        {
+          "id": 100001,
+          "sha256": "f68830faea8405f9b7f03cb8e02d37b25a713b757dbe25e7756d31f5d913bfc2",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100001.settled.json"
+        },
+        {
+          "id": 100002,
+          "sha256": "4abb1596e002e615ed8f64e18c61e3a1aaa06fa7db080a244104b179bb9c8c99",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100002.settled.json"
+        },
+        {
+          "id": 100003,
+          "sha256": "caf79fd7c3e326db4d4fdbc77f8aa755ed61dbb03a90dce5416b6a7a94d8b3ac",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100003.settled.json"
+        },
+        {
+          "id": 100004,
+          "sha256": "5d4f3027067138e8c5bf53964fec38172b19d2b28e3c34c208d1fd4ac3680345",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100004.settled.json"
+        },
+        {
+          "id": 100005,
+          "sha256": "623657daa5dc2b6121764b8c785cfeceaa811cb5d5f12224b4a0891f83f64d3d",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100005.settled.json"
+        },
+        {
+          "id": 100006,
+          "sha256": "874e12befa9e5afc49ecb35ac2e0f4ff60e4d6d0acf94ebc01bed2b8f2c7e8e1",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100006.settled.json"
+        },
+        {
+          "id": 100007,
+          "sha256": "104475e1fabc7ce371db19de1ac063d527bca42598da04d9d2ae58463d2b9380",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100007.settled.json"
+        },
+        {
+          "id": 100008,
+          "sha256": "5d8121dbcc56734a943593ee0fa4d02dfb966c785d9bd542a661141dbf4d1683",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100008.settled.json"
+        },
+        {
+          "id": 100009,
+          "sha256": "85b11389f71117cb756493a5877ed3c4b56bdbec697e2490614a14dc11684bcd",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100009.settled.json"
+        }
+      ],
+      "reserves": [
+        {
+          "id": 100010,
+          "sha256": "d220ed6dba7dbd6eb74baa99aa4c3f14a2d0177f15c77500f8d35dfb456d5d13",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100010.settled.json"
+        },
+        {
+          "id": 100011,
+          "sha256": "eaa6b06e7b9b171fb1d843973536a5a2efa63c7eaa4ea93bc59add1448fff9ea",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100011.settled.json"
+        },
+        {
+          "id": 100012,
+          "sha256": "30be2205fcd924295d3c8235d1e19fc72e1554a687762d06f2dcdcaa4e4f6fea",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100012.settled.json"
+        },
+        {
+          "id": 100013,
+          "sha256": "40984c302956cc5dec5b331f574a9c027ad4eb78514bfa144db6f967ccc3ca83",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100013.settled.json"
+        },
+        {
+          "id": 100014,
+          "sha256": "4c9db5571281a79eea6d064c61a83cd6b6b2ad70320b3caafb87f0ccb6600cae",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones/100014.settled.json"
+        }
+      ],
+      "settled_index": {
+        "100000": {
+          "from": "100000.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.75,
+          "pass1_drift_deg": 0.37,
+          "pass2_top": [
+            [
+              "laptop",
+              7.86,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 20.2
+        },
+        "100001": {
+          "from": "100001.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 4.81,
+          "pass1_drift_deg": 5.68,
+          "pass2_top": [
+            [
+              "laptop",
+              7.81,
+              "Articulation"
+            ],
+            [
+              "headset",
+              1.45,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 1.452,
+          "pass2_drift_deg": 1.514,
+          "passes": 2,
+          "status": "ok",
+          "s": 17.3
+        },
+        "100002": {
+          "from": "100002.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.82,
+          "pass1_drift_deg": 0.52,
+          "pass2_top": [
+            [
+              "laptop",
+              8.37,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 16.1
+        },
+        "100003": {
+          "from": "100003.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.75,
+          "pass1_drift_deg": 0.37,
+          "pass2_top": [
+            [
+              "laptop",
+              8.34,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.001,
+          "passes": 2,
+          "status": "ok",
+          "s": 23.0
+        },
+        "100004": {
+          "from": "100004.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.75,
+          "pass1_drift_deg": 0.37,
+          "pass2_top": [
+            [
+              "laptop",
+              7.81,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 23.2
+        },
+        "100005": {
+          "from": "100005.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.82,
+          "pass1_drift_deg": 0.52,
+          "pass2_top": [
+            [
+              "laptop",
+              7.88,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 27.0
+        },
+        "100006": {
+          "from": "100006.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.75,
+          "pass1_drift_deg": 0.37,
+          "pass2_top": [
+            [
+              "laptop",
+              8.37,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 29.1
+        },
+        "100007": {
+          "from": "100007.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.75,
+          "pass1_drift_deg": 0.37,
+          "pass2_top": [
+            [
+              "laptop",
+              7.88,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.0,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 27.2
+        },
+        "100008": {
+          "from": "100008.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.75,
+          "pass1_drift_deg": 0.37,
+          "pass2_top": [
+            [
+              "laptop",
+              7.86,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 27.1
+        },
+        "100009": {
+          "from": "100009.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.75,
+          "pass1_drift_deg": 0.37,
+          "pass2_top": [
+            [
+              "laptop",
+              8.79,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 16.1
+        },
+        "100010": {
+          "from": "100010.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.82,
+          "pass1_drift_deg": 0.52,
+          "pass2_top": [
+            [
+              "laptop",
+              7.88,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 21.4
+        },
+        "100011": {
+          "from": "100011.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.75,
+          "pass1_drift_deg": 0.37,
+          "pass2_top": [
+            [
+              "laptop",
+              8.77,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 15.8
+        },
+        "100012": {
+          "from": "100012.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 4.35,
+          "pass1_drift_deg": 5.2,
+          "pass2_top": [
+            [
+              "laptop",
+              8.3,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.81,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.814,
+          "pass2_drift_deg": 0.846,
+          "passes": 2,
+          "status": "ok",
+          "s": 19.5
+        },
+        "100013": {
+          "from": "100013.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.75,
+          "pass1_drift_deg": 0.37,
+          "pass2_top": [
+            [
+              "laptop",
+              7.78,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 16.7
+        },
+        "100014": {
+          "from": "100014.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.75,
+          "pass1_drift_deg": 0.37,
+          "pass2_top": [
+            [
+              "laptop",
+              8.35,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 1,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 18.2
+        }
+      }
+    },
+    "store_laptop_and_headphones_random": {
+      "selected": [
+        {
+          "id": 100000,
+          "sha256": "69b70228ef4446889e18477609084d2ef75987c1a79aefc9c79f802c2c76282c",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100000.settled.json"
+        },
+        {
+          "id": 100001,
+          "sha256": "fa8faef3cee6d89c299d896a6d464aca57012406b17e42c0cdefa68224fb3199",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100001.settled.json"
+        },
+        {
+          "id": 100002,
+          "sha256": "716974b763a8748d4c73c2cd4c399e6de38512b4c754cdb0e898d318a5b87d7f",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100002.settled.json"
+        },
+        {
+          "id": 100003,
+          "sha256": "8c8a97d0602a842fc26bbcfbbb2d257eeeefa80b56cdd33be418a99c5f482a27",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100003.settled.json"
+        },
+        {
+          "id": 100004,
+          "sha256": "c3ef08586e8752335c8abe0879520913f8d1359620ac3f71042f38d247d848c1",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100004.settled.json"
+        },
+        {
+          "id": 100005,
+          "sha256": "e68e3268daf6e1ed24fef16a37eb129dbca4828836d3593fc0a2f9a893716d21",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100005.settled.json"
+        },
+        {
+          "id": 100006,
+          "sha256": "af2021a78ea4321917b3ac6fa79c31e973557bb4b23431b2ffd5369bbdafdf7b",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100006.settled.json"
+        },
+        {
+          "id": 100007,
+          "sha256": "376febadab5b57cc010f384e49b1a1f957716466f4e7967c98a34813877410b8",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100007.settled.json"
+        },
+        {
+          "id": 100008,
+          "sha256": "cc902ffe408224b94131597fd7523e81bd0e911a5e886992f58041d52dd98a2b",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100008.settled.json"
+        },
+        {
+          "id": 100009,
+          "sha256": "9f642034e0e0979b9d08d8cc2c3937c8d8de331c19fe0011ae6788da006f15ac",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100009.settled.json"
+        }
+      ],
+      "reserves": [
+        {
+          "id": 100010,
+          "sha256": "d8c6979d942feecd06efcb3e907dad7abcc4ca3c5bf43652741e28ca344bd4ac",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100010.settled.json"
+        },
+        {
+          "id": 100011,
+          "sha256": "eca321acfc34579f6385e3b3549b0cd0f6c42944444d413e1109309d08529ebf",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100011.settled.json"
+        },
+        {
+          "id": 100012,
+          "sha256": "570c3e5a93a08047c8c51273175fedc5d87ed45ef98ac14836003f6707d870e0",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100012.settled.json"
+        },
+        {
+          "id": 100013,
+          "sha256": "7b3bd63b3a3d9bfc4c1d7f7b8b5d7843e1c07204fb3d50d109cfebdd1444b555",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100013.settled.json"
+        },
+        {
+          "id": 100014,
+          "sha256": "df2d1d84e6ae2b4f1025cdb4d23415c0b8eb02a182778b9049dfc52abdffd111",
+          "layout_file": "/home/physicalai/dojo-data/laptop/simlab/layouts/store_laptop_and_headphones_random/100014.settled.json"
+        }
+      ],
+      "settled_index": {
+        "100000": {
+          "from": "100000.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              8.82,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.0,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 24.6
+        },
+        "100001": {
+          "from": "100001.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              7.85,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.0,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 25.0
+        },
+        "100002": {
+          "from": "100002.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              8.82,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 26.7
+        },
+        "100003": {
+          "from": "100003.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              8.81,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 29.8
+        },
+        "100004": {
+          "from": "100004.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              8.79,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.0,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 35.5
+        },
+        "100005": {
+          "from": "100005.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              8.47,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.003,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 33.2
+        },
+        "100006": {
+          "from": "100006.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              8.83,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.0,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 33.3
+        },
+        "100007": {
+          "from": "100007.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              8.84,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.0,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 21.8
+        },
+        "100008": {
+          "from": "100008.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              8.77,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 25.0
+        },
+        "100009": {
+          "from": "100009.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              8.73,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.0,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 27.1
+        },
+        "100010": {
+          "from": "100010.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.66,
+          "pass1_drift_deg": 0.01,
+          "pass2_top": [
+            [
+              "laptop",
+              8.8,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.001,
+          "passes": 2,
+          "status": "ok",
+          "s": 23.4
+        },
+        "100011": {
+          "from": "100011.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              7.88,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.0,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 24.2
+        },
+        "100012": {
+          "from": "100012.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.52,
+          "pass1_drift_deg": 0.11,
+          "pass2_top": [
+            [
+              "laptop",
+              8.38,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.003,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 19.4
+        },
+        "100013": {
+          "from": "100013.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.44,
+          "pass1_drift_deg": 0.0,
+          "pass2_top": [
+            [
+              "laptop",
+              7.79,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.002,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 22.8
+        },
+        "100014": {
+          "from": "100014.json",
+          "pass1_robodojo_stable": true,
+          "pass1_drift_mm": 0.44,
+          "pass1_drift_deg": 0.0,
+          "pass2_top": [
+            [
+              "laptop",
+              8.35,
+              "Articulation"
+            ],
+            [
+              "headset",
+              0.0,
+              "Rigid"
+            ],
+            [
+              "camera_stand",
+              0.0,
+              "Geometry"
+            ]
+          ],
+          "objects_written": 21,
+          "pass2_robodojo_stable": true,
+          "pass2_drift_mm": 0.001,
+          "pass2_drift_deg": 0.0,
+          "passes": 2,
+          "status": "ok",
+          "s": 27.7
+        }
+      }
+    }
+  },
+  "screen_gate": {
+    "store_laptop_and_headphones": {
+      "old": {
+        "n": 12,
+        "headset_credits": 12,
+        "minimum": 9
+      },
+      "coverage18": {
+        "n": 10,
+        "headset_credits": 8,
+        "minimum": 8
+      }
+    },
+    "store_laptop_and_headphones_random": {
+      "old": {
+        "n": 12,
+        "headset_credits": 11,
+        "minimum": 9
+      },
+      "coverage18": {
+        "n": 10,
+        "headset_credits": 9,
+        "minimum": 8
+      }
+    }
+  },
+  "source_hashes": {
+    "controlr/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "controlr/bench/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "controlr/bench/cache_probe.py": "08cc21b30a77bd08c6f418c2db9c57f7b012501c863d110e1c8312d29b9e3f6c",
+    "controlr/bench/latency.py": "1556de8716726c0f4ff68b2e6178b4cffca5e4bf19b4c11fd50dc54ebdddbce2",
+    "controlr/bench/sweep.py": "befbf6bdb2808027e7fb79b83b0cd62d735b3cd6a77882177990f2e79268ea5a",
+    "controlr/cli.py": "e2952d05b78bb3b111533948d3f71d339f713778f1de7e2245f606ca86ab8dd3",
+    "controlr/config.py": "f3f3f30a601518c972c36ed4b1a9f0e1ec508a59f3310042228c788b7a0b4958",
+    "controlr/fkagent/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "controlr/fkagent/agent.py": "2bf8296f661b877b11e3cf23b8bfc1641bacf973384fb173fdb4e1544b66f2f8",
+    "controlr/fkagent/dataset.py": "00d2668167ad2cc61979e62fda4f6a62fc517bbb165b46c038e23330341ad113",
+    "controlr/fkagent/geometry.py": "2b19807b61d2d59c25719c7fe1207c657156aa6396b1ba28715683960f021167",
+    "controlr/fkagent/offline.py": "4fea9836f1b9000a3a9be8636caa26e0525e98193006a6ddb395c5bc4c412530",
+    "controlr/fkagent/prompt.py": "e5e8427c87c5c9d2205887e2fb92f7f0576eabd995831030a2b7245a58e04386",
+    "controlr/fkagent/toolagent.py": "2eac5210bf4060fd18c9016505c9a532f2197c8a462a67bc69f2204d0158bebc",
+    "controlr/fkagent/toolchat.py": "c7f5e72632ff1bb4add0ae0eeabe5fb205cdcaf30bf28980b01e12f189d04793",
+    "controlr/fkagent/visual.py": "04b6539085ee4a7ff746d3139a3b0a13c141d20f46a5b316ae5ac5401ea1b812",
+    "controlr/keyguard.py": "9ba03f798c580b872d6ea70708b9d56aae411c964f4a40e8c7f81faaa9ccb9fc",
+    "controlr/llm/__init__.py": "c719b28730216fd84c4332d4972a14db80dcbd79df7d98f9e4c07d4250eb00ec",
+    "controlr/llm/caching.py": "00a4073f0a6a90bf6495984cfd7503181a794ecfc02cc4285f0f28d17da3a6fe",
+    "controlr/llm/client.py": "fb97c9047713ab310d30b724ac6fea8334b19cefcafb7e7891171d4ddf378945",
+    "controlr/llm/codex_auth.py": "3159d8e3bd8546cc25e739bffe87b519510701bb2fe5ae419ceab2da08316f31",
+    "controlr/llm/decisions.py": "ec418e1574cabdf6779a7c0f7020fae3eca9a772c5e78b531054f965d1f3762c",
+    "controlr/llm/fake.py": "31de6ab096b4dd6f399111041369e031220dfccffd2d47b33062c3205a1fe49e",
+    "controlr/llm/transcript.py": "52cb0082c303b775cdde5e0174bb44c13259d5d4df7c27ee610217145a31dbec",
+    "controlr/loop.py": "ff232fec97d6f281ed6e6332700e50e44e3ad685e1ac948e9115435d1af64946",
+    "controlr/observation/__init__.py": "0f9297a91df89772a1593ccec5ad4e091db43a185ea5a8e8a4d26e27b67bd99b",
+    "controlr/observation/renderers.py": "e401cf63e648e4cff2475451b37d04bc6f706e79a7ff688669d1b12b341d9fd1",
+    "controlr/prompts/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "controlr/prompts/builder.py": "15d20db32f31fa871e7f421f0a7cf3e099e462a8b20fad786497d9d67c24f20c",
+    "controlr/prompts/decisions_v0.yaml": "653b53029d2180944550d345f5fac56deff0086001d8c2385d2ada4b8895e683",
+    "controlr/prompts/decisions_v1.yaml": "614dab6f2505a5549d80262f8533d46005cdc56755c783bd9c4165c99622bf3c",
+    "controlr/prompts/decisions_v2.yaml": "73779831b01d507653d3c4950ca9f9cc88871ac6c6c3d30edd6403752543c76c",
+    "controlr/prompts/decisions_v3.yaml": "81d8b6cc8b39d1dfe35160542ed48b4ff6b6dcf9e852185d36c55dbd6f7d67a5",
+    "controlr/prompts/decisions_v4.yaml": "8f0d803779de6f84917aac32aba8ae66f8e0a2de1204c7189c566bfd55a4c399",
+    "controlr/prompts/decisions_v5.yaml": "ab0d74dca5b9c8e827e138460b6ffb5fcd774429d4bd039499b7344efca4cd4c",
+    "controlr/prompts/planner_v0.md": "718995c9f359fa8787115598c717fe0fe7653c07ece64e6317cf92db87496510",
+    "controlr/prompts/system_v0.md": "087e3cdbedaf8ee8c5c3d86c16da781eae7b31474f572c87258a93482781a01e",
+    "controlr/prompts/system_v1.md": "3cec19ae0ec09a146544f85205699c087bc863674ba157011e7a29bf69226129",
+    "controlr/prompts/system_v2.md": "79751893d072cde5d66d6f0cc2facee2931cf885631ec0c7d4131918ba5f8efb",
+    "controlr/prompts/system_v3.md": "c11d3b237d03512ca1e63c6428fde5b870a6d215c3995c3cfe45a457ae00def7",
+    "controlr/prompts/system_v4.md": "9531786fd6c5465316cbea90a7b04364c99b583f923d9017baef9ae12da58731",
+    "controlr/protocol/__init__.py": "0791e08a3b19c5069010539d16d2cd2e76f9037c13302870d79dbdbe2b09cf9a",
+    "controlr/protocol/feedback.py": "01264b29482ca3f46c20cdd86d0296b4c7b8421b8f2f56c32ccd511525fb78d1",
+    "controlr/protocol/grammar.py": "c854a6065c65b00ceb7e96da8451911096dc30009391a6d42e586ac561e798ac",
+    "controlr/robot/__init__.py": "10edd407d26b6bcd80dddab38029d7f2bfdbcd67dcebdccc2580eab0807cb6e3",
+    "controlr/robot/base.py": "890c381ced854adfdb892abd2b500d4c2e7b1da5a1e239872d61c5fc993f561d",
+    "controlr/robot/isaac/README.md": "9467e83a72d9feea630d8caec82d81d57390bdce6c4fd84e8f85b160b5ba03fd",
+    "controlr/robot/isaac/__init__.py": "f8382a827172867f15ea0c5712a0f366ed3e837ce499cda96ed0c4494e7d20f9",
+    "controlr/robot/isaac/cameras.py": "829a72532677ed8719506c5518a0b2f3efba132389dc9fa7e53ab85e30f70606",
+    "controlr/robot/isaac/client.py": "c9bcce6c611cb2c88dfea06931ecf9889194f7045ee0bf50b1fa6d6c83b21202",
+    "controlr/robot/isaac/contacts.py": "17e4c6719726bfcfab426bbb8f6ae574ff3bb5bdcca5db11608944f99eca8eca",
+    "controlr/robot/isaac/motion.py": "1ae0c1edb4adf4d38403e9db03b7fc2288e07951b5873082e56ed21ed6244efb",
+    "controlr/robot/isaac/protocol.py": "8a278464747b8a75f628b3201ad00b67e11cddb4b2505446d9e514d8e9a27a37",
+    "controlr/robot/isaac/server.py": "acefbcb5932f299384d30a3a52419966ad56bf9f87cedce7d06257ea5c124543",
+    "controlr/robot/isaac/tasks.py": "d0826ed0fff42b5a66151bf17d61542e55efbcef36eddeb052d27fc4f6e3c084",
+    "controlr/robot/kinematics.py": "7732752dc20ff785663542ffcb8b7c596619519b0c9dcef6b6865cd6e814e6e1",
+    "controlr/robot/mock.py": "de79e3b5563d1899df8694e65e7a363e1ab56a552af48f812e76407b8c06d83d",
+    "controlr/robot/obstacles.py": "40ccac3062fb5dc378f20aaa7214fbf4a125a55b9e897c3cc3e81587126ede2d",
+    "controlr/robot/replay.py": "f1421006f940b9df114eb008408d90ff67f66642e12817934d21d581bc85e30b",
+    "controlr/robot/robodojo/__init__.py": "d5efc05c0134e158f82b176d7d07e1739913ac8737abe737f354ddc62f1e5d5f",
+    "controlr/robot/robodojo/client.py": "57faa2e0f534e0be769752599e76adea6be576e5d762830bbcb530fcf70169b5",
+    "controlr/robot/robodojo/protocol.py": "6e19e25c9457a0a57af91eb254574278c24c4bc6d607cba8f1c99c23e024bbc0",
+    "controlr/robot/robodojo/serve.py": "883a5a254bfbe4b75c73ab47ed86c2f885c571628e7c53b0c73ab860cbcbc622",
+    "controlr/robot/robodojo/shim/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "controlr/robot/robodojo/shim/deploy.py": "904a899da80e9021baa047b008f6430b06ec26d27466b2e172cdcee870a3cc3e",
+    "controlr/robot/robodojo/shim/deploy.yml": "96ea04568934eddba2cea8bc2d054523189824db7c6ffb1446c6e7cb42b64bf1",
+    "controlr/robot/robodojo/shim/model.py": "10a5bb115a35d1008edcb78cfcfd8c2c96e346b105338decc1ecaf77c264e954",
+    "controlr/robot/safety.py": "0a3d7bf7edfd9b6717c91361489398d2ad254c1366b45a61ddea3388322fea4f",
+    "controlr/robot/so101/__init__.py": "ab00aef338475e61e73ed35ca9ef86091b60ef5a61915fcfdbf547b7f6676089",
+    "controlr/robot/so101/arm_id.py": "a5b19d045c23a1b0be00117d72bd890c54727dd4c28601aef7bfd657a6b66ead",
+    "controlr/robot/so101/client.py": "58fed65a94b59105ff913003379ef1c988990892df9712fcf74c4991c8d193ce",
+    "controlr/robot/so101/kinematics.py": "5ba9c7f1d88687881a2294212605a2ef7196a5a459f220eb7f1ef7f39aa4a220",
+    "controlr/robot/so101/protocol.py": "eb7ed8b15d0f75a9fe16df3840941f199b88556c4c3bc4c4d83abb8734549218",
+    "controlr/robot/so101/server.py": "9e25ca3db6ba51fec3b6537def82f5ae30f652fa933f5d52ee92d8bc2c1aed43",
+    "controlr/robot/so101/zero_fit.py": "07a0985c44ae250ffd13fca8cbb63b5a5eef095ac60c915b890f644cacd440db",
+    "controlr/robot/spec.py": "5a3ed4ca1434539a33a5e64b274641b3fdede28ca9b22ff50437dd21ca2a7c2c",
+    "controlr/runlog.py": "ca5649d94cc2017dbff31a1aaf7248462bf70408db83d83de6b772c9e2a2b9ec",
+    "controlr/types.py": "273b023d7c75fcb28453c008aaea4e602e90b66c1641606ec46929e336dbf64d",
+    "dojo/README.md": "6e500f12dc34b8fdd7d4655f99d56c858fb4ae998b8a3c9e3c608b4596dea575",
+    "dojo/__init__.py": "fd178a6f078ef9fef9e2ff7cbe2452c2f9f7a34a864530480412a02d5019d1b2",
+    "dojo/agent/__init__.py": "e564ae0df575eaa08e301a49e738d19364a6d82ab5a9b56a3fe22f38a941183a",
+    "dojo/agent/dataset.py": "2fb54953891923a595f972cd07959db9bdb12dd03c3ee0bfcbb544bf1442a2d3",
+    "dojo/agent/e2e_report.py": "62ee80f686ac511cd93f2f276ea0617133eb2d2d127cd4d82984a3839a2fa20b",
+    "dojo/agent/gold.py": "2634ce57de8a54652da25b8c6103b24d035ed37fb1eff6732ac8605d7a895809",
+    "dojo/agent/grounding.py": "024097b62af4e695c4d285da41b7330d1bca85c0f060f6bdb07db721e9c234bc",
+    "dojo/agent/llmio.py": "88bee61e3b9c0c705621cf48a91698b4acb6e3c527b0f5e9d344ebaeee52177c",
+    "dojo/agent/loop.py": "8441eb30af8c654afe5238081091e7286557a25d5c9956440cfc3644def8a718",
+    "dojo/agent/manual.py": "8686aaaec474d693d774602154aef87600fb5e357f2438b10dfc86625734c94e",
+    "dojo/agent/policy.py": "10dabff74fc41834ff6af8de4e9beaf7174495bbd97931f8090817a93aa42235",
+    "dojo/agent/prompts/agent_v1.md": "3222a9af0a9fba92ee9a84645bad39e489455ebd53294828ec5891c9456af8b0",
+    "dojo/agent/prompts/agent_v2.md": "4d7e9c45e74092a1f5c40edc6fc78962bcc2641848d795bc33e135090bd3e76b",
+    "dojo/agent/prompts/agent_v3.md": "4d7e9c45e74092a1f5c40edc6fc78962bcc2641848d795bc33e135090bd3e76b",
+    "dojo/agent/prompts/agent_v4.md": "60108b69c00008ed997130e7cb1a5f7c75e3513f95b952e99d50018761c8943b",
+    "dojo/agent/prompts/agent_v5.md": "58ffc244c138b933a3aec6241118a4eb432675dbaac4214c03456d7248048c3e",
+    "dojo/agent/prompts/grounding_v1.md": "c41e4bdbc75d672706df671c8e4382f15dd01a79034b3beba58bec487f339f55",
+    "dojo/agent/prompts/grounding_v2.md": "ec57135f983e1c0eae311aca05bb0a9fb059c795fafc2e39b5ff99ae3d626186",
+    "dojo/agent/prompts/manual_v1.md": "03ac880d651438c5bdf850a4dc1e9191599b37455c096ea7fdbdbd3d522e7856",
+    "dojo/agent/prompts/manual_v2.md": "ac523879e796cf83d6dd0aa7e0f7e11711124cf010437481e65292f9078b1580",
+    "dojo/agent/prompts/manual_v3.md": "ac523879e796cf83d6dd0aa7e0f7e11711124cf010437481e65292f9078b1580",
+    "dojo/agent/prompts/manual_v4.md": "cd3a5020ca8a5a506d4e38ffb8fdc4373ac69f85a8f1ee77f3cc65d8a7cae1a8",
+    "dojo/agent/prompts/manual_v6.md": "35d01c09fbc9906cce033ea1d156399c03d77b72e38101fce1cec360203e01d5",
+    "dojo/agent/registry.py": "900ec698d47f73f5208ddbf40ed67b5774a1a81cb772094d0603271b472b29ea",
+    "dojo/agent/replay_probe.py": "20f5d175b3be042cb93f5a6101c9f0ed5cc495c030c24b6b976921c122707faa",
+    "dojo/agent/robo.py": "0a8cb18b94c62e29b6ef5c8e2e726effec8b25797d33d2db517d3a508eebdc82",
+    "dojo/agent/scene.py": "e1b6b135c9e423e3bcd80b49ac54470cd9925e13627a7f1a81c5bcea84ff0818",
+    "dojo/agent/session.py": "22f1207c404a87c3c4626d0c4000ef82ba06778aa63e8543429b5bf722ab76fc",
+    "dojo/bridge/__init__.py": "a1ada36fd8800f4377cf074b90b3b895e0b81d4cdbf2f5443c541bd760768fed",
+    "dojo/bridge/backend.py": "50cf46b535cf4315d499efc1c21de869cb015bb548c017145d7225d6a5f96a5a",
+    "dojo/bridge/client.py": "2e1877c2c4b99c3780f93077c38afa346050f5e4b3b2ecb39df0e4a936558d02",
+    "dojo/bridge/contract.py": "4d6cfd474a57882e4be5f41198cf34830bfd214163c320e64677a433e81adafc",
+    "dojo/bridge/driver.py": "ad5c81cdfc1366991f95e84ed89d6c7a702962f60a16c551509fda701071e22a",
+    "dojo/bridge/fake_server.py": "4bbecd68e0fc12284303fb397f5f4ac51bdc4c7e06f3015299ccd50e1a60d4be",
+    "dojo/bridge/official.py": "ec2ad22d7fc46b73b097fb09f521045dc2681eec835f96277abc0ea9bef5af00",
+    "dojo/bridge/perception.py": "79244a26eed1aa1f0cd2fb1a66adec79cb1c606f03963d427a0a6c3231328bb0",
+    "dojo/bridge/smoke.py": "0ac4c95c9211cb038b610ea405591b185b3b182722445e8f82587516cbd57939",
+    "dojo/bridge/twin.py": "212e0a0b2e8aa14e17f03a215a6b45808b1e68c1b12a556cd1602eb923946af1",
+    "dojo/perception/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "dojo/perception/agentic/INSTALL-isr-lab.md": "97928fb2e4b6fcf28aabe72f0dc26ca26597095a04d04185f703505049ba45d8",
+    "dojo/perception/agentic/__init__.py": "dd384bca84af1d67ffa03828beea5102d642f7ae929dd071a8e5aed9d798260f",
+    "dojo/perception/agentic/dev_d0.py": "15b62aa83f289bd19c01844151971d133bca9499bf5217823b044c8096091f69",
+    "dojo/perception/agentic/flag_model.json": "4ad9f279821facfd9b04d8c441765bc52a76324eccb224d0e4b92dbfda08eac4",
+    "dojo/perception/agentic/j1.py": "75fb5e1b4f741aaf408d6d5c966545b98f5235eace2e93c7595ecddc63f5862f",
+    "dojo/perception/agentic/libero.py": "fb9aae915f0108de7058f740509a4dba70cc2358cef1a2f05649d2d323ab4a3e",
+    "dojo/perception/agentic/llm.py": "ede015c5fd694bb86265262463bb721fee371f4f961ecf0346638f6bf70c8817",
+    "dojo/perception/agentic/prompt.py": "af77d53a608050f3710f19afcb1fd6259f594a7218baab7f62b1d10f8576aa8c",
+    "dojo/perception/agentic/prompts/runner_held_v1.md": "be6534f14d782b1e4df73a0b7f80da776c6d939e41346888d12890ea7e4dd87d",
+    "dojo/perception/agentic/prompts/runner_libero_v1.md": "73749a7c05e91224a3eed7173c52799831f0367919b17dde2b82d965a6ce18e2",
+    "dojo/perception/agentic/prompts/runner_robodojo_v1.md": "96d628b4fd649e1408fe63769f6fb83a2043ddd7449f2de9390cf808caed3e61",
+    "dojo/perception/agentic/prompts/runner_robodojo_v2.md": "7764ca4ad937daf5540de435cc0065b1cbe076c5f2cdd01f0d370a93a4a12dcb",
+    "dojo/perception/agentic/record.py": "e38a0fb31e29f079bb6ec32e0222eeb969cf1e4d10f54874d5a662a03cbd4b43",
+    "dojo/perception/agentic/replay.py": "a04df0df4b506fea4fc743b014c9f4d307ab3e649a02499f77f7d5b64666bc44",
+    "dojo/perception/agentic/runner.py": "5f7a7c19571c28caa6f9140ae3265e4d4b5318b652a25870977b0d356e05acc9",
+    "dojo/perception/agentic/seed_refine.py": "169a17a31c95a7abaf3b281a3ceb285057cae16ba7956525d5909923bfbb5dc1",
+    "dojo/perception/agentic/tools_rd.py": "cea49a32999bad348831cb49b3b87624ec16eeab77045362ddcd40605c155965",
+    "dojo/perception/agentic/vendor/MANIFEST.md5": "0e1f269cdcd611314941e15104a1da6f804dfc911d4008e7916d8a66ef0c29b1",
+    "dojo/perception/agentic/vendor/PERCEIVER-PROTOCOL.md": "bfd3faed2acb9f51a8aae916a17a675eab8a7b26bc369e7e9ed19fc41565b67b",
+    "dojo/perception/agentic/vendor/SOURCE.txt": "3ca37f1d6db11a20b9bde9f7b591f32dcc9b2cd76939b266903c0fde371836aa",
+    "dojo/perception/agentic/vendor/j1_schema.py": "e9fa0b6b034b0b0047756f9cdf43ed5089d730bfeff279e894463fc2868a13f8",
+    "dojo/perception/agentic/vendor/libero/grid.py": "0c01425aea17748d18a345bcf26167807f815519611e72c50e0ced558a6724ca",
+    "dojo/perception/agentic/vendor/robodojo/btn.py": "3960a44b999d737254f16bd58413e381fc954eac3758260561c21dfd550242a1",
+    "dojo/perception/agentic/vendor/robodojo/cube.py": "45c9b38f83e914b5002d67280c7e86a6fae8f22f5bc7c7af3a21b4a2f62411d5",
+    "dojo/perception/agentic/vendor/robodojo/cubez.py": "6a42c3cef32761a014bf6299757436e17fa8bde706f3645a0e010c64d7aef590",
+    "dojo/perception/agentic/vendor/robodojo/geom.py": "7de2e88123ddc71dd8b4ce37055f1a38f7ba3fcc3639a3683a806d466fb786dc",
+    "dojo/perception/agentic/vendor/robodojo/line2v.py": "f656161fb9d7859bf7279f5d51f744a799c9c6ab0a9b70ff2b017571e55eedbf",
+    "dojo/perception/agentic/vendor/robodojo/mosaic.py": "81ad0aff3580fac4653dfdb3e6da131998d7b3c7ceebe64ca200bb11a1f40fdb",
+    "dojo/perception/agentic/vendor/robodojo/ph.py": "ca22ff959702afda14ff6b200ff14739d95254e9cd88440fc4230c2faab88b3b",
+    "dojo/perception/agentic/vendor/robodojo/rim.py": "0862a469b6df33f0be0249c0d6750d6bdf6aebb4d20956a4ae4cdc15a2bc56af",
+    "dojo/perception/agentic/vendor/robodojo/sil.py": "50ca830635f5795cbf3785af9b8d0fbc2b29f5c2fd8724baae310bea0babf7ee",
+    "dojo/perception/agentic/vendor/robodojo/tp.py": "8eb6edb32ea547574c76f44a52d2e078c697164264b5ecd3db0c7a845926d394",
+    "dojo/perception/agentic/vendor/robodojo/tpose.py": "b1cff29f8cbfe85e3648c95da05e06e0276000b755689232f9d0801df40a9e5f",
+    "dojo/perception/agentic/vendor/robodojo/tri2.py": "d7265b3c272f606c81e3a1f5a09e1a9c510efcb4a652e709c199b618b2c92481",
+    "dojo/perception/agentic/vendor/robodojo/vcheck.py": "6a37418bd0a9f034d0bc571ddb9531e1a3fa20369874f57fa20c73c6829eaa02",
+    "dojo/perception/agentic/vendor/robodojo/zoom.py": "57a130de7629afe430cba7a7d08a1e46361d8b112a3b9382ed863045689e8131",
+    "dojo/perception/audit_identity.py": "f45829d82632fcff0368848c98a1ad63a9fa1572638e2a565b609db3e22d80e7",
+    "dojo/perception/belt.py": "ce191e73fd7f8a7d99bdf8b9feb9ffaa52199651ab2b6d081119adf8c3cb42ed",
+    "dojo/perception/belt_bg.py": "4d02958f263f1d688e4208441adb9260a432c3aad94e5c8b9c61639abbafdbac",
+    "dojo/perception/bgperc.py": "039236689b9a9561d24e7c707a9874ff612fa398419228456df7eee27db75443",
+    "dojo/perception/calib_set.py": "7a4822deb189e67467f6e320071697f91033b3a7c6da0539dfd3cc41a007d7b9",
+    "dojo/perception/cameras.py": "cd4c1de1ba106f1136cac91f50099c615230dc5389721688ac800c5e828f9ca9",
+    "dojo/perception/catalog.py": "1332577c1580812716a804628e91d3b0f8bba4eb1c3a48220bc2ae9957c70757",
+    "dojo/perception/color_calib.py": "ff03c9dd32045afb3abf8b5a319e290c7dd23fc589594db86b632081f0f36a74",
+    "dojo/perception/contained.py": "7cbf5d0630bc7c096833938f0d781ea0fb225de7d657e6149b02e9a1caab0945",
+    "dojo/perception/d0.py": "bbe6cdb7ff81a88c5b16b413356c5f1f31e88d5cf18414267531119a925f7eb3",
+    "dojo/perception/data/garment_templates.json": "e025359157e10b9422ec3a93bbd82df727dffa8ff40b0fb032b315bb986579da",
+    "dojo/perception/data/support/franka_home_cam_head.png": "ef3fdf866e78acb84f357e45762f60a5f8e88dbcaf8c809eaddc5132d9dd8b99",
+    "dojo/perception/data/support/franka_home_cam_left_wrist.png": "e63f2135195c51b37f3f832591be3a52ad8f58127cadef368b1d221e41955e98",
+    "dojo/perception/data/support/franka_home_cam_right_wrist.png": "5154ad41afbc8323d8a22367b2d60e3fa2abd205ea34f2e0c31d89e40017c5d5",
+    "dojo/perception/digits.py": "79e0b95ca1bc43f21fb9fc691924aab582f2327887cd3831bf7bd8fc6a8fca25",
+    "dojo/perception/doubt.py": "ac75b33e6d25cfa8a4d45c1929b1e1e45f8f2c753bf29941b97a9a0903ba353f",
+    "dojo/perception/edge_yaw.py": "1c1bcabca486695e1002747685459f6f316d48eeff089643835e9c064b15b77c",
+    "dojo/perception/embed_id.py": "a75f99f79d78af8aeecfeac2bb3e8545d0989393997ccfe9a288c2e8d58dfe19",
+    "dojo/perception/eval_g1.py": "d8dd2e6f188e88b0ec7b48e3cdf5de2c4d8ea59dafed571c2d59d11066a9d27c",
+    "dojo/perception/featmetric.py": "4fc3ed3c58c3795d74229de010f04962620cd2547d9d712c3bf86865d5adfcd7",
+    "dojo/perception/garment.py": "940e951d9070bbcd8692559af9115e503ba6e651a10008bd2980201db065d08c",
+    "dojo/perception/glyph_read.py": "9f0612594c5664a474d1a2bf67e12045cb051fc2d22a497048868008e270bcf5",
+    "dojo/perception/grasp_metric.py": "42b74acb07e48c9a2774b17f5e9f38dce638685b8c182ddca1bc155c955670e2",
+    "dojo/perception/held.py": "86bda8f2995092649f2df462f0219764b882a1404295b2a352b7ec24b1d37a93",
+    "dojo/perception/held_data.py": "150ab84519cdfffb9aacde1f77d180de0db2223f2c42254745643e93ec5b3e43",
+    "dojo/perception/held_eval.py": "4a9b4b4e42eec110657bb56049dc0f7a45d85c01513f201b70725d652a203acf",
+    "dojo/perception/heldsyn_eval.py": "a5fff077b2c166d558b5bab93f6222ffff8afb1233e9af1761e72dff9fc1a370",
+    "dojo/perception/heldsyn_synth.py": "79ff7f1488035b796d1d878cd68a3a4a6319f9fa80d5e09bd156e88897d109c2",
+    "dojo/perception/identity.py": "72cd120acaa063ed10589b609a28347ba2ea0b42afc7d65aa3f21fcec943981b",
+    "dojo/perception/identity_marks.py": "2dfb9669809bc43523007800080fdd794315ae437ee0fddff9256681c9f733cd",
+    "dojo/perception/integ_looks.py": "411b3a02767cb9535c163790397015553c3d6a3f4cc81d980ef32cfbf2f8f2f8",
+    "dojo/perception/inverse_layout.py": "32c809b6aaebc0de4776dedc44949514eb4bcbb098fc8bbbeeaff6e6884ff6bc",
+    "dojo/perception/j1_adapter.py": "d48d883eb6684308e04ae83eae8bb25cad61ef91de98f95a9c19c7df3a8e1b5f",
+    "dojo/perception/language.py": "f10695076153540bfe0a8d56fcb0478c59d531e7c6d9bf7f8bfc4d6d349440a1",
+    "dojo/perception/look.py": "ca7b8212a597a2097cd802d8ef0ec62c71cd3e704d27452338cf4d27732f2f02",
+    "dojo/perception/mv3d.py": "48194199931c1d181822724ab102792874718f665552bee667e719426c7c1dd5",
+    "dojo/perception/mv3d_eval.py": "a633d649466cf9dd989e143e6c428f632649e7683354a3fc89d323b58c16b0c2",
+    "dojo/perception/read_persist.py": "3e7058d2b047d027348d942e0410fb64f011aa7b9422e47c78f878b7b5e451cf",
+    "dojo/perception/redetect.py": "9780f77426ccb43b1a1fa350d60757bfc9a5b321377b1fe83ade45f70c9ceadc",
+    "dojo/perception/refine.py": "d41f7a1245b99df6d2254a350dc43d13e4e94c959be51623b805963f59e18fbc",
+    "dojo/perception/release_read.py": "7a64331306e5c17fca71835c28723f2de125dac5982e3970dd9990d47e4f0ab7",
+    "dojo/perception/render.py": "512ab0720cf4ae3810cb144af1a735ecc6c451dba63fab0a87393440bbbe4aa0",
+    "dojo/perception/review_exp.py": "57a8704fddc9f9037982d20d01d738b3fce06b10fef1467bb49a374d3e119846",
+    "dojo/perception/robot_model.py": "8f760e0a4c68c6225ddce522e20745be2c48eee11accd5cdea4f332764f12afa",
+    "dojo/perception/sam_masks.py": "aadaad4f6e81646ee7916f86c34e129907c99a9a0041b152e6a8912c1deef887",
+    "dojo/perception/scan.py": "f1ecfde9d996babb22d847fce25aa7835745e598750a5d538b96a2f1d4b621b0",
+    "dojo/perception/seg_twin.py": "1b68062ea6182f0d865ae92a43767c5e74c8b641227fc0b19d99f103ebbbcea4",
+    "dojo/perception/segment.py": "8012af39e9c886c91fd07c346d9a4bc7065bc357ede2ebe3b17851823c6eb58b",
+    "dojo/perception/select_ties.py": "1a992372224cc965f5d6cf1dc45bcd9db1100fdf4107e5772e0c37daea665b38",
+    "dojo/perception/seq_capture.py": "cffa16fbdbe25089a29632b96cde500c3bbd8cc56be77ddca138232ce10218eb",
+    "dojo/perception/seq_data.py": "b65d5611addff10dcf949bb379c83f08d96307e06b37f3fec702952ba54b3f7b",
+    "dojo/perception/show_pose.py": "db6145633e1d27256a68c63ba7f66b803e86799a4ce3e18eb66be2c0ed69ab00",
+    "dojo/perception/slot_read.py": "6e10ea39e74889456295ded2e173464242d6b441c9b4c40d551acaf2387a9769",
+    "dojo/perception/slot_settle.json": "c1c432adec80d8e0ddde179f25d45e4b278a18c24bee70388220c5650bf4244b",
+    "dojo/perception/slot_settle_build.py": "97714b888edd70d531c27224d0b63a9c203a37da0fece791a3b10cb46826f7e4",
+    "dojo/perception/slots.py": "cb858bdc47e1a14519a521ac354c7770e4885bb20794585cc6647f30ff672773",
+    "dojo/perception/stereo.py": "3e052d6b6bf05048d90446a95d1eb50f1902512898aef0dcb389aaf88946b363",
+    "dojo/perception/stereo_eval.py": "6522e7a6d6df5a2c4d63c49ea9113f1a4a8326ac84ad0c82df2ee2e1030cf894",
+    "dojo/perception/synth.py": "d7e560a1ded6cbf91089988dc9872d8f736627452da09f99ffa940293492c798",
+    "dojo/perception/task_state.py": "aa0bbacf5cdb4bef3e4bb414f783bf79c7febe0d8aa46e7da4e1bc156eee2861",
+    "dojo/perception/tasks.py": "5e57abad19eb23196f2a0d75f1df0282cdf39e64293342656180965100a12d66",
+    "dojo/perception/top_feature.py": "bcfc678c356d1db6b19437a3eafd727232641497c116b37505754c5ca517e15d",
+    "dojo/perception/tracker.py": "1debcf786a93d5852e09cab3774c16e99b6ff78245045bb317b7a31abeb58698",
+    "dojo/perception/val_refine.py": "53ddfe0f13d6e66035f660efd9ffb0ca1521655d35ce65d25cf437df00519792",
+    "dojo/perception/val_replay51.py": "f8b702fd6521431b291bf059b43fe917000055abdbe0900da059b64e87bdf64e",
+    "dojo/perception/val_slots.py": "7e694f4599912848c42538cb137ad33dc3c95ba3173a15dedc49afb9a2e3ce04",
+    "dojo/perception/val_slots_breadth.py": "b08810b3c2c69632d0b2575f4518856d8ea0ac4ca1607e37fe9291c9a1b33225",
+    "dojo/perception/val_what.py": "e95f29fd695c1fc440e02d3f6d1436a5a4c0e3840b95d6dd3b52ff450a72b0c8",
+    "dojo/perception/viz.py": "a05f16c7fb8eb611ef8e4dd86c84b102d4bf914673cd9ad17370c4a6d67db956",
+    "dojo/perception/watch.py": "8cbea3ab1e183da2e1756bd078d13a81c5796a5b6436632ef8ead4da1e824e5a",
+    "dojo/perception/watch_seq.py": "48b22712b94d2127a5425473f3d54abbecf5fa1ac664694c754578f7c1a1e746",
+    "dojo/perception/wrist_check.py": "d6a86647b7f1eea3468e07f28286ca411ddce8dba530031d413eb5185cfcb3b7",
+    "dojo/runtime/__init__.py": "04390ad4b71d87bd92619c6e4a9f1fa49bdedac316a1b45515cbd320a1a31a35",
+    "dojo/runtime/belief.py": "a4ed89627e21938e4dd477f8d29e6256493dbacf482d59884e671dd32a90da92",
+    "dojo/runtime/bg.py": "beaef6f1f5fd01eb4002b4d9e58b9453cc2c7673ef37ace4ae9c899df575601a",
+    "dojo/runtime/bridge.py": "238eb0989ec24c72c473ddf29d7658c7743be44b85b43f1ed8725a9cfd603eba",
+    "dojo/runtime/catalog_check.py": "abec82067ace95532fa70da9c692e38347ec41add535be2b5204bef472eabfb3",
+    "dojo/runtime/estimate.py": "062360919800d86adae4f1b6a05c47de9afe71630a37a29c98cce84feb96e34d",
+    "dojo/runtime/eval.py": "e4bafaf8ac61bae5f700d9d6a81ca8cf644177ae03347b7cd48d150a34063129",
+    "dojo/runtime/firewall.py": "ef3866947c42e6a95cd538e4a35e302c8df9988f68621b1d91c8af6a852414c2",
+    "dojo/runtime/perception_service.py": "9a6ae8ec90c1953279170df8478049fd5a69a354ec4373f5407814aef85b0cd4",
+    "dojo/runtime/policy.py": "020b01e8e4a666f7b25dc1430619270727bacf30a8935b036afecb100a974da4",
+    "dojo/runtime/presets.py": "7a60b21dada19070b671971b17c008fd39771670756ff4332188498b27a4b265",
+    "dojo/runtime/report.py": "5e6313b68bca4b6a232a572d63cbec6a2775e965a5cc4dc2a12e54147e4ba939",
+    "dojo/runtime/supervisor.py": "a5f98a95f57a3240c3574d926244be7e33f2375b4c838954a41570e0305cb09f",
+    "dojo/runtime/tick.py": "89cf7dfc48a4f7a94572f7b4bd3d0d748073c4673c3358a0b79b1b9028f9fca5",
+    "dojo/runtime/track.py": "7b714134fb70d2262614e8d03b4b3ef941b2a8d70c827b10e152b74b805e0740",
+    "dojo/runtime/twin_load.py": "aa861f8f2d30191720b36960c14c5349cd99857c0446b769605144b17ab95861",
+    "dojo/runtime/verifier.py": "2e4e1680c9653bcd61c00a6f615f8927edf89cd1dfff4a6acf86c0bb1e5cc8af",
+    "dojo/runtime/vocab.py": "7be9e9a805b1e3f92106bb661a4f7aa9566c345d4c77e4ffc1cb4c8a310c6903",
+    "dojo/scoreboard/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "dojo/scoreboard/board.py": "234c213cf2cd5db8ac893244098ce4a4d9835ed428475811cdc441f06a3fb4fa",
+    "dojo/simlab/__init__.py": "6be47bfdfc4ca516e95a4613ae578c1d6d10913f8b9950301a4f465fc9670ead",
+    "dojo/simlab/check_assets.py": "1cfb872395f723dd0c8714feb46c1e4188e13c2db8c87a32d46d7d1ac6bef09f",
+    "dojo/simlab/demo_gen.py": "f76b8332ae01493539e6737af451e14cb7ad6b88a7ac5bc3cab9514fc030ac04",
+    "dojo/simlab/dev_eval.py": "1f72c4dc2701b3fb3369316554be58e3b31b609e0483cce23506f57d81805af4",
+    "dojo/simlab/g2.py": "25d2a59fa8c5f133a925a0eba2567f8876ad1038e08ec89ae86437841e95a4ae",
+    "dojo/simlab/gen_layouts.py": "64496ed372dbbce85e6785b355cccc86d0a3f5a9ce44d38fe5aea5f898e1de62",
+    "dojo/simlab/grip_source.py": "144cbc6ed2a3842488ca46852a5595bbc0476a2465b82321784528f17d3f2304",
+    "dojo/simlab/kitlog.py": "5d6142224b0587f8e649ef0efc2fea0b5c850081da18f1e03070f8b7aa8909a2",
+    "dojo/simlab/layout.py": "ef746072d24aded36bb2e9c98785db597242ae9e597e189bc00911e9fdcafa91",
+    "dojo/simlab/look_render.py": "1ba71bdb8c40d80d8b93742211145ba5ef19cd7f7742da32d30fc9373d160561",
+    "dojo/simlab/make_d0.py": "b1601bc93329e5016414db02aa73fcbfe517951146f0b2429e445d27ec1ca517",
+    "dojo/simlab/motion.py": "bc1b2fe949e8e843722215c9c08cf03dc207c5d7be478c3b8bdcc38065337060",
+    "dojo/simlab/paths.py": "ca6fae65ef3dcf542694caae7dfe154a518df91b631d05e40239016478e076dc",
+    "dojo/simlab/presettle.py": "2a60f0cf17b9f4f62a71070d51a917b4613dcec3ac3adc180b83fb2e9ed05c85",
+    "dojo/simlab/proxy_eval.py": "bc81dfa6d4230acd157bd64fcdbf51289017741980c1727e2f6b8fbb55429244",
+    "dojo/simlab/proxy_render.py": "f52c338b8c31b98b781013c56522c7fe882f0b3d0527c39ab61d867ac835313e",
+    "dojo/simlab/render_d0_proxy.py": "18414a21350be72c906f743a7dae9f8fe0ccf17ebc5aeec46fbb8a8b97b05d0d",
+    "dojo/simlab/render_service.py": "88549a82e18165d2fd830c60bdb0c0a781a33662be4864ddf0c62f07c4640a43",
+    "dojo/simlab/rerender_d0.py": "57f1e76217f49501f486b8a783d0d8d42ac993b68ebd8efecdf69e835df4115b",
+    "dojo/simlab/runner.py": "f114dba2e921ac975620ba51e40133c55e64d3db8ccf1c9b7cb4eac817390893",
+    "dojo/simlab/sealed.py": "6e32fcfcfcf8db87b9a671320163e00772b3b4900189ebd3cec921757e69b3ab",
+    "dojo/simlab/seg_render.py": "2b6081164ec86129c99052dd16c874603a6a6a60b112a07d3e2e0ed56c0aebd7",
+    "dojo/simlab/twin.py": "50d006c1b706da2ecb49d90b8dade2049513091ccdc31f1a0fae690b8df3edf2",
+    "dojo/simlab/twin_crossbox.py": "0bcfd6e45b1d637d620f5fe21683895dfcdca599b374a3b1eefd6148bfefca6c",
+    "dojo/simlab/twin_service.py": "34dad6964b5ac0cc1d744f0ae7c15a5a6683daa30f3ba8a60337ca69bb510e9b",
+    "dojo/simlab/verify_check.py": "23343cdac4d3504163148ad50c6761672c723589064495b0a5eae32d43e087c8",
+    "dojo/skills/__init__.py": "77ee6f1cdead17d57b6f30caed726530b6c242b5eaa3f29473caa7b5b1cb7761",
+    "dojo/skills/align.py": "26ee9a430f925c6099efbe2d0546b016c50590ded192206e32a6935c9d5a16f4",
+    "dojo/skills/artgeom.py": "7926f7069a7819f4bdcf19259a22be2bec6818d1b4b089f4a31c50f87c98be4e",
+    "dojo/skills/artroot.py": "10e51925058b3b3b4500e31360c762388a4dfdfed42a860860c524e5be11a3c1",
+    "dojo/skills/basket.py": "ff34d2a7fd71e50d3b459298eb9e9ccb2689df67173fcc7bf4921f5357265c93",
+    "dojo/skills/basket_first.py": "43f071f9180dee114236f0c94ca99cf61f0d94f93bcf72b00779e95663a1e73a",
+    "dojo/skills/basket_transfer.py": "c987330c9426744d146afc668330ac99ddaecd0efdd2f6c9a4534fa337371f97",
+    "dojo/skills/curobo_world.py": "6d8472b06d02b226d84fb61c584d9780b09ecc58166e6f3f6aab6123bb44a807",
+    "dojo/skills/data/articulation_roots.json": "2965d6c7b8af869fcd4ecc81e1092ff5b3ccc09005618194f115e41c172f1a2f",
+    "dojo/skills/data/bowl_nest.json": "d28eed19c785a2d7417b9106a264e26a4df0828136432c88f56633d40d4583a1",
+    "dojo/skills/data/held_noise.json": "c7e1f66a2db5f66d6facd33454a3250ecb39cb4dea3affc652421bdf5abacf72",
+    "dojo/skills/data/mesh_less.json": "c7e88f6b69fcca1e8e8f1a2747b0623d366d7468563a55e7ca4452ca2d2690e4",
+    "dojo/skills/data/physics_com.json": "c7361ab4306accd6650fb00f4410670c3f98518e520925cdaec70327305ea7b5",
+    "dojo/skills/egg_reach.py": "54292ba4ece74285237e6efa86f27408ba7677eae0b9969dbd98f01155bff25b",
+    "dojo/skills/env.py": "0e8d3453700eaff410cb51f35a6117e8e4a33840b4f64d3f3141f646fbcfe50b",
+    "dojo/skills/executor.py": "b49c4446e2a2821499e40cbf355c8c3297cce8c452d2a0018576bbfb712119ef",
+    "dojo/skills/g3.py": "8c53eb031c1d781802980bb62cc2cad8f90f00055ddfe20c30fd982364811d84",
+    "dojo/skills/garment.py": "28503409fe7406c567610d8311537e8df44cb1fa5360f8d0a8bb425f71ec5530",
+    "dojo/skills/geometry.py": "48f5fe1974ed7baf4489cab785779b9b4714bb0c1c9c492430de035ac3735765",
+    "dojo/skills/grasps.py": "fe1e28dd89e8d0f00e04001f21aefeeef3dbe1a723635d3481a30188ab5f7de8",
+    "dojo/skills/hanging.py": "83370b66f37dfcd1be7082f6dcb27d04092ad991ad10bd4674f23081ebde77e9",
+    "dojo/skills/headset.py": "7b4bc4756b83b70a37652c1b80deef0d2a9ec699a773227dd56cf96729fc5db3",
+    "dojo/skills/headset_hold.py": "1e5953ad4eb20820fb4fa23282a54e15796cda394ebf8b6e3d23de434b6a91e7",
+    "dojo/skills/heldsim.py": "9aec1ca5cdc0d4be63968f1fac79f6bb208716ab33f5e70f8ae2574d562bf280",
+    "dojo/skills/holders.py": "e1df4f3dd4dacc66af7a70555a29791050658ea2a4962c81b5e29226c8e9c96a",
+    "dojo/skills/insertion.py": "74b7477f95d859346a3e0d4e815b28bedf3afbd8536e38fee09d370e3d9b7142",
+    "dojo/skills/interactive.py": "e844a3480187477ffe55adf95d00ba1505d3aceaf7d4a32a484f7478eba1a502",
+    "dojo/skills/kinematics.py": "b3c6b351f9e2ade8e67f488e69f62c4eb9886683507a0babe47d874c379199b8",
+    "dojo/skills/library.py": "531544dd5b530642d0763b754e20f25dd597f4e8220f9220e55fdcd1724969db",
+    "dojo/skills/motion.py": "3d5196ab0d1d52843a59b8e51bb2587aa0edf397cf6806755354cee6a814a056",
+    "dojo/skills/pack.py": "284e320377ef1b82d0cf085ac66df900a2ceab3356e88e949b0a6caa9f5a7140",
+    "dojo/skills/pegs.py": "c442342f3f9620af8ae321088cb88d4110c4c52613d32741da747cbff13bea1e",
+    "dojo/skills/pickup.py": "4c216eb1799c84a301f4ea1dea7babaeb2867759dccd3cd7a8b6ad3bdd4137ba",
+    "dojo/skills/plan_diagnostics.py": "b3be3dbcd6b7a7efd4bd3658cfc16bf5f6cad2857492acea8dafb86c0c764732",
+    "dojo/skills/plan_geometry.py": "11fb53b34c465783f154357486db4936ccd8253d237f0a73cd3151f4935660fa",
+    "dojo/skills/plan_repair.py": "6f1c9646b24021a6ec1c9948813f7e810b63423c5233692341cde765fa88df3a",
+    "dojo/skills/plan_seeds.py": "6cf2151ef20b0d757a097140b9ff3d27ae1764d2ede83d60af2d5ad62cfc4211",
+    "dojo/skills/planner.py": "ed1e2d9016901ca4a17f47a1406a3913e9695e4370bced39a53a77cde1613e25",
+    "dojo/skills/ported/__init__.py": "919905db9872a243759b9a3e1056e3e488d0018984fa6917966203b21032a855",
+    "dojo/skills/ported/harness_robot.py": "9f66219b8ac857dbae36358d9a61f1a81e19ee4cf343f15e19d6e9b9e212e870",
+    "dojo/skills/ported/skills/SOURCE.txt": "b68ff155e2955175efd5c003dba4f42d89aea34dc9f0228f812112d2d7562a55",
+    "dojo/skills/ported/skills/classify_into_bins/skill_robodojo.py": "a97b700f194480fa8a4abbd2f5a7fc401cb66f516155f786327faf77b96d41af",
+    "dojo/skills/ported/skills/classify_into_bins_p1/skill_robodojo.py": "12c6022d6f32313ba2f87a14605bf811e5519585e82e9ef18efcbdd2c5366b91",
+    "dojo/skills/ported/skills/classify_into_bins_p2/skill_robodojo.py": "a9afbefb7e5adeeb88389f9cd8d53dbef6212150d116043240e54b0c5ece3f84",
+    "dojo/skills/ported/skills/classify_into_bins_v3b/skill_robodojo.py": "33d0529b00c508913c878f735ba19732b5b8f4069bfd21bda01f030d62f19dac",
+    "dojo/skills/ported/skills/colour_order.py": "7c4e31aa79a245ce871832d7442bd68f38795f587efbe040513ead3a62f05c1a",
+    "dojo/skills/ported/skills/cover_uncover_v2/skill_robodojo.py": "733ea44600c536c14d72a77ed26768caf634b419ef3ee19f7d1ee58155caab96",
+    "dojo/skills/ported/skills/lift/skill_robodojo.py": "94dbf88b20cd44aba26292335f01de360c43bb34c8d192c17ea8d91ba64204c4",
+    "dojo/skills/ported/skills/pick/skill_robodojo.py": "f7dd28d975877e5fab30ba44f230fe945f57e90e5c079de227ff085edc6da556",
+    "dojo/skills/ported/skills/pick_up/skill_robodojo.py": "0575b79432e20288515f8a5d3a51e6ed89b77d24b7e9ce055022d9340bd78c05",
+    "dojo/skills/ported/skills/place_on/skill_robodojo.py": "3e78b933dfd184bd9622012280ab6ce6bad3d1749d0c2bec94801c3942a0642b",
+    "dojo/skills/ported/skills/planar_drag/skill_robodojo.py": "b5e1a1ee9ae37ee156f45ad0d24b3aa27012ad166efd40721a58e3fc9b004d56",
+    "dojo/skills/ported/skills/planar_drag_p1/skill_robodojo.py": "dde1193599557dfe0cbaf4e39b5e7d3ea91da8fd6e51db1846a206abb5646fe5",
+    "dojo/skills/ported/skills/planar_drag_rgb/belief.py": "5eac75fa33a2526edacc59b88667fbd884d79e786f0910ad31c8f6f23db155a9",
+    "dojo/skills/ported/skills/planar_drag_rgb/skill_robodojo.py": "ad46a5dc00958b3a79e90522034f0747e3d5aee221a637cdc76d6cbf9e97aadc",
+    "dojo/skills/ported/skills/planar_drag_rgb_strict/belief_strict.py": "ad1095ab7622957830a01804a6d8fb199e3a392bf2796ecd703fa434e86879f5",
+    "dojo/skills/ported/skills/planar_drag_rgb_strict/relay.py": "34221765b3ee470bae9e05f0402848aeeeff40d503e2fd97c809be9c1b35c4ca",
+    "dojo/skills/ported/skills/planar_drag_rgb_strict/skill_robodojo.py": "3c8c193f092fa9242353da1d83a31474dae1355963ab9a5d19bb2f508edc55ef",
+    "dojo/skills/ported/skills/pour/skill_robodojo.py": "30f3fd4364f7682aca17061f6029c9e645a1c43cbe5451d1bbcf5ed6e92d1a16",
+    "dojo/skills/ported/skills/pour_bottle/skill_robodojo.py": "28bb05aef0c3aeaeb8efc7b1c9eb6ed91408d2aa7c50316148b10ff917dd527c",
+    "dojo/skills/ported/skills/pour_bottle_lean/skill_robodojo.py": "7fb2923cf881493285143a56b4ff40c6870cd84528856ced793bb992cf1a74dc",
+    "dojo/skills/ported/skills/pour_bottle_v2/skill_robodojo.py": "c8ef3acd162655775b1d0251c54ad0c07cd8ab1c7b154a30dc228062782b6512",
+    "dojo/skills/ported/skills/pour_bottle_v5/skill_robodojo.py": "46042a5856e5f3a860528c6e9470acb323d9a4d529c056bf81d7fa89b5ff0f63",
+    "dojo/skills/ported/skills/pour_in_order_v5/skill_robodojo.py": "a4ad58bef49305d26d0d4d84cbb09fc059297a2f4433b413734417d99f65509b",
+    "dojo/skills/ported/skills/pour_p1/skill_robodojo.py": "a6d345c545bba8f93fa00a34dee22a626e9b48aba8abc3e2ec0bc286f6bb6ba8",
+    "dojo/skills/ported/skills/put_into_bin/skill_robodojo.py": "85b11f1522891cb2b709678e6913f40abf450179899639ac7ba234488ba16142",
+    "dojo/skills/ported/skills/put_into_bin_rgb/skill_robodojo.py": "6bd33828482f00d9f5611f6d663738fed036dc8426abdb474810b6f8508a932d",
+    "dojo/skills/ported/skills/put_into_bin_rgb_strict/skill_robodojo.py": "4f51138f9f1d3c8ffb361c97146857235b36689c92f2c70ae383119065fb153d",
+    "dojo/skills/ported/skills/put_into_bin_rgb_strict_v2/skill_robodojo.py": "06382eb9837c5df70de15d07b70f722c70174a39db9992ecd73cb78f95f07265",
+    "dojo/skills/ported/skills/put_into_bin_rgb_strict_v3/fk.py": "3590ee2438924823f909fd4daa80ce38797bf911b2dfe9a8fb04545459743a01",
+    "dojo/skills/ported/skills/put_into_bin_rgb_strict_v3/skill_robodojo.py": "245eb7205e269684045e47805d7df183117dfd18b7ad0be548c72e45bcc9146f",
+    "dojo/skills/ported/skills/return_home/skill.py": "6c7495eb3738499bb607756f5f053e0755135e6f820230afba45f3dad7e00cad",
+    "dojo/skills/ported/skills/return_home_budget/skill_robodojo.py": "8822b954fbdd16a70502b96e42f89692ebf5c0650234554128ea2da3546b706c",
+    "dojo/skills/ported/skills/skilllib.py": "3b0f7582febfb9044d94db01ce932436bac3359d2631dcd1b47a48ff1ecc8a5b",
+    "dojo/skills/ported/skills/swap_poses/skill.py": "a793bfaefb809687f17cef8b7d6bee33847c1fbe74e309ed59067ae08f039209",
+    "dojo/skills/pour_diagnostics.py": "c96c1445b923dbe5d202d3f6604b49e80145feac483997bab8d82a37723fff23",
+    "dojo/skills/pour_order.py": "f2e3923b041e9378dfb986153828853a410f0cc51df4604f775df604d7746153",
+    "dojo/skills/precision.py": "30b8d73cff5433040dafca20fe2ea3f379279189e9ff240cdcd2e3d0138a0ea7",
+    "dojo/skills/regrasp.py": "68ca7be1f2bce709b1545845e456e4f1c678dc8dd90d8fdded5cee60abe77d6b",
+    "dojo/skills/routes.py": "285786d85703b49daaadfbb08c926d978aa329f2c850c62fa7c5b9e3cfb3d974",
+    "dojo/skills/rows.py": "f8311ed8c42bd98dda3255ff22e2aa5b177740a33f3c5ef7242944aef166054c",
+    "dojo/skills/skills.py": "5a2f6cc70bc9670ad4d6fcb6131d7ac963dd4cf7523e242d0b322b8c3a026ec2",
+    "dojo/skills/slot_carry.py": "f88f89e6389d821a60e8bbfd011ab77f4399a3df8436e8fafd09acf1c6ac0bdd",
+    "dojo/skills/stacking.py": "aa5788e1ce98b3cef7530fc460f232f9fb222e2c6bae91ea8914203e8973b0d5",
+    "dojo/skills/store.py": "5b2e93dd95441a533c895bd9b1262eba515cb0364e669c7f7ba406276a54bcc8",
+    "dojo/skills/sweep.py": "91ef983fc63aac0c1b2b81b21d7ea988510c54ea02bd65477f1efbefdabb5619",
+    "dojo/skills/targets.py": "b186b926a209ee2ca7da843880347d7267b922d0cbd3cf5d26f9f1b1cfceed97",
+    "dojo/skills/tiles.py": "98fb64d42b03fcf6fbdc73b147983ee892a1f507fc74410c0acb41296509115f",
+    "dojo/skills/verify.py": "d07f061da278074b0f648f0466dd8801fd291040e9e304366f6dfc92f9ba408f",
+    "dojo/skills/watch.py": "e8869cd44712c733e7fb432998e2c4db840448cdc8bba6b68817e0c52f3202c1",
+    "dojo/skills/world.py": "c658424642eb130b343985ab6a29cd2f0b7f18ef9a5445c0e2b9036275ef9d2c",
+    "dojo/skills/world_plan.py": "d86bf162d59e82de1f7afe5d48754b6ec3d282d6048e34b3d70d316f08c47fb9",
+    "scripts/agent_fallback/g3_agent.py": "a13fd86f4559cc278244fe2b927852da2979aff49268e670e8e60b3032839221",
+    "scripts/agent_fallback/job.sh": "e642d83ee53294273a64de110963c8907442b716671ec95bd28c5645c2a59238",
+    "scripts/agent_fallback/run_all.sh": "2d4132733cfed1eafa8940858819e1ed356e3be7cb64f0aa653f7a0984ba3a18",
+    "scripts/agent_fallback/summarize.py": "7333725c20a7aaa88051f7451a8f3b2677acf8233e2dc1c781f5f91919780228",
+    "scripts/bootstrap_fleet.sh": "cefbf13bbeb4c5ac969cdcbbd551c1adacf4e4b131aa6dbf97c1e1e3e4ee6336",
+    "scripts/bootstrap_gpu_box.sh": "10bdb537cab99e422712e16649ce6d664999b7d68a9872bda9186ac04048cf54",
+    "scripts/codex_direct_stand.py": "6bb9b8c1981b4dbc7611fa65c0f23e7618fea255f1fee6ba426ab6673070675c",
+    "scripts/codex_login.py": "a7a06c53aa782c0d1a112199539aa0b050a7d6a48fed41bf093b905302ee6e32",
+    "scripts/compute3_vpn/controlr-vpn-refresh.service": "e3c2eba4fa2d269466df13275548fcb470f48178755fd1fe1f436f71ecba0ef9",
+    "scripts/compute3_vpn/controlr-vpn-refresh.timer": "88c4f4352172ab1814fa996afffd1c5ce8d72d8dac81edadd512e56709d008a4",
+    "scripts/compute3_vpn/controlr-vpn.service": "1e72cdae97bee46bbfeae470d10ac398887e3ffd65934c8435197045c69e8589",
+    "scripts/compute3_vpn/install.sh": "e950ef04d12089daf45d191b07b60c2708286b169e235c176b0791a35b68b0e1",
+    "scripts/compute3_vpn/refresh.py": "cd2070357f01c19ae4aee6306686116c8ad0c62a01b91d6b37598d7a25f20f64",
+    "scripts/decisions_perception.py": "cbbef7b8a2706f955199272be17de987f4dc1352a84a685c0e385f1c420ca995",
+    "scripts/decisions_probe.py": "ac818a6621e838d284aca3eebdb1c90db230fc88249267614550f4e7acde8fc3",
+    "scripts/deploy.sh": "4d794629bde31bc80475ad5b05fb497dc4a812edbeca31e9ca154c82a83079b2",
+    "scripts/dojo/belief_mismatch_replay.py": "ec32b4a576726d60acf0528432f9160489057ba253d5444f8e64b5f3631a648b",
+    "scripts/dojo/board/README.md": "2112a457d432b2a478541ff27483a9b8541412ab9369421720d17e4e9ffcdb7d",
+    "scripts/dojo/board/cells.py": "cabcc2068dbc0fc37d8f665f19998e8ed9209b1c4dc6341650195181b6f42682",
+    "scripts/dojo/board/fetch_rows.py": "21a8a004a587903a7b1c08444794a4585c6cc32543e1745869e88eae41186fc3",
+    "scripts/dojo/board/snapshot/g3c_rows.json": "14d2280aa220f0a00bf77c98eb259f9a076649910d6ca052513b095c8c8cd3fa",
+    "scripts/dojo/board/snapshot/manifest.json": "5a4baf952d0991b82c455e6e0d35235f6464323780ae71b790f1f19ab52ec0be",
+    "scripts/dojo/board/snapshot/rows_c1m4.json": "96dfcb1ead77e5210f338451217d9ee02842867420ed5c683f6cf32a79b1ff76",
+    "scripts/dojo/board/snapshot/rows_c4.json": "7276923f5f2dd7361022de1eff95e8f7d55c5ca08f5f9d9873b48e2f1a130a17",
+    "scripts/dojo/board/state.py": "d01e4f2e5b329313b8a49f308a707183bf9755b16cb044a4de6455443a00ec4b",
+    "scripts/dojo/bridge_episode.sh": "ed28281aeb654a29c851b7b40a13c83d0e213c2600e91b54eadfaf3d6b5fff3f",
+    "scripts/dojo/calib_set.sh": "7496f1c3792fd702a947ee623962d170857eddd89bc81e0172f047deff478e71",
+    "scripts/dojo/candidate_parity.py": "95f66ef5cf18eb7a8f4c6b650e367fb64ed4997a60158109a683d3bf24d3b9ca",
+    "scripts/dojo/catalog_gate.sh": "96a235c477d384723a92cf9e7571bd90d6e59ee8eed1e7a34bf1abea936278b1",
+    "scripts/dojo/dc19_generate.py": "62e8a55cd65bd9263eb6f784d5347613604147ed186969b51ea78d140ff6a3a0",
+    "scripts/dojo/disk_guard.sh": "1b0633361be36d8c8be2ada145a297cecfa1305b2c6e0feeb0e9fa06d7a73861",
+    "scripts/dojo/frames_plan.py": "65bbd0f3552ccca194c0275a21debe8d4336cbdb4bc75c93744933e415388688",
+    "scripts/dojo/freeze_manifest.py": "8e57e8b16eda5296dbb0ecb67ea4288f633f72b4dc4e34712bd50bf3e10813d2",
+    "scripts/dojo/held_truth.py": "291491d250deb19d429a53130e9fc2e2e39fc5bfdd651e782533969b5897f4ce",
+    "scripts/dojo/imit_infra_census.py": "a3b350475f1ddda9d0386de3e2165d82781c50f5b914f387f546e9c3204b8f15",
+    "scripts/dojo/integ_eval.sh": "15ea6bc1c164714f18a94673da2bbf318d53a37b1435a988107bed1668d5fc65",
+    "scripts/dojo/isr_block.sh": "b10f666fbfa3b067baf0f87c063a29cf4da664274287de731e787f50984cb752",
+    "scripts/dojo/isr_dev_eval.sh": "0af41c24e0f1e2122b20dda51bca923f06774c97fbf88e4cea3e248c4b3875d9",
+    "scripts/dojo/isr_env.sh": "a56fda3d3411817348a122c6e0796d03ae8a55c1e654d75efa6aea2dacbfa282",
+    "scripts/dojo/isr_episode.sh": "044acddc05afbe8a916c35954c28f16c0a970dde02da70f6908697a1fbac9ffe",
+    "scripts/dojo/isr_farm.sh": "9b747f0418205324d31c2b92a5d67a9ea80cf8ca4ef92e2836f14385de16ddcb",
+    "scripts/dojo/isr_gate.sh": "3060870800d2b802e8d503a122d01098a678799d8b626db66fdcdf4f42cce31d",
+    "scripts/dojo/isr_harness_env.sh": "1f6aad7130313a8704e66dbc98ec47f382d725ecb2c863b247e4f7ad6a0713b1",
+    "scripts/dojo/isr_job.sh": "2692eb48852ac713b25534a5eec9ff5d7e9caa13211f7599fbf538734677ed4f",
+    "scripts/dojo/isr_lockmock.py": "60e7276ff8ec71614de0cf34ad88794b196accf6a6b0952f3cee186fa226023f",
+    "scripts/dojo/isr_prune.py": "6431f49481c6983947849b1c80296bd74fae875132f19fbde1d59ee1a983f8db",
+    "scripts/dojo/isr_summary.py": "49d7438a332ae900dc4083feadab415d621da86617a9191e2c4126f9f0fdea20",
+    "scripts/dojo/official_eval.sh": "d49147d47c872f7c295f9b9389fa9688b408ab8922d9eb0e71a86c719ff5a373",
+    "scripts/dojo/percrnd_light.sh": "a2fb0e27826c6d65268abb50f8b46829fcbe459a83b06c81e6e03bc327f5fb09",
+    "scripts/dojo/pkg_versions.py": "8e3586cc5859f56422193e3443efe4a57f5d077997b7146989c933907bc8d1bc",
+    "scripts/dojo/probe_link_usd.py": "5de705ebd3f2f59dc1c8a4c48c09db42f44082ab722a2a665eea9fb3d761740c",
+    "scripts/dojo/queue.sh": "c74e289d8758a14068ce889019386002f8c19d10e761580b39341df15f6aaeab",
+    "scripts/dojo/queue_runner.sh": "d36f332b2dba9e82c76e00399dfafa12d5a4ce64ef5f97a8dc92d7606e9a5578",
+    "scripts/dojo/queues/2026-11-06-candidate.txt": "5cde3f9e684c0937f21a0f28609437e6d317a433e000bc171198349417cd398e",
+    "scripts/dojo/queues/2026-11-06-physics.txt": "48c83e732f2c1306403718e545f19707fcc611e9e6d5ba07ec9e89547a87bfbd",
+    "scripts/dojo/queues/2026-11-06-wave.json": "8bca8b21d6a2e26bb905f4ab2516fc100cbc54c6fd87cb8e74a948144169487a",
+    "scripts/dojo/queues/2026-11-06-wave.txt": "54a60c361229696aae4bd6269550744ec019476f779f7da0c8716674e9da24ef",
+    "scripts/dojo/queues/lane2.sh": "14c18f314170770ff14212e40b70066a2609c6c705d7aed8e4bfbdceecb5f031",
+    "scripts/dojo/queues/ping_side.py": "92dba3b3265dfa29a126e26f6957c53a6b81c37c71cb704a7214149ba02283fb",
+    "scripts/dojo/queues/power_watch.py": "3ca9b4f85f68b7322ad242df9ce63b3ff4c475447df4e932861e3c1f11728b7b",
+    "scripts/dojo/queues/shared_side.sh": "289e34558402183dcfc71c9729eaaaebf855e75078fbfbe0a8cc7b8ce044528a",
+    "scripts/dojo/queues/tie_handover.py": "639238ddd850e1fb946f2997473e7cc4465f1674d6b79f38024590c0e727739f",
+    "scripts/dojo/queues/wave_status.py": "3186a8fe347170b35f6b272a3e9710b5a9451e26145d4fa047c3f5450eab844a",
+    "scripts/dojo/rd_farm.sh": "8423d423b050730f32b4ba741e833ce15d89c0e5cbabe84cef0470b93afa4268",
+    "scripts/dojo/replay_kits.py": "63fa1e7ffdfbd522f2d165db3906e1b9e23bbf74af4d97e78dfed00eaab4045a",
+    "scripts/dojo/route_probe.py": "3ac0c23e62c517d31cad77baca08ca07f01a5be4d0465379b1ef3e425e0ec82b",
+    "scripts/infra/box_json.py": "4951f544ab843bb431f166a8e518d0351cd25c80df77efc5a5c21fa107e75af8",
+    "scripts/infra/box_steps.sh": "7bbd82afb3350fdcdede7dd9c79e5bbcf42805e677cc56e924d7ed8dde28e79b",
+    "scripts/infra/dev/ssh": "8a05045d1eb2c38fc6bb682eb476b3e713e590f6b07a90beb95c26060c05408e",
+    "scripts/infra/pins/calib_sets.txt": "74cd92a522b45e0ecbbd466b71db1c090dc712dde520bf99d46f8019b608ba4d",
+    "scripts/infra/pins/controlr-venv.txt": "f81dbb3f76b614ba05f0213a8cdab17994e0b13f6fd1531089c2af3dd5d29563",
+    "scripts/infra/pins/robodojo-env.freeze.txt": "d4b35812d0d0c5674f04c4387c13a4a6eeeb05e413a700fd88a0ba523935c44e",
+    "scripts/infra/pins/robodojo_assets.txt": "3c70fec7f163fb232e957410b145483745de826b7e3fbe5084566fe5f31559db",
+    "scripts/infra/pins/robodojo_commit.txt": "81fb8e4fc2b3d6c006b12fb69d1409133048719ee83411bd1c6d3789da2ee832",
+    "scripts/infra/xpl_dojo_replay/__init__.py": "0e17f508fbc9e069d5ffe436a121623b45d9d17295d4612c4f97fb5782ac6366",
+    "scripts/infra/xpl_dojo_replay/deploy.py": "0d403a764e4369def1cb79a95d43149922d2dfcbc49ce04b6ebd0d45dede5374",
+    "scripts/infra/xpl_dojo_replay/deploy.yml": "86e00ccd4cc380f51c7b733cf8133b09543df9c06ae49e2cb346ed33669299f8",
+    "scripts/infra/xpl_dojo_replay/model.py": "dafc9c31c5b153e5f73a840fb5e571dd3db3be208b51e256f784c127a789ae6f",
+    "scripts/isaac_profile.py": "1e9370f540c692e7a063d866f568009d1195e3f3666c4b7735f3b5122564cba4",
+    "scripts/isaac_profile_round.sh": "579447a3f7e4af5263432e3e5b59055be401852b745588a4d401a5111e20b6fc",
+    "scripts/isaac_server.sh": "9555c1a5f450499191f01b8e1363c4532a4c1a883bf55df3c88d895585486ca9",
+    "scripts/net_check.sh": "a534b1b85b5e27cf8677afdcf35f736890dde4747985981559c773361ca02f8c",
+    "scripts/perception/a1/x2.py": "9306ae4f36ba2f41233f3b4fa7252dd44fc71bdd5a47969e9f7c36d5f4ef9991",
+    "scripts/perception/audit_supplementary.py": "46dbb25d59d9f4c60648ac896a0c42a13390326beeeac308fa81a0d0424ad06f",
+    "scripts/perception/belt_id_ab.py": "54bf86285865e80754e72cfb346501c31a5a777c9d81c2a716b58edc946d1da8",
+    "scripts/perception/bgperc/coarse.py": "66efe466bd15c8ed59e76510ea00d21e0b2cdf21795f8f75b792892c5e83dc6e",
+    "scripts/perception/bgperc/env.sh": "91b30f8ae8a89879daff543024cbb20d662b0a327dd1bcde33e17f5de52da0dd",
+    "scripts/perception/bgperc/eval_batch.sh": "11ffa29238412e53dc10dbf5fe1e8ffee0b5859b6894c34eac98fb0aa92102c8",
+    "scripts/perception/bgperc/gpu_run.sh": "80f68c1ae5619b3dc19fbe63e290489c243e81a33c5d3d56d5e4642b3719fb3e",
+    "scripts/perception/bgperc/jpeg_check.py": "5e17de10388579a98c7b1c54ff55c35ae20a77afe75c7b030b01d917e67ea8b3",
+    "scripts/perception/bgperc/replay_check.py": "5cc8ef9f23926a7a2095071f2f5d142ba8b854dff020bc12b961c1323117910d",
+    "scripts/perception/bgperc/replay_eval.py": "098e8f5cc0cd25012273f09b57345e259f42c91746090482822b4535c25743a5",
+    "scripts/perception/bgperc/report.py": "bcdd27380a9dcee0db563b2e1740a4dbcc91dd2a0ce0b4a818fc05fa77fe140b",
+    "scripts/perception/bgperc/sam_track_eval.py": "a3f268f492221d80d7d6360ce9c35c239e215ed089aee18e20f22bd369b1af87",
+    "scripts/perception/bgperc/seg_cache.py": "ceb7851f346ca551f11876406674c1a95a344a78bcf6ff6aac820fc3e422ae09",
+    "scripts/perception/bgperc/seg_jpeg_check.py": "a8bbf90e379aa92837c1411e3b83b951b3d0f2e03b04512cb2b54ac0b87b1d02",
+    "scripts/perception/bgperc/write_rerun.py": "672baa65998207e1cb16621b465878c85e8c183ddcee1193115fdffdef9452e4",
+    "scripts/perception/bgperc/write_rerun.sh": "78b1eb45d4ff7689ddb967dc389647997280a762f42435962bfa8c85059d3502",
+    "scripts/perception/bgperc/x2_eval.py": "003cd0064bd8bcaff17bcb8bbcfca64b3441f25db0083834425196cdb281b706",
+    "scripts/perception/bgperc/x2_report.py": "b588d4611db254305215ffcc58a197662eb9ae57fd3ca6aa772c828809fc4cb9",
+    "scripts/perception/calib_catalog_from_set.py": "71f82b2a3d03a4dc298945c2018f6c85ef347da93248010e5cc1fba4b7dd0c91",
+    "scripts/perception/coin_frame0_eval.py": "96f1972cee89219cbaa6b565572ba13f9e862f2e571ef734925fbb645da7822e",
+    "scripts/perception/coin_slot_eval.py": "44c82af321f3234fd475692f8a40fd5b1416592b2c162e26e17fe5804df98202",
+    "scripts/perception/garment_frames.py": "e8305e147ba6c4f9f7b780c83555df729ff927043ed144e3505e37379a10a47a",
+    "scripts/perception/garment_read_eval.py": "5158f8b35bf2355aa8b4ab2763a115e2cd22c6a867def66d6fee828af11a7dc4",
+    "scripts/perception/h95_carry_eval.py": "1e8547c2c8bebc98ac7d6833ddff7ff6c5af644c4b0388c7bcc95d1330f49a1b",
+    "scripts/perception/h95_grip_offline.py": "3302d7300ca2cad6529110a3a076dc3c1a9939a13a8fa7f678d6d2d0839495ab",
+    "scripts/perception/held_capture.sh": "1fa020be4e07e038be11e830aed24445e34e834cc88781e55d5fb7a97771f19e",
+    "scripts/perception/held_capture_all.sh": "8dae7c0352d90a9265119c0375d0404dae55270d5090329ac25c5f54218eed3e",
+    "scripts/perception/held_capture_snippet.py": "79c4718999d0baba2bef33c50bd77911315e6162c79a18976aaf22c668db6f92",
+    "scripts/perception/held_eval.sh": "76f2e711253409b853487ca7d8cfce8b36bcaea52fc019731b5bb5a6de8fe24d",
+    "scripts/perception/held_render.sh": "d837899416001a0598c3ad2718de9f41645f55a726b459152dcef52129fda925",
+    "scripts/perception/identity_bake.py": "69e04ff2120768ca0f90672322d6aabb5b7aedc93cde9c3be8072e32698ba7c1",
+    "scripts/perception/identity_bake_report.py": "956d48ff1b1ddaa09723be2234f39994e173f38701afaa1a5a539a9b791a685a",
+    "scripts/perception/identity_photo.py": "bb0fcdcffadb0f07a3739a3edefe88f13728e4d34287224f095fbabb24ed5dae",
+    "scripts/perception/imi_plan_eval.py": "0c237b19e852b78796d560840464809b2a640ffa19b5d4c4e48da9912ad6c95e",
+    "scripts/perception/imi_rescore.py": "52ccd423aad13e0afbd4faeec1f186ba607f826fc5a5fdef1aa3b5b6687d79f9",
+    "scripts/perception/m95_ceiling.py": "5293973f55d0785a33817a8fe05e9a889e3bb7f9b38445334516d516ea52eeae",
+    "scripts/perception/m95_replay.py": "89350443ddce943f3cbc27dbc5232d5f79081293056f0b50a76b73e90eb2a779",
+    "scripts/perception/m95_score.py": "9a9b0019ad0456fdee02cc3663394c8e2988b980b9ae25d28ec9be1f9e526a78",
+    "scripts/perception/mv/doubt_grasp_eval.py": "0b8c636bef7c42d3439f63c7d7eb39827f4a5ffe7d4993e1d584397312311af1",
+    "scripts/perception/mv/e3_fusion_eval.py": "03d3b0d78bf5f47480e92a82c2f6489801a9f97fe2aa9cba4253c235347bb109",
+    "scripts/perception/mv/e3_policy.py": "57d2ce4a788c649032bde518e87afc210f93b9b9a4f3625246338c3a9ae58270",
+    "scripts/perception/mv/featmetric_eval.py": "7a571cb79228f68402070ed6bb479c791965d117ac9ed9884124c4cbb09a1446",
+    "scripts/perception/mv/fm_refine_eval.py": "2901a52fb3fe95bd7d3cf78da082853c927327d5be8b51a2c381751e7f2ca049",
+    "scripts/perception/mv/fpose_eval.py": "7d65e8c2b1ad6b73560b7f92fd9f58018d729eb85f8d2cd2ffcd1a128e8e5b5f",
+    "scripts/perception/region_check.py": "255fe58b73fe9530ac481e469cb38bab4621d23dabebfd3e45415460e95555b1",
+    "scripts/perception/route_request_replay.py": "601f17ec193e8702eb72a8badeb0438eb79c3cc1521325581e56986fa09159ea",
+    "scripts/perception/sam/b1_trace.py": "e1b65e3864a4f07ff3a7a5b5142ae823653ca1f6474abf963cb178715f48fbd6",
+    "scripts/perception/sam/bake.py": "18b3fd9f795f7b7d1c4ac74c339937e53c5a0854d4a4d3965dd17547821da8ec",
+    "scripts/perception/sam/bench.py": "329db18baf50329f5c1dfb284a49b189b4a4daf784ad396f6dfa03244bf8b214",
+    "scripts/perception/sam/chain.sh": "cbcb479a6740378cd3e0f9d170514c9cb099e22e9f110c097a3cdaf34eeb6c38",
+    "scripts/perception/sam/frames_from_run.py": "b702e525c8a803e566aff94a239ee8cbe801b68786002eb6e25ee09293ac5f51",
+    "scripts/perception/sam/masks.py": "5179ee65c1ec24d3b8976251296e8167bfc3b3058ff18cd9f31af12571cf1be0",
+    "scripts/perception/sam/render_series.sh": "bda305e72e6fc0e28e4a6bb7d78e6108c7c614bae750e6e86ca42effae97e94e",
+    "scripts/perception/sam/series_tasks.py": "5569e0b244807119e2753d3c8712e6d5e4409c1a47cf191224da59806753ed54",
+    "scripts/perception/sam/setup_venv.sh": "81cac5eade152f7396c54eaa9bb0a3b5312ded96beaf46bb626de46609210497",
+    "scripts/perception/sam/viz_text.py": "c31f6223ee402daf7099355d765b3efd7b321eff57dce3e6a05c4c9b27144337",
+    "scripts/perception/scene_bg_frame0.py": "1b019cd05ba97d8f67be8719719fa2c50cc4e56ac9dc06a904bee21e74b5da14",
+    "scripts/perception/scene_bg_masked.py": "db195a76cb3f127768fa21539286bf8ffd37e17cad7f837e532d07d7f1dcd1f8",
+    "scripts/perception/seg/additive_hitcheck.py": "2d90ba5e430eccd6b8f0c1287e5b0bfc194b386c2ad3bd18c37bc43bc8e646e4",
+    "scripts/perception/seg/audit_rehearsal.py": "137aef6ba3dc9df2e4220c8e204d39ebcdfa603517d26b6a7b1d8ad5fea87462",
+    "scripts/perception/seg/bake_seg.py": "11c5258a0557086a58949562cfecb375f776e5eed233461a842a70c566a17d62",
+    "scripts/perception/seg/compare_rows.py": "0b2caaeef671383fdbeaadaafdaed1314c2273b9d3303d02b69c0912d489247d",
+    "scripts/perception/seg/d0_render.py": "a928ad2378aab0af5a3a7609f322d6a39371463a3df6916b98534ff7c0d825a7",
+    "scripts/perception/seg/dev_gate.py": "2a36dead132542b19030965961d267d6c67ee9455b5a4b45159c9a5b566a97ba",
+    "scripts/perception/seg/eval.py": "5cbe365685b656bf81785c1acef2d5951a0b942f4c2c7d71edf37b6c23c68714",
+    "scripts/perception/seg/eval_val.py": "4df5145827e29b916c5263e4cf8f3c5dc87ef8880c871f67fb518e16872e980b",
+    "scripts/perception/seg/expand_head.py": "15ac50565c1ed43b6fedf3a5a8ffd67e0516f310b41f80f9a467d9c44cc8d3ee",
+    "scripts/perception/seg/export_yolo.py": "0e93531c8a3cac8c6a675c987bb8f43edfe6a81714a4105c75bc8a7b3eb90052",
+    "scripts/perception/seg/kong_cls.py": "0aa32f0322d8b48d241a584b419382481f0a3d048846a2e85e988b3024c3ad61",
+    "scripts/perception/seg/kong_crops.py": "60f15475626ac7db95bd4f1663b16f4a74fd09e51a7589d6d6e768548daaba07",
+    "scripts/perception/seg/narrow_rehearsal.py": "83df3a5ef12901647258c5e74f1e926b11b753acd4c2930c52556f312b232823",
+    "scripts/perception/seg/new_only_export.py": "c1ed7e99b2e51c812bcac612ecbddc8cb72716fdb2ba4ef446d2c079d234c1a2",
+    "scripts/perception/seg/oracle_server.py": "5d833225946fef08dbe8eec72a76dcd2200761496f8081921fd7ff72ef5fa318",
+    "scripts/perception/seg/proxy_capture.py": "118cd040276669ac3a949f63d5f0e6b0208bb5a8777de9000f22a4472b004c1b",
+    "scripts/perception/seg/proxy_queue.sh": "a3bec9060f19c47ace812054e95ea3457837d0891e6db6f42d6d862d6963b691",
+    "scripts/perception/seg/render_job.sh": "6c53da8df94837b7378dc6fb935d07b71f964ef2d09369a0a64b7cb3d84b5ad4",
+    "scripts/perception/seg/render_queue.sh": "760868399ab4d4c72059969f1f05ff50a475cb4e9e9f3dc635957629db061ff7",
+    "scripts/perception/seg/select_head.py": "eb890f4d0b8d90ddbcda2cba05bc59ff008e97325d490aa16c80392c744e452f",
+    "scripts/perception/seg/summarize_additive.py": "709060fb7928fb440db1c0d67d0265cc9d93e59222f2f74529bff6f2659cac75",
+    "scripts/perception/seg/train.py": "7dd58ec88bea20b19ffc1185cf8be76b1958db00ac6a82be089047c1f0fc39f7",
+    "scripts/perception/seg/train_job.sh": "321b798e28738f30393beb6569e2b033cad9c30e79b8321a3a3cc235a381d764",
+    "scripts/perception/seg/v2e_proxy_pilot.sh": "e3454a99c4a6d8d077c5154929a5373262d29139f151c257b2a4cd83c31d7ffc",
+    "scripts/perception/seg/v2e_proxy_render.py": "f133073d04d78e96b2f52df6b3f0479dba461f14cda23a42e55146ae88d1c64e",
+    "scripts/perception/seg/v2e_train_arms.sh": "f746224eaa91d560821cc614ba4d750cf191e38ea5e38fac9bb00ac9bd3e0d03",
+    "scripts/perception/seg/v2n_gate.sh": "e6c8989112262df000100c3f070a4b318fd0c2729759a3cc64d69d5c65e039d6",
+    "scripts/perception/seg/v2n_train.sh": "c039ea5f382a3882fbbccd326c14a20cb06f24ec041760eecb3b0794e2dac131",
+    "scripts/perception/seg/with_seg_server.sh": "16231b4d5ac03bdb0f8d3620c9172cd1f9adb3ab053d44b78dd1631fdbd504c7",
+    "scripts/perception/seq_render.sh": "88cb0ff89ff14980f022c4668e964f518f98bd18462ccc149297adc4a30e575f",
+    "scripts/perception/stereo_belt.py": "17aa7b04bc89304998e6dd686b92333f40ff3c10fca0eda6967601e36d52c75b",
+    "scripts/perception/stereo_coin.py": "b7d928eb5171b223b020d3eb0adf420259e7a2577ce4d31b1f14d242b9e02d7d",
+    "scripts/perception/stereo_coin_e2e.py": "578a605bca9e35dbcb56228442ad6342429e4ad6e02a6ee28d092a821a315bbf",
+    "scripts/perception/stereo_found.py": "d8886308e488176ff43b8d5405681287f39b9c7b07c7f5ac2ae4ddd26173eaba",
+    "scripts/perception/stereo_integ.py": "9213436283960de094092a398affcffe31d1bc767ee78f471e699464636e0cbe",
+    "scripts/perception/val_frames.py": "e3d1ab03efe442694e1b338c63c3c4a4e6db3d303f9a8c8d2f001e34ee477591",
+    "scripts/perception/val_imitate0.py": "4dc8ab9251b74c143130344df0332d9b482274a6f72f26ca8148ab6c9d235b89",
+    "scripts/perception/viz_frames.py": "703fbcbfaeb40387bcb1f3d51978c9994e07cf6104f9ee9c4cb3fea8d8f70659",
+    "scripts/perception/wrist/e1.py": "8c76a7bd3444fb5d410348fb9c74bdc620650fdbc65f9e08bb89fbcf424b420d",
+    "scripts/perception/wrist/e1_report.py": "971593e2f4a3e25cbd933e2b99209a0d70b928e445d276f86419083b0a3e8de9",
+    "scripts/perception/wrist/e2_oracle_m95.py": "f5b1071b484c1253a6c339699cefcd4ca0f5e17a8f9235689b9b4a7d8e5e87e8",
+    "scripts/perception/wrist/e2_release.py": "c502eb2201b2fc5c5599adc5cc796c61d1f065986238bd3b0f904fee54d74aca",
+    "scripts/perception/wrist/e2_report.py": "8794c6c501071f4815e6e1bb6487636507b3ff3854c9304f5856b93430946508",
+    "scripts/provision_box.sh": "9a835a31c6499bda15aed1bcf9b0a832e9d5489c791b646a008a869d75eac024",
+    "scripts/remote_run.sh": "14d71aa86ea2894683ec73a281547b4465103636a11b32c73d2b4cffa466595b",
+    "scripts/robodojo/chat_video.py": "73f362b6739258960c4d53afa742edb1dda48bfb5efd9542a9f5a32bf4c56e1c",
+    "scripts/robodojo/install.sh": "915ddf0846d3c0692e2cdc1fcf5f231ab8992859e62167aed017c5c6c22fda9f",
+    "scripts/robodojo/run.sh": "9ff19f9f23bdbc28b749558960fe03b55c40e1110872988d5d3c8ca5c2ae27b8",
+    "scripts/router_latency_stand.py": "b63bc73caa441a7164df607d5708fd1684a77c85284bf2405be904a1e4b2b4ce",
+    "scripts/simlab/coverage.sh": "ec353c03d2aa0d4696fa7b01b70f68034003ed394183f47131065debe39ca54d",
+    "scripts/simlab/d0_all.sh": "ab5930a0531cd3ccf01640797555f5aba1f8bcf5535d9e53b0a63be2791d73f1",
+    "scripts/simlab/d0_ext.sh": "aa62a9b03960132b5b22188d53e4c7b293b3791f17f62ae8c2cb923271534611",
+    "scripts/simlab/d0_proxy.sh": "72252385bb0069e34073a553a4e06ae1038561d73dda23bc32722d88ed70edc3",
+    "scripts/simlab/demo_all.sh": "dbcc375a74e65530fe35137a3b1780f47971de29216a914cc790d1150ba4c8bc",
+    "scripts/simlab/dev_eval.sh": "7458a52a66bf981778a6f0fb23b9056a24e160710f97eaa712f4b45b1457f57a",
+    "scripts/simlab/g2_all.sh": "33f1e8c90dbc55dc861ffa3310d060d3a5b9fa301ff19338cdd40ad58c05e8b8",
+    "scripts/simlab/ilia_stop.sh": "35a24eb2396d2e30a34fe8f2b2e432ebe69c02f1cad68154c5e60bad21e04a2d",
+    "scripts/simlab/install_min.sh": "771465a76d63e63aea6fd22dbed3dee11085731e4a78c13dbbeefe7344b574f8",
+    "scripts/simlab/isaac6.sh": "b1dd391e8fa13104a5ca2ef6143c938ff2e873c9574183afe8b16d2b0085688d",
+    "scripts/simlab/isr_gpu.sh": "055b9b077d858c97aad1596f5e0eacf219ae4293b13488f84df8795eb5c5c25f",
+    "scripts/simlab/looks_proxy.sh": "6264c4f020a59f7601367043a97bc4d8c3d035be756dc92be6b800b015d291b1",
+    "scripts/simlab/presettle_all.sh": "4e0442b922b1ca909b0c7ec25147b5c9e03c37530b55aae8fd51e65383885f4e",
+    "scripts/simlab/proxy_eval.sh": "9c314c4bdf528138ecb2aef786b0f102d410163eb7784c85ec58a8c0318a2729",
+    "scripts/simlab/rdpy.sh": "65afc1da16c59035979f97e9a51ced593f307ba88a80552f8e060c9d530ea4a2",
+    "scripts/simlab/rerender_isr.sh": "5a4d7ec22975728571b93222f5ea185c7f0b1d978295e24f77a25be422d1aaf2",
+    "scripts/simlab/rerender_isr2.sh": "5c77f767f6b62b2ec76cd61f8d5ebb7c2db0ace808dccc62528231070adbe450",
+    "scripts/simlab/settle_check.sh": "6478d76787f60789531ef5e876150e2876377aa029e83d70b957e0fbe5cfaad4",
+    "scripts/simlab/twin_bench.sh": "46399d359612b9e6f76e9a28f0271f64facdb9f7a878272b0941e684e0d61f71",
+    "scripts/simlab/twin_multi.sh": "f7087c8d104353cf606b9a0f9b29244c81d9b46d267a91d1af4cb9890ee84980",
+    "scripts/skills/articulation_links.py": "8cecfc0714c6ba95f3921e1b02662b8a473150cf9b55392348898b7871017af6",
+    "scripts/skills/articulation_roots.py": "69d59d1c5dffa28f4c6b14fb1ee1cfe9ddaf124035c221a01774729014dd6813",
+    "scripts/skills/byimg/generate.py": "b1bd563e553a079e805661fc5b18ba8f18a3ae830b8d9000cc2794e5b168b38c",
+    "scripts/skills/byimg/settle.py": "86dcf29c303e10b9432a19f1df94aabb76556391f94c2f67a8adf11c48f016b2",
+    "scripts/skills/byimg/settle_native_phase.py": "db4e8e771f070f91433fc9e73a913ce6863eca31eb6227967597790e6896dc1b",
+    "scripts/skills/deploy_skills10.sh": "2382a3183a737ed8e3138740d94aaf5ca580a9ac4148ff2b641db50a99bc64f4",
+    "scripts/skills/deploy_skills2.sh": "eb37a9de8344670ec25b4d341c3af742cc6e2dfe7b089fad7126a9ca74d17a51",
+    "scripts/skills/deploy_skills3.sh": "ea9e791d638e195de90f0fc4e19ab135f2ddb1ebdc6a26c3028d3ae672c446ba",
+    "scripts/skills/deploy_skills4.sh": "a1f5de0572e585da31c0f0b4e1eb54c57f6c96d82d24c9e372df991afd51e264",
+    "scripts/skills/deploy_skills5.sh": "9228b82e02f46a695f6d807ca962d429daf45909da0e1d3908c25b52011331e7",
+    "scripts/skills/deploy_skills6.sh": "043f8929a8ca451c162ea721f1395393596ac68316afb20c4f28d95c50c66046",
+    "scripts/skills/deploy_skills7.sh": "524536a659c62f49ddc0238b481c37cf33a72ad465c727ea6c2a6a2e0d423629",
+    "scripts/skills/deploy_skills8.sh": "39c0d70362f9a069d4ab25becd6416ff251d23cfed28ebbea18f805ac9a5c32a",
+    "scripts/skills/deploy_skills9.sh": "f95037de1834be9cb738ea84a60fdb23216e236bd1edaf73dba7a950ef6099ad",
+    "scripts/skills/dryrun.py": "0e86a6902671c22810beaa5ecc69b217751f4444b416d83cd6c091aac8e2024f",
+    "scripts/skills/egg_reach_bank.py": "07caccb553230efe83c77cb2eec427da09a30d625c6e45e27b768063a8b4bc6a",
+    "scripts/skills/egg_reach_eval.py": "8bcebc543ed6315788b0323b2296457ceabe70c6ad279250f2051670917cc3b4",
+    "scripts/skills/g3.sh": "053292c16a64234273e854b93dd139e13ef87cb3e6b2858418585bf1407f9fb2",
+    "scripts/skills/g3_chunks.sh": "028b34333c380bba739492c39cfaa4d2fe48ec1c8d7a0050b8c237ca87812674",
+    "scripts/skills/g3_light.sh": "1a681470e0d15564c0204a42267417a10101cb3e18ebf19354829d45d1a3fa8a",
+    "scripts/skills/h95_nest_probe.py": "ce9134649e389e64e748a8fba1f16170c65159e86a1c8e40d134c56afd83c516",
+    "scripts/skills/h95_pick_screen.py": "8455048beba5b97aa2a88b2f33ed02a2f385ffc9f362e87409aa36b1292a7daa",
+    "scripts/skills/hang_phase_report.py": "260b31b728af59d3ff6a0f0defabdf2736399c1968a943f1fbb03830965e9f96",
+    "scripts/skills/held_noise_table.py": "6f2d0d700c9f2d8e77270254bfbe7755183dd80bede2190cba6b28d341a17c68",
+    "scripts/skills/mesh_less.py": "544d391fc15d6de2f6e85d3cdb647ef0656dae7dc1d9e78806b3844f6b225f32",
+    "scripts/skills/phys_slots.py": "84834fd5d26b1cbac88d70a8270827febff4a4e2876fbb4ae345fc745b9614f3",
+    "scripts/skills/physics_com.py": "9e3d180ee2f07a3b918adcc0b45446c4a0cdf2ed38eb661a5b455b8692a69212",
+    "scripts/skills/pour_g3_job.sh": "6d28c0e857b25b33b7a923af859f74d2a999fd0f98e3b80a7be612cf3169b63e",
+    "scripts/skills/pour_g3_panel.sh": "1615366bf20032457c619498aad4c77a6899170f2faf9878de659dbb26d5fc6f",
+    "scripts/skills/pour_g3_report.py": "4fd51e7b08ce38bb2dce985691692d36055396d6ed77e12ba0d2c95b3d0e5489",
+    "scripts/skills/probe_fold.py": "406ea06863dfa06db93717540eb171076daba273d973390895417b8443313b76",
+    "scripts/skills/probe_fold_skill.py": "8626120658d8cf23ab8688b71020bd6020a879fd6124af46f47b8b0df448a4db",
+    "scripts/skills/route_guard.py": "a9c55a196259d53953e640b24b982e66d1ac2447277a77437283a12fdf058a76",
+    "scripts/skills/toy_release_audit.py": "134d7f37813b89f6fe59aed088efc3acbdfa9d5366d6ea67eb7c51f84b5e742e",
+    "scripts/so101_calibrate.py": "e664789c9d55741e6b08f86281f987cd8fd2e7209eb8012aa2af99b49260b340",
+    "scripts/so101_fit_offsets.py": "d4fc1b7b60b882a3604d011ca202aa3c1a3b9916e413cadd86ec93ee6de6e286",
+    "scripts/so101_fk_agent.py": "a794427248917f932dd8af21f884399c0cbdb225d2786c76508d61c25c1188cb",
+    "scripts/so101_fk_dataset.py": "7f95262336c42ee8962cadabb81600e0b7366501ab1825a78a3200c56487b4df",
+    "scripts/so101_jog.py": "afbcddc0dd479c35346ea813c2b6b3987a35d36bb8c7436b12f53568f996f188",
+    "scripts/so101_replay.py": "37b5f2cd31596e0172489ac772c6f185fb18166ca2c9297c0ea141eea9f360ff",
+    "scripts/so101_server.sh": "a4e592d9dff126cca15d5bd6282fdcc7ddfbf9ebf534e941f05ff03cf5cd60cb",
+    "scripts/so101_teleop_record.py": "d515f47a767c6654646c2355a973a75b7a718ca29545379cfe2beb6d171904e2",
+    "scripts/so101_touch_probe.py": "d2addef25b9261fadc49eff82fc23a2247dc65b5f121cb93172400d5ff2ad46c",
+    "scripts/so101_verdict.py": "7c0c3c7c6f3b9ada93cfc31937baf9a2b759c71efa64dc12976d8aea82d6a608",
+    "scripts/turn_video.py": "f1fb639766a5b215469808bfdd1d85fe66ed03f11898fc7a472d5a7fddfe4fed",
+    "tests/dojo/test_a1.py": "e8862189015e174827645d33602550175286959b1c7f97fb977ad404bfed5d7f",
+    "tests/dojo/test_agent_grounding.py": "004c200155f062748c7c83c8bc32c069c8898d056e38d39fbf72c136249e257f",
+    "tests/dojo/test_agent_loop.py": "3b872155b4e49903218597742e8187a418329c47359eecef2da1ee7ba4658550",
+    "tests/dojo/test_agent_manual_v6.py": "4c91385b4ab8e3af40b343b4508b7fe21a8f974040cc4acdf89cc23fa499d581",
+    "tests/dojo/test_agent_registry.py": "7a8915a95a94266372845c26e1aa0cf49cecdc213936cb19a2df0fedb1956b2c",
+    "tests/dojo/test_agent_registry_candidates.py": "f275ac52a2d6438b642c67943cf2ecc7a064212816f51e8a229fb89bfc2e8751",
+    "tests/dojo/test_agent_replay_probe.py": "79086368820549afad94fbe35e0ab352d64aa7872b6ddb08795682b75d76b9a1",
+    "tests/dojo/test_agentic_perceiver.py": "ca57446b470409091310e67f314d6569971752a0f106029315c05b9511dc19a6",
+    "tests/dojo/test_agentic_retry.py": "3c4e0bf289af753c2246b09e9af401510e1b9c99ee4c99c9589eec2ea42d334a",
+    "tests/dojo/test_align.py": "21a01a35b338fadfe9fead126549e894eb713d0d3126cd7739bb7232cc80b917",
+    "tests/dojo/test_arrange_order.py": "57db5ee5b17e4a9618c82da20dba40dbb7e6358e05ba46ed900f029a8f007eb7",
+    "tests/dojo/test_asset_meshes.py": "567c1e990493b65e2acfdee647698ccc9e593810a40e18849062c909169ae589",
+    "tests/dojo/test_audit_identity.py": "d29a41cc75b555ee4d5be0804e261a13f96465a8a3d543512eda40cb57274c95",
+    "tests/dojo/test_audit_supplementary.py": "3d548ee31d3d03b30056232bd3d3749c6f14e99e9725308f0d5b03c08250e34a",
+    "tests/dojo/test_b1_onbase_identity_flags.py": "d11c8b303dbd32e79dc8d404e3091505da4948ec0afc546d6b4bd9ef85436c6a",
+    "tests/dojo/test_band_grasp.py": "ce1957488836d437f2746c3c39ecc57db5d4f275b7d216165d866d4f5db08b6e",
+    "tests/dojo/test_basket_first.py": "ba78fb4bafc1a1ce3eb7d757fff67e4f13f86daf8dc8bd6436bfa117316a3c7a",
+    "tests/dojo/test_basket_hook.py": "999af6b7e28018ce53df0a198c7818276ad89de9fceae63a279187ff484db293",
+    "tests/dojo/test_belief_fixtures.py": "33b5ecf9e6ef97fefb64f880cf239a82486efc2953c114983b9705b6bc803ad8",
+    "tests/dojo/test_belt_deposit.py": "354b6a5a686793506e103d5fd6b7f95652c8221362ae39c51dd0e53a4fb58c30",
+    "tests/dojo/test_belt_replay.py": "6ab3108ffb7767022a09063ba3396405283116907e50d05ccd4703fc048bb8d0",
+    "tests/dojo/test_belt_waist_first.py": "3585ccbb2f9c861aa5d48b920ec93058467b9e9e51edb8581027d2182302b7dd",
+    "tests/dojo/test_belt_wrist_veto.py": "83708e062784ebf3e315acd18ea96ef425a7001f4609b1fcf6f1ce97a476be7e",
+    "tests/dojo/test_bgperc.py": "3915ad64fb0c5cd8c4ae9bebaa96bbf969ccb31336d03c434c70c8b521ddfb0e",
+    "tests/dojo/test_bridge.py": "ce96725b2cda528f917c90cc8233a9aae6cde1c14d716ce5a9d2f0b80f411130",
+    "tests/dojo/test_bridge_isr.py": "873743875847a6fa3812150d77b243a877572ba4bab8024d8bdcf0e20a685e88",
+    "tests/dojo/test_bridge_ramp.py": "2adda5b9be1f96419e542aebbb191fb52ad2258f3f4223958fa779315df7f6a9",
+    "tests/dojo/test_bridge_rh.py": "eef21bd8b1e1c5c87976ccf99d191df3582afbd3ca313aa00ca85097b467e384",
+    "tests/dojo/test_byimg_phase.py": "cc3e2d2016b97ae3703e20cc8c74935e2d16c9dc377faac0bb1a9e762aa450b0",
+    "tests/dojo/test_calib_catalog_from_set.py": "056d47cdb1e67b0fbb7e009f76a2332fcf458956f02816e6ce7262fddb2f9241",
+    "tests/dojo/test_classify_p1.py": "dd327d17054bb2a961efdd4ebb5d41b2be9db12f808cd1a388c54136e8774643",
+    "tests/dojo/test_consume_events.py": "04d135f322271c3890a2b34161d586d24238b3c805e3524ff7457af34481cef3",
+    "tests/dojo/test_curobo_world.py": "b0acd136213031a008e237a60993b99dca8f827710c65309ad0fe087cd4d732d",
+    "tests/dojo/test_disc_handover_read.py": "2c4de95243f846b1f9875baf0ec89f9089043124a0be041933b58166eb64e327",
+    "tests/dojo/test_disk_guard.py": "ea4d9815df997a4087b31aa0bed22a64312b6cfc422bab8b88fefa9e8af59aca",
+    "tests/dojo/test_divergence_make_skills.py": "5ea37757e3b35c6174bb8f0ec35a304aefcdd2f2f4a4add2fa2c76d11cd866be",
+    "tests/dojo/test_drop_verdict.py": "55ef5eb414a457bfe8983b5fca84f63bfa5b58853057f803ae6173def3e2ba52",
+    "tests/dojo/test_durable_board.py": "79a4fa35f69cb4b3994276fb24bbd96d70f8dbcdd3b01ccabe21faaf2a63d56b",
+    "tests/dojo/test_edge_yaw.py": "b7ffcf2be2fc4b644ddd8f6a6ddd1993b741f16b3b669015a1250ff2e2424570",
+    "tests/dojo/test_egg_grasp_height.py": "5d8e4a5e0e13b27907a8ece2c33021aadbff3a6e9898072b4f7a168796dcaabc",
+    "tests/dojo/test_egg_reach.py": "91edaad77d8e4068ab3011782031faf941f34fc532b54998dbc483362bb230ad",
+    "tests/dojo/test_env_seed_demo_key.py": "8e274b8e3093ad76c63c18c349c637cf55e3558acfaaa20469c6119ae17afce2",
+    "tests/dojo/test_fill_guard.py": "bb72a758a7ab2326d8674eeb3f1942fa52a429d6f2a563d982d39b6efea3e028",
+    "tests/dojo/test_fill_joint_limits.py": "5a77c50ef618204c2240109a5d252c0564714b90ab0abf9466379c5e9221c995",
+    "tests/dojo/test_fill_move_lift.py": "d3d66a23e94392d8b36c9451121e3870500c760e02804ef8b31ca3ffd70df492",
+    "tests/dojo/test_fill_vertical.py": "e4a256a39b5a36a28b6a8e65d658940375a251d21c3bfc241ab151f3f05e21d8",
+    "tests/dojo/test_fold.py": "ea84c34dbecf3c365346e6e4e8b172fd8c748c9c4ccc4a65662dcbd313d1ea02",
+    "tests/dojo/test_g5_review.py": "fffb740678fa09ad1e124c51888996f29aa834a452784dfcdd20de3ce6fd0996",
+    "tests/dojo/test_g5_runtime.py": "a4b6acfa8c8cda1603568edefe5789552e9a8eac2c24e1afa1c049aaccc84791",
+    "tests/dojo/test_garment_read.py": "dfcaa3ad64e8ec3463f52b871793eb2fd168ddb6bbcc5c9cb58c7c70e1a13a79",
+    "tests/dojo/test_gen_seed_salt.py": "0d8a9c9359a9492a81625874345be13527a85df150c90d2799b18781ddf42a08",
+    "tests/dojo/test_glyph_numeral_key.py": "d5429760b6453c9d9c141a6dcf5ea6dc4d19da430fc4c52cd16ff6c8dfd4b402",
+    "tests/dojo/test_glyph_read.py": "0021b972f9a78b48a082054e781a337595137b57e4242d5334765d98990e995d",
+    "tests/dojo/test_glyph_routing.py": "fe0aeaf0c5fe7fa44060a96d6cda2563a982f7643730d1fb8f61290c353712a3",
+    "tests/dojo/test_glyph_upright.py": "93ea26633884db10e025469a3011fcdbc2b29a1b5dc9c122c685a499f1f0ce85",
+    "tests/dojo/test_grasp_metric.py": "398cae92477e9ba1c962dca90117589c42ab94a9f1a8219ff41ad5fccc55d511",
+    "tests/dojo/test_grip_check.py": "272861b863ea1adf649c656de24945089e005e14a3b87b5a7355a53c8d0b1274",
+    "tests/dojo/test_grip_source.py": "1f1126547363f6c4343239be2f0c4732f028114d8dfd18790111cf5af6d9a09d",
+    "tests/dojo/test_hang_cradle.py": "4f05d08761b5ff18cfb0df5d24ad84d0b80547fa94e744e54e89dd8f44bf1aad",
+    "tests/dojo/test_hang_half_turn.py": "5fa1c00eaff9766b30441c7059e9cb7cf61ded383d6f9fa1d00a2c718020172b",
+    "tests/dojo/test_hang_handle_grasp.py": "af7eabe830df95361f3c0b7d47f8ce5316d2f7328205c163825aabdc3d83cdf9",
+    "tests/dojo/test_hang_phase_report.py": "79a43f7729e7edbc402b812eeb1f63708c3614f50e2b37867164df64d9caabb7",
+    "tests/dojo/test_headset_carry.py": "d9f1b7231b9a3f95175f65187368d0c7f53356c133152514c1c45c3b742dcb34",
+    "tests/dojo/test_headset_hold.py": "d7fd072004d3d73f5fd90c07cd0a902460dc58a6661c5f4b1cf6c90967acb3a7",
+    "tests/dojo/test_headset_stage.py": "7cd0df77b688ad91737dbc37b7d99be05c567e67c793a31446b868c206f2cbdd",
+    "tests/dojo/test_held_audit_logging.py": "8a1d6690b509d53ac479ff7638c3d3dbe7f38152c0958eaa0b2630659a756b38",
+    "tests/dojo/test_held_pose.py": "be3171174572877c2fd09342a87a012f18884822f81b4af55f7649f4f41bc371",
+    "tests/dojo/test_held_table.py": "7db36150181403924522c49e8915f97ebc3bfa9b233cbb9f7ab184fe4e3672d5",
+    "tests/dojo/test_held_thin.py": "83225595e9c336872e4d9b1347ddb4d86cad6c46efe297dc1cc2738c0a2076a9",
+    "tests/dojo/test_imit_infra_census.py": "d39298ddac69dac048bd540e5a03924c3100254ac3123f8aa3d6cfcc2153bea4",
+    "tests/dojo/test_imitate_pairing.py": "2a0b158148753eb9c8ec481d3cb0fc1ad1b4aef6ee6034ee739b102009ba72d9",
+    "tests/dojo/test_imitate_twins.py": "6863099eb3b687b7be8bfd2699ac7411222dcfa1a0f6748794af29d422f086c4",
+    "tests/dojo/test_imitate_wait_home.py": "cf2b84863a5174662ba7c7ebd5fd94a44145fe83d021a9fd36478e18c81fddf7",
+    "tests/dojo/test_integ_tools.py": "878a6157277fcc583e4dc8666c01e2ff3dfe8466e627cdd1a65bb24eeca25f9b",
+    "tests/dojo/test_j1_adapter_route.py": "b52902fc52bc059aa5803e0758d6b437f8ee9b60f4f7e71287d834cccba1b4c2",
+    "tests/dojo/test_joint_limits.py": "3c95172cf1fab918f71cd79b85131d2e32c33ea3c664304f8bf40793994805f5",
+    "tests/dojo/test_kitlog.py": "31f3b82addf1f3ae58739e9ca743feb5d61719a84a9a37b7e8ffbaf5c062c996",
+    "tests/dojo/test_kong_reads.py": "b8841df6328ad31362da82bfbc833dd2fd1d7dd29f234142024f10f4bb3ef510",
+    "tests/dojo/test_laid_pose.py": "5fe4e3ab1c4f1767ea1d84fe995c79f8cda4d87d1e339bdb0c4ef408693b609d",
+    "tests/dojo/test_lane_profile.py": "013484dc283caefa91fb92b16e0e1885023b1cac1fb3da0e5323f7253f07699b",
+    "tests/dojo/test_legal_for_ilia_budget.py": "47c0c508b8d1c1aca18a5b710686a148ae1f791a4867b2ab9316e7b2587c252c",
+    "tests/dojo/test_legal_for_ilia_unknowns.py": "8717daa0a8f09d4fcc374e3f784e1fa7e1e914003f21e18630d3798a96546e97",
+    "tests/dojo/test_legality_calib.py": "eed2c8ea6b9df37bb9054d03266d73c038b7e7bd92d4ff142307dbe569c5bdb7",
+    "tests/dojo/test_legality_card_digit.py": "72aea55178d078dfc0731c4597fb25e8cf3079b80b8b3cd1f046e5e1db8d8b9c",
+    "tests/dojo/test_legality_color_map.py": "55b102690a5e1aa0110e5e70248364376b4442d293e69c33db2f47f0c7e1af03",
+    "tests/dojo/test_legality_kong.py": "3aed9039c5ee8fffe9b0975fef8537bd2a87abe5792f9906642a5254a867b923",
+    "tests/dojo/test_legality_quota.py": "789298829abdac3d47bbacd2d1bed9f861922191fd1290a37b023c87bbde24ed",
+    "tests/dojo/test_legality_select_ties.py": "17c0267add7271d6bdfb7338f48b7121e75e4bba4e12cbce4572d59fa1c5b801",
+    "tests/dojo/test_legality_template.py": "bf2ec1fac6975616dc58050adf2c9ccd1dda6f543b9cbedd89e0628b990d8342",
+    "tests/dojo/test_legality_twin.py": "0695dcbd355d727d16644f2f4e64eaefb6174b8d9e8726efe462741f9de235d0",
+    "tests/dojo/test_legality_watch.py": "f60c11e9ff0c5123dae3244a20b21d8a63f91fb0b755a2723e250968d26fda5c",
+    "tests/dojo/test_longh_containers.py": "f31d5e3012b3a31a19254ee3619bcb9970f575f4de15eaf6dfe186a513f10022",
+    "tests/dojo/test_longh_ttt.py": "4b0435668e19f22c8526f55f166238badd70d7286a69d4c2b4759e484563e067",
+    "tests/dojo/test_m95_score.py": "22e614c42d5dbd3409f61569bc7d3247c146a8080bec387eeadc1fecf75564e5",
+    "tests/dojo/test_nest_height.py": "dd359f9b5d3c2cd263294402a029fa6532998faf6052c936fbf9cdf4a8b1bf37",
+    "tests/dojo/test_nest_verify.py": "ba23181ad90370d26aebd2b4f37cbe53ef12f16883a2aced6cccbdbeef105ab9",
+    "tests/dojo/test_numeral_digits.py": "b3a6382c16f93a437dad3b9a4001de3313071f5b36c22f94d302f57f0def56ad",
+    "tests/dojo/test_official.py": "0b371108096b70e0b2a839a4c30d3634eca3781aa75940b422ac58cfb38fa337",
+    "tests/dojo/test_pack.py": "cfd4cb2136c43826f77387784c22657a122087c46b61bf9109c8c8d94dbba85f",
+    "tests/dojo/test_pad_row_extend.py": "2cdd40e61c64a00975799839f232f3d9a1c8fd563ae51d58139bb57cacb8b65f",
+    "tests/dojo/test_parity_packages.py": "5adbd0d35e1000c4efa0ce20842b9505be58c035a35c377cbf902c127bf354fb",
+    "tests/dojo/test_peg_base_refine.py": "75a25ba04359aea04af60e3ed1b664ae36021d0ff7fcd5fb47baa6169bb06683",
+    "tests/dojo/test_peg_held_read.py": "7b4609fb5739b953b65d5a4b00e307580105b6e80467527b367cd61782b4f555",
+    "tests/dojo/test_peg_stuck_confirm.py": "571dce647ccf7810d399c074c66daf0669f6e0d352897c664be4f0357e2d673f",
+    "tests/dojo/test_perception_catalog.py": "54b233a5b58b6c853dcbcc698c51a59e62093c507382c6fcbb82803bd2a9e494",
+    "tests/dojo/test_perception_doubt.py": "191171fba8b0b5f06b811ff99bf10771206912961c2e83d878634378ce956666",
+    "tests/dojo/test_perception_embed_id.py": "bc8f5853669c4e38cebbb3882b827ae642cb5ebcfaf1073526adee41cd861304",
+    "tests/dojo/test_perception_geometry.py": "ee31d553afdf94d75938b7e3fdc8042566a0770e807f8c2445d263af73ba441b",
+    "tests/dojo/test_perception_held_refine.py": "223bac209becffa36432b24abfbd4af0a03acb77165ccecea4ccca85f4e5caaf",
+    "tests/dojo/test_perception_mv3d.py": "78f940bb73d4bffe83eaf4cf6aea91b634352288fb3e04ed5243756e9a48aae6",
+    "tests/dojo/test_perception_refine_radius.py": "3e1722bdad220c97649d3130eba73575bc42768a2730e0bc224163c4ceb0b160",
+    "tests/dojo/test_perception_sam.py": "e824ce430e67eb66489c1961bc4f8292694e4de7a9345ee8370786f41feb9b0f",
+    "tests/dojo/test_perception_stereo.py": "17645b176279c0bfee915bfc7a86cc9be519f9ef43c70544db2694e98b8f4bf3",
+    "tests/dojo/test_perception_tracker.py": "d3db06eabc4d02e3ff86b58c048be96d9c1e3841a1220235936b9a302724cca8",
+    "tests/dojo/test_place_fallback.py": "5c30399cae3d615870a53432dd8231e793a7831a9ef7a106369076625f390274",
+    "tests/dojo/test_place_surface_push_order.py": "2ff6a08482bece1be3cde717b4a2a833526c093c4bcc8f3fd987ee27abb118d1",
+    "tests/dojo/test_plan_geometry.py": "9cffe62ea901386be4a06cb4b9c2fa161e1548b7dc8754da40fced1188b32d39",
+    "tests/dojo/test_plan_repair.py": "458d665d0cdd62930619e9716a064cbd81961d448d196aa26f90c3f564fa11f0",
+    "tests/dojo/test_plan_seeds.py": "7c0b508a2741eb23320479004289fcb36d7119ee2f672e3380500b40b12f342c",
+    "tests/dojo/test_port_adapter.py": "9b210499f11a1e90d5f41e219f9f253ce18603d9e69c50a54b535e0b2471e8ef",
+    "tests/dojo/test_pour_aim.py": "05126a6f7f61906248d094ada1c2cdebacf741e95e12a86f459fb4b3e229c1c1",
+    "tests/dojo/test_pour_order.py": "e0f04c911d2b6b01c51112ec4b4442b1eb9fae5b65623ba2b5b350b6aa48df3b",
+    "tests/dojo/test_pour_overlap.py": "51be13335647bead0289f1e8fc1d3c987e347b7506edd1bf15f39f5745e69cff",
+    "tests/dojo/test_pour_pace.py": "2b2a8726340c1a71f028807fa87be225a316952dfd3bb10285078f878a14b228",
+    "tests/dojo/test_pour_profile.py": "71ace3b54dda63bd43630fc8eea999e5fb00d75a52678944ec1408c245d120e3",
+    "tests/dojo/test_pour_report.py": "27a1080004222de2f475b3a1239bdd77bda3b5dd47cec6f52797b7ae0819577f",
+    "tests/dojo/test_pour_untilt.py": "8b6a7f77c3928bb410da08361a376623d5f499a6423bfbd6deeb7cf05d1c3e91",
+    "tests/dojo/test_power_watch.py": "6c3a1fda61b5592e424d75fbf201b15217300df3637e973da76368cbb69b8a72",
+    "tests/dojo/test_precision.py": "ebd26569809bed452f1770be4f64d2c15a57ce4c306de1f83f7f32ac5370f1dd",
+    "tests/dojo/test_precision_coin.py": "dcab1dc12bdaa0067cad04353986568268ddf8f1cda6d510b8e398001b28af1a",
+    "tests/dojo/test_precision_screws.py": "74cc37c1ef107aba212e0abd486327752a971291a0a644f8eedf5c2009540df2",
+    "tests/dojo/test_precision_show.py": "e9fb1e757ab4448c5ed45c9f2f483f222f74f75617c7d51f41a01f00168a88e5",
+    "tests/dojo/test_press_repeat.py": "98a0b94fbba7d8a9112b5e7a1d8e1e4d3771f895c29eb31a0f81ddafdf072e99",
+    "tests/dojo/test_push_approach.py": "c12c829bbfe0f8285f3839917bdfdd9e840d3908f5252706814175251d53bc07",
+    "tests/dojo/test_push_goal.py": "c3f1ff6d23d8b2a3025a26bb3bb9f4aadb25e4458516d340215ef24c0784f8b7",
+    "tests/dojo/test_put_into_opts.py": "b304303c4d14746d793aa0659c4bf077dd0c91683f7c28b3eae270059eb3b4f4",
+    "tests/dojo/test_put_unblock.py": "d7d3f7e6942e2044c7d457c6a413a06f2cb3df4d3ac98ca5f2539708901e5e26",
+    "tests/dojo/test_read_persist.py": "1bc5066081bbb12c2a4e028e6846810b57aab2173784677c37fe57ea91592c9a",
+    "tests/dojo/test_recentre_guard.py": "a9d7138ac00e805d0d4d7fd7614ae219e486b9dd5aede64cba782ec43c61b362",
+    "tests/dojo/test_regrasp.py": "47dc1a13fe2b6cdb21cbcb933d5179d0de81b5513398ae16787a2dcfad5e7222",
+    "tests/dojo/test_rehover_siblings.py": "2f0928c69f454bc265ab0841b55e7ebc6fc7991a9acf6c32453ce54533d7fbd6",
+    "tests/dojo/test_release_read.py": "adf10431acd0e193b01a612ac2c85a3329c04e94af3d40c0710d034ccb137142",
+    "tests/dojo/test_route_request_replay.py": "1848581fa1d1421e844e95c4ff684931ebdacd858b6c5523bd5ab9876967f3e6",
+    "tests/dojo/test_rows.py": "80f3695ed64eb26c45e07a2430e387a2aaabe0a46c4f28337dfbc9a39bbf28d9",
+    "tests/dojo/test_runtime.py": "33110551932072925d12d45430cec74767086f9335ff1c00b17755acc12aae66",
+    "tests/dojo/test_scoreboard_board.py": "f402834d24f30aae887501e54638d7a3d4fb5c25d0d3970861c40b26325bc8f2",
+    "tests/dojo/test_sealed_block.py": "135c25bc21361ebbfba00ce65a89763afd1141cf9e1415eb4ebaa9fc79f3b3a2",
+    "tests/dojo/test_sec_env.py": "6016089e5d28591cc1137be79d7e695283882488824e260f1f5d07ec532b27c2",
+    "tests/dojo/test_seg_additive.py": "f9a966a6e6a2763d461675f1ad8e76c8e0a8f0c98cb0998dd4815ad8530365e9",
+    "tests/dojo/test_seg_dev_gate.py": "fc402005869778415eb3a8982c2acc62322384ab11b6e30b7adb70361460404d",
+    "tests/dojo/test_seg_rehearsal.py": "e6c67df894e3a8a508f333d5187877a5a362650c1fe29d5c111acd5e11bff74d",
+    "tests/dojo/test_seg_twin.py": "7d26a729ae5ee9c1db672fd1834b478e1be926419b425a5e40d3abf7ea356aa7",
+    "tests/dojo/test_series_labels.py": "cc71b42688e1e04a9e56a7bedb899728ba16439b8c821f3a5cf2466472e1b2aa",
+    "tests/dojo/test_side_server_loud.py": "5ee097340cd387d95ea3fe61862c31323bcea08d84be1875a012ebbc8052e867",
+    "tests/dojo/test_simlab_demo.py": "76dbc650357b61d927c1487cce21340baf17dc64ef5d0cbe10a96d06557140c1",
+    "tests/dojo/test_simlab_firewall.py": "a350ba0d02f9edfe23cb51c1ca94049898bfa4378938e5eef91a6e5c833e06e0",
+    "tests/dojo/test_simlab_g2.py": "aa47ec9d8ed986dcedb603666c6c91cc4bd2d8eaf139196bcebf7d4670e1a7a7",
+    "tests/dojo/test_simlab_garment_usd.py": "c9ea676ce0efa1d534f59fe8e1bc60b67e83eb7c1af78c15c10bd1037af5c44a",
+    "tests/dojo/test_simlab_layout.py": "b1605eb463d7b82e920e9d3c758fcafa3259facf1983cbd4d38e99437357cf25",
+    "tests/dojo/test_simlab_looks.py": "296c0d49b10f4f8ceeb55dd56589b80567f565056ef40ce155c1495840dcbdb9",
+    "tests/dojo/test_simlab_presettle.py": "eca6177be1d63b5b7f2065ce1b1909fcc5146092a76280934ba49e7fece2cfff",
+    "tests/dojo/test_simlab_render.py": "0084602afb8fe42b399a1b3dede2b0e4c769223a4789150c5fa112a97be3c227",
+    "tests/dojo/test_simlab_rerender.py": "fb1378a1c1b1812dcd42f16783c2f3ea53c0c9bce1eab9c943ae8b35b3727bf5",
+    "tests/dojo/test_simlab_twin.py": "e474510d62b92514d01b3a942e1818353de19be3c0b092b4407a9e0dcdf4ae54",
+    "tests/dojo/test_skills.py": "a6d1695036852a8a51066330b7ed25fa3be8f88dddb9ce80457bcee2436f8c46",
+    "tests/dojo/test_skills10.py": "935897233a737ca6f4dc7fecfeb441931bb5a0bad3a967078c3a319a5035e7d5",
+    "tests/dojo/test_skills2.py": "ac2970393d1eb2b887e2a99b040e565184136719f96d556b9151096dcf14ad1a",
+    "tests/dojo/test_skills3.py": "70035a09c81b27eb936eb9878ba973b28b9bd7594c63c3f5acfa0f961832641f",
+    "tests/dojo/test_skills4.py": "a5de5aec5b70318e302cd8b669f63536c5740aebbc4adb5cfc67b951ace17c91",
+    "tests/dojo/test_skills5.py": "141835786fb1aedcc9d392122459f5c9a73617f3849bdac59cb39d19f8ddb400",
+    "tests/dojo/test_skills6.py": "102b6a0ae0570160fd22b6d1a00e53f6aa88c0f7944ebe56d5046a3de4fd9e04",
+    "tests/dojo/test_skills7.py": "50d04497a049ffd81147fda2f32f9616c49ff55668c42e020ceffda5885666ff",
+    "tests/dojo/test_skills8.py": "2cc4c4acf0b14dec63db180939201f9e7766edbac87444846995753eb7bb56a9",
+    "tests/dojo/test_skills9.py": "c455d9ed6ce0af0e2e706a6d16dc64f1dda4736f86397fa78eb9413e7fad4118",
+    "tests/dojo/test_skills_artroot.py": "6977a152b107ef529933f78060955791957e0ce435d63aca2bd82b208adcc7ca",
+    "tests/dojo/test_slip_shift.py": "c759e3009be2bf7251339a1bfa35a17eea3cf52cbbab7650248f6df149b8c047",
+    "tests/dojo/test_slot_approach.py": "8b422f9cedb54bcfc29fcfee4846d2443be75f1bd6a053130c4d053cf4804b49",
+    "tests/dojo/test_slot_carry.py": "e015aa845107e82790d10eb86284281b892afff19b5de6b818553040f6a508f2",
+    "tests/dojo/test_slot_prior_source.py": "c96285b52c8fb08185ee36a690ff06219712273c8fc81ea68c2f5f3580f90467",
+    "tests/dojo/test_slot_read.py": "9cd317f4ca13a575bb237a0a363ca196894396cf65b227d28189c9a5df5143f6",
+    "tests/dojo/test_slot_settle_merged.py": "f98c1209a5a9cf9d930d486b443886667c5557cc192e8f9e50fc055a67091787",
+    "tests/dojo/test_stack_reach.py": "75578b9c04333b46976f071df104eab41cb01ba87d3dd77cf316e0886252d4cd",
+    "tests/dojo/test_store_laptop.py": "343d1e4d1a1ffdcbb5d05efbf2a03138018bd53d837d851b8056f68de860e317",
+    "tests/dojo/test_support_mask.py": "7443be9ac79c16ee603cca8d7602367132df2e7a7bb6289fd09efb8fd7354b6e",
+    "tests/dojo/test_sweep.py": "96026fdfd3ef7dd7dd23b4837846ed173977775cc6019d86d3f91193a902ddd3",
+    "tests/dojo/test_thin_slot_keep.py": "9a0d4b3cae34f949fde92c09d0b34b1f65f4d432f6910ac7049fe9c75869dcc1",
+    "tests/dojo/test_tie_handover.py": "a732dab3e41f5db808ab3235968433ce867696c9d158bacc20992c8bc39303f8",
+    "tests/dojo/test_tiles.py": "333e415382a60fbfa7bb9a6a9f9f4355f6a7a7d82bc045acb0fb8d073c701a46",
+    "tests/dojo/test_tools_eggs.py": "9c71e36891efbc4dd5ab507d3dffb7d963f37c393ce072dffd5c3bbfba19c84e",
+    "tests/dojo/test_tools_hang.py": "9223918cdc43ff63be55b4c027549c817dad90a92714f8ac61b6915f773e25ef",
+    "tests/dojo/test_top_feature.py": "daf79c3483eab47994ab0503ead430fc73057359254aab04e77dfe6a253cd72e",
+    "tests/dojo/test_track_expire.py": "8b6797b4e5a975475cc1768e9cc849412f2f7b9cea1d1eeb61f21c5b724a13a8",
+    "tests/dojo/test_twin_crossbox.py": "db05c306fb2b231488e3c831ebdee27bfb981015922482a5d4d74818ce1abe5c",
+    "tests/dojo/test_twin_union_pool.py": "6fc25ad7ccc1978ac6a7fd1bccf4f366328dab59394acc612095ce3b59656742",
+    "tests/dojo/test_twin_union_weak.py": "6cf17b8d8adfb1d3c24f37442281afab9bc60e2bec0d60d917c72dc522171d50",
+    "tests/dojo/test_vocab_routing_pour.py": "e8b57eb3ecf2f2380aed5245f194e1e19850f943d0732337bb905b60956d2bef",
+    "tests/dojo/test_watch_cells.py": "821584709b1e372405ca749257e95066e8d84275f0d284d783ea403bc407991c",
+    "tests/dojo/test_wave_status.py": "afdc9ce28a88a29b640e36f92c4388130417e71f286d5c1d4bc9184e707f41de",
+    "tests/dojo/test_world_plan.py": "4ed2fee2738161348946f0f88a8d69adc4de9192daa161bcb52f2d52502da5ad",
+    "tests/dojo/test_wrist_check.py": "505d377dd82947287a7646c914420c8ad9fce860277ab7a21416ecd0c7e55021",
+    "tests/dojo/test_wrist_identity.py": "bebd44084fb7a510fa183c49a50e118bb8e0f6e841220c66fc7d2d16111c15c6",
+    "tests/dojo/tests_a1_env.py": "d087bf8261b632256d69c3c3fe0dcad43308d8992e9a578f2ea5433b06414937",
+    "tests/fixtures/belt_reads_51.json": "94f0adba71a29739b04f9e00b972cbe7d390c5bc63bbd0e15e292374ac2d35ad",
+    "tests/fixtures/catalog_task_label_categories.json": "c5533c6133d306b8396fdfd6a1cf9bea90b9876c62fcf84b982a6a744847c6df",
+    "tests/fixtures/instruction_paraphrases.json": "9b88bcc2c5945691ff76e52327afad22c8bab4494207508c9b524305244ce747",
+    "tests/fixtures/robodojo_instructions.json": "48ebb838ddb212a54d455e4623fb8487ec430b3e09806f77df5d1d895d6828a0",
+    "tests/fixtures/robot_harness_registry_2efef1d55294.yaml": "3f66d2ba5318df45abd56202d2e2a9cb38af703538c3f9a55a3e8dec7539501c",
+    "tests/fixtures/robot_harness_registry_excerpt_9b424334ac66.yaml": "a2b3241c53a2e17e09b92ca37ddecb04efdbe8cf7759e2391a4ad0ac74fb4b2e",
+    "tests/test_bootstrap_fleet.py": "f36e4158327457607d41492bd13d28780bcf41f10f4984a7aa68bcadef4de97f",
+    "tests/test_bootstrap_gpu_box.py": "3007b73bb9e4a814738d7c67a9833c1c3b90ac683da300e6e71aa2ebd688e957",
+    "tests/test_cli.py": "82055a555cc60197ac00b8f63e8ff654cb341b7b12d316136fb31b7b84adafb8",
+    "tests/test_codex_auth.py": "71c18455a18aa0e1cd56c5e635e791ac5db89368bf38996225db942d9dcafc90",
+    "tests/test_feedback.py": "eeb78fcf627f955b2709780fd114a37510b1c8fc69bf0a5f60f002e6cb7cdf2b",
+    "tests/test_fkagent.py": "5c97d61c46405a4521667212e203ab7821e0da56b001e210b833847f9fe13ea0",
+    "tests/test_grammar.py": "276d87584c6524543987ebd7f7050d2a209020112490e526ffe716491689f46d",
+    "tests/test_isaac_cameras.py": "07ab730415e01f3ef440af12778a0fc7a9ca53998751f1e80d6fde5181abb6c6",
+    "tests/test_isaac_client.py": "85463407d3e2981fb3dac4349112d6fc718bdcbed467ca673dc872aff4ec6150",
+    "tests/test_isaac_contacts.py": "b14c523859ea8fdf7559565830fdfb404cb7d10600a7dd0a9f0152dec92e7f23",
+    "tests/test_isaac_sim.py": "682a642c7146e1b13a4a358768668f00f456d3ab98a456f6eaa1b7af80c719f9",
+    "tests/test_isaac_tasks.py": "ca6bbb47b2eb8f27d7b48389cbf4d37fd4852d3918b5700b42d1b7183f55d4d4",
+    "tests/test_kinematics.py": "8ce8429b52734c63ed382ebe620a31e1c2301536c2b08a4466cb1964776335dd",
+    "tests/test_llm_caching.py": "5a91b2e353e42ec09bcba1669fa9d3b3e49e82962ad808f515f69d6f62a75afa",
+    "tests/test_llm_client.py": "4798d3539c4e9a9eed50646d658bac0b6d3873197e32d4deb5b79336127dfb83",
+    "tests/test_llm_decisions.py": "ba5c612e8fc8f57b39fe89db40167f48bfb7880f8cfd96227b090524ece45576",
+    "tests/test_llm_decisions_live.py": "7f3226c092b7116e07bc31297025783cef6f0edcedf2aa9a65d7cee642c3d48a",
+    "tests/test_llm_fake.py": "2e08e10ade3aebfb8b098f9ebe4163bb1ab1c8a3693b86ecbcedeea2dab8b6ab",
+    "tests/test_llm_live.py": "e936d5cbc5e1a8f10b9d1df5f0e5ca2811301d25793a36e4de6fc32d06e1e8b4",
+    "tests/test_llm_transcript.py": "3ca1b12bc6c60b615365ecc9af84c2196867ad6da5caecddbee87dfb25f72e52",
+    "tests/test_loop.py": "03355befd5a2a80633cf5696740c7d52ee5e60a17fd9a838d6893b277fd9deab",
+    "tests/test_mock_robot.py": "a7c073fa8b6cdc53befb2174e3e95a006bfcb00c23d6a92880a895af44454ccc",
+    "tests/test_obstacles.py": "962ea213b6534e6a7e335ab1a680663dff269ebe12aa87314e516c7875fcb6f3",
+    "tests/test_prompts.py": "ef74571131b70217c09c27efa13d388b44800fb25b76123a2f1b4e954324144c",
+    "tests/test_renderers.py": "5564908e298c838832f263c35807daed832397c5dc8d6a753f7fe31230eecd60",
+    "tests/test_replay.py": "0be258e328226e487335938f7b25cabbbc117de2caec465166907553b29809a7",
+    "tests/test_robodojo.py": "369a0c15e1c5f201f80d9bc9801441d0a98e6fee61e0fd17c74263d7f4352584",
+    "tests/test_runlog.py": "31ae414c695470157699d886af6422f21b5341d589aa86228a3977f7390f6789",
+    "tests/test_safety.py": "f79b54ca613206e6ef081fb2f57f40aa1c94405e26cfb76362c8ea4ebd283c30",
+    "tests/test_sec_redaction.py": "a4450fa80c0b212874d20715e04f7b5ec15ffaaa974aad24c029bfe7e3efdd75",
+    "tests/test_so101.py": "6256859e0e67df3acf0e0849ac48a880dcd56b7e498c260ebc570942350a22a0",
+    "tests/test_so101_arm_id.py": "be4d5be390c0db8e037c95ee2922ee5ac7cd38e3cf2f29aa218225718c893e4e",
+    "tests/test_so101_calib.py": "f834837060f83a15aa72e01d8b253ba52df129a5cccd1257ffb493a3c0a69cc4"
+  }
+}
