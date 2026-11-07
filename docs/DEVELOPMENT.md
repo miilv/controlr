@@ -968,15 +968,19 @@ All default off; `RuntimeConfig` fields of the same names, G3 `--skill-attr` mir
   just-placed clock).
 - `push_plan=sequence`: before each stroke the whole stroke sequence is planned kinematically (both axis orders, and
   each order with its first axis split at 40 / 70 %). No complete sequence = no stroke now (status `ik_fail`); a
-  partial stroke can strand the object where the rest never plans.
+  partial stroke can strand the object where the rest never plans. Every virtual position must keep the object's
+  footprint 5 mm from other objects (`path_clear`; markers under 3 mm excepted), and stroke lengths use a per-push
+  gain (object travel / hand travel, measured after each stroke; prior 1 / 0.85): physics strokes overshoot 20-35 %.
 - `push_goal=clear`: the goal is the point of the support's cover region (object aligned with the support) with the
   most clearance from other objects and from the caller's `keep_clear` discs (`arrange` passes the pending places'
   sites). Flat markers (< 3 mm) are no obstacles.
 - `arrange_order=push_first`, `arrange_retry=once` (every failed step once more after all the others).
 - `grasp_torso=on` (`dojo/skills/torso.py`): side grasps across an upright irregular body, closing 90 / +-45 deg off its
   long horizontal axis, finger corridors and the palm box (`X5Kin.palm_points`) clear of its mesh, from the arm's side
-  only, ranked before slice pinches. They are exempt from `plan_transfer`'s `max_pick_tilt` but never ignore their own
-  object on the transit to the pre-grasp (that swung the wrist through a figurine before the close).
+  only, ranked before slice pinches, sections wider than 60 mm ranked later. They are exempt from `plan_transfer`'s
+  `max_pick_tilt` but never ignore their own object on the transit to the pre-grasp (that swung the wrist through a
+  figure before the close); with the switch on, an irregular object is modelled for collisions by its mesh parts
+  (`Collision.parts`), and torso / slice picks squeeze 8 steps before a SLOW lift.
 - `stand_offset=base`: a support smaller than its object gets positions on rings of 0.25 / 0.5 x the object's base
   radius (the support stays under the base), ordered by signed clearance (capped 2 cm) then nearness; the 10 clearest are
   kept, with headings that keep a grasp's bearing from each arm (+-30 deg) before the support's quarter turns.
@@ -986,8 +990,10 @@ All default off; `RuntimeConfig` fields of the same names, G3 `--skill-attr` mir
 - `slip_avoid=on`: a slipped grasp is kept in the object frame; transfer screens of that object rank grasps within
   20 mm / 35 deg of it 3.0 later.
 
-Useful with `place_surface=mesh` and `plan_world=objects` (both existing). Dev tools: `scripts/skills/org2_g3.sh`
-(compute3 light locks, our id slices only), `org2_probe.py` (CPU planning screen on settled layouts),
+Useful with `place_surface=mesh` and `plan_world=objects` (both existing). `dojo/perception/base_refit.py` (a
+base-footprint xy refit with an image-quality gate) is offline only and not wired into the runtime: on recorded frames
+it made 14 harmful writes to 1 helpful (`scripts/perception/base_refit_eval.py`, ORG2 report). Dev tools: `scripts/skills/org2_g3.sh`
+(compute3 light locks, our id slices only; `org2_panel.sh` runs one lane of a registered A/B), `org2_probe.py` (CPU planning screen on settled layouts),
 `org2_stages.py` (per-item stage scorer from G3 traces) and `org2_perc.py` (read-only census of recorded camera
 reports); the last two replicate the public task's item conditions for analysis only.
 
