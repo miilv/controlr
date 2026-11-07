@@ -347,11 +347,13 @@ def test_base_radius_and_stand_points():
     drawer = _obj([-0.35, 0.15, 0.88], [0.35, 0.27, 0.227])
     objs = {"fig": o, "stand": stand, "drawer": drawer}
     sk = SimpleNamespace(world=SimpleNamespace(obj=lambda l: objs[l], objects=objs))
-    pts = torso.stand_points(sk, "fig", "stand")
-    assert len(pts) == 16
+    pts = torso.stand_points(sk, "fig", "stand", [np.array([-0.15, 0.1])])
+    assert len(pts) == 17
     d = [float(np.linalg.norm(p - np.array([-0.15, 0.1]))) for p in pts]
-    assert max(d) == pytest.approx(0.025, abs=1e-6) and min(d) == pytest.approx(0.0125, abs=1e-6)
+    assert max(d) == pytest.approx(0.025, abs=1e-6) and min(d) == pytest.approx(0.0, abs=1e-6)
     assert pts[0][0] > -0.15                                          # the first one moves away from the drawer
+    objs.pop("drawer")                                                # nothing near: the centre first
+    assert np.allclose(torso.stand_points(sk, "fig", "stand", [np.array([-0.15, 0.1])])[0], [-0.15, 0.1])
 
 
 @pytest.mark.parametrize("mode", ["off", "on"])
@@ -447,3 +449,48 @@ def test_via_xy_tries_offsets_only_after_a_collision():
     calls.clear()
     m.to_pose = lambda arm, q, T, *a, **kw: calls.append(1) or MoveResult("ik_fail", arm, [])
     assert not m.via_xy("left", np.zeros(6), T, [np.array([0.08, 0.0])]).ok and len(calls) == 1
+
+
+def test_torso_grasps_keep_the_palm_off_appendages():
+    """A long bar just behind the torso at grasp height sits where the palm would be: no grasp from that side."""
+    from dojo.skills.kinematics import X5Kin
+    kin = X5Kin()
+    o = _figurine()
+    base = kin.base("left")[:2, 3]
+    plain = torso.torso_grasps(o, kin, "left")
+    V, F = o.asset.mesh
+    toward = (base - o.pos[:2]) / np.linalg.norm(base - o.pos[:2])
+    bar = [[toward[0] * 0.1 + t * -toward[1], toward[1] * 0.1 + t * toward[0], z - 0.075]
+           for t in np.linspace(-0.07, 0.07, 29) for z in np.linspace(0.06, 0.13, 8)]
+    o.asset.mesh = (np.vstack([V, np.asarray(bar)]), F)
+    blocked = torso.torso_grasps(o, kin, "left")
+    assert len(blocked) < len(plain)
+    for g in blocked:
+        D = np.asarray(bar) + np.r_[o.pos[:2], o.pos[2]] - g.T[:3, 3]
+        qa, qc, qz = D @ g.T[:3, 0], D @ g.T[:3, 1], D @ g.T[:3, 2]
+        palm = (qa > -0.15) & (qa < -0.056) & (np.abs(qc) < 0.085) & (np.abs(qz) < 0.035)
+        assert not palm.any()
+
+
+def test_torso_grasps_do_not_ignore_their_object_on_the_transit():
+    import inspect
+    from dojo.skills import skills as S
+    src = inspect.getsource(S.Skills.plan_pick)
+    assert 'g.method in ("slice", "antipodal")' in src and '"torso")' not in src
+
+
+def test_stand_yaws_keep_the_bearing_from_each_arm(monkeypatch):
+    from dojo.skills import library
+    from dojo.skills.kinematics import X5Kin
+    kin = X5Kin()
+    fig = _figurine((-0.3, -0.1))
+    stand = _obj([-0.15, 0.1, 0.765], [0.05, 0.05, 0.0001])
+    objs = {"fig": fig, "stand": stand}
+    sk = SimpleNamespace(world=SimpleNamespace(obj=lambda l: objs[l], objects=objs), kin=kin)
+    monkeypatch.setattr(library, "_up_yaw", lambda o: 0.0)
+    ys = torso.stand_yaws(sk, "fig", "stand")
+    assert len(ys) == 6
+    base = kin.base("left")[:2, 3]
+    b0, b1 = np.arctan2(*(fig.center_w[:2] - base)[::-1]), np.arctan2(*(stand.center_w[:2] - base)[::-1])
+    assert ys[0] == pytest.approx(b1 - b0)
+    assert ys[1] - ys[0] == pytest.approx(np.radians(30.0))

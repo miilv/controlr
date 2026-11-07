@@ -25,7 +25,7 @@ import math
 import numpy as np
 
 from dojo.skills.geometry import T_from
-from dojo.skills.kinematics import TABLE_Z
+from dojo.skills.kinematics import TABLE_Z, TCP_OFFSET
 from dojo.skills.world import ObjectState
 
 TORSO_HEIGHTS = (0.5, 0.6, 0.7, 0.8)     # fractions of the object's height (from its bottom)
@@ -36,6 +36,7 @@ CORRIDOR = 0.010                          # m: half-width (across the closing ax
 FINGER_HALF = 0.012                       # m: a finger's half-width across the closing axis
 FINGER_REACH = 0.014                      # m: how far a finger extends past the TCP along the approach
 PRE = 0.07                                # m: the pre-grasp retreat (``Grasp.pre_dist``)
+PALM_DEPTH, PALM_HALF_W, PALM_HALF_H = 0.084, 0.08, 0.03   # m: ``X5Kin.palm_points``' box (flange frame)
 
 
 def long_axis(V: np.ndarray, lo: float, hi: float) -> np.ndarray:
@@ -113,33 +114,70 @@ def torso_grasps(obj: ObjectState, kin, arm: str, heights=TORSO_HEIGHTS, offsets
                             & (np.abs(q_z) < FINGER_HALF) & (q_a > -PRE) & (q_a < FINGER_REACH))
                     if in_f.any():
                         continue
+                    # the palm / finger-rail box at the grasp (``X5Kin.palm_points``: flange x 0..84 mm, y +-80, z +-30;
+                    # the TCP is ``TCP_OFFSET`` past the flange): nothing of the object may sit there (an arm that
+                    # reaches back over the hand at 45 deg), and the straight approach only sweeps it from behind
+                    in_p = ((q_a > -TCP_OFFSET - 0.005) & (q_a < -TCP_OFFSET + PALM_DEPTH + 0.005)
+                            & (np.abs(q_c) < PALM_HALF_W + 0.005) & (np.abs(q_z) < PALM_HALF_H + 0.005))
+                    if in_p.any():
+                        continue
                     out.append(Grasp("torso", T, w, pre_dist=PRE,
                                      score=0.2 * abs(frac - 0.65) / 0.15 + pitch / 100.0 + 0.3 * w / 0.08,
                                      note=f"torso h {frac:.2f} off {off:+.0f} w {w * 1000:.0f}mm pitch {pitch:.0f}"))
     return out
 
 
-def stand_points(sk, label: str, support: str) -> list[np.ndarray]:
-    """``Skills.stand_offset`` "base": extra xy positions around a small support's centre (module doc), the most
-    clearance from other objects' footprints first."""
-    from dojo.skills.push_plan import footprint, poly_dist
+CLEAR_CAP = 0.02         # m: clearance beyond this does not rank a stand position higher (then: nearest the centre)
+STAND_KEEP = 8           # the clearest stand positions kept (the transfer screen's IK budget: positions x headings x grasps)
+BEARING_SPREAD = (0.0, math.radians(30.0), -math.radians(30.0))
+
+
+def stand_yaws(sk, label: str, support: str) -> list[float]:
+    """Headings (world yaw of the object's ``up`` pose about the vertical) that keep a grasp's bearing from each arm:
+    the object's own heading turned by how much the bearing from the arm's base changes from where it stands to the
+    support (a side grasp fixed in the object frame then still points away from that arm), and +-30 deg about it."""
+    from dojo.skills.kinematics import ARMS
+    from dojo.skills.library import _up_yaw
+    w = sk.world
+    o, b = w.obj(label), w.obj(support)
+    yo = _up_yaw(o)
+    out = []
+    for a in ARMS:
+        base = sk.kin.base(a)[:2, 3]
+        d0 = o.center_w[:2] - base
+        d1 = b.center_w[:2] - base
+        turn = math.atan2(d1[1], d1[0]) - math.atan2(d0[1], d0[0])
+        out += [yo + turn + s for s in BEARING_SPREAD]
+    return out
+
+
+def stand_points(sk, label: str, support: str, pts=()) -> list[np.ndarray]:
+    """``Skills.stand_offset`` "base": ``pts`` (the caller's positions) plus rings around a small support's centre
+    (module doc), all ordered by clearance from other objects' footprints (capped at ``CLEAR_CAP``), then nearest the
+    centre: the transfer screen's IK budget goes to positions that can be clear first (a wide figurine's centre
+    positions beside a drawer used up 6000 place IKs with no pair, CPU dev screen)."""
+    from dojo.skills.push_plan import _inside, _seg_dist, footprint
     w = sk.world
     o, b = w.obj(label), w.obj(support)
     r = base_radius(o)
     if r is None:
         return []
     c = np.asarray(b.center_w[:2], float)
-    pts = [c + f * r * np.array([math.cos(k * math.pi / 4), math.sin(k * math.pi / 4)])
-           for f in (0.25, 0.5) for k in range(8)]
+    pts = [np.asarray(p, float) for p in pts] + [c + f * r * np.array([math.cos(k * math.pi / 4),
+                                                                         math.sin(k * math.pi / 4)])
+                                                  for f in (0.25, 0.5) for k in range(8)]
     others = [footprint(ob) for lab, ob in w.objects.items()
               if lab not in (label, support) and float(ob.top_z - ob.bottom_z) >= 0.003]
     disc = 0.5 * float(np.max(o.asset.extents[:2]))
 
     def clearance(p) -> float:
-        sq = np.array([[p[0] - disc, p[1] - disc], [p[0] + disc, p[1] - disc], [p[0] + disc, p[1] + disc],
-                       [p[0] - disc, p[1] + disc]])
-        return min([poly_dist(sq, Q) for Q in others] or [1.0])
-    return sorted(pts, key=lambda p: -clearance(p))
+        # signed: the object's disc (its widest half extent) against each footprint; inside one counts as -disc
+        out = 1.0
+        for Q in others:
+            d = 0.0 if _inside(p, Q) else min(_seg_dist(p, Q[k], Q[(k + 1) % len(Q)]) for k in range(len(Q)))
+            out = min(out, d - disc)
+        return out
+    return sorted(pts, key=lambda p: (-min(clearance(p), CLEAR_CAP), float(np.linalg.norm(p - c))))
 
 
 VIA_NEAR = 0.20          # m: fixtures whose footprint lies within this of the support's centre shape the vias
