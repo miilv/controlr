@@ -101,6 +101,17 @@
     slots (`~/coord/dc19.lock.1`, `.2`), non-blocking, for one call = one cell's tranche (BRIDGE-RUNBOOK).
   - Open: the manifest format and who generates / holds the sealed directory, as Misha amends the design. Then the
     `route_probe.py` pre-flight and the real freeze manifest before tranche A.
+- [ ] **dojo imitate: validate demonstration timing and visible return home, not only physical success.**
+  Our `demo_gen` accepts up to 900 native actions and validates basket success with policy arms holding;
+  it does not establish official-demo timing/path/occlusion parity. RSI's fixed programme stops watching
+  at 640. On the first five frozen RSI layouts, demos last 620.2, 691.4, 697.0, 668.7 and 727.5 actions;
+  the four longer cases terminate on the first pick motions before any grasp, consistent with the native
+  policy/support mutual-home interlock. Even after the last release the support's return tail matters.
+  This can confound **all imitate dev comparisons**, not just RSI. Establish duration/home/end-frame and
+  path/visibility validation before claiming official comparability; preserve the existing frozen inputs
+  and 20-point observation, and use a separately frozen paired check for any proposed change. Public code
+  does not promise a 640-action bound; official timing distribution remains unverified. See the
+  [offline RSI diagnosis](journal/2026-11-07-rsi-repro.md#offline-diagnosis-imitations-20-point-bar).
 - [ ] **dojo D-C19: a supplementary generation for the 4 empty cells (proposed to Misha, not scheduled).** In the
   30 Oct block (manifest ebc899e9), make_toast and the two conveyor tasks were 0 / 20 stable, and imitate had all 20
   demos dropped (journal 2026-10-31-dojo-dc19-supp-gen). Once both sides agree, after tranche A: `dc19_generate.py
