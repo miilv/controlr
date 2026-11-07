@@ -131,6 +131,12 @@
   - The camera rows' "all placed but 0" is understood: std 100003 is an arm going home knocking the end-slot doll over
     (`row_home_clear` off: net 0 on the 3 changed seeds); `_random` 100002 is a doll held 48 deg tilted and toppled at
     the release (held state).
+- [ ] **dojo laptop follow-up: retain the headset during reorientation.** Fresh salted G3 panel
+  ([report](experiments/2026-11-07-laptop-g3.md)): default-off `headset_seat` earns 20 headset
+  points on 1/10 layouts in each cell vs 0/10 controls (mean 0→2, SD 6.32, one score win each).
+  Below the gain gate; no camera advancement. Wide lifts can hold, but carry shifts ~90–110 mm;
+  narrowing the candidate set plus slower carry/seated release does not give a reliable hold.
+  Closing the lid alone earns no credit; the laptop 80-point tier remains blocked on a physical pick.
 - [ ] **dojo skills: store_laptop: the headset hang plans now; its hold and the laptop's pick do not** (journal
   2026-10-29-dojo-newskill-hang, store_laptop sections).
   - Done: `hang_cradle` "straddle" (#345) lets the held headset straddle the stand's top, so the hang plans in 16 of

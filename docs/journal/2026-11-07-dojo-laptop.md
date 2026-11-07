@@ -24,3 +24,22 @@ unused imports and a pre-existing placeholder-free f-string.
 The first local pytest invocation used a global pytest because dev extras
 were missing; `uv sync --extra dev` corrected the environment. Focused
 headset/laptop tests pass. Full suite started with `uv run pytest -q`.
+
+The first candidate's 41 mm pinch holds pilot 100031 at lift (3.7 mm drift)
+but shifts 113.4 mm in carry. The pre-panel amendment halves the cradle carry
+rate; it still shifts 97.6 mm in that pilot and scores zero. Candidate frozen
+at deployed `58dcf38e` for the panel; later changes are tests/docs only.
+The G3 deployment stamp is explicitly set before the final pilot/panel;
+initial pilots have null G3 `code.commit` (deploy.sh writes `.deployed.json`,
+whereas G3 reads `.deployed_commit`). No ambiguous pilot is in the panel.
+
+Local full suite: 2057 passed / 191 skipped (1089.38 s), started on the first
+candidate before the carry amendment. Final candidate/config/defaults-focused
+suite: 10 passed. Final source also receives PR CI validation. Main was merged
+for current documentation; the running physics deployment remained frozen.
+
+Completed panel: ten pairs per cell, A 0 ± 0 -> B 2 ± 6.32 points in each;
+1 score win / 0 losses / 9 ties each, full success 0/10 in every arm.
+No infrastructure failures or missing meshes. No camera qualification (pooled
++2 < +5), no camera spec/dispatch or board update. Own scopes/processes exited.
+Footprint 130 MB deployment / 2.6 MB data; zero model calls/tokens/spend.
