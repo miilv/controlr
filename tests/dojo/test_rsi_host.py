@@ -168,3 +168,28 @@ def test_incremental_publication_requires_closed_cell_count(host):
     with pytest.raises(ValueError, match='expected scored count'):
         R.publish(host)
     assert (host.state / 'per_cell.json').read_bytes() == original
+
+
+@pytest.mark.parametrize('memory,quota,allowed', [
+    (str(16 * 1024**3), '800000 100000', True),
+    (str(17 * 1024**3), '800000 100000', False),
+    ('max', '800000 100000', False),
+    (str(16 * 1024**3), '900000 100000', False),
+    (str(16 * 1024**3), 'max 100000', False),
+])
+def test_desktop_checks_actual_scope_limits(host, monkeypatch, memory, quota, allowed):
+    original = Path.read_text
+    def read(path, *args, **kwargs):
+        if path == Path('/proc/self/cgroup'):
+            return '0::/user.slice/rsi-test.scope\n'
+        if path.name == 'memory.max':
+            return memory
+        if path.name == 'cpu.max':
+            return quota
+        return original(path, *args, **kwargs)
+    monkeypatch.setattr(Path, 'read_text', read)
+    if allowed:
+        H.validate_scope(host)
+    else:
+        with pytest.raises(RuntimeError, match='scope must have'):
+            H.validate_scope(host)
