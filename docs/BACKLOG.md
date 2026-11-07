@@ -1341,3 +1341,16 @@ Default-off routing/shared service implemented by [SAMINT](journal/2026-11-07-sa
 - [x] ~~**Actor-relocation audit identity association:** the nearest-pre-write/group rule can select a standing neighbour after the tracked tile has fallen. In the [scoped KONG audit](experiments/2026-11-07-kong-scoped-relocate-prereg.md), two `mahjong7_0` writes are judged against GT `mahjong8_0` (44.3→66.2 mm), while a same-label diagnostic improves 46.31→1.64 mm. Preserve registered flags; review a general identity-aware audit before interpreting these as actual relocation harm. No controller change or retrospective threshold tuning.~~ Fixed by `AuditIdentity`: chronological tight anchors, first-pick/grasp-close finalization and persistent physical identity; nearest fallbacks are counted. Registered verdicts are not revised.
 
 - [x] ~~**Held-pose audit before pose includes arm transport:** cached world pose was compared with the new attachment at the show TCP.~~ The logger now projects the prior attachment at the same current measured arm pose, preserving the raw `before_sync7`; live actions/beliefs are unchanged and covered by a FakeLLM/mock episode.
+
+- [ ] **dojo runtime: cover_blocks starts with an actor hold.** Partner team's report, 7 Nov. On cover_blocks,
+  `waits_on_actor`'s text fallback matches the copy-demonstration pattern, so the episode starts with an actor hold
+  and skips the scan. D-C19 scored 100 on cover_blocks, so this is low priority. Fix the fallback so that only a
+  scene with an actual demonstrator triggers the hold; it may matter on other instruction phrasings.
+- [ ] **dojo architecture: task-keyed routing vs the RoboDojo single-system rule.** The board rule, read verbatim from
+  the site's rules list on 7 Nov: one fixed system with the same inference procedure on every task. An agent or
+  planner is allowed; a router that switches by task is not. Ours has task-named vocabularies
+  (`dojo/runtime/supervisor.py` `Vocabulary("<task>", ...)`), text-rule routing (`routes.py` / `planner.py`) and
+  task-keyed switches (`watch_relocate_task`, `key_scope_task`).
+  - The partner team's model planner (`planner="model"`, skill registry in scene words) is the path to a compliant
+    entry.
+  - New per-cell work is built as skills or skill parameters.
