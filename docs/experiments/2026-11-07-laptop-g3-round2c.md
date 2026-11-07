@@ -47,8 +47,8 @@ physical hold and score rather than equating IK pairs with actual coverage.
 The 96-plan probes remain zero: 403 and 389 pick-plan calls across direct,
 high and relay searches on standard 100067/69. Detailed default-budget
 instrumentation on standard 100067/68 identifies the dominant refusal as
-`pick_lift: held object below the table` at the first waypoint (119/120 such
-failures). The current guard uses held OBB corners, even for a sparse headset
+`pick_lift: held object below the table` at the first waypoint (119 and 120 such
+failures respectively). The current guard uses held OBB corners, even for a sparse headset
 whose empty box corners extend below the support plane. Arm/finger endpoints
 pass, and no joint-stop evidence appears.
 

@@ -620,3 +620,15 @@ Actor lay-face-up events (`watch_lay`) and accepted relocation events retain ful
 The audit includes these exact writes alongside the coarse version log,
 replacing a matching coarse endpoint record to avoid counting a relocation twice;
 subthreshold relocation writes remain visible. These fields do not feed policy decisions.
+
+### Cradle held-geometry table guard
+
+The default `headset_table=bbox` retains the skill collision model's held OBB
+check. The opt-in `mesh` mode applies only inside a cradle hang and restores
+on exit, including exceptions. It uses every catalogue mesh vertex against the
+existing table-plane tolerance. An overlapping mesh XY bbox triggers a global
+z-extrema check, conservatively covering triangles crossing the finite table
+when no vertex lies inside it. It does not shrink the mesh; missing/invalid
+geometry falls back to the legacy box. Hand/arm and other obstacle checks
+remain independent. This addresses empty OBB regions below a tilted sparse
+object, not a physical penetration allowance or a perception calibration fix.

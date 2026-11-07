@@ -6,6 +6,9 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [Laptop staged G3](2026-11-07-laptop-g3-round2.md) | Separate headset rotation from cradle approach | Ten pairs/cell: 4→12 / 2→14 points; 6/10 / 7/10 headset credits, misses standard reliability target |
+| 2026-11-07 | [Laptop dense G3](2026-11-07-laptop-g3-round2b.md) | Denser wide pinches plus staged carry | Ten pairs/cell: 0→12 / 2→18 points; 6/10 / 9/10 credits, development continues on fresh pilots |
+
 | 2026-11-07 | [Laptop G3](2026-11-07-laptop-g3.md) | Wide headset hold and seated release | Ten pairs/cell: 0→2 points in both, one win each; below gain gate, default off |
 | 2026-11-06 | [seg-v2n-camera-ab-endbox](2026-11-06-seg-v2n-camera-ab-endbox.md) | Does additive v2n improve fresh variant camera pairs? | Pending: 57/70 pairs at cutoff; guards tied, pour 50→40 provisionally; one unscored reset retry needs adjudication. **Final, 70/70 pairs: DOES NOT PASS** (pooled bootstrap 95 % [−10.5, +6.7]; 4/5 gain cells identical between arms, pour_random −10; journal 2026-11-06-ab-wave-verdicts) |
 | 2026-11-07 | [coin-disc-retest-prereg](2026-11-07-coin-disc-retest-prereg.md) | Once-only disc evidence re-test on fresh salted layouts | 100 Sonnet rows dispatched on compute4 at positions 116–215; 20 gain + 10 pairs per original guard; no verdict |

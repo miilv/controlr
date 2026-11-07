@@ -3541,9 +3541,15 @@ def hook_order(hooks: list, n: int) -> list:
 
 def hang_on_hooks(sk: Skills, objects: list[str], rack: str, hook_tag: str, handle_tag: str = "handle") -> dict:
     """``_hang_on_hooks``; the rack's ``held_skip`` (``Skills.hang_cradle`` "straddle") lasts only while it runs."""
+    mesh_table = "handle" not in handle_tag.lower() and getattr(sk, "headset_table", "bbox") == "mesh"
+    saved_table = getattr(sk.coll, "held_table", "bbox")
+    if mesh_table:
+        sk.coll.held_table = "mesh"
     try:
         return _hang_on_hooks(sk, objects, rack, hook_tag, handle_tag)
     finally:
+        if mesh_table:
+            sk.coll.held_table = saved_table
         sk.coll.held_skip.pop(rack, None)
 
 

@@ -741,3 +741,14 @@ approach angles, retaining box/slice candidates at widths >=35 mm. It screens
 up to 24 full hang plans instead of eight. Threaded-hook proposals retain
 the legacy generator. This does not bypass physical lift/loose verification
 or enable staged carries, straddling or seating independently.
+
+`RuntimeConfig.headset_table` defaults to `bbox`; G3 mirrors it. `mesh`
+scopes a full-mesh held-object/table check to cradle hangs and restores the
+previous collision mode on return or exception. It retains the arm/finger
+checks and table tolerance. Every catalogue vertex is transformed; any mesh
+XY bbox overlap with the finite table checks global minimum z conservatively,
+covering triangle crossings with no inside vertex. Missing/invalid meshes
+retain the legacy bbox check. This avoids empty OBB corners blocking a lift;
+it is not a smaller margin or an unchecked contact move. Geometry hanging
+outside an edge can be conservatively refused. Native table/obstacle checks
+still validate every planned waypoint. Threaded hooks retain their old mode.

@@ -108,3 +108,29 @@ residual after a large swing. These traces are retained under the private
 production-pilot directories. The second fresh panel starts only afterward.
 Final-source local suite: **2063 passed / 191 skipped**, 1041.26 s. Source
 473d64cf also has green GitHub CI; subsequent edits are documentation/data only.
+
+Dense fresh panel source 473d64cf: standard A0 ±0 -> B12 ±10.33, 6 wins /
+0 losses /4 ties; random A2 ±6.32 -> B18 ±6.32, 8/0/2. Headset credits
+0/10->6/10 and 1/10->9/10; all full-task successes zero. Forty valid rows,
+no exclusions/mesh/infra failures. This misses standard reliability despite
+passing the paired score gate. Continue on new pilot ids 100065–69 with
+variant 14 and an independent salt; no individual panel failures are opened
+for tuning. Next panel is reserved for previously unused 100085–99.
+
+New pilots baseline dense+staged: standard 2/5, random 4/5. Standard 100067/69
+never pick; increasing full-plan limit to 96 still produces zero, with 403/389
+pick-plan calls. Instrumented standard 100067/68 shows 119/120 false held-table
+lift refusals respectively. The guard uses held OBB corners even for the sparse
+headset. At a refused first lift waypoint, OBB min z=0.75929 m while full mesh
+min z=0.78473 m; table z=0.765 m. No wrist-stop cause: commands <=0.83 rad,
+tracking <=0.08 rad on these pilots.
+
+Prototype full-mesh table checks rescue both 100067/68 to headset credit.
+Pilot 67 lifts with 5.1 mm drift / carries with 4.4 mm shift; pilot 68 retains
+the first loose rejection, then re-grasps with 2.7 mm drift / 2.6 mm carry.
+New default-off `headset_table=mesh` scopes the guard to cradle hangs. All mesh
+vertices, unchanged tolerance, conservative XY overlap test; missing/invalid
+mesh falls back to bbox. Arm/finger checks remain; scope restores on exceptions.
+Unit coverage includes real penetration, triangle crossings with no inside
+vertex, unsampled low vertices, disjoint footprint, invalid mesh, hand guard,
+scope cleanup, and unchanged defaults. Wider search is not implemented.
