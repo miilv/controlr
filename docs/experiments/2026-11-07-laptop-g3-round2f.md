@@ -59,3 +59,11 @@ Compute3 physics-only, deployment `~/controlr-laptop`, all data under
 records who/GPU, used VRAM<=24576 MiB and disk>=10GB, then an8G/600% user
 scope with bounded timeout. No renderer, system changes, other-process kills,
 sealed data or compute4 access. Calls/tokens/spend:0/0/$0.
+
+While the older source504 screen finishes, use its free slot for two cheap
+combined-bundle prototypes on standard45 and random66. Source504 plus the
+retained release-clearance recipe implements the same perfect-state motion
+as3866ad73; it cannot validate the new refinement repair callback (mock tests
+do that). Add hang_wide=on to the recipe, leave all other fields unchanged,
+and retain this source/recipe distinction. These are pilot probes, not the
+production screen or fresh panel. No source deployment changes during them.
