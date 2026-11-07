@@ -41,12 +41,29 @@ A Codex audit found that our D-C19 system (48.44) is *not* defensibly a single s
 [decision](docs/journal/2026-11-07-general-system-rule.md). The task-keyed parts listed in BACKLOG are to be
 retired. Per-cell work is how we discover a general mechanism, never a task program.
 
+**Enforcement.** `dojo/legality/audit.py` is shared with the partner team and runs a transitive call-graph scan
+plus a runtime instruction sentinel (landing in PR #429). `scripts/legality/scan.py` holds the CI ratchet; the inventory is
+`docs/experiments/2026-11-07-legality-inventory.md`.
+- New general-system code must have zero findings.
+- The legacy allowlist may only shrink.
+- Path-loaded code (`ported/skills/**`, `cmd_*` handlers) is scanned too.
+
+**Identity sources.** Allowed: robot / camera / scene env_cfg, URDF, and intrinsic asset files (`object.usd`,
+`metadata.json`, `description.json`), derived the same way for the whole catalogue. Forbidden: task configs,
+checkers, Eval_Layout, Traj, logs, and per-task candidate lists or counts. Task-conditioned candidate pruning is also
+forbidden. Perception models trained on one task's data (e.g. `kong_v1b`) are task-shaped and are excluded.
+
 ## Joint work with Mikhail (Misha's team)
 
 - **Joint system:** their model planner (`planner="model"`, a skill registry described in scene words, no task names)
   over a **shared general skill library** that both sides co-own.
-- **Repo:** we are moving into `github.com/msannikov03/robot-harness`; follow its `AGENTS.md` and PR protocol once
-  the move lands. Until then, work here.
+- **Repo:** we are moving into `github.com/msannikov03/robot-harness`. Agreed with Mikhail on 7 Nov:
+  - controlr goes in as the subdirectory `controlr/`, via `git subtree add` with full history, in one PR
+    (`ilia/import-controlr`). Both founders approve it; agents never approve.
+  - Cutover is about 08:00Z on 8 Nov, at a frozen SHA that is announced first.
+  - After the move: follow robot-harness `AGENTS.md`. Our branches are `ilia/*`, theirs `night/*`. PRs into main
+    only, CI green, never force-push. Every change to a frozen interface needs a D-C entry.
+  - miilv/controlr becomes read-only. Until the cutover, work here.
 - **Bus:** `ssh anywherevla@100.64.0.2`, `~/data2/coord/inbox/{ilia,misha}/`. One file per message, with
   `from` / `type` / `re` front matter; move processed files to `done/`.
   - Re-read the inbox at least every 2 h and after any context compaction.
