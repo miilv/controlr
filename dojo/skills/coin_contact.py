@@ -42,14 +42,16 @@ WALL_IN = 0.005               # m: fingertips this far under the holder's top wh
 WALL_GAP = 0.020              # m: pad gap around the 11.1 mm walls before the squeeze
 WALL_A = 0.0347               # official value, pads square to the walls and centred
 WALL_B = 0.00163              # per degree of yaw error (|psi|: 0.0423-0.0429 at 5 deg, 0.0512-0.0516 at 10 deg)
+WALL_B_RANGE = (0.0010, 0.0030)  # slopes the fit accepts (0.0016-0.0021 seen across layouts / arms)
 WALL_C = -0.0164              # per mm of TCP offset along its +y (closing) axis: one finger's travel
-WALL_DELTA = 8.0              # deg between squeezes
-WALL_MAX_PROBES = 5
+WALL_DELTA = 10.0             # deg between squeezes
+WALL_MAX_PROBES = 4
 WALL_FIT_TOL = 0.0015         # max residual of the V fit (official units); worse: no write
+WALL_MAX_SHIFT_MM = 4.0       # a larger fitted offset is not written (the walls were not where the fit says)
 WALL_MAX_YAW = 25.0           # deg searched
 WALL_MIN_WRITE_DEG = 0.5      # smaller corrections are not written (the slot leaves the coin +-1.4 deg)
 WALL_SETTLE = 1               # still steps after a squeeze's close before the read
-WALL_CLOSE_STEPS = 4
+WALL_CLOSE_STEPS = 3
 
 # --- disc_snap "on"
 SNAP_CLEAR = 0.0007           # m: fingertips over the holder's top when the pads close onto the coin
@@ -83,30 +85,36 @@ def on(sk, name: str, value: str) -> bool:
 
 # ============================================================================ disc_align "walls"
 
-def wall_fit(reads: dict, B: float = WALL_B, A: float = WALL_A, C: float = WALL_C, max_yaw: float = WALL_MAX_YAW):
-    """Fit official readings {theta_deg: value} (theta = the hand turned from its first yaw) to
-    ``value = A + B * |e + theta| + C * d_mm``. Returns {"e", "apex", "d_mm", "resid", "bracketed"}: ``e`` the first
-    yaw's error (deg), ``apex`` = -e (the turn that squares the pads), ``d_mm`` the TCP offset along its closing axis.
-    ``bracketed``: the lowest reading has a higher one on each side (else e and d trade off and only the side of the
-    apex is known)."""
+def wall_fit(reads: dict, A: float = WALL_A, C: float = WALL_C, max_yaw: float = WALL_MAX_YAW,
+             b_range=WALL_B_RANGE):
+    """Fit official readings {theta_deg: value} (theta = the hand turned from its first yaw) to a V:
+    ``value = k + b * |theta - apex|``. ``apex`` is the turn that squares the pads to the walls (the first yaw's error
+    is ``e = -apex``); ``k`` = A + C * d_mm gives the TCP's offset along its closing axis. The slope is fitted too (twin:
+    0.0016-0.0021 per degree across layouts and arms). Returns {"e", "apex", "d_mm", "b", "resid", "bracketed",
+    "low_side"}. ``bracketed``: readings on both branches (on one branch apex and k trade off exactly)."""
     th = np.array(sorted(reads), float)
     r = np.array([reads[t] for t in sorted(reads)], float)
-    k = int(np.argmin(r))
+    k_min = int(np.argmin(r))
     best = None
-    for e in np.arange(-max_yaw, max_yaw + 1e-9, 0.05):
-        base = A + B * np.abs(e + th)
-        d = float(np.mean(r - base)) / C                 # least squares in d for this e
-        res = float(np.sqrt(np.mean((base + C * d - r) ** 2)))
+    for apex in np.arange(-max_yaw, max_yaw + 1e-9, 0.05):
+        x = np.abs(th - apex)
+        M = np.stack([np.ones_like(x), x], axis=1)
+        (k, b), *_ = np.linalg.lstsq(M, r, rcond=None)
+        if not (b_range[0] <= b <= b_range[1]):
+            continue
+        res = float(np.sqrt(np.mean((M @ np.array([k, b]) - r) ** 2)))
         if best is None or res < best[0] - 1e-12:
-            best = (res, float(e), d)
-    res, e, d = best
-    # identifiable only with readings on both branches of the V (on one branch e and d trade off exactly)
-    bracketed = bool(np.any(th < -e - 0.3) and np.any(th > -e + 0.3))
+            best = (res, float(apex), float(k), float(b))
+    if best is None:
+        return {"e": None, "apex": None, "d_mm": None, "b": None, "resid": None, "bracketed": False,
+                "low_side": -1 if k_min == 0 else 1}
+    res, apex, k, b = best
+    bracketed = bool(np.any(th < apex - 0.3) and np.any(th > apex + 0.3)) and len(th) >= 3
     low = None
     if not bracketed:
-        low = -1 if k == 0 else (1 if k == len(r) - 1 else (-1 if r[0] < r[-1] else 1))
-    return {"e": round(e, 2), "apex": round(-e, 2), "d_mm": round(d, 2), "resid": res, "bracketed": bracketed,
-            "low_side": low}
+        low = -1 if k_min == 0 else (1 if k_min == len(r) - 1 else (-1 if r[0] < r[-1] else 1))
+    return {"e": round(-apex, 2), "apex": round(apex, 2), "d_mm": round((k - A) / C, 2), "b": round(b, 5),
+            "resid": res, "bracketed": bracketed, "low_side": low}
 
 
 def _rot_z_about(T, c, deg: float):
@@ -182,7 +190,7 @@ def wall_probe(sk, obj: str, hold: str, arm: str) -> dict:
             sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), go).move(mv).grip(0.0, WALL_CLOSE_STEPS, "squeeze")
                        .hold(WALL_SETTLE)}, name=f"wall probe {th:+.0f}")
             v = official_read(sk, arm)
-            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), 0.0).grip(go, 2, "open")}, name="wall probe open")
+            sk.ex.run({arm: ArmPlan(arm, sk.ex.q[arm].copy(), 0.0).grip(go, 1, "open")}, name="wall probe open")
             if v is None:
                 out["why"] = "no official jaw reading"
                 break
@@ -208,6 +216,9 @@ def wall_probe(sk, obj: str, hold: str, arm: str) -> dict:
     if not fit["bracketed"] or fit["resid"] > WALL_FIT_TOL:
         out["why"] = "fit not bracketed" if not fit["bracketed"] else f"residual {fit['resid']:.4f}"
         return out
+    if abs(float(fit["d_mm"])) > WALL_MAX_SHIFT_MM:
+        fit = {**fit, "d_mm": 0.0}
+        out["d_dropped"] = True
     out["ok"] = True
     apex = float(fit["apex"])
     # the true holder: the believed one turned by the apex about the vertical through the coin's centre, then moved
