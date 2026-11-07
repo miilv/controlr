@@ -92,7 +92,6 @@ def wall_fit(reads: dict, B: float = WALL_B, A: float = WALL_A, C: float = WALL_
     th = np.array(sorted(reads), float)
     r = np.array([reads[t] for t in sorted(reads)], float)
     k = int(np.argmin(r))
-    bracketed = 0 < k < len(r) - 1
     best = None
     for e in np.arange(-max_yaw, max_yaw + 1e-9, 0.05):
         base = A + B * np.abs(e + th)
@@ -101,8 +100,13 @@ def wall_fit(reads: dict, B: float = WALL_B, A: float = WALL_A, C: float = WALL_
         if best is None or res < best[0] - 1e-12:
             best = (res, float(e), d)
     res, e, d = best
-    return {"e": round(e, 2), "apex": round(-e, 2), "d_mm": round(d, 2), "resid": res, "bracketed": bool(bracketed),
-            "low_side": (None if bracketed else (-1 if k == 0 else 1))}
+    # identifiable only with readings on both branches of the V (on one branch e and d trade off exactly)
+    bracketed = bool(np.any(th < -e - 0.3) and np.any(th > -e + 0.3))
+    low = None
+    if not bracketed:
+        low = -1 if k == 0 else (1 if k == len(r) - 1 else (-1 if r[0] < r[-1] else 1))
+    return {"e": round(e, 2), "apex": round(-e, 2), "d_mm": round(d, 2), "resid": res, "bracketed": bracketed,
+            "low_side": low}
 
 
 def _rot_z_about(T, c, deg: float):
