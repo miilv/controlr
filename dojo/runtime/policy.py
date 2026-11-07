@@ -78,6 +78,26 @@ def label_candidates(vocabulary: str, label: str) -> list[str]:
     return list(lab.get("candidates") or [])
 
 
+def rider_candidates(vocabulary: str, key: str) -> list[str]:
+    """``belt_wrist_id``: the union of the candidate keys of every config group in ``vocabulary`` that admits ``key``
+    (a belt tracker's ``rider3`` / ``bottle_t1`` has no config group of its own), ``key`` first; [] when unknown."""
+    from .vocab import catalog_path
+    import json as _json
+    p = catalog_path()
+    if p is None:
+        return []
+    try:
+        labels = (_json.loads(open(p).read()).get(vocabulary) or {}).get("labels", {})
+    except (OSError, ValueError):
+        return []
+    out = [key]
+    for lab in labels.values():
+        c = list(lab.get("candidates") or [])
+        if key in c:
+            out += [k for k in c if k not in out]
+    return out if len(out) > 1 else []
+
+
 def twin_vocabulary(vocabulary: str | None) -> str:
     """The other variant's name of a std / ``_random`` pair (the two share one instruction); "" for none."""
     v = vocabulary or ""
@@ -126,6 +146,7 @@ class RuntimeConfig:
     look_merge: str = "all"             # all: the fused record replaces frame 0 | flagged: only flagged objects
     save_look_frames: bool = False      # dev: keep frame 0 and the look frame (PNG) for perception's analysis
     save_track_frames: int = 0          # dev: keep the first N belt-tracker re-read frames (PNG) as well
+    save_belt_look_frames: int = 0      # dev: keep the first N pick-look frames of moving belt riders (PNG) as well
     resync: bool = True
     div_iou: float = 0.2                 # fallback without z-buffer: head IoU at the predicted pose
     div_prec: float = 0.4                # predicted front-most head pixels that are foreground, below = divergence
@@ -495,6 +516,25 @@ class RuntimeConfig:
     belt_wrist_veto: str = "off"
     # Wide belt objects: try a mesh waist before shallow surface/rim interception grasps.
     belt_waist_first: str = "off"
+    # match_and_pick MATCH2 switches (``interactive.match_and_pick`` / ``pick_from_belt``; mirrored in Skills and G3):
+    # belt_ref off (today) | tracked (the remembered first object is the leading start rider the belt tracker still
+    # holds after its first reads, not a frame-0 phantom ahead of it, and its key is the leading asset of its own
+    # read history, ``RuntimeProvider.identity_dist``) | similar (+ a match scored against that history:
+    # Bhattacharyya similarity plus a competing-category veto; measured worse offline, kept for the record).
+    # belt_veto off (today) | evidence (with belt_wrist_veto on: an empty wrist look vetoes only when the prior was in
+    # the wrist view, or the head tracker has not read the track lately). belt_speed off | lock (``RuntimeProvider``:
+    # the belt speed from the first long clean track, kept). belt_high_lift off | on (a picked match goes on up by
+    # ``BELT_HIGH_LIFT_M``). belt_retry off | window (more match rounds while the step budget holds an intercept).
+    # belt_grasp off | solid (a rider with no top grasp that is not a flat dish: mesh antipodal, then waist, rims last).
+    belt_ref: str = "off"
+    belt_veto: str = "off"
+    belt_speed: str = "off"
+    belt_high_lift: str = "off"
+    belt_retry: str = "off"
+    belt_grasp: str = "off"
+    # belt_wrist_id off | on (the pick look re-identifies a tracked rider over every rider candidate; with belt_ref
+    # "tracked" a confident other category than the first object's is not picked: a competing-category veto)
+    belt_wrist_id: str = "off"
     # pick_from_conveyor_by_image (``interactive.pick_into_held``; ``Skills.belt_container`` / ``Skills.belt_deposit``):
     # belt_container off (today) | on (a rectangular container by its real rim, ``grasps.box_rim_grasps``);
     # belt_deposit off | on (with belt_container on: the container by its handle, held up toward the robot's middle,
@@ -736,6 +776,10 @@ class RuntimePolicy:
                 or self.cfg.series_labels not in ("keep", "numbered") or self.cfg.place_verdict not in ("belief", "measured")
                 or self.cfg.belt_wrist_veto not in ("off", "on") or self.cfg.slot_read not in ("off", "on")
                 or self.cfg.belt_waist_first not in ("off", "on")
+                or self.cfg.belt_ref not in ("off", "tracked", "similar") or self.cfg.belt_veto not in ("off", "evidence")
+                or self.cfg.belt_speed not in ("off", "lock") or self.cfg.belt_high_lift not in ("off", "on")
+                or self.cfg.belt_retry not in ("off", "window") or self.cfg.belt_grasp not in ("off", "solid")
+                or self.cfg.belt_wrist_id not in ("off", "on")
                 or self.cfg.nest_verify not in ("target", "support") or self.cfg.search_identity not in ("first", "unknown")
                 or self.cfg.kong_draw_read not in ("off", "place", "place3") or self.cfg.peg_base_refine not in ("off", "local")
                 or self.cfg.peg_stuck_confirm not in ("off", "on")
@@ -965,6 +1009,7 @@ class RuntimePolicy:
         prov.unique_labels = cfg.series_labels == "numbered"
         prov.place_measured = bool(cfg.mode == "perception" and cfg.place_verdict == "measured")
         prov.track_expire = cfg.track_expire
+        prov.belt_speed = cfg.belt_speed
         prov.tracker_on = bool(cfg.mode == "perception" and (cfg.tracker == "on" or (cfg.tracker == "auto"
                                                                                       and cfg.agentic == "budget")))
         if cfg.mode == "perception" and cfg.held_look != "off":
@@ -1106,6 +1151,10 @@ class RuntimePolicy:
             sk_.imitate_repair = bool(cfg.imitate_repair)
             sk_.belt_wrist_veto = cfg.belt_wrist_veto
             sk_.belt_waist_first = cfg.belt_waist_first
+            sk_.belt_ref, sk_.belt_veto = cfg.belt_ref, cfg.belt_veto
+            sk_.belt_high_lift, sk_.belt_retry = cfg.belt_high_lift, cfg.belt_retry
+            sk_.belt_grasp, sk_.belt_wrist_id = cfg.belt_grasp, cfg.belt_wrist_id
+            sk_.belt_speed = cfg.belt_speed
             sk_.belt_container, sk_.belt_deposit = cfg.belt_container, cfg.belt_deposit
             sk_.belt_lift = cfg.belt_lift
             sk_.belt_first, sk_.belt_target = cfg.belt_first, cfg.belt_target
@@ -1537,6 +1586,11 @@ class RuntimePolicy:
             # else the label's OWN config group (its candidate keys), never the whole vocabulary: a pillar must not be
             # re-identified as a prism (5.1 tower: iou 0.67, turned 91 deg, the tower tilted while we believed "built")
             idv = [k for _, k in rank[:IDENTITY_TOPK]] if rank else label_candidates(prov.task, label)
+            if (not idv and kind == "pick" and self.cfg.belt_wrist_id == "on"
+                    and label in (getattr(prov.belief, "riders", None) or ())):
+                # belt_wrist_id: a tracked belt rider (``rider3``, ``bottle_t1``: no config group) is re-identified at the
+                # hover over every rider candidate, so the skill can veto a competing category at the same place
+                idv = rider_candidates(prov.task, o.asset.key)
             if kind == "size" and self.cfg.row_size_read == "look_union" and not rank:
                 # the std / _random twin shares the instruction: its config's candidates for the label too
                 idv = list(dict.fromkeys(idv + label_candidates(twin_vocabulary(prov.task), label)))
@@ -1562,6 +1616,12 @@ class RuntimePolicy:
                 return None
             kw.pop("search_radius", None)
             max_shift = PEG_BASE_MAX_SHIFT
+        if (kind == "pick" and int(self.cfg.save_belt_look_frames) > 0
+                and label in (getattr(prov.belief, "riders", None) or ())):
+            n_bl = self.report.setdefault("belt_look_frames", 0) + 1
+            self.report["belt_look_frames"] = n_bl
+            if n_bl <= int(self.cfg.save_belt_look_frames):
+                self._keep_frame(f"beltlook{n_bl:02d}_s{int(self.bridge.steps_used)}_{label}_{arm}", obs, force=True)
         res = self.perception().refine(obs, objs, self.fold, max_shift, arm=arm, identity_vocabulary=idv, held=held, **kw)
         r = res.get(label) or {}
         if r.get("glyph") is not None:
@@ -1576,6 +1636,8 @@ class RuntimePolicy:
             ev["pose7"] = [round(float(v), 4) for v in list(r["pos"]) + list(r["quat"])]
         if r.get("radius_search"):
             ev["radius_search"] = {k: r["radius_search"].get(k) for k in ("used", "grid", "time_s")}
+        if self.cfg.belt_wrist_id == "on" and kind == "pick":
+            ev.update({k: r.get(k) for k in ("obj_id", "identity_ok", "identity_margin", "n_candidates")})
         self.report["events"].append(ev)
         if peg:
             self._peg_base_tries[label] = self._peg_base_tries.get(label, 0) + 1

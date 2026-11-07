@@ -423,9 +423,28 @@
 - [ ] **dojo runtime: far-end belt reads are noisy.** In the offline genuine-5.1 replays (journal
   2026-10-28-dojo-conveyor-belt-blind §3.1), newcomer tracks at the upstream end give belt velocities of
   2.1-5.5 mm / step (4.0 true) while they are the only trusted tracks. The rider predictions, and so the intercept, use
-  the current belt velocity. Candidate: weight the belt estimate by fit residual / span over the episode. The match's
-  identity and position are also weakest there: 100000's puppet reads as a camera to step 440 in both arms, and
-  100002's flat phone sits 95 mm off across the belt at the decision.
+  the current belt velocity. ~~Candidate: weight the belt estimate by fit residual / span over the episode.~~
+  `belt_speed=lock` (MATCH2, default off; journal 2026-11-07-dojo-match2): match_and_pick took its speed once from an
+  early 3-4-read fit (51 of 173 camera decisions off by > 10 %); the lock measures it from the first long clean track
+  (99 / 104 replayed episodes within 0.15 mm / step) and the skill re-reads it before each pick. Needs the camera screen.
+  The match's identity and position are also weakest there: 100000's puppet reads as a camera to step 440 in both
+  arms, and 100002's flat phone sits 95 mm off across the belt at the decision.
+- [ ] **dojo skills: match_and_pick remembers a frame-0 phantom as the first object** (MATCH2 landmine). Frame-0
+  perception reads the ice cream's cone and scoop as an ice cream plus a "camera" just ahead of it; the tracker drops the
+  phantom at step 4, but match_and_pick chose the first object from the frame-0 pool and kept "camera" for the episode:
+  0 / 15 ice-cream episodes in the compute4 camera rows. `belt_ref=tracked` (default off) takes the leading rider the
+  tracker still holds (offline: reference right 103 / 110 vs 88). Camera A/B pending.
+- [ ] **dojo skills: the belt wrist veto vetoes real riders it cannot see** (MATCH2 landmine). `wrist_look_absent`
+  ignores `visible_frac`: a pick look whose prior is under our own fingers or out of view (visible 0.00) counts as
+  "nothing there". compute4 camera rows: 31 of 34 such vetoes were of a rider within 60 mm of the track, and with one
+  true match per episode a veto of it ends in "need 5 steps" at the budget (14 of 16 match timeouts).
+  `belt_veto=evidence` (default off) needs the prior in view or a stale head track. Open: why the pick look sees
+  nothing (frames: `save_belt_look_frames`); a look from a hover above the descent may fix the view itself.
+- [ ] **dojo perception: head-view identity of the match is ~50 % precise** (MATCH2). Replaying match_and_pick's
+  decision on 110 recorded camera episodes: 40 true matches, 19 phantom tracks, 21 other real riders out of 85
+  decisions; no head-read rule (key share, reference-calibrated similarity at any threshold) beats that. The close
+  view is the lever: `belt_wrist_id` (default off) re-identifies a tracked rider at the pick look over every rider
+  candidate and does not pick a confident other category. Uncalibrated on belt wrist frames.
 - [ ] **dojo infra: box perception data goes stale.** The bootstrap copies compute3's `dojo-perception-data` once.
   compute4's `bg_folds_51` predated the scene backgrounds (built 27 Oct), and the conveyor ran blind there
   (journal 2026-10-28-dojo-conveyor-belt-blind). Its fixed copies are `~/dojo-data/bg_folds{,_51}_ilia`. Wanted: a
@@ -1074,6 +1093,13 @@
   - Suspects: a non-simulated pose read for that asset in the twin envs, or the cube held by the cushion mat.
   - Tool: the judges' reject reasons (`Skills.vreasons`, `rejects` / `reject_examples` in G3 and runtime verify
     reports).
+- [ ] **dojo skills: match_and_pick, rim pinches on solid riders** (MATCH2, G3 perfect perception, 60+ layouts):
+  `plan_intercept`'s no-top-grasp fallback takes rim pinches ("phi") first, and they hold 0 / 14 cameras and 0 / 4
+  headsets (antipodal 9 / 9, 3 / 3). `belt_grasp=solid` (default off: antipodal first, waist, rims last) LOST in G3
+  (45 -> 42 / 41 of 55): today's retry after a rim slip lands on the good antipodal pair, `solid`'s retry skips the
+  whole antipodal family. Next: retry within the family (skip the failed grasp, not its method) and re-plan before
+  homing (the rider passes out of reach: "no intercept"). G3 per category, today: bottle 18 / 18, phone 13 / 13, puppet 11 / 11, game
+  machine 12 / 13, plate 8 / 10, camera 10 / 17, ice cream 4 / 10.
 - [ ] **dojo skills: match_and_pick, objects wider than the hand at the top** (ice cream 104 mm on a 69 mm cone, 3 of
   25 dev targets) have no intercept grasp within 40 deg of vertical; a side grasp of the cone on the moving belt.
   Memory (2026-10-27): `plan_intercept` falls back to `waist_grasps` (level, the pad gap from the mesh at that height);

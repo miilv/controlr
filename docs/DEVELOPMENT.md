@@ -878,3 +878,30 @@ fallbacks and missing body geometry. A missing already-anchored GT object fails 
 starting a simulator. It accepts frozen body-bounds/group caches, and keeps the 2 mm body-centre definitions unchanged.
 Its optional legacy-show repair records exact-flange versus commanded-anchor-FK provenance; approximate legacy
 reconstructions are supplementary diagnostics, never retroactive qualification of a registered verdict.
+
+### match_and_pick MATCH2 switches
+
+Seven `RuntimeConfig` fields, all `off` by default (G3 `--skill-attr` mirrors all but `belt_speed`, which lives in the
+runtime's belt tracker; G3's GT provider has no tracker, so `belt_ref`, `belt_veto` and `belt_wrist_id` are inert there):
+
+- `belt_ref=tracked`: the remembered first object is the leading start rider the tracker still holds after its first
+  reads (a frame-0 phantom ahead of it is dropped, never confirmed), and its key is the leading asset of its own
+  belt-read history (`RuntimeProvider.identity_dist`). Matches keep today's key / vote-share rule. `belt_ref=similar`
+  also scores matches against that history (`interactive.ref_match`: Bhattacharyya similarity plus a
+  competing-category veto); offline on recorded camera reads it took the true match less often than the key rule.
+- `belt_veto=evidence` (with `belt_wrist_veto=on`): an empty pick look vetoes only when the prior was in the wrist
+  view (`visible_frac` >= 0.5: not under our fingers, not out of view) or the head tracker has not matched the track
+  for 30 steps (`RuntimeProvider.track_age`).
+- `belt_speed=lock`: the belt speed is measured once from the first long, clean track (8 reads over 36 steps, median
+  line residual <= 4 mm), projected on the belt axis and kept (event `belt_lock`).
+- `belt_grasp=solid`: a rider with no top grasp that is not a flat dish (`interactive.flat_rider`) is intercepted with
+  mesh-antipodal grasps ranked by `grasps.lift_hold`, then a waist, rim pinches last. A plate keeps today's order.
+- `belt_high_lift=on`: a picked match goes up another 10 cm (the belief's lift is the jaws'; an off-centre hold pivots).
+- `belt_retry=window`: up to six match rounds while 60 steps remain.
+- `belt_wrist_id=on`: a moving rider's pick look re-identifies it over every rider candidate
+  (`policy.rider_candidates`); a confident other category than the first object's is not picked (status `other`).
+
+`save_belt_look_frames: N` (dev) keeps the first N belt pick-look frames. `scripts/skills/match2_decision_replay.py`
+replays match_and_pick's decision (first object, speed, the match it would take) on recorded camera reports (frame-0
+record + logged reads, robot at home, stub pick); its GT is the layout moved along the belt, for scoring only.
+`scripts/skills/match2_g3_job.sh` runs one scoped compute3 physics job on light3 / light4.

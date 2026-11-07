@@ -6,6 +6,7 @@ Runs — `runs/<run_dir>` (not in git), videos — [../video/](../video/).
 
 | Date | Report | Question | Result (small n — see report) |
 |---|---|---|---|
+| 2026-11-07 | [match2](2026-11-07-match2.md) | What limits match_and_pick per stage, and do re-implemented RSI mechanisms close it? | Camera 49/110 dev: reference 20, false veto 14, match identity 21/85; G3 ceiling 45/55; perception switches offline-positive, `belt_grasp=solid` −3/−4 in G3; camera screen requested |
 | 2026-11-07 | [Laptop strict loaded G3](2026-11-07-laptop-g3-round2h.md) | Prove only previously rejected holds, preserving tolerant relays | Ten fresh pairs/cell: 0→18 points both (B SD6.32); 0→9/10 headset credits each;18 wins/0 losses; target met, defaults off |
 | 2026-11-07 | [Laptop loaded following G3](2026-11-07-laptop-g3-round2g.md) | Can an unsupported motion proof distinguish pendulum settling from slip? | Source041: old12/12,11/12; independent7/10,8/10; standard gate fails; fresh superseded before generation |
 | 2026-11-07 | [Laptop wide/clear G3](2026-11-07-laptop-g3-round2f.md) | Keep strong wide holds and plan actual staging release height | Original11/12 standard,10/12 random; independent6/10,9/10; gate fails, no fresh panel |

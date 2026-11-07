@@ -480,6 +480,15 @@ class RuntimeProvider:
         self._unconfirmed: dict = {}            # label -> re-reads that did not see a never-confirmed object
         self.track_confirm_reads = 2
         self.belt_blind: str | None = None      # why the belt reads cannot see the riders (no scene background), or None
+        # RuntimeConfig.belt_speed: "off" (today: the median of the longest current fits) | "lock" (the belt runs at one
+        # speed: the first long, clean track's fit along the belt axis is kept for the episode, ``_try_belt_lock``)
+        self.belt_speed = "off"
+        self.belt_lock_reads = 8                # ... a track with at least this many reads
+        self.belt_lock_span = 36                # ... spanning at least this many steps
+        self.belt_lock_resid_m = 0.004          # ... whose reads sit this close to its line (median)
+        self._belt_lock = None                  # {"speed", "label", "reads", "span", "resid_mm", "step"} once locked
+        self._track_hist: dict = {}             # label -> [(step, xy)] matched reads (the latest 64; the lock's fit)
+        self._id_all: dict = {}                 # label -> {asset key: summed read confidence}, every matched read
         self._n_new = 0
         self._track_last = None
         self.velocity: dict = {}                # label -> np.array([vx, vy]) m / step (fitted)
@@ -826,6 +835,11 @@ class RuntimeProvider:
         that swapped riders or took a phantom); when none, the belt's last such velocity (a scene with a moving base),
         else zeros. Genuine-5.1 100005: an early 3-read fit gave
         (7.95, -10.69) mm / step for a 4.0 mm / step belt, and the intercept missed."""
+        if self._belt_lock is not None:
+            ax = self._belt_axis()
+            if ax is not None:
+                self._belt_v = float(self._belt_lock["speed"]) * ax
+                return self._belt_v.copy()
         v = []
         for lab, vv in self.velocity.items():
             tr = self._tracks.get(lab) or []
@@ -913,6 +927,7 @@ class RuntimeProvider:
         for i, j in pairs:
             o, e = bl[i], el[j]
             self._tracks.setdefault(o.label, []).append((step, e.pos[:2].copy()))
+            self._hist(o.label, step, e.pos[:2])
             self._last_match[o.label] = step
             self._vote(o.label, e)
         # a belief object no re-read ever confirmed is a phantom of the episode-start estimates (the scan estimate
@@ -938,6 +953,8 @@ class RuntimeProvider:
                 if idle and n >= self.track_lost_reads and not self.belief.attached:
                     del self.belief.objects[o.label]
                     self._tracks.pop(o.label, None)
+                    self._id_all.pop(o.label, None)
+                    self._track_hist.pop(o.label, None)
                     self.velocity.pop(o.label, None)
                     self._fit.pop(o.label, None)
                     self.events.append({"kind": "track_lost", "label": o.label, "step": step, "reads": n,
@@ -948,6 +965,8 @@ class RuntimeProvider:
             n = self._unconfirmed[o.label] = self._unconfirmed.get(o.label, 0) + 1
             if n >= self.track_confirm_reads:
                 del self.belief.objects[o.label]
+                self._id_all.pop(o.label, None)
+                self._track_hist.pop(o.label, None)
                 self.events.append({"kind": "track_drop", "label": o.label, "step": step, "reads": n,
                                     "pos": [round(float(v), 3) for v in o.pos[:2]]})
         # an object that came into view (e.g. onto the belt) joins after two reads in a row at consistent places (a
@@ -980,6 +999,10 @@ class RuntimeProvider:
                         self._retire(g, step, "track_ghost_retired", self._missed.get(g.label, 0))
             self.belief.objects[lab] = e
             self._tracks[lab] = [(s0, p0.copy()), (step, e.pos[:2].copy())]
+            self._id_all.pop(lab, None)                 # a reused label (``rider0`` again) starts its evidence afresh
+            self._track_hist.pop(lab, None)
+            self._hist(lab, s0, p0)
+            self._hist(lab, step, e.pos[:2])
             self._last_match[lab] = step
             self._vote(lab, e0)
             self._vote(lab, e)
@@ -998,13 +1021,74 @@ class RuntimeProvider:
                     coef, *_ = np.linalg.lstsq(A[keep], P[keep], rcond=None)
                 self.velocity[lab] = coef[0]
                 self._fit[lab] = (float(t[-1]), coef[1])
+        if self.belt_speed == "lock" and self._belt_lock is None:
+            self._try_belt_lock(step)
         self._predict(step)
         self.stats["track_reads"] = self.stats.get("track_reads", 0) + 1
+
+    def _hist(self, label: str, step: int, xy) -> None:
+        h = self._track_hist.setdefault(label, [])
+        h.append((int(step), np.asarray(xy, float)[:2].copy()))
+        del h[:-64]
+
+    def _try_belt_lock(self, step: int) -> None:
+        """``belt_speed`` "lock": the belt's speed from the first track whose own reads are long and clean enough
+        (``belt_lock_reads`` reads over ``belt_lock_span`` steps, median line residual <= ``belt_lock_resid_m``),
+        projected on the belt axis, kept for the episode. The belt runs at one speed; later short or swapped tracks
+        (riders entering the view, the arms half hiding them) read 2.9-3.5 mm / step for a 4.0 belt in the compute4
+        camera rows, and the intercept inherits that error. Event ``belt_lock``."""
+        ax = self._belt_axis()
+        if ax is None:
+            return
+        best = None
+        for lab, h in self._track_hist.items():
+            if len(h) < self.belt_lock_reads or h[-1][0] - h[0][0] < self.belt_lock_span:
+                continue
+            t = np.array([s for s, _ in h], float)
+            P = np.array([p for _, p in h])
+            A = np.c_[t - t[-1], np.ones(len(t))]
+            coef, *_ = np.linalg.lstsq(A, P, rcond=None)
+            res = np.linalg.norm(A @ coef - P, axis=1)
+            keep = res <= max(self.track_outlier_m, 3.0 * float(np.median(res)))
+            if keep.sum() >= self.belt_lock_reads and not keep.all():
+                coef, *_ = np.linalg.lstsq(A[keep], P[keep], rcond=None)
+                res = np.linalg.norm(A[keep] @ coef - P[keep], axis=1)
+            med = float(np.median(res))
+            sp = float(np.asarray(coef[0], float) @ ax)
+            if med > self.belt_lock_resid_m or not (self.track_min_speed < abs(sp) <= self.track_max_speed):
+                continue
+            span = int(h[-1][0] - h[0][0])
+            if best is None or (span, -med) > (best["span"], -best["resid_mm"] / 1000):
+                best = {"speed": sp, "label": lab, "reads": int(len(h)), "span": span, "resid_mm": round(med * 1000, 2)}
+        if best is not None:
+            best["step"] = int(step)
+            self._belt_lock = best
+            self.events.append({"kind": "belt_lock", **{k: (round(v, 6) if isinstance(v, float) else v)
+                                                       for k, v in best.items()}})
+
+    def identity_dist(self, label: str) -> tuple[dict, int]:
+        """The belt tracker's identity evidence for ``label``: {asset key: share} over every read matched to its track
+        (each read's best asset, weighted by its confidence), and how many reads. ({}, 0) for an untracked label."""
+        d = self._id_all.get(label) or {}
+        tot = float(sum(x for x, _ in d.values()))
+        n = int(sum(c for _, c in d.values()))
+        if tot <= 0:
+            return {}, 0
+        return {k: x / tot for k, (x, _) in d.items()}, n
+
+    def track_age(self, label: str, step: int | None = None) -> int | None:
+        """Steps since a belt read last matched ``label``'s track, None when no read ever did."""
+        s = self._last_match.get(label)
+        if s is None:
+            return None
+        now = int(self.bridge.steps_used) if step is None else int(step)
+        return now - int(s)
 
     def _retire(self, o, step: int, kind: str, reads: int) -> None:
         """A track leaves the belief (``track_expire``): its object, track, fit and votes."""
         self.belief.objects.pop(o.label, None)
-        for d in (self._tracks, self.velocity, self._fit, self._missed, self._last_match, self._id_votes, self._pose_votes):
+        for d in (self._tracks, self.velocity, self._fit, self._missed, self._last_match, self._id_votes, self._pose_votes,
+                  self._id_all, self._track_hist):
             d.pop(o.label, None)
         self.events.append({"kind": kind, "label": o.label, "step": step, "reads": reads,
                             "pos": [round(float(v), 3) for v in o.pos[:2]]})
@@ -1020,6 +1104,9 @@ class RuntimeProvider:
             return
         hist = self._id_votes.setdefault(label, [])
         hist.append((e.asset.key, max(float(e.confidence), 0.05)))
+        acc = self._id_all.setdefault(label, {})
+        x, c = acc.get(e.asset.key, (0.0, 0))
+        acc[e.asset.key] = (x + max(float(e.confidence), 0.05), c + 1)
         del hist[:-self.track_id_window]               # the latest reads: a rider gets better views as it rides in
         v: dict = {}
         for k, c in hist:

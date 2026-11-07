@@ -875,6 +875,11 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
     # grasps in the object's frame, once per arm (a pure translation along the belt keeps them valid)
     rel = {}
     waist_rel = {}
+    rim_rel = {}
+    # belt_grasp "solid": a rider with no top grasp that is not a flat dish is held across its body (mesh antipodal,
+    # then a waist), its rim pinches only last. G3 (perfect perception, waist-gain + v15 dev layouts): rim pinches
+    # ("phi") held 0 / 14 cameras and 0 / 4 headsets, antipodal grasps 9 / 9 and 3 / 3; a plate keeps today's order
+    solid = getattr(sk, "belt_grasp", "off") == "solid" and not flat_rider(o)
     for a in arms:
         cands = G.candidates(o, sk.kin, a, "top")
         if not cands and getattr(sk, "belt_waist_first", "off") == "on":
@@ -888,14 +893,24 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
             tilts = tuple(float(x) for x in str(getattr(sk, "belt_container_tilts", "25,40")).split(","))
             cands = sorted(G.box_rim_grasps(o, sk.kin, a, tilts=tilts), key=lambda g: g.score)[:8] + \
                 G.top_band_grasps(o, sk.kin, a)
+        if not cands and solid:
+            body = sorted([g for g in G.antipodal_grasps(o, sk.kin, a) + G.slice_grasps(o, sk.kin, a)
+                           if -float(g.T[2, 0]) > 0.75 and g.method not in skip_methods], key=lambda g: g.score)[:24]
+            # ranked by how the pads hold it up (``grasps.lift_hold``: the gravity lever and the contact depth): G3
+            # held a camera 0 / 2 by a 20 mm antipodal pair, 9 / 9 by its 44 mm one
+            cands = sorted(body, key=lambda g: (g.method != "antipodal", G.lift_hold(o, g.T), g.score))[:8]
+            rims = sorted(G.rim_grasps(o, sk.kin, a), key=lambda g: float(np.linalg.norm(g.T[:2, 3] - sk.kin.base(a)[:2, 3])))[:6]
+            rim_rel[a] = [(g, g.T[:3, 3] - o.pos, UP) for g in rims
+                          if -float(g.T[2, 0]) > 0.6 and g.method not in skip_methods]
         if not cands:          # wider than the hand on top: slices / antipodal, and the rim of a plate or a basket
             cands = G.slice_grasps(o, sk.kin, a) + G.antipodal_grasps(o, sk.kin, a)
             # (a basket's handle can be out of reach where its near rim is not)
             cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.75], key=lambda g: g.score)[:6] + \
                 sorted(G.rim_grasps(o, sk.kin, a), key=lambda g: float(np.linalg.norm(g.T[:2, 3] - sk.kin.base(a)[:2, 3])))[:6]
-        cands = sorted([g for g in cands if -float(g.T[2, 0]) > 0.6 and g.method not in skip_methods],
-                       key=lambda g: g.score)[:12]
-        rel[a] = [(g, g.T[:3, 3] - o.pos, UP) for g in cands]
+        cands = [g for g in cands if -float(g.T[2, 0]) > 0.6 and g.method not in skip_methods]
+        if not (solid and a in rim_rel):         # (solid: the body grasps keep their antipodal-first order)
+            cands = sorted(cands, key=lambda g: g.score)
+        rel[a] = [(g, g.T[:3, 3] - o.pos, UP) for g in cands[:12]]
     timing = {"approach_settle": approach_settle} if approach_settle else {}
     best = None
     if any(waist_rel.values()):
@@ -907,10 +922,23 @@ def plan_intercept(sk: Skills, label: str, v: np.ndarray, t_min: int = 25, t_max
         # wider than the hand at the top (an ice cream's 104 mm scoop on a 69 mm cone): a level grasp of its waist,
         # approached along the hand's axis while tracking the belt
         rel = {a: [(g, g.T[:3, 3] - o.pos, -g.T[:3, 0]) for g in waist_grasps(sk, o, a)
-                   if getattr(sk, "belt_waist_first", "off") != "on" or g.method not in skip_methods][:12]
+                   if (getattr(sk, "belt_waist_first", "off") != "on" and not solid) or g.method not in skip_methods][:12]
                for a in arms}
         best = _intercept_search(sk, label, o, v3, rel, arms, t_min, t_max, n_desc, n_close, h_pre, lift, ignore, pull, **timing)
+    if best is None and any(rim_rel.values()):
+        best = _intercept_search(sk, label, o, v3, {a: rim_rel.get(a, []) for a in arms}, arms, t_min, t_max, n_desc,
+                                 n_close, h_pre, lift, ignore, pull, **timing)
     return best
+
+
+FLAT_RATIO = 0.25    # belt_grasp "solid": a rider this flat (height / largest footprint side) is a dish (rims first)
+
+
+def flat_rider(o) -> bool:
+    """A flat dish-like rider (a plate): its world bbox height under ``FLAT_RATIO`` of its largest footprint side."""
+    lo, hi = o.aabb()
+    ext = np.asarray(hi, float) - np.asarray(lo, float)
+    return float(ext[2]) < FLAT_RATIO * max(float(ext[0]), float(ext[1]), 1e-6)
 
 
 UP = np.array([0.0, 0.0, 1.0])
@@ -1068,7 +1096,7 @@ def wrist_look_absent(lr: dict) -> bool:
 
 def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, ignore=(), arms=None,
                    pull: float = 0.0, skip_methods=(), min_rise: float | None = None, planned_intercept=None,
-                   approach_settle: int = 0) -> SkillResult:
+                   approach_settle: int = 0, ref_key: str | None = None) -> SkillResult:
     """Pick an object off the moving belt: plan an intercept, wait so the approach ends just before the descent,
     approach, then the tracked descent / close / lift (one IK target per env step). Checked by the object's height."""
     w = sk.refresh()
@@ -1114,7 +1142,18 @@ def pick_from_belt(sk: Skills, label: str, v: np.ndarray, lift: float = 0.125, i
             except Exception as e:  # noqa: BLE001 (a look that fails keeps the tracker's reading)
                 sk.log(f"[belt] wrist look failed: {type(e).__name__}")
             lr = getattr(sk, "last_refine", None) or {}
-            if getattr(sk, "belt_wrist_veto", "off") == "on" and wrist_look_absent(lr):
+            veto = getattr(sk, "belt_wrist_veto", "off") == "on" and wrist_look_absent(lr)
+            if veto and getattr(sk, "belt_veto", "off") == "evidence" and not _absence_seen(sk, label, lr):
+                veto = False
+                sk.log(f"[belt] wrist look: {label} not in view (visible {float(lr.get('visible_frac') or 0):.2f}) and the "
+                       f"head track holds: descend on the track")
+            if not veto and ref_key and getattr(sk, "belt_wrist_id", "off") == "on" and competing_look(lr, ref_key):
+                # belt_wrist_id: the close view names another category, confidently, at the rider we came for: the head
+                # view's identity at the belt's entry was wrong (compute4 replays: 21 of 85 decisions took another rider)
+                sk.log(f"[belt] wrist look: {label} reads as {lr.get('obj_id')} (margin "
+                       f"{float(lr.get('identity_margin') or 0):.2f}), not {ref_key}: not picked")
+                return SkillResult(False, "belt_pick", "other", len(app), a, note=f"{label} is a {lr.get('obj_id')}")
+            if veto:
                 # the wrist look from the hover over the track finds nothing there: the head track is a phantom (a
                 # border read of another rider, a split blob): do not descend on it. Camera rows (compute4, 10 match
                 # episodes): every pick after such a look missed (8 / 8), no pick that succeeded had one (0 / 3)
@@ -1228,10 +1267,20 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     u = v / np.linalg.norm(v)
     w = sk.refresh()
     t_first = w.step
+    ref_mode = getattr(sk, "belt_ref", "off")
+    start_pool = start
+    if ref_mode in ("tracked", "similar") and st.get("first") is None:
+        # the first object is the leading start rider the belt tracker still holds after its first reads: a frame-0
+        # phantom ahead of the real one (compute4 camera rows: an ice cream's cone and scoop read as an ice cream plus
+        # a "camera" leading it, 11 of 15 ice-cream episodes) is dropped by the tracker, never confirmed
+        kept = {l: p for l, p in start.items() if l in w.objects}
+        if kept and len(kept) < len(start):
+            sk.log(f"[belt] reference: start riders the tracker dropped: {sorted(set(start) - set(kept))}")
+        start_pool = kept or start
     while st.get("first") is None:
         now = {l: (w.obj(l).pos[:2].copy(), w.obj(l).asset.key) for l in w.objects
                if w.obj(l).obj_type == "Rigid" and not w.obj(l).clutter}
-        pool = start or now
+        pool = start_pool or now
         if pool:
             st["first"] = max(pool, key=lambda l: float(pool[l][0] @ u))
             st["first_key"] = pool[st["first"]][1]
@@ -1252,12 +1301,25 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
         # where the first one was last believed (xy, step): it rides out of view and the tracker drops it
         if first in w.objects:
             st["first_at"] = ([float(x) for x in w.obj(first).pos[:2]], int(w.step))
+            if ref_mode in ("tracked", "similar"):
+                # the reference: the first object's own belt-read history (kept once it rides out of view)
+                idd = belt_identity(sk, first)
+                if idd is not None and idd[1] >= 3:
+                    st["ref"], st["ref_n"] = dict(idd[0]), int(idd[1])
         elif st.get("first_at") is None and first in start:
             st["first_at"] = ([float(x) for x in start[first][0]], int(s_start))
     first_seen(w)
     absent: set = set()                                 # tracks a wrist look found empty (``belt_wrist_veto``)
     rounds = 3 if getattr(sk, "belt_wrist_veto", "off") == "on" else 1
+    window = getattr(sk, "belt_retry", "off") == "window"
+    if window:
+        rounds = max(rounds, BELT_RETRY_ROUNDS)
     for rnd in range(rounds):
+        if window and rnd > 0:
+            left = _steps_left(sk)
+            if left is not None and left < BELT_RETRY_MIN_STEPS:
+                sk.log(f"[belt] retry window: {left} steps left, no further round")
+                break
         res = _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyor, max_wait, confirm,
                            id_share, first_seen)
         if res is not None:
@@ -1266,8 +1328,90 @@ def match_and_pick(sk: Skills, objects: list[str], conveyor: str | None = None, 
     return {"ok": False, "stage": "pick", "note": f"every match was absent at its track: {sorted(absent)}"}
 
 
+def _ref_key(w, st: dict, first: str, key: str) -> str:
+    """``belt_ref`` "tracked": the remembered key is the leading asset of the first object's own read history."""
+    ref = st.get("ref") or {}
+    return max(ref, key=ref.get) if ref else key
+
+
+def _fmt_dist(d: dict) -> str:
+    return ", ".join(f"{k.split('/')[1] if k.count('/') >= 2 else k} {x:.2f}" for k, x in sorted(d.items(), key=lambda t: -t[1])[:4])
+
+
 ZONE_MARGIN = 0.10   # belt_confirm_zone: a match counts this far past the downstream arm's home hand along the belt
 ZONE_SURE = 0.9      # ... ("uncertain") unless the tracker's identity share for it is at least this
+
+# MATCH2 switches (``Skills.belt_ref`` / ``belt_veto`` / ``belt_high_lift`` / ``belt_retry``; all "off" by default)
+BELT_REF_SIM = 0.6          # belt_ref "similar": a match's read history at least this similar to the first object's
+BELT_REF_COMP = 0.35        # ... and vetoed when its leading category leads by this much more than in the first's reads
+BELT_REF_MIN_READS = 2      # ... from at least this many matched belt reads
+BELT_VETO_VIS = 0.5         # belt_veto "evidence": an empty wrist look counts when this share of the prior was in view
+BELT_SUPPORT_STEPS = 30     # ... or when no head read matched the track for longer than this (a stale / phantom track)
+BELT_HIGH_LIFT_M = 0.10     # belt_high_lift "on": a picked match goes on up this much (a held end pivots down)
+BELT_RETRY_ROUNDS = 6       # belt_retry "window": match rounds while the step budget still holds an intercept
+BELT_RETRY_MIN_STEPS = 60   # ... (an approach, the tracked descent / close / lift and the reserve)
+
+
+def belt_identity(sk: Skills, label: str):
+    """The provider's belt-read identity evidence for ``label`` (``RuntimeProvider.identity_dist``: {key: share}, reads),
+    or None for a provider without one (G3's GT provider: identities are exact there)."""
+    f = getattr(sk.provider, "identity_dist", None)
+    if f is None:
+        return None
+    try:
+        return f(label)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def ref_similarity(ref: dict, d: dict) -> float:
+    """Bhattacharyya coefficient of two identity distributions ({key: share}); 1 = the same evidence, 0 = disjoint."""
+    import math
+    return float(sum(math.sqrt(float(ref.get(k, 0.0)) * float(d.get(k, 0.0))) for k in set(ref) | set(d)))
+
+
+def ref_match(ref: dict, d: dict) -> tuple[bool, float, bool]:
+    """``belt_ref`` "tracked": is a rider with identity evidence ``d`` the first object again, judged against the first
+    object's own evidence ``ref`` (reference-calibrated: a first object B1 reads half as a camera, half as a phone is
+    matched by a rider read the same way, not by a rider read only as a phone)? Returns (match, similarity,
+    competing): competing = the rider's leading category is not the first's and leads its reads by more than
+    ``BELT_REF_COMP`` beyond that category's share in the first's reads."""
+    if not ref or not d:
+        return False, 0.0, False
+    s = ref_similarity(ref, d)
+    top = max(d, key=d.get)
+    competing = top != max(ref, key=ref.get) and float(d[top]) - float(ref.get(top, 0.0)) > BELT_REF_COMP
+    return (s >= BELT_REF_SIM and not competing), s, competing
+
+
+def competing_look(lr: dict, ref_key: str) -> bool:
+    """``belt_wrist_id``: a fitted pick look (ok) whose identity check is confident (``identity_ok``) and names an asset
+    of another category than ``ref_key``."""
+    oid = lr.get("obj_id")
+    if not (lr.get("ok") and lr.get("identity_ok") and oid):
+        return False
+
+    def cat(k):
+        return k.split("/")[1] if k.count("/") >= 2 else k
+    return cat(str(oid)) != cat(str(ref_key))
+
+
+def _absence_seen(sk: Skills, label: str, lr: dict) -> bool:
+    """``belt_veto`` "evidence": does an empty wrist look (``wrist_look_absent``) show that nothing is at ``label``'s track?
+    Yes when at least ``BELT_VETO_VIS`` of the prior was in the wrist view (not out of it, not under our own fingers),
+    or when the head tracker has not matched a read to the track for more than ``BELT_SUPPORT_STEPS`` (a stale or
+    phantom track). No otherwise: the look could not see the spot and the head view still reads a rider there
+    (compute4 camera rows: 31 of 34 such vetoes were of a rider within 60 mm of the track)."""
+    if float(lr.get("visible_frac") or 0.0) >= BELT_VETO_VIS:
+        return True
+    f = getattr(sk.provider, "track_age", None)
+    age = None
+    if f is not None:
+        try:
+            age = f(label)
+        except Exception:  # noqa: BLE001
+            age = None
+    return age is not None and age > BELT_SUPPORT_STEPS
 
 
 def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyor, max_wait, confirm, id_share,
@@ -1287,7 +1431,22 @@ def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyo
             return True
         return float(w.obj(lab).pos[:2] @ u) >= s_zone
 
-    same = [l for l in labs if l != first and l in w.objects and w.obj(l).asset.key == key and l not in absent
+    tracked = getattr(sk, "belt_ref", "off") in ("tracked", "similar")
+    similar = getattr(sk, "belt_ref", "off") == "similar"
+
+    def is_same(l, gate=True):
+        # belt_ref "similar": the rider's belt-read evidence against the first object's own (``ref_match``; offline on
+        # the compute4 rows it took target1 in 38-41 of 110 decisions against 45 for the key rule: not recommended);
+        # else (and for a provider without read evidence) the remembered asset key, with the tracker's vote share
+        if similar and st.get("ref"):
+            idd = belt_identity(sk, l)
+            if idd is not None:
+                return idd[1] >= BELT_REF_MIN_READS and ref_match(st["ref"], idd[0])[0]
+        return w.obj(l).asset.key == key and (not gate or float(w.obj(l).confidence) >= id_share)
+
+    if tracked and st.get("ref"):
+        key = st["first_key"] = _ref_key(w, st, first, key)
+    same = [l for l in labs if l != first and l in w.objects and is_same(l, gate=False) and l not in absent
             and in_zone(l)]
     t0 = w.step
     seen = confirm if same and not zone else 0
@@ -1306,6 +1465,8 @@ def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyo
         if first in w.objects:                      # (the first one rides out of view and leaves the belief: keep its key)
             key = st["first_key"] = w.obj(first).asset.key
         first_seen(w)
+        if tracked and st.get("ref"):
+            key = st["first_key"] = _ref_key(w, st, first, key)
         # a newcomer's identity counts once most of its latest reads agree (the tracker's vote share; GT: 1), and the
         # next one comes from behind the first (a second track of the first object itself is not it: 100002). Once the
         # first has left the belief, "behind" is behind where the belt has carried it since its last belief: offline
@@ -1314,20 +1475,46 @@ def _match_round(sk, w, st, first, key, labs, start, v, u, absent, lift, conveyo
         fa = st.get("first_at")
         fp = None if fa is None else np.asarray(fa[0], float) + v * (w.step - fa[1])
         behind = (lambda l: float((w.obj(l).pos[:2] - fp) @ u) < -0.08) if fp is not None else (lambda l: True)
-        same = [l for l in labs if l != first and w.obj(l).asset.key == key and float(w.obj(l).confidence) >= id_share
-                and behind(l) and l not in absent and in_zone(l)]
+        same = [l for l in labs if l != first and is_same(l) and behind(l) and l not in absent and in_zone(l)]
         seen = seen + 1 if same else 0
     sk.log(f"[belt] v {np.round(v * 1000, 2).tolist()} mm/step; first {first} ({key}); same: {same}")
+    if similar and st.get("ref"):
+        sims = {}
+        for l in same:
+            idd = belt_identity(sk, l)
+            if idd is not None:
+                sims[l] = (round(ref_match(st["ref"], idd[0])[1], 2), idd[1])
+        sk.log(f"[belt] reference reads {st.get('ref_n')}: {_fmt_dist(st['ref'])}; match similarity (sim, reads): {sims}")
     target = min(same, key=lambda l: -float(w.obj(l).pos[:2] @ u))          # the next to come
+    if getattr(sk, "belt_speed", "off") == "lock":
+        # the belt speed as the provider measures it now (``RuntimeProvider._try_belt_lock``: the first long clean track),
+        # not the early 3-4-read fit match_and_pick started with (compute4 camera rows: 3.2-3.5 mm / step for a 4.0 belt
+        # in 51 of 173 decisions; 25-40 steps of intercept turn that into 15-25 mm along the belt)
+        f = getattr(sk.provider, "belt_velocity", None)
+        vv = np.asarray(f(), float).reshape(-1)[:2] if f is not None else None
+        if vv is not None and float(np.linalg.norm(vv)) > 1e-4:
+            if float(np.linalg.norm(vv - v)) > 1e-4:
+                sk.log(f"[belt] belt speed now {np.round(vv * 1000, 2).tolist()} mm/step (was {np.round(v * 1000, 2).tolist()})")
+            v = vv
     ign = (conveyor,) if conveyor else ()
     skip: set = set()
     for attempt in range(2):
         sk.notes_belt_method = None
         late = zone and float(w.obj(target).pos[:2] @ u) >= s_zone
-        r = pick_from_belt(sk, target, v, lift=lift, ignore=ign, skip_methods=tuple(skip), arms=[down] if late else None)
+        kw = {"ref_key": key} if getattr(sk, "belt_wrist_id", "off") == "on" else {}
+        r = pick_from_belt(sk, target, v, lift=lift, ignore=ign, skip_methods=tuple(skip), arms=[down] if late else None,
+                           **kw)
+        if r.ok and getattr(sk, "belt_high_lift", "off") == "on":
+            # the lift is measured on the belief (the jaws' pose): an object held off its centre (a lying bottle near
+            # one end) pivots down in the pads and its own origin rises less (compute4 camera rows: 7 episodes held the
+            # match "125 mm up" and did not score). Go on up while the hand still holds it
+            try:
+                _lift_more(sk, r.arm, target, BELT_HIGH_LIFT_M)
+            except (BudgetExceeded, EpisodeEnded):
+                pass
         if r.ok or r.status == "ended":
             return {"ok": True, "stage": "picked", "note": r.note}
-        if r.status == "absent":
+        if r.status in ("absent", "other"):
             absent.add(target)
             try:
                 sk.home(gripper=OPEN)
