@@ -520,6 +520,31 @@ cannot resolve the disc's thickness is unknown; other held evidence retains its
 normal interpretation. The existing `held_thin` switch applies the same guard to
 all unresolved thin objects. Neither switch measures a pose or guarantees a grasp.
 
+### Functional-target catalogue (F, `f-catalogue/1`)
+
+`dojo/skills/fcatalogue.py` builds the input file of the partner team's F adapter: one JSON per catalogue build, asset
+keys only.
+- **What is in it:**
+  - every key's raw functional / active-functional / support frames, mapped into the root frame RoboDojo's pose reads
+    (`root_in_asset`, from the USD articulation root);
+  - USD joints by tag;
+  - a type per tag (`tag_type`: tag grammar and frame structure, catalogue-wide);
+  - per-type and per-tag frame conventions (`CONV`, `tag_conv`);
+  - mesh-derived contact geometry (`derived`: the `@top` resting surface, the `@base` lowest band, opening width /
+    length / depth and wall lip). Each derived entry names its method and parameters.
+- **What it reads:** only `metadata.json` / `object.usd[z]` under RoboDojo's `Assets/Object/RoboDojo` and
+  `index.json` / `geom.npz` under perception's catalogue. All reads go through `reader` / `read_*`, with roots checked
+  against `dojo/legality/roots.py`.
+- **Hashes:**
+  - `build.catalogue_hash` is the sha256 of `index.json`, the hash B1 reports as `data.catalog.sha256`;
+  - `sources.listing_sha256` covers every file read.
+- **Driving it:** `scripts/dojo/f_catalogue_extract.py` (`build` / `check` / `compare`). The round trip and
+  verb-reader checks live in `scripts/dojo/fcat/check.py`, against a verbatim copy of the partner's prototype
+  (`scripts/dojo/fcat/functarget_ref.py`).
+- **Not inference code:** the module is offline tooling, and nothing in the runtime imports it. It is deliberately
+  free of classes: the `controlr-inference` audit profile resolves an untyped `x.m()` to every method named `m`
+  (all-method traversal; the partner profiles use rapid type analysis).
+
 ### Thin-disc contact sequence
 
 `dojo.skills.coin_contact` holds default-off switches for a thin disc standing in a fixed holder (a coin in a stand),

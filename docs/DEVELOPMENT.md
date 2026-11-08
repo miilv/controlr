@@ -59,6 +59,7 @@ one live run checking `cache_read` (see RUNBOOK §cache).
 | dojo behind the official RoboDojo client (robot-harness's strict server) | `dojo/bridge/` (client, `contract.py` firewall, `RobotServerBackend`, driver), `scripts/dojo/bridge_episode.sh` | `test_bridge` (a fake strict server over a real socket: firewall, `joint_steps`, runtime / agent / twin episodes); `scripts/dojo/bridge_episode.sh --fake`; then a practice episode on a 5.1-rendering GPU ([BRIDGE-RUNBOOK.md](BRIDGE-RUNBOOK.md)) |
 | decision head (questions, reduction, state) — tune with `scripts/decisions_probe.py` (one call per scene) and `scripts/decisions_perception.py` (image relations per camera) before episodes | `llm/decisions.py`, `prompts/decisions_vN.yaml` (+ `config.DecisionsConfig`) | `test_llm_decisions`; image format / that the model sees the frame: `CONTROLR_LIVE=1 pytest tests/test_llm_decisions_live.py -s` (4 calls) |
 | cache / router / timings | `llm/` | `test_llm_*`; live `bench-cache` |
+| the F catalogue file (`f-catalogue/1`: tag types, CONV, derived contact geometry) | `dojo/skills/fcatalogue.py`, `scripts/dojo/f_catalogue_extract.py`, `scripts/dojo/fcat/check.py` | `test_f_catalogue` (synthetic assets, legality spy, round trip, readers); then `build` + `check` + `compare` on compute3, CPU ([report](experiments/2026-11-08-f-catalogue.md)) |
 | an experiment axis | field in `config.py` + `configs/base.yaml` | `test_cli` / `test_loop`; the default must not change behaviour |
 
 ### Task-scoped key switches
@@ -165,6 +166,16 @@ perception service. Partner glib-specific tests skip explicitly when glib is abs
 their planted-violation, task-spelling and sentinel tests run here.
 
 ## 4. Pitfalls (already stepped on)
+
+- **In `controlr-inference`, a new class in `dojo/` or `controlr/` joins the legality call graph through its method
+  names.** That profile keeps conservative all-method traversal: an untyped `x.m()` reaches every method named `m`
+  in the index, and naming a class also reaches its constructor and dunders. The partner profiles use rapid type
+  analysis instead (`C.m` only for a class that reachable code names), so they do not show this.
+  - Under the inference profile, a new class with methods called `pose`, `frame`, `json`, `read_bytes`, ... is
+    reached from runtime and perception code. Its numpy and builtin calls then become "unresolved" findings, which
+    the ratchet rejects (transition records may only shrink).
+  - Offline tools: use plain functions (`dojo/skills/fcatalogue.py`), or keep them under `scripts/`.
+  - Inference code: declare the module as a root and expect the findings.
 
 - **Camera lane profiles:** `scripts/dojo/queues/lane2.sh` retains compute4 defaults.
   For compute6 set `LANE_STREAM=integ-c6`, `LANE_STATE`, `LANE_RUNS`, `LANE_DATA`
