@@ -1,0 +1,40 @@
+{"file": "100000.pkl", "ours_env": 891.4, "public_env": 520.4, "public_motion_env": 420.4, "grip_env": 100.0, "ours_motion_env": 766.4, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100001.pkl", "ours_env": 851.0, "public_env": 495.2, "public_motion_env": 395.2, "grip_env": 100.0, "ours_motion_env": 726.0, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100003.pkl", "ours_env": 770.8, "public_env": 462.1, "public_motion_env": 362.1, "grip_env": 100.0, "ours_motion_env": 645.8, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100004.pkl", "ours_env": 861.0, "public_env": 491.7, "public_motion_env": 391.7, "grip_env": 100.0, "ours_motion_env": 736.0, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100005.pkl", "ours_env": 808.4, "public_env": 491.9, "public_motion_env": 391.9, "grip_env": 100.0, "ours_motion_env": 683.4, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100006.pkl", "ours_env": 697.5, "public_env": 438.7, "public_motion_env": 338.7, "grip_env": 100.0, "ours_motion_env": 572.5, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100007.pkl", "ours_env": 678.1, "public_env": 432.4, "public_motion_env": 332.4, "grip_env": 100.0, "ours_motion_env": 553.1, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100008.pkl", "ours_env": 741.0, "public_env": 451.0, "public_motion_env": 351.0, "grip_env": 100.0, "ours_motion_env": 616.0, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100009.pkl", "ours_env": 797.7, "public_env": 472.6, "public_motion_env": 372.6, "grip_env": 100.0, "ours_motion_env": 672.7, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100020.pkl", "ours_env": 899.9, "public_env": 505.9, "public_motion_env": 405.9, "grip_env": 100.0, "ours_motion_env": 774.9, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100021.pkl", "ours_env": 570.4, "public_env": 412.1, "public_motion_env": 312.1, "grip_env": 100.0, "ours_motion_env": 445.4, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100022.pkl", "ours_env": 651.0, "public_env": 423.7, "public_motion_env": 323.7, "grip_env": 100.0, "ours_motion_env": 526.0, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100023.pkl", "ours_env": 809.7, "public_env": 470.9, "public_motion_env": 370.9, "grip_env": 100.0, "ours_motion_env": 684.7, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100024.pkl", "ours_env": 849.1, "public_env": 494.8, "public_motion_env": 394.8, "grip_env": 100.0, "ours_motion_env": 724.1, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100025.pkl", "ours_env": 767.0, "public_env": 474.9, "public_motion_env": 374.9, "grip_env": 100.0, "ours_motion_env": 642.0, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100026.pkl", "ours_env": 794.9, "public_env": 480.5, "public_motion_env": 380.5, "grip_env": 100.0, "ours_motion_env": 669.9, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100027.pkl", "ours_env": 636.7, "public_env": 426.6, "public_motion_env": 326.6, "grip_env": 100.0, "ours_motion_env": 511.7, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100028.pkl", "ours_env": 674.3, "public_env": 432.7, "public_motion_env": 332.7, "grip_env": 100.0, "ours_motion_env": 549.3, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100029.pkl", "ours_env": 831.6, "public_env": 500.5, "public_motion_env": 400.5, "grip_env": 100.0, "ours_motion_env": 706.6, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+n 19 ours env steps: min 570 median 795 max 900 | public timing: min 412 median 473 max 520
+ours_motion_env median 670
+public_motion_env median 373
+ours_grip_env median 125
+grip_env median 100
+{"file": "100005.pkl", "ours_env": 813.4, "public_env": 517.9, "public_motion_env": 417.9, "grip_env": 100.0, "ours_motion_env": 688.4, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100006.pkl", "ours_env": 895.5, "public_env": 545.8, "public_motion_env": 445.8, "grip_env": 100.0, "ours_motion_env": 770.5, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100007.pkl", "ours_env": 873.5, "public_env": 546.2, "public_motion_env": 446.2, "grip_env": 100.0, "ours_motion_env": 748.5, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100008.pkl", "ours_env": 769.9, "public_env": 492.6, "public_motion_env": 392.6, "grip_env": 100.0, "ours_motion_env": 644.9, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100009.pkl", "ours_env": 752.2, "public_env": 493.6, "public_motion_env": 393.6, "grip_env": 100.0, "ours_motion_env": 627.2, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100024.pkl", "ours_env": 691.2, "public_env": 455.8, "public_motion_env": 355.8, "grip_env": 100.0, "ours_motion_env": 566.2, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100025.pkl", "ours_env": 630.4, "public_env": 439.7, "public_motion_env": 339.7, "grip_env": 100.0, "ours_motion_env": 505.4, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100026.pkl", "ours_env": 723.8, "public_env": 485.8, "public_motion_env": 385.8, "grip_env": 100.0, "ours_motion_env": 598.8, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100027.pkl", "ours_env": 687.3, "public_env": 466.2, "public_motion_env": 366.2, "grip_env": 100.0, "ours_motion_env": 562.3, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100028.pkl", "ours_env": 809.8, "public_env": 523.7, "public_motion_env": 423.7, "grip_env": 100.0, "ours_motion_env": 684.8, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+{"file": "100029.pkl", "ours_env": 744.3, "public_env": 490.2, "public_motion_env": 390.2, "grip_env": 100.0, "ours_motion_env": 619.3, "ours_grip_env": 125.0, "holds_env": 0.0, "segments": 41, "moves": 31, "grips": 10}
+n 11 ours env steps: min 630 median 752 max 896 | public timing: min 440 median 493 max 546
+ours_motion_env median 627
+public_motion_env median 393
+ours_grip_env median 125
+grip_env median 100

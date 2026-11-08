@@ -1,0 +1,27 @@
+{
+  "policy": "first-pick-v1",
+  "missing_body_geometry": [
+    "Geometry/basket/00005",
+    "Geometry/camera_stand/00000",
+    "Rigid/action_camera/00000",
+    "Rigid/action_camera/00001",
+    "Rigid/action_camera/00002",
+    "Rigid/garage/00014",
+    "Rigid/garage/00015",
+    "Rigid/phone/00000",
+    "Rigid/toy_car/00000",
+    "Rigid/toy_car/00001",
+    "Rigid/toy_car/00002",
+    "Rigid/toy_car/00003",
+    "Rigid/toy_car/00004",
+    "Rigid/watch/00000",
+    "Rigid/watch/00001",
+    "Rigid/watch/00002"
+  ],
+  "writes": 133,
+  "nearest_fallback": 129,
+  "sources": {
+    "consumed_pick": 4,
+    "nearest_fallback": 129
+  }
+}
