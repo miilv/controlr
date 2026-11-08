@@ -5,7 +5,15 @@ import numpy as np
 import pytest
 
 from dojo.perception import audit_identity as ai
-from scripts.perception.audit_identity_v2 import AuditIdentityV2
+# Scorer tools are intentionally not an installed inference package.
+import importlib.util
+from pathlib import Path
+
+_spec = importlib.util.spec_from_file_location(
+    "audit_identity_v2", Path(__file__).resolve().parents[2] / "scripts/perception/audit_identity_v2.py")
+_v2 = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_v2)
+AuditIdentityV2 = _v2.AuditIdentityV2
 from dojo.perception.grasp_metric import Footprints
 
 
