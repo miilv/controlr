@@ -1263,3 +1263,8 @@ that exact actual base via `DETECTION_GAIN_BOOTSTRAP_REFS`; later bases cannot
 reuse it. Existing pins remain immutable except deletion, and clean roots cannot
 inherit any pin. Each bootstrap still requires the same independent previous-source
 scan and source-line evidence in the inventory report.
+
+The shared engine registers `controlr-inference` when its adjacent `profiles.py`
+exists and then uses it as the CLI default. A partner tree without that module
+uses `controlr-glib`. This lets both trees use a byte-identical engine while
+preserving their available profiles and defaults.
