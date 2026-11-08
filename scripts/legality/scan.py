@@ -71,7 +71,8 @@ def inventory(root=ROOT):
                                            or r.startswith('controlr.robot.so101.arm_id:')})}
 
 
-def gate(rows, allowlist, previous=None, reviewed=None, previous_reviewed=None):
+def gate(rows, allowlist, previous=None, reviewed=None, previous_reviewed=None, detection_gains=None, previous_detection_gains=None):
+    detection_gains = detection_gains or {}
     counts = Counter(r['key'] for r in rows)
     reviewed = reviewed or {}
     issues = []
@@ -84,6 +85,13 @@ def gate(rows, allowlist, previous=None, reviewed=None, previous_reviewed=None):
             issues.append(f'invalid transition review: {key}')
     if previous is not None and any(n > previous.get(k, 0) for k, n in allowlist.items()):
         issues.append('allowlist grew relative to base')
+    if previous_detection_gains is not None and any(v != previous_detection_gains.get(k) for k, v in detection_gains.items()):
+        issues.append('detection-gain pins grew or changed relative to base')
+    if set(detection_gains) & (set(allowlist) | set(reviewed)):
+        issues.append('detection gains must remain separate from legacy and transition pins')
+    for key, pin in detection_gains.items():
+        if not re.fullmatch(r'[0-9a-f]{40}', pin.get('source_ref', '')) or not pin.get('source_line') or not pin.get('reason'):
+            issues.append(f'invalid detection-gain evidence: {key}')
     for r in rows:
         clean_path = r.get('clean_reachable', False) or is_general_symbol(r.get('root', '')) or r['file'].startswith(GENERAL) or any(is_general_symbol(p) for p in r['path'])
         pin = reviewed.get(r['key'], {})
@@ -92,7 +100,13 @@ def gate(rows, allowlist, previous=None, reviewed=None, previous_reviewed=None):
                           and pin.get('why') == re.sub(r' \(line \d+\)', '', r['why'])
                           and bool(pin.get('reason', '').strip())
                           and pin.get('disposition') in ('blocked', 'review required'))
-        if (counts[r['key']] > allowlist.get(r['key'], 0) and not reviewed_match) or clean_path:
+        gain = detection_gains.get(r['key'], {})
+        gain_match = (gain.get('count', 0) >= counts[r['key']]
+                      and all(gain.get(k) == r[k] for k in ('file', 'func', 'category', 'evidence'))
+                      and re.sub(r' \(line \d+\)', '', gain.get('why', '')) == re.sub(r' \(line \d+\)', '', r['why'])
+                      and bool(re.fullmatch(r'[0-9a-f]{40}', gain.get('source_ref', '')))
+                      and bool(gain.get('source_line')) and bool(gain.get('reason')))
+        if (counts[r['key']] > allowlist.get(r['key'], 0) and not reviewed_match and not gain_match) or clean_path:
             issues.append(f"{r['file']}:{r['line']} {r['category']}: {r['why']}")
     return issues
 
@@ -123,7 +137,9 @@ def main(argv=None):
         allowed = json.loads((ROOT / relative).read_text())
         reviewed_relative = 'scripts/legality/transition-review.json'
         reviewed = json.loads((ROOT / reviewed_relative).read_text())
-        previous = previous_reviewed = None
+        gains_relative = 'scripts/legality/detection-gains.json'
+        gains = json.loads((ROOT / gains_relative).read_text())
+        previous = previous_reviewed = previous_gains = None
         if args.base_ref:
             subprocess.run(['git', 'cat-file', '-e', args.base_ref + '^{commit}'], cwd=ROOT, check=True, capture_output=True)
             old = subprocess.run(['git', 'show', f'{args.base_ref}:{relative}'], cwd=ROOT, capture_output=True, text=True)
@@ -135,7 +151,11 @@ def main(argv=None):
                 previous_reviewed = json.loads(old_review.stdout)
             elif subprocess.run(['git', 'cat-file', '-e', args.base_ref + ':scripts/legality/scan.py'], cwd=ROOT, capture_output=True).returncode == 0:
                 raise SystemExit('base scanner exists but its allowlist is missing')
-        problems = gate(report['findings'], allowed, previous, reviewed, previous_reviewed)
+        if args.base_ref:
+            prior = subprocess.run(['git', 'show', f'{args.base_ref}:{gains_relative}'], cwd=ROOT, capture_output=True, text=True)
+            if prior.returncode == 0:
+                previous_gains = json.loads(prior.stdout)
+        problems = gate(report['findings'], allowed, previous, reviewed, previous_reviewed, gains, previous_gains)
         print('\n'.join(problems[:100]))
         return bool(problems)
     return 0
