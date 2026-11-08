@@ -167,10 +167,13 @@ their planted-violation, task-spelling and sentinel tests run here.
 
 ## 4. Pitfalls (already stepped on)
 
-- **A new class in `dojo/` or `controlr/` is part of the legality call graph through its method names.** The shared
-  audit engine resolves an untyped `x.m()` to every method named `m` in the index. So a new class whose methods are
-  called `pose`, `frame`, `json`, `read_bytes`, ... is reached from runtime and perception code. Its numpy and builtin
-  calls then become "unresolved" findings, which the ratchet rejects (transition records may only shrink).
+- **In `controlr-inference`, a new class in `dojo/` or `controlr/` joins the legality call graph through its method
+  names.** That profile keeps conservative all-method traversal: an untyped `x.m()` reaches every method named `m`
+  in the index, and naming a class also reaches its constructor and dunders. The partner profiles use rapid type
+  analysis instead (`C.m` only for a class that reachable code names), so they do not show this.
+  - Under the inference profile, a new class with methods called `pose`, `frame`, `json`, `read_bytes`, ... is
+    reached from runtime and perception code. Its numpy and builtin calls then become "unresolved" findings, which
+    the ratchet rejects (transition records may only shrink).
   - Offline tools: use plain functions (`dojo/skills/fcatalogue.py`), or keep them under `scripts/`.
   - Inference code: declare the module as a root and expect the findings.
 

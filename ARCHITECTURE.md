@@ -542,7 +542,8 @@ keys only.
   verb-reader checks live in `scripts/dojo/fcat/check.py`, against a verbatim copy of the partner's prototype
   (`scripts/dojo/fcat/functarget_ref.py`).
 - **Not inference code:** the module is offline tooling, and nothing in the runtime imports it. It is deliberately
-  free of classes, because the shared audit engine resolves an untyped `x.m()` to every method named `m`.
+  free of classes: the `controlr-inference` audit profile resolves an untyped `x.m()` to every method named `m`
+  (all-method traversal; the partner profiles use rapid type analysis).
 
 ### Thin-disc contact sequence
 
