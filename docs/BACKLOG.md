@@ -1220,9 +1220,11 @@
   [IMIT camera A/B](experiments/2026-11-05-imit-tie-look-ab.md). Do not adopt from G3 alone.
 - [ ] **dojo imitation: IMIT2 camera A/B — decided; B is not adopted.** C vs A FAIL (Δ −2.2); B vs C passed gain and guards
   (Δ +13.8, 7 / 3) but FAILED the registered write audit (`perception` writer +7.1 pp, the refind write harmful)
-  ([verdict](experiments/2026-11-08-imit2-camera.md), [round 3](experiments/2026-11-08-imit2-round3.md)). The category
-  key is replaced by an evidence + flat-box handover rule on local branch `ilia/imit2-general` (G3 equal on 17 / 17,
-  zero new legality findings); PR goes to robot-harness when the lead says.
+  ([verdict](experiments/2026-11-08-imit2-camera.md), [round 3](experiments/2026-11-08-imit2-round3.md)). On local
+  branch `ilia/imit2-general`: the category key replaced by a gripper-derived bound (longer than 2 × FINGER_MAX and
+  side faces under PAD_LENGTH) or the object's own failed direct pick; G3 equal to current B on 17 / 17 at equal
+  steps; zero new legality findings ([round 4](experiments/2026-11-08-imit2-round4.md) §1). PR to robot-harness when
+  the lead says.
 - [ ] **dojo imitation: a general `imitate` verb instead of the task-keyed route (hard rule).** `copy_demonstration` is
   reached through `supervisor.py`'s `Vocabulary("imitate_sorting_sequence", …)`: a task-name route. Joint work with the
   partner's model planner over the shared library: a planner-callable `imitate(demonstrator, demo_container,
@@ -1231,17 +1233,19 @@
   farther half of the movers", the tuned `max_wait` / `after_last` / `gone_quiet` defaults (`max_wait=1400` is an
   allowlisted benchmark-composite finding), the `imitate_*` field names
   ([round 3](experiments/2026-11-08-imit2-round3.md) §3).
-- [ ] **dojo simlab: dev imitation demos run longer than the public RoboDojo timing.** Ours are 570–900 env steps
-  (median 752–795). The same waypoints at the Franka's public limits (10 sub-steps / env step, URDF velocities, cuRobo
-  `max_acceleration` 15, 100-sub-step grips) take ~410–550. The slow `retime` caps account for ~250–300 of the extra
-  steps. Proposed `demo_gen --timing public` (cuRobo's own interpolation at dt = 0.004, no caps / extra holds,
-  validation as today). Not implemented; it changes every dev imitation number, so it is the lead's call. The old
-  `demo_gen` comments quote stats measured on official make_kong / tic-tac-toe `Traj` files (commit 41a8c94a): retire
-  them with the new mode.
-- [ ] **dojo audit: the #417 identity instrument mostly falls back on imitate.** 129 / 133 IMIT2 writes were matched
-  by nearest fallback: perception's own `t*` / `aim*` labels share the layout's GT label name space but mean other
-  objects. Spatial association at frame 0 (or at the first consumed pick for both sides) would make the imitate audit
-  measure position error, not label agreement.
+- [ ] **dojo simlab: dev imitation demo timing vs the official one (public planner timing measured; limit).** Ours
+  (legacy pace) 570–900 env steps. The public planner's own timing (`scripts/simlab/demo_gen_public.py`, branch
+  `ilia/imit2-general`) measured 857–1041 (canonical median 931, fresh 897): cuRobo's plans are not minimum-time
+  (moves in 20-sub-step steps, ≥ 101; half of them ≤ 201 even for 5 cm). Official ≤ 640 cannot be reproduced from
+  public code. Lead's options: legacy, time-optimal re-timing at the public joint limits (~410–550, needs validation),
+  or fewer waypoints ([round 4](experiments/2026-11-08-imit2-round4.md) §2). The official-demo pace comments are
+  retired from `demo_gen`.
+- [ ] **dojo audit: label-agnostic GT matching for the #417 identity instrument (proposal).** On IMIT2's 133
+  B / C writes the instrument matched every write to the same-named GT object (133 / 133), and a frame-0 spatial
+  assignment puts 124 / 133 on a different object (median pre-write error 461 mm). Proposed: never accept label-name
+  equality; seed identity from a one-to-one spatial assignment of the frame-0 record; keep consumed-pick finalisation;
+  a label-agnostic nearest fallback; re-score registered audits only as supplements
+  ([round 4](experiments/2026-11-08-imit2-round4.md) §3). Not implemented.
 - [ ] **dojo imitation: home wait / kept sides are camera-untested levers.** `imitate_wait=home` and
   `imitate_keep_sides` were proposed (journal 2026-10-29-dojo-imitate-wait-home) and never camera-validated; the
   candidate runs `imitate_wait=origin`. G3 dev 100007 ended at step 776 on RoboDojo's "our arm left its origin while
