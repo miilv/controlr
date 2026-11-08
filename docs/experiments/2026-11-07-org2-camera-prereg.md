@@ -135,3 +135,13 @@ Retain compute4 per-job Kit environment and own physics kit as required by the e
 Append under both queue locks after COIN2-CAM, replacing an empty/blank queue if needed.
 The lead owns lane starts. Stop without moving if checks fail or readiness misses 07:40Z.
 The earlier blocker receipt is superseded only within the lead's explicit extended permissions.
+
+### Operational overlay clarification — 2026-11-08 05:10Z (before queue mutation)
+
+The lead additionally authorizes appending exactly
+`--setenv BASH_ENV=/home/haptics/dojo-data/org2-cam/meta/kit-env.sh` to each moved row.
+This is a box-level operational setting applied to **both arms of every moved pair**;
+whole pairs stay on one box, so it cannot differ within a pair. The overlay is copied
+byte-identically from CLASSIFY3 compute4's `meta/kit-env.sh`; its SHA256 is in the receipt.
+The per-row normalized diff records this addition separately from authorized host-path changes.
+No other row change is permitted.
