@@ -2644,3 +2644,82 @@ Every added row, grouped by module (each line carries its previous-main source l
 - `1` `<module>`: data file not in the allowlist: 'links.json' (line 1) — `"""Per-link geometry and joints of RoboDojo Articulation assets -> links.json in a mesh catalogue.`
 - `108` `main`: data file not in the allowlist: 'links.json' (line 108) — `ap.add_argument("--out", required=True, help="catalogue root (writes <Type>/<cat>/<idx>/links.json)")`
 - `120` `main`: data file not in the allowlist: 'links.json' (line 120) — `(od / "links.json").write_text(json.dumps(info))`
+
+## A1/A2 follow-up: partner b30b37ed
+
+Previous main: `84fb8c6e93df69ad59a6223810730b9011e044bd`. Patch `e3a0cb19` was already present; `b30b37ed` adds dotted-module/literal-getattr reachability, line-scoped dispatch exemptions and the AST robot-API guard. Both pin mechanisms retain exact-line/duplicate protection. Class bodies remain reachable under both new constructor spellings.
+
+**No new non-legacy or clean-root findings.** All 45 new main signals are in the already-inventoried `dojo/perception/glyph_read.py`. Every new baseline key was reproduced on a separate previous-main source archive with the same finding, source line and exact evidence. The 45 new pins are separate detection gains, not legacy allowlist growth. Existing gain pins, legacy allowlist and transition pins are unchanged.
+
+| Category | Main before | Main after | D-C19 before | D-C19 after |
+|---|---:|---:|---:|---:|
+| benchmark_composite | 6 | 6 | 6 | 6 |
+| checker_module | 14 | 14 | 14 | 14 |
+| checker_predicate | 2 | 2 | 2 | 2 |
+| checker_provenance | 259 | 259 | 238 | 238 |
+| checker_state | 53 | 53 | 51 | 51 |
+| checker_tolerance | 88 | 88 | 83 | 83 |
+| dynamic_code | 54 | 54 | 48 | 48 |
+| identity_source | 5 | 5 | 5 | 5 |
+| instruction_or_identity | 147 | 147 | 142 | 142 |
+| reflection | 540 | 540 | 506 | 506 |
+| task_data | 125 | 125 | 119 | 119 |
+| task_name | 843 | 843 | 817 | 817 |
+| task_switch | 118 | 118 | 92 | 92 |
+| task_vocabulary | 92 | 92 | 91 | 91 |
+| termination | 3 | 3 | 3 | 3 |
+| unresolved | 29092 | 29137 | 26552 | 26597 |
+
+**Totals:** main 31,441 → 31,486; D-C19 28,769 → 28,814. Both snapshots add 45 signals and retire **zero** signals. No source finding is silently removed.
+
+### Newly detected findings: `dojo/perception/glyph_read.py`
+
+- `137` `robot_ring`: unresolved call np.asarray (line 137) — `m = np.asarray(mask) > 0` (same line/evidence on previous main).
+- `141` `robot_ring`: unresolved call range (line 141) — `for k in range(1, px + 1):` (same line/evidence on previous main).
+- `142` `robot_ring`: unresolved call np.roll (line 142) — `g |= np.roll(d, k, axis) | np.roll(d, -k, axis)` (same line/evidence on previous main).
+- `145` `robot_ring`: unresolved call np.asarray (line 145) — `return float(np.asarray(robot, bool)[ring].mean()) if ring.any() else 0.0` (same line/evidence on previous main).
+- `145` `robot_ring`: unresolved call np.asarray(robot, bool)[ring].mean (line 145) — `return float(np.asarray(robot, bool)[ring].mean()) if ring.any() else 0.0` (same line/evidence on previous main).
+- `145` `robot_ring`: unresolved call ring.any (line 145) — `return float(np.asarray(robot, bool)[ring].mean()) if ring.any() else 0.0` (same line/evidence on previous main).
+- `167` `turn_upright`: unresolved call np.asarray (line 167) — `x0, y0, x1, y1 = mask_bbox(np.asarray(mask) > 0)` (same line/evidence on previous main).
+- `168` `turn_upright`: unresolved call max (line 168) — `diag = max(float(np.hypot(x1 - x0 + 1, y1 - y0 + 1)), 8.0)` (same line/evidence on previous main).
+- `168` `turn_upright`: unresolved call np.hypot (line 168) — `diag = max(float(np.hypot(x1 - x0 + 1, y1 - y0 + 1)), 8.0)` (same line/evidence on previous main).
+- `169` `turn_upright`: unresolved call int (line 169) — `R = int(np.ceil(1.1 * diag)) + 2           # the turned bbox's crop (half <= 0.75 diag) fits, corners included` (same line/evidence on previous main).
+- `169` `turn_upright`: unresolved call np.ceil (line 169) — `R = int(np.ceil(1.1 * diag)) + 2           # the turned bbox's crop (half <= 0.75 diag) fits, corners included` (same line/evidence on previous main).
+- `170` `turn_upright`: unresolved call int (line 170) — `cx, cy = int(round((x0 + x1) / 2)), int(round((y0 + y1) / 2))` (same line/evidence on previous main).
+- `170` `turn_upright`: unresolved call round (line 170) — `cx, cy = int(round((x0 + x1) / 2)), int(round((y0 + y1) / 2))` (same line/evidence on previous main).
+- `171` `turn_upright`: unresolved call np.radians (line 171) — `t = np.radians(float(deg))` (same line/evidence on previous main).
+- `172` `turn_upright`: unresolved call np.cos (line 172) — `c, s_ = np.cos(t), np.sin(t)` (same line/evidence on previous main).
+- `172` `turn_upright`: unresolved call np.sin (line 172) — `c, s_ = np.cos(t), np.sin(t)` (same line/evidence on previous main).
+- `173` `turn_upright`: unresolved call np.arange (line 173) — `d = np.arange(-R, R + 1, dtype=float)` (same line/evidence on previous main).
+- `174` `turn_upright`: unresolved call np.meshgrid (line 174) — `du, dv = np.meshgrid(d, d)                 # output offsets (x right, y down) from the centre` (same line/evidence on previous main).
+- `178` `turn_upright`: unresolved call np.asarray (line 178) — `im = np.asarray(img)` (same line/evidence on previous main).
+- `180` `turn_upright`: unresolved call np.clip (line 180) — `x_ = np.clip(sx, 0, W - 1)` (same line/evidence on previous main).
+- `181` `turn_upright`: unresolved call np.clip (line 181) — `y_ = np.clip(sy, 0, H - 1)                 # clamped: border-replicated` (same line/evidence on previous main).
+- `182` `turn_upright`: unresolved call np.floor (line 182) — `xa, ya = np.floor(x_).astype(int), np.floor(y_).astype(int)` (same line/evidence on previous main).
+- `182` `turn_upright`: unresolved call np.floor(x_).astype (line 182) — `xa, ya = np.floor(x_).astype(int), np.floor(y_).astype(int)` (same line/evidence on previous main).
+- `182` `turn_upright`: unresolved call np.floor(y_).astype (line 182) — `xa, ya = np.floor(x_).astype(int), np.floor(y_).astype(int)` (same line/evidence on previous main).
+- `183` `turn_upright`: unresolved call np.minimum (line 183) — `xb, yb = np.minimum(xa + 1, W - 1), np.minimum(ya + 1, H - 1)` (same line/evidence on previous main).
+- `187` `turn_upright`: unresolved call im.astype (line 187) — `f = im.astype(np.float32)` (same line/evidence on previous main).
+- `190` `turn_upright`: unresolved call np.asarray (line 190) — `m = np.asarray(mask) > 0` (same line/evidence on previous main).
+- `191` `turn_upright`: unresolved call np.rint (line 191) — `xn, yn = np.rint(sx).astype(int), np.rint(sy).astype(int)` (same line/evidence on previous main).
+- `191` `turn_upright`: unresolved call np.rint(sx).astype (line 191) — `xn, yn = np.rint(sx).astype(int), np.rint(sy).astype(int)` (same line/evidence on previous main).
+- `191` `turn_upright`: unresolved call np.rint(sy).astype (line 191) — `xn, yn = np.rint(sx).astype(int), np.rint(sy).astype(int)` (same line/evidence on previous main).
+- `193` `turn_upright`: unresolved call np.zeros (line 193) — `mo = np.zeros(xn.shape, bool)` (same line/evidence on previous main).
+- `195` `turn_upright`: unresolved call np.clip (line 195) — `return np.clip(np.rint(out), 0, 255).astype(np.uint8), mo` (same line/evidence on previous main).
+- `195` `turn_upright`: unresolved call np.clip(np.rint(out), 0, 255).astype (line 195) — `return np.clip(np.rint(out), 0, 255).astype(np.uint8), mo` (same line/evidence on previous main).
+- `195` `turn_upright`: unresolved call np.rint (line 195) — `return np.clip(np.rint(out), 0, 255).astype(np.uint8), mo` (same line/evidence on previous main).
+- `211` `classify_mask`: unresolved call np.asarray (line 211) — `m_ = np.asarray(mask) > 0` (same line/evidence on previous main).
+- `213` `classify_mask`: unresolved call int (line 213) — `if bb is None or int(m_.sum()) < MIN_PX:` (same line/evidence on previous main).
+- `213` `classify_mask`: unresolved call m_.sum (line 213) — `if bb is None or int(m_.sum()) < MIN_PX:` (same line/evidence on previous main).
+- `215` `classify_mask`: unresolved call m_[-1].any (line 215) — `if m_[0].any() or m_[-1].any() or m_[:, 0].any() or m_[:, -1].any():` (same line/evidence on previous main).
+- `215` `classify_mask`: unresolved call m_[0].any (line 215) — `if m_[0].any() or m_[-1].any() or m_[:, 0].any() or m_[:, -1].any():` (same line/evidence on previous main).
+- `215` `classify_mask`: unresolved call m_[:, -1].any (line 215) — `if m_[0].any() or m_[-1].any() or m_[:, 0].any() or m_[:, -1].any():` (same line/evidence on previous main).
+- `215` `classify_mask`: unresolved call m_[:, 0].any (line 215) — `if m_[0].any() or m_[-1].any() or m_[:, 0].any() or m_[:, -1].any():` (same line/evidence on previous main).
+- `228` `classify_mask`: unresolved call round (line 228) — `turned = {"turned": round(float(upright_deg), 1)}` (same line/evidence on previous main).
+- `233` `classify_mask`: unresolved call int (line 233) — `P, n_glyph, margins = np.asarray(r["probs"][0], float), int(r["n_glyph"]), r["margins"]` (same line/evidence on previous main).
+- `233` `classify_mask`: unresolved call np.asarray (line 233) — `P, n_glyph, margins = np.asarray(r["probs"][0], float), int(r["n_glyph"]), r["margins"]` (same line/evidence on previous main).
+- `237` `classify_mask`: unresolved call round (line 237) — `return {"read": ok, "name": None if top == n_glyph else class_name(r, top), "class": top, "margin": round(m, 3),` (same line/evidence on previous main).
+
+D-C19 reaches the same 45 unresolved-call signals through the newly followed module/getattr edges. Its source line numbers can differ; the updated D-C19 CSV records its exact locations. Both inventories remain conservative reachability reports, not runtime legality certificates.
+
+The ratchet permits this explicitly reviewed bootstrap only when the actual base is frozen `84fb8c6e`; subsequent bases cannot reuse the bootstrap. Existing pins cannot change, and clean roots remain unconditionally blocked. A future engine-upgrade bootstrap requires a separate reviewed source reference and evidence.

@@ -404,7 +404,6 @@ def test_no_verb_runs_with_the_twin_verifier_on():
         general.place_on = orig
     assert seen == [None] and sk.verifier is not None
 
-@pytest.mark.xfail(strict=True, reason="A1: nested module imports and literal getattr constructors are not resolved upstream")
 @pytest.mark.parametrize('expression', ['pkg.mod.Cls()', 'getattr(M, "Cls")()'])
 def test_upstream_a1(tmp_path, expression):
     pkg = tmp_path / 'pkg'
@@ -416,7 +415,6 @@ def test_upstream_a1(tmp_path, expression):
     p = AU.Profile(name='a1', root_dir=tmp_path, index=[mod, entry], roots=['pkg.entry:run'])
     assert any('non-literal getattr' in v.why for v in AU.audit_callgraph(profile=p, names=['unused']))
 
-@pytest.mark.xfail(strict=True, reason="A2: upstream pinned dispatch exempts reflection throughout its function")
 def test_upstream_a2(tmp_path):
     mod = tmp_path / 'entry.py'
     mod.write_text('def run(obj, name):\n    getattr(obj, name)()\n    getattr(obj, obj.secret)()\n')
@@ -441,4 +439,106 @@ def test_constructor_spellings_reach_the_dunder(tmp_path, imports, expression):
     target = ('qq.entry', 'Local.__init__') if not imports else ('qq.worker', 'Session.__init__')
     assert target in AU.reachable(profile=p)
     assert any(v.func == ':'.join(target) and 'non-literal getattr' in v.why
+               for v in AU.audit_callgraph(profile=p, names=['unused']))
+
+
+def test_dotted_module_chains_and_getattr_on_a_module_are_followed(tmp_path):
+    """review-hs2 A1: ``import pkg.mod; pkg.mod.Cls()`` and ``getattr(M, "Cls")()`` reach the class's constructor;
+    a non-literal getattr on a module is a violation."""
+    pkg = tmp_path / "zz"
+    (pkg / "sub").mkdir(parents=True)
+    for f in ("__init__.py", "sub/__init__.py"):
+        (pkg / f).write_text("")
+    (pkg / "sub" / "mod.py").write_text('''
+class Cls:
+    def __init__(self, robot, name):
+        self.v = getattr(robot, name)
+
+
+def helper(robot):
+    return robot.instruction
+''')
+    (pkg / "entry.py").write_text('''
+import zz.sub.mod
+import zz.sub.mod as M
+
+
+def a(robot):
+    return zz.sub.mod.Cls(robot, "x")
+
+
+def b(robot):
+    return getattr(M, "helper")(robot)
+
+
+def c(robot, name):
+    return getattr(M, name)(robot)
+''')
+    idx = [pkg / "sub" / "mod.py", pkg / "entry.py"]
+    for root, reached, why in (("zz.entry:a", ("zz.sub.mod", "Cls.__init__"), "non-literal getattr"),
+                               ("zz.entry:b", ("zz.sub.mod", "helper"), ".instruction read")):
+        p = AU.Profile(name="t", index=idx, roots=[root], root_dir=tmp_path)
+        assert reached in AU.reachable(profile=p), root
+        assert any(f"{reached[0]}:{reached[1]}" == v.func and why in v.why
+                   for v in AU.audit_callgraph(profile=p, names=["stack_blocks"])), root
+    p = AU.Profile(name="t", index=idx, roots=["zz.entry:c"], root_dir=tmp_path)
+    assert any(v.func == "zz.entry:c" and "non-literal getattr" in v.why
+               for v in AU.audit_callgraph(profile=p, names=["stack_blocks"]))
+
+
+@pytest.mark.parametrize("mechanism", ["dispatch", "reflective_ok"])
+def test_a_pinned_reflective_line_exempts_that_line_only(tmp_path, mechanism):
+    """review-hs2 A2: a dispatch pin used to exempt its whole function; a second non-literal getattr in the same
+    function is a violation now."""
+    pkg = tmp_path / "yy"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    (pkg / "w.py").write_text('''
+class Serve:
+    def go(self, fn, other):
+        f = getattr(self, fn) if fn in self.ok else None
+        g = getattr(self, other)
+        return f, g
+''')
+    line = "f = getattr(self, fn) if fn in self.ok else None"
+    pin = (line, []) if mechanism == "dispatch" else line
+    p = AU.Profile(name="t", index=[pkg / "w.py"], roots=["yy.w:Serve.go"], root_dir=tmp_path,
+                   **{mechanism: {("yy.w", "Serve.go"): pin}})
+    whys = [(v.func, v.why) for v in AU.audit_callgraph(profile=p, names=["stack_blocks"])]
+    assert ("yy.w:Serve.go", "non-literal getattr (line 5)") in whys and \
+        ("yy.w:Serve.go", "non-literal getattr (line 4)") not in whys, whys
+
+
+
+@pytest.mark.parametrize('call', ['ProcSession(robot, robot_api = ())',
+                                  'worker.ProcSession(robot, **kwargs)',
+                                  'ProcSession(robot, ())'])
+def test_worker_api_guard_checks_every_module_ast(tmp_path, monkeypatch, call):
+    runtime = tmp_path / 'dojo/runtime'
+    runtime.mkdir(parents=True)
+    (runtime / 'hybrid.py').write_text("PRIMITIVES = ('move',)\n")
+    rd = tmp_path / 'dojo/agent/rdgen'
+    rd.mkdir(parents=True)
+    (rd / 'gen_cellproc.py').write_text("ROBOT_API = ('move',)\n")
+    (rd / 'rdgen_hybrid.py').write_text('# robot_api= in a comment is harmless\nProcSession(robot)\n')
+    hr = ('dojo.skills.ported.harness_robot', 'HarnessRobot.call')
+    monkeypatch.setattr(AU, 'ROOT', tmp_path)
+    monkeypatch.setattr(AU, 'controlr_glib', lambda: AU.Profile(name='base', dispatch={hr: ('pin', [])}))
+    profile = AU.controlr_hybrid_agent()
+    assert ('dojo.agent.rdgen.gen_cellproc', 'ProcSession._serve') in profile.dispatch
+    (rd / 'another_worker.py').write_text(call + '\n')
+    with pytest.raises(ValueError, match='another_worker.py:1: ProcSession gets robot_api'):
+        AU.controlr_hybrid_agent()
+
+@pytest.mark.parametrize('expression', ['pkg.mod.Cls()', 'getattr(M, "Cls")()'])
+def test_a1_reaches_field_only_class_body(tmp_path, expression):
+    pkg = tmp_path / 'pkg'
+    pkg.mkdir()
+    mod = pkg / 'mod.py'
+    mod.write_text('class Cls:\n    data = "secret_table.json"\n')
+    entry = pkg / 'entry.py'
+    entry.write_text('import pkg.mod\nimport pkg.mod as M\ndef run():\n    return ' + expression + '\n')
+    p = AU.Profile(name='class-body', root_dir=tmp_path, index=[mod, entry], roots=['pkg.entry:run'])
+    assert ('pkg.mod', 'Cls.<body>') in AU.reachable(profile=p)
+    assert any(v.func == 'pkg.mod:Cls.<body>' and 'secret_table.json' in v.why
                for v in AU.audit_callgraph(profile=p, names=['unused']))

@@ -71,7 +71,12 @@ def inventory(root=ROOT):
                                            or r.startswith('controlr.robot.so101.arm_id:')})}
 
 
-def gate(rows, allowlist, previous=None, reviewed=None, previous_reviewed=None, detection_gains=None, previous_detection_gains=None):
+# Explicitly reviewed engine-upgrade bootstrap; future bases cannot reuse it.
+DETECTION_GAIN_BOOTSTRAP_REFS = frozenset({'84fb8c6e93df69ad59a6223810730b9011e044bd'})
+
+
+def gate(rows, allowlist, previous=None, reviewed=None, previous_reviewed=None, detection_gains=None,
+         previous_detection_gains=None, detection_gain_base_ref=None):
     detection_gains = detection_gains or {}
     counts = Counter(r['key'] for r in rows)
     reviewed = reviewed or {}
@@ -85,7 +90,13 @@ def gate(rows, allowlist, previous=None, reviewed=None, previous_reviewed=None, 
             issues.append(f'invalid transition review: {key}')
     if previous is not None and any(n > previous.get(k, 0) for k, n in allowlist.items()):
         issues.append('allowlist grew relative to base')
-    if previous_detection_gains is not None and any(v != previous_detection_gains.get(k) for k, v in detection_gains.items()):
+    def reviewed_gain_addition(key, pin):
+        return (key not in previous_detection_gains
+                and detection_gain_base_ref in DETECTION_GAIN_BOOTSTRAP_REFS
+                and pin.get('source_ref') == detection_gain_base_ref)
+    if previous_detection_gains is not None and any(
+            v != previous_detection_gains.get(k) and not reviewed_gain_addition(k, v)
+            for k, v in detection_gains.items()):
         issues.append('detection-gain pins grew or changed relative to base')
     if set(detection_gains) & (set(allowlist) | set(reviewed)):
         issues.append('detection gains must remain separate from legacy and transition pins')
@@ -155,7 +166,9 @@ def main(argv=None):
             prior = subprocess.run(['git', 'show', f'{args.base_ref}:{gains_relative}'], cwd=ROOT, capture_output=True, text=True)
             if prior.returncode == 0:
                 previous_gains = json.loads(prior.stdout)
-        problems = gate(report['findings'], allowed, previous, reviewed, previous_reviewed, gains, previous_gains)
+        gain_base = subprocess.check_output(['git', 'rev-parse', args.base_ref + '^{commit}'], cwd=ROOT, text=True).strip() if args.base_ref else None
+        problems = gate(report['findings'], allowed, previous, reviewed, previous_reviewed,
+                        gains, previous_gains, gain_base)
         print('\n'.join(problems[:100]))
         return bool(problems)
     return 0

@@ -6,11 +6,10 @@
 
 ## P1 — before the next round (carry failures and perception)
 
-- [ ] **Apply the partner's shared-audit A1/A2 patch.** Constructor resolution for
-  nested module imports/literal getattr and function-wide pinned dispatch exemptions
-  remain strict expected failures. Keep controlr's exact-line reflective pins and
-  shadow-aware unresolved callbacks when applying it; see
-  [engine convergence](journal/2026-11-08-audit-engine-converged.md).
+- [x] ~~**Apply the partner's shared-audit A1/A2 patch.**~~ Dotted imports and
+  literal-getattr constructors are reached; both pin mechanisms are line-scoped.
+  The former strict xfails now pass, alongside the partner's planted tests
+  ([follow-up](journal/2026-11-08-audit-engine-converged.md#a1a2-follow-up)).
 
 - [ ] **F: the partner's adapter needs eight changes to read `f-catalogue/1`.** Our catalogue-wide extraction
   ([report](experiments/2026-11-08-f-catalogue.md)) passes the round trip at 245 entries / 358 frames / 0 failures
