@@ -1508,3 +1508,12 @@
   - The partner team's model planner (`planner="model"`, skill registry in scene words) is the path to a compliant
     entry.
   - New per-cell work is built as skills or skill parameters.
+
+
+### Identity instrument supplementary coverage
+
+`spatial-assignment-v2` fixes shared-label collisions in scorer-only matching; v1 remains
+callable for registered verdict reproduction. IMIT2 supplement changes 124/133 matches
+but does not flip its FAIL. Complete pour camera/re-test and coin-disc re-test supplements
+once approved frame-zero records and saved replay frames are provided. The pour re-test
+inputs are outside IDFIX's compute6 read allowance; see the IDFIX journal's exact limit.

@@ -24,6 +24,11 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+# Direct script invocation must also resolve the scorer-only namespace package.
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 SLICE = [(100000, 100009), (100020, 100049)]
 
 
@@ -114,6 +119,7 @@ def cmd_audit(a, *, footprints=None, group_factory=None) -> None:
     import numpy as np
     from dojo.perception.grasp_metric import Footprints, gt_rows_asset
     from dojo.perception.audit_identity import AuditIdentity
+    from scripts.perception.audit_identity_v2 import AuditIdentityV2
     fp = footprints if footprints is not None else Footprints()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -129,7 +135,9 @@ def cmd_audit(a, *, footprints=None, group_factory=None) -> None:
         ks = sorted(int(k) for k in frames)
         group = group_factory(r["task"]) if group_factory is not None else None
         actions = json.load(gzip.open(ap, "rt"))["actions"]
-        identity = AuditIdentity(rep, frames, r["task"], fp, back=a.back, group=group, actions=actions)
+        version = getattr(a, "instrument_version", "first-pick-v1")
+        identity_cls = AuditIdentityV2 if version == AuditIdentityV2.VERSION else AuditIdentity
+        identity = identity_cls(rep, frames, r["task"], fp, back=a.back, group=group, actions=actions)
         for w in sorted(belief_writes(rep), key=lambda w: w["step"]):
             f = frame_at(frames, w["step"], back=a.back)
             if f is None:
@@ -142,10 +150,16 @@ def cmd_audit(a, *, footprints=None, group_factory=None) -> None:
             g_next = ({o["label"]: fp.centre(o.get("key"), o["pos"], o.get("quat"))
                        for o in gt_rows_asset(frames[str(nxt)]["objects"])} if nxt is not None else {})
             key = next((x.get("key") for x in rows_g.values() if x["label"] == w["label"]), None)
+            if version == AuditIdentityV2.VERSION:
+                key = identity.keys.get(w["label"])
             b0 = fp.centre(key, w["before"], w["q_before"]) if key else np.asarray(w["before"], float)
             b1 = fp.centre(key, w["after"], w["q_after"]) if key else np.asarray(w["after"], float)
             association = identity.resolve(w, f, b0)
             lab_g = association["gt_label"]
+            if version == AuditIdentityV2.VERSION:
+                key = identity.keys.get(w["label"])
+                b0 = fp.centre(key, w["before"], w["q_before"])
+                b1 = fp.centre(key, w["after"], w["q_after"])
             g = gts[lab_g]
             moving = lab_g not in g_next or float(np.linalg.norm(g_next[lab_g] - g)) > 0.001
             e0, e1 = float(np.linalg.norm(b0 - g)) * 1000, float(np.linalg.norm(b1 - g)) * 1000
@@ -155,12 +169,12 @@ def cmd_audit(a, *, footprints=None, group_factory=None) -> None:
                          "z_before_mm": round((b0[2] - g[2]) * 1000, 1), "z_after_mm": round((b1[2] - g[2]) * 1000, 1),
                          "gt": [round(float(v), 4) for v in g], "frame_lag": w["step"] - max(int(k) for k in frames if int(k) <= w["step"]),
                          **association, "gt_moving": bool(moving),
-                         "verdict": ("uncertain" if moving and w["step"] not in ks else
+                         "verdict": ("uncertain" if association.get("identity_uncertain") or (moving and w["step"] not in ks) else
                                      "harmful" if e1 - e0 > a.harm_mm else ("helpful" if e0 - e1 > a.harm_mm else "neutral"))})
     with open(out / "writes.jsonl", "w") as fo:
         for x in rows:
             fo.write(json.dumps(x) + "\n")
-    association_counts = {"policy": "first-pick-v1", "missing_body_geometry": sorted(fp.missing),
+    association_counts = {"policy": getattr(a, "instrument_version", "first-pick-v1"), "missing_body_geometry": sorted(fp.missing),
                           "writes": len(rows), "nearest_fallback": sum(x["identity_fallback"] for x in rows),
                           "sources": dict(Counter(x["identity_source"] for x in rows))}
     (out / "association.json").write_text(json.dumps(association_counts, indent=2) + "\n")
@@ -969,6 +983,7 @@ def main(argv=None) -> None:
     w.add_argument("runs", nargs="+")
     w.add_argument("--replays", required=True)
     w.add_argument("--out", required=True)
+    w.add_argument("--instrument-version", choices=("first-pick-v1", "spatial-assignment-v2"), default="first-pick-v1")
     w.add_argument("--harm-mm", type=float, default=2.0)
     w.add_argument("--back", type=int, default=25, help="use a replay frame at most this many steps before a write")
     w.add_argument("--by", default="task", choices=("task", "arm", "task,arm"),
