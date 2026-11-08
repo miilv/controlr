@@ -296,11 +296,17 @@ def controlr_hybrid_agent() -> Profile:
                 tgt += [f"dojo.agent.rdgen.{f.stem}:{cls}.{n}" for n in api_names if n in meths]
         # rd-gen's later version takes the names from a constructor argument that only an explicit robot_api changes;
         # the hook's runner never passes one (checked here), so the served names stay ROBOT_API
-        if "robot_api=" in (rd / "rdgen_hybrid.py").read_text():
-            raise ValueError("rdgen_hybrid passes robot_api to the cell worker: re-audit the served robot API")
+        for f in rd.glob("*.py"):                         # an AST check over every ProcSession(...) call (A2)
+            for n in ast.walk(ast.parse(f.read_text())):
+                if isinstance(n, ast.Call) and (getattr(n.func, "id", None) == "ProcSession"
+                                                or getattr(n.func, "attr", None) == "ProcSession"):
+                    if any(k.arg == "robot_api" or k.arg is None for k in n.keywords) or len(n.args) > 1:
+                        raise ValueError(f"{f.name}:{n.lineno}: ProcSession gets robot_api (or **kwargs / positional "
+                                         f"extras): re-audit the served robot API")
         dispatch[(cp, "ProcSession.__init__")] = (
             ("self.api = [n for n in ROBOT_API if self.robot is not None and callable(getattr(self.robot, n, None))]",
-             "self.api = [n for n in names if self.robot is not None and callable(getattr(self.robot, n, None))]"),
+             "self.api = [n for n in names if self.robot is not None and callable(getattr(self.robot, n, None))]",
+             "self.sigs[n] = self._sig(getattr(self.robot, n))"),          # the signatures of that same list
             tgt)
         # serving one call from a model's cell: only a name in that same list reaches the robot
         dispatch[(cp, "ProcSession._serve")] = ("f = getattr(self.robot, fn) if fn in self.api else self.funcs[fn]", tgt)
@@ -540,6 +546,26 @@ class Index:
             todo += [d for d, bs in self.bases.items() if any(self.resolve_class(d[0], b, {}) == x for b in bs)]
         return seen
 
+    def module_of(self, value, m, local=None):
+        """The indexed module an expression names: ``alias`` (an imported module) or a dotted chain ``pkg.mod`` through
+        ``import pkg`` / ``import pkg.mod`` (review-hs2 A1); None otherwise."""
+        imp = {**self.imports.get(m, {}), **(local or {})}
+        parts = []
+        while isinstance(value, ast.Attribute):
+            parts.append(value.attr)
+            value = value.value
+        if not isinstance(value, ast.Name):
+            return None
+        tgt = imp.get(value.id)
+        if isinstance(tgt, tuple):
+            base = f"{tgt[0]}.{tgt[1]}"
+        elif isinstance(tgt, str):
+            base = tgt if not parts else tgt.split(".")[0] if tgt.split(".")[0] == value.id else tgt
+        else:
+            return None
+        mod = ".".join([base] + list(reversed(parts)))
+        return mod if mod in self.mods else None
+
     def named_classes(self, nodes, m) -> set:
         """The indexed classes ``nodes`` (of module m) name: each may have instances from here on."""
         out = set()
@@ -548,11 +574,15 @@ class Index:
                 c = self.resolve_class(m, n.id, {})
                 if c:
                     out.add(c)
-            elif isinstance(n, ast.Attribute) and isinstance(n.value, ast.Name):   # module.Class
-                tgt = self.imports.get(m, {}).get(n.value.id)
-                mod = tgt if isinstance(tgt, str) else (f"{tgt[0]}.{tgt[1]}" if isinstance(tgt, tuple) else None)
+            elif isinstance(n, ast.Attribute):                 # module.Class, pkg.mod.Class
+                mod = self.module_of(n.value, m)
                 if mod and (mod, n.attr) in self.classes:
                     out.add((mod, n.attr))
+            elif (isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "getattr" and len(n.args) >= 2
+                  and isinstance(n.args[1], ast.Constant) and isinstance(n.args[1].value, str)):
+                mod = self.module_of(n.args[0], m)           # getattr(module, "Class")
+                if mod and (mod, n.args[1].value) in self.classes:
+                    out.add((mod, n.args[1].value))
         return out
 
     def ups(self, classes) -> set:
@@ -590,11 +620,31 @@ class Index:
                     out.update(k_ for k_ in self.classes[c] if self.detached(c[0]) or k_[1].split(".")[-1].startswith("__"))
             elif (isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id == "getattr" and len(n.args) >= 2
                   and isinstance(n.args[1], ast.Constant) and isinstance(n.args[1].value, str)):
+                gm = self.module_of(n.args[0], m, local)         # getattr(module, "name"): that function / class
+                if gm and (gm, n.args[1].value) in self.funcs:
+                    out.add((gm, n.args[1].value))
+                if gm and (gm, n.args[1].value) in self.classes:
+                    for c in self.ups([(gm, n.args[1].value)]):
+                        if (c[0], c[1] + ".<body>") in self.funcs:
+                            out.add((c[0], c[1] + ".<body>"))
+                        out.update(k_ for k_ in self.classes[c]
+                                   if self.detached(c[0]) or k_[1].split(".")[-1].startswith("__"))
                 for mk in self.methods.get(n.args[1].value, []):  # getattr(x, "name"): the attribute x.name
                     if live is None or (mk[0], mk[1].split(".")[0]) in live:
                         out.add(mk)
             elif isinstance(n, ast.Attribute):
                 base = n.value
+                dm = self.module_of(base, m, local) if isinstance(base, ast.Attribute) else None
+                if dm and (dm, n.attr) in self.funcs:             # pkg.mod.func (A1)
+                    out.add((dm, n.attr))
+                    continue
+                if dm and (dm, n.attr) in self.classes:           # pkg.mod.Cls(...) (A1)
+                    for c in self.ups([(dm, n.attr)]):
+                        if (c[0], c[1] + ".<body>") in self.funcs:
+                            out.add((c[0], c[1] + ".<body>"))
+                        out.update(k_ for k_ in self.classes[c]
+                                   if self.detached(c[0]) or k_[1].split(".")[-1].startswith("__"))
+                    continue
                 if isinstance(base, ast.Name):
                     tgt = imp.get(base.id)
                     mod = tgt if isinstance(tgt, str) else (f"{tgt[0]}.{tgt[1]}" if isinstance(tgt, tuple) else None)
@@ -781,8 +831,19 @@ def scan_function(idx: Index, key, rx: re.Pattern) -> list[str]:
         out.append("pinned carrier line changed: re-audit it")
     if key in p.reflective_ok and not reflective_lines:
         out.append("pinned reflective line changed: re-audit it")
-    if key in p.dispatch and not _pinned(p.dispatch[key][0], src):
-        out.append("pinned dispatch line changed: re-audit it")
+    dispatch_lines = set()
+    if key in p.dispatch:
+        texts = p.dispatch[key][0]
+        for text in texts if isinstance(texts, tuple) else (texts,):
+            matches = {node.lineno + i for i, line in enumerate(src.splitlines())
+                       if line.strip() == text.strip()}
+            if len(matches) > 1:
+                out.append('pinned dispatch line is ambiguous: re-audit it')
+            else:
+                dispatch_lines |= matches
+        if not dispatch_lines:
+            out.append("pinned dispatch line changed: re-audit it")
+    reflective_lines |= dispatch_lines
     if key in p.required_lines and p.required_lines[key] not in src:
         out.append(f"required guard line changed: {p.required_lines[key]!r}: re-audit it")
     gates = p.gates.get(key) or {}
@@ -833,7 +894,7 @@ def scan_function(idx: Index, key, rx: re.Pattern) -> list[str]:
                     out.append(f"imports task symbol {a.name}" + (f" as {a.asname}" if a.asname else "")
                                + f" (line {n.lineno})")
         if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute) and n.func.attr in (
-                "spec_from_file_location", "exec_module", "import_module", "__import__") and n.lineno not in reflective_lines and not (key in p.dispatch and _pinned(p.dispatch[key][0], src)):
+                "spec_from_file_location", "exec_module", "import_module", "__import__") and n.lineno not in reflective_lines:
             out.append(f"dynamic import .{n.func.attr} (line {n.lineno})")
         if isinstance(n, ast.Attribute):
             if n.attr in p.instruction_attrs and n.lineno not in pinned and not isinstance(n.ctx, ast.Store):
@@ -850,7 +911,7 @@ def scan_function(idx: Index, key, rx: re.Pattern) -> list[str]:
             if n.func.id in ("getattr", "setattr", "hasattr", "delattr") and len(n.args) >= 2:
                 a = n.args[1]
                 literal = isinstance(a, ast.Constant) and isinstance(a.value, str)
-                if not literal and n.lineno not in reflective_lines and not (key in p.dispatch and _pinned(p.dispatch[key][0], src)):
+                if not literal and n.lineno not in reflective_lines:
                     out.append(f"non-literal {n.func.id} (line {n.lineno})")
                 elif literal and a.value in tuple(p.instruction_attrs) + CHECKER_ATTRS:
                     out.append(f"{n.func.id}(..., {a.value!r}) (line {n.lineno})")
