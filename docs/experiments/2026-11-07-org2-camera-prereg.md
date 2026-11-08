@@ -111,3 +111,27 @@ context, not a gate.
   rows `cdd572ca…` ([queue-org2.txt](data/org2-camera/queue-org2.txt)); manifest `0a15c5c5…`
   ([manifest.json](data/org2-camera/manifest.json)). Rough estimate: start ~03:07Z, finish ~10:42Z on 8 Nov (two
   lanes; admission, retries and power drains can delay).
+
+## ORG2SPLIT preregistered amendment — 2026-11-08 05:05Z
+
+The lead authorized moving the following **80 rows / 40 whole pairs** to compute4 to halve
+remaining wall time when COIN2-CAM drains. Exact immutable row arguments and names:
+[rows-source.txt](data/org2split/rows-source.txt). Largestnum, largestnumrand and storetools:
+all A/B rows for 100000–100009; insertkey: both arms for 100003, 100004, 100005, 100007,
+100009, 100020, 100022, 100024, 100025, 100026. No selected row has a start/done entry
+in either compute6 lane log at selection; no episode data from these rows exists yet.
+Pairs remain wholly on one box. Organize gain, buildtower strong guard, classify and fillpen
+remain on compute6. No outcome-driven selection or inference/config change.
+
+Commit this amendment before deployment/copy/queue mutation. Deploy the same merged code
+83887dae to compute4 by CLASSIFY3/KONG, independent copied venv, source/archive identity,
+identical freeze, candidate parity true/diff empty and matching catalogue gate.
+Fail closed on **any** file-by-file SHA256 difference in calibration/background folds.
+Copy only runtime-required input files for the selected layouts (no outputs), SHA256 both ends.
+Only authorized row substitutions: --repo to /home/haptics/dojo-integ-c4-83887dae;
+/home/robotics/ to /home/haptics/ in org2 DOJO_DATA, layout paths and DOJO_COLOR_CALIB.
+Keep family names unchanged; all other bytes unchanged, verified by per-row normalized diff.
+Retain compute4 per-job Kit environment and own physics kit as required by the existing recipe.
+Append under both queue locks after COIN2-CAM, replacing an empty/blank queue if needed.
+The lead owns lane starts. Stop without moving if checks fail or readiness misses 07:40Z.
+The earlier blocker receipt is superseded only within the lead's explicit extended permissions.
