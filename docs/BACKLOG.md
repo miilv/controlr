@@ -6,11 +6,10 @@
 
 ## P1 — before the next round (carry failures and perception)
 
-- [ ] **Apply the partner's shared-audit A1/A2 patch.** Constructor resolution for
-  nested module imports/literal getattr and function-wide pinned dispatch exemptions
-  remain strict expected failures. Keep controlr's exact-line reflective pins and
-  shadow-aware unresolved callbacks when applying it; see
-  [engine convergence](journal/2026-11-08-audit-engine-converged.md).
+- [x] ~~**Apply the partner's shared-audit A1/A2 patch.**~~ Dotted imports and
+  literal-getattr constructors are reached; both pin mechanisms are line-scoped.
+  The former strict xfails now pass, alongside the partner's planted tests
+  ([follow-up](journal/2026-11-08-audit-engine-converged.md#a1a2-follow-up)).
 
 - [ ] **RGB-only support/size checks confuse missing geometry with implausible objects.**
   General SAM round 2 has no accepted multiview bounds for 53% of proposals. Standalone

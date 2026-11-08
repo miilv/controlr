@@ -232,3 +232,18 @@ def test_detection_gains_require_frozen_evidence_and_never_clear_clean_roots():
 def test_global_callback_binding_is_not_a_resolved_callable(tmp_path):
     p = profile(tmp_path, {'pkg/entry.py': 'callback = unknown_factory()\ndef run(x):\n    return callback(x)\n'})
     assert any(v.why.startswith('unresolved call callback') for v in A.audit_callgraph(profile=p, names=['unused']))
+
+
+def test_reviewed_engine_upgrade_bootstrap_is_bound_to_its_previous_main():
+    from scripts.legality.scan import DETECTION_GAIN_BOOTSTRAP_REFS
+    source_ref = next(iter(DETECTION_GAIN_BOOTSTRAP_REFS))
+    r = {**row(), 'func': 'dojo.old:run', 'evidence': 'call()'}
+    pin = {k: r[k] for k in ('file', 'func', 'category', 'evidence', 'why')}
+    pin.update(count=1, source_ref=source_ref, source_line=4, reason='Reproduced on frozen previous main')
+    gains = {'old': pin}
+    assert not gate([r], {}, detection_gains=gains, previous_detection_gains={}, detection_gain_base_ref=source_ref)
+    assert gate([r], {}, detection_gains=gains, previous_detection_gains={}, detection_gain_base_ref='a' * 40)
+    assert gate([{**r, 'clean_reachable': True}], {}, detection_gains=gains,
+                previous_detection_gains={}, detection_gain_base_ref=source_ref)
+    assert gate([r], {}, detection_gains={'old': {**pin, 'count': 2}}, previous_detection_gains=gains,
+                detection_gain_base_ref=source_ref)

@@ -1245,3 +1245,10 @@ budgets, previous-main SHA and line evidence from running the upgraded engine on
 that source archive too. This bootstrap evidence is reviewed with the engine
 upgrade; subsequent pins can only shrink. Such pins never exempt clean roots and
 do not change `allowlist.json` or `transition-review.json`.
+
+An explicitly reviewed engine upgrade can bootstrap additional detection-gain
+pins against its frozen previous-main SHA. The ratchet binds such additions to
+that exact actual base via `DETECTION_GAIN_BOOTSTRAP_REFS`; later bases cannot
+reuse it. Existing pins remain immutable except deletion, and clean roots cannot
+inherit any pin. Each bootstrap still requires the same independent previous-source
+scan and source-line evidence in the inventory report.

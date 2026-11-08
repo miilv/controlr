@@ -1203,6 +1203,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "checker provenance (line 26)"
  },
+ "0b8bfc0012f58e2d62447c13a53c75ff91b05ff71d8bfdff4a9854f785c1fd3d": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "xa, ya = np.floor(x_).astype(int), np.floor(y_).astype(int)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 182,
+  "source_lines": [
+   182
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.floor(x_).astype (line 182)"
+ },
  "0b96d34c08bddb786c4f2026a538b2a4b1d0d1afd11d978130dfa3fa51b9244e": {
   "category": "task_name",
   "count": 1,
@@ -1664,6 +1678,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "unresolved call getattr (line 52)"
+ },
+ "1013c4d2741865bdba883b1fc346eeb70dbb4b5c345f283f963e83f74887372b": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "t = np.radians(float(deg))",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 171,
+  "source_lines": [
+   171
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.radians (line 171)"
  },
  "1017fa01ed75920b57df7f1b4302b3117fd87e9655b964df9f9129ac55848316": {
   "category": "reflection",
@@ -2211,6 +2239,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a comment: 'insert_key' (line 4750)"
  },
+ "161e8e2f05344c076c5efde82225800edcd028c680cab9549fd9e9f1433fcdb1": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "return np.clip(np.rint(out), 0, 255).astype(np.uint8), mo",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 195,
+  "source_lines": [
+   195
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.rint (line 195)"
+ },
  "1677289e746df71819d893e6faf89e1d818910a239ece1525604ef98bf6e9b8b": {
   "category": "reflection",
   "count": 1,
@@ -2672,6 +2714,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "dynamic import .spec_from_file_location (line 277)"
+ },
+ "1b43845096e56f90b64180c99b59ca387326b8c70b09336ada8ef16bb0fc231e": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "m = np.asarray(mask) > 0",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:robot_ring",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 137,
+  "source_lines": [
+   137
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.asarray (line 137)"
  },
  "1b5d14a19be2a25d34f7aa9a123daba7cc6b96c40164be218b62817a94c72094": {
   "category": "reflection",
@@ -3541,6 +3597,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "unresolved call range (line 39)"
  },
+ "2469c884f10ce0a2e576e28a8275a382e33a438807502e2867908b9931e7a776": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "x_ = np.clip(sx, 0, W - 1)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 180,
+  "source_lines": [
+   180
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.clip (line 180)"
+ },
  "24a7b5ad9be7e1a1d5f498f6848cef745ab9d0593688fb714ace3801cdd853fd": {
   "category": "checker_tolerance",
   "count": 1,
@@ -4241,6 +4311,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task symbol LAYOUTS (line 17)"
  },
+ "2e8a19072ee02f3e1c3df49be8878c21007f90a1e0dcf5532d3dde5394344457": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "g |= np.roll(d, k, axis) | np.roll(d, -k, axis)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:robot_ring",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 142,
+  "source_lines": [
+   142
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.roll (line 142)"
+ },
  "2ebb650b6db3e59bc0b45787a52e02fcd20c8d87d8fb9bd05c7eadfa451a5983": {
   "category": "checker_provenance",
   "count": 1,
@@ -4590,6 +4674,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a comment: 'make_kong' (line 357)"
+ },
+ "331ee4eefe1888939bbf6f2dbaeaf9b3a1b64c0c723429363303d008191c628c": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "if m_[0].any() or m_[-1].any() or m_[:, 0].any() or m_[:, -1].any():",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:classify_mask",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 215,
+  "source_lines": [
+   215
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call m_[:, 0].any (line 215)"
  },
  "3326d22ead81aad9f697a3db156962fbfb1915616e58b52b7026ace52d67f1a5": {
   "category": "task_switch",
@@ -5207,6 +5305,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: 'articulation_roots.json' (line 36)"
  },
+ "3a8474f816645a77c228a3d6f2add519ad9902b3a48bbd168767d4d6deb70c59": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "R = int(np.ceil(1.1 * diag)) + 2           # the turned bbox's crop (half <= 0.75 diag) fits, corners included",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 169,
+  "source_lines": [
+   169
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.ceil (line 169)"
+ },
  "3a8ac7006479fa983be3ba2086b6e31caeda9291efed183ff663aa9ce76edff5": {
   "category": "instruction_or_identity",
   "count": 1,
@@ -5514,6 +5626,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "dynamic import .exec_module (line 36)"
+ },
+ "3e3850e501422d339d09aaf5604e550725c3184d4f4ff372742d1348a0414a24": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "return float(np.asarray(robot, bool)[ring].mean()) if ring.any() else 0.0",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:robot_ring",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 145,
+  "source_lines": [
+   145
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.asarray(robot, bool)[ring].mean (line 145)"
  },
  "3e47e40b705debe86fcc3de4431b4dd9e8a44c640723ac73710a315b8dc6c848": {
   "category": "reflection",
@@ -7223,6 +7349,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: 'aggregate.csv' (line 15)"
  },
+ "51945b31e66de578410257260954cc087854672bb00390114b07ea0ad585d840": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "xn, yn = np.rint(sx).astype(int), np.rint(sy).astype(int)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 191,
+  "source_lines": [
+   191
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.rint(sx).astype (line 191)"
+ },
  "51aa1e54539fa5c6a430e5170d9f09157c5deb1a576c2c6281cd9c324bcb6611": {
   "category": "task_name",
   "count": 1,
@@ -8301,6 +8441,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a string: 'put_bottles_into_dustbin' (line 36)"
  },
+ "5b529834d6a9d47b64795009ae840daf2efb94b48b5a0ebbf46973b33f04459b": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "turned = {\"turned\": round(float(upright_deg), 1)}",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:classify_mask",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 228,
+  "source_lines": [
+   228
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call round (line 228)"
+ },
  "5b5563ae5d21a4a409e19896cd8ed10e9a9b9cdd50ca4ec2210659d54b785304": {
   "category": "unresolved",
   "count": 1,
@@ -8468,6 +8622,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "unresolved call self.support_reader (line 846)"
+ },
+ "5d65ad3b6b3428eadf11c0ee3075fc721670589378e538a315e7ec7ff1f394f9": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "x0, y0, x1, y1 = mask_bbox(np.asarray(mask) > 0)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 167,
+  "source_lines": [
+   167
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.asarray (line 167)"
  },
  "5db42e22bd01eda316ac02522d5272c1d47dc6fff43ad20265be7caa6435e037": {
   "category": "unresolved",
@@ -10541,6 +10709,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a comment: 'swap_blocks' (line 4564)"
  },
+ "77d6f0cd1f27960fc163abf302cb9c2a6274c020a9515162eb8ec6f1488dbca4": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "xa, ya = np.floor(x_).astype(int), np.floor(y_).astype(int)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 182,
+  "source_lines": [
+   182
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.floor(y_).astype (line 182)"
+ },
  "78629234d142703ecaf4f3d7938135764c568e31eb3b6924c9905930b6af964d": {
   "category": "unresolved",
   "count": 1,
@@ -11213,6 +11395,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": ".get('instruction') read (line 81)"
  },
+ "7dc22005a94d6f092678d7bf584b642f54e63e3b6322a6e365e5ba87956a50c3": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "du, dv = np.meshgrid(d, d)                 # output offsets (x right, y down) from the centre",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 174,
+  "source_lines": [
+   174
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.meshgrid (line 174)"
+ },
  "7dd51ba6333293cf7f5fe8e0d6aca807606d038932331b21fe25527ac54602b8": {
   "category": "task_name",
   "count": 1,
@@ -11604,6 +11800,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: 'stack_traj.json' (line 585)"
+ },
+ "832fa7118a67ef8196f4c5d942475f06490aae24598b1b84858b0b379fbc8bf8": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "xb, yb = np.minimum(xa + 1, W - 1), np.minimum(ya + 1, H - 1)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 183,
+  "source_lines": [
+   183
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.minimum (line 183)"
  },
  "833976f3a73c9bc03595c50eb4f5f5eaeac80a8e229ec98320bc3dbde7a93299": {
   "category": "task_name",
@@ -12627,6 +12837,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: 'frame_.json' (line 59)"
  },
+ "8dff4ecd9e45679bced416f2a5544f5f3ca02e8ed16f9051e25ed234d43beab3": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "xa, ya = np.floor(x_).astype(int), np.floor(y_).astype(int)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 182,
+  "source_lines": [
+   182
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.floor (line 182)"
+ },
  "8e1ecc0d9a1f721ba6d38ab104fe214e74128e3440d415d7115fac25f93fd3ad": {
   "category": "reflection",
   "count": 1,
@@ -12851,6 +13075,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a string: 'make_toast' (line 51)"
  },
+ "904a8d2e2a26297e5feed1643a5d4059e37362cc2f3f2c86251afff7c8af59df": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "mo = np.zeros(xn.shape, bool)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 193,
+  "source_lines": [
+   193
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.zeros (line 193)"
+ },
  "904ad30db01ba525c307605a608c01e23895535e6cebfd1b4381ac60785d3b19": {
   "category": "unresolved",
   "count": 1,
@@ -13060,6 +13298,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a string: 'align_blocks' (line 43)"
+ },
+ "926bffdf03c444190ff9733a3156f17b4d6b2203c566760d449f54b528b0a40c": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "m_ = np.asarray(mask) > 0",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:classify_mask",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 211,
+  "source_lines": [
+   211
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.asarray (line 211)"
  },
  "927f89e9fe7e1c9c87420fd90c471a0e67d9d16364d882a5a504ea38e5cd7555": {
   "category": "task_name",
@@ -13410,6 +13662,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "unresolved call int (line 826)"
+ },
+ "962ed260604a51410f002a7a078050223bfe45d8aae5284f5644b52f5f94ce21": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "c, s_ = np.cos(t), np.sin(t)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 172,
+  "source_lines": [
+   172
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.sin (line 172)"
  },
  "9633c86d3c6df7cad2ac102a9abf362b5f1f9c863a26cb805e694526ae9f0836": {
   "category": "reflection",
@@ -13775,6 +14041,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "['task'] read (line 512)"
  },
+ "994a89cf1c3169e16fcf2320c2c4628eb930444951618bae3584052217d6eac2": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "d = np.arange(-R, R + 1, dtype=float)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 173,
+  "source_lines": [
+   173
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.arange (line 173)"
+ },
  "99aac1b9ae73ed3297ca3970d4f6fdc71475a67ed95fdc46c3f20c23d1c62c07": {
   "category": "unresolved",
   "count": 1,
@@ -13858,6 +14138,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: 'description.json' (line 49)"
+ },
+ "9ad7422d765a74d8b45640601e2f1b1c28d73a8fab76a2f4a794aa7f9c898ee4": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "c, s_ = np.cos(t), np.sin(t)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 172,
+  "source_lines": [
+   172
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.cos (line 172)"
  },
  "9adce70217400b9899807a7ed7bb3fd98829d317ad7c0c3dfd8aa09d95a7fc82": {
   "category": "reflection",
@@ -14027,6 +14321,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a string: 'build_tower' (line 33)"
  },
+ "9d677686ec7e82cebcbf77b4f8d4b59a3f0fa0cf30ea06df220e5d91e0b5a736": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "if bb is None or int(m_.sum()) < MIN_PX:",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:classify_mask",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 213,
+  "source_lines": [
+   213
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call int (line 213)"
+ },
  "9db3b226bda3ea5d331f2c14fa3f1ffde33ed4ef246901700e3c45dd1ca3aee9": {
   "category": "task_name",
   "count": 1,
@@ -14082,6 +14390,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: 'tasks.json' (line 735)"
+ },
+ "9e61fb2d5a4224a306277e6a8b8047409d8b90c2aaf393ab3890760d056b7425": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "if m_[0].any() or m_[-1].any() or m_[:, 0].any() or m_[:, -1].any():",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:classify_mask",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 215,
+  "source_lines": [
+   215
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call m_[:, -1].any (line 215)"
  },
  "9e75595a838268c8b70ba61f837354f2606dbce678e59760326e4027105b9c6f": {
   "category": "reflection",
@@ -14166,6 +14488,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a string: 'stack_blocks_by_language' (line 7)"
+ },
+ "9f3b8c7cd75e43f93b249cbcd41db0ae407675bb96829299089ea83ebad1852c": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "diag = max(float(np.hypot(x1 - x0 + 1, y1 - y0 + 1)), 8.0)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 168,
+  "source_lines": [
+   168
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.hypot (line 168)"
  },
  "9f41677ced7225fb5d26ebc58cff63b9ee7b8deb099b57f0baaa2ff6093288be": {
   "category": "reflection",
@@ -15440,6 +15776,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a comment: 'imitate_sorting_sequence' (line 4093)"
+ },
+ "adf45fd4b262188246e6401d94001ec7b0174001649373de7f9dcab70a330952": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "xn, yn = np.rint(sx).astype(int), np.rint(sy).astype(int)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 191,
+  "source_lines": [
+   191
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.rint(sy).astype (line 191)"
  },
  "ae1cb436d40673752b40309206661f021d47b3644b13af16f46baac28540fe30": {
   "category": "task_name",
@@ -17065,6 +17415,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "checker provenance (line 3)"
  },
+ "c01ac1ee39dbc8308c41169e8934666d1697ebaab6bafc695f6f424c01aaf42c": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "if m_[0].any() or m_[-1].any() or m_[:, 0].any() or m_[:, -1].any():",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:classify_mask",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 215,
+  "source_lines": [
+   215
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call m_[0].any (line 215)"
+ },
  "c0612b4e42687c8c6759254497cb3f94a0ff9bd8981bdd4165943b8d468bd1c2": {
   "category": "task_name",
   "count": 1,
@@ -17205,6 +17569,34 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "unresolved call np.diag (line 27)"
  },
+ "c144ebd7dc033aa22014563b4c2f8a10cb6ada488e023506bf8c2eaf39f04eea": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "for k in range(1, px + 1):",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:robot_ring",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 141,
+  "source_lines": [
+   141
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call range (line 141)"
+ },
+ "c160ebee7d2fd8a6a26780cf260e5c35fa26d507c2a0c68a752a57e0ba87328f": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "return {\"read\": ok, \"name\": None if top == n_glyph else class_name(r, top), \"class\": top, \"margin\": round(m, 3),",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:classify_mask",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 237,
+  "source_lines": [
+   237
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call round (line 237)"
+ },
  "c1840b4c35fd5f25529fc59e18dfc20ca348370fe18b59999fe996d50cf6b1fb": {
   "category": "task_name",
   "count": 1,
@@ -17316,6 +17708,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: '_record.json' (line 321)"
+ },
+ "c2b4d6b677b128f87c487788a06986ab4bc9f92cd4c77f4b466a43beba2b382a": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "return np.clip(np.rint(out), 0, 255).astype(np.uint8), mo",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 195,
+  "source_lines": [
+   195
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.clip(np.rint(out), 0, 255).astype (line 195)"
  },
  "c31e5aa043f9c0cb2f19f2082c0cc43cfcbfee8b7332f378390d124a7a7376f6": {
   "category": "checker_tolerance",
@@ -18311,6 +18717,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a string: 'classify_objects' (line 20)"
  },
+ "ca3737dcaa9336f963f5333ca5b3c3bf4e631c607e74ac5c7373601d38dd9e1e": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "P, n_glyph, margins = np.asarray(r[\"probs\"][0], float), int(r[\"n_glyph\"]), r[\"margins\"]",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:classify_mask",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 233,
+  "source_lines": [
+   233
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.asarray (line 233)"
+ },
  "ca45462274ebed9df1f8fa94c3a73a3e9223535c7d49269d09907d218cad3221": {
   "category": "task_name",
   "count": 1,
@@ -18481,6 +18901,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: 'trajectory.json' (line 146)"
  },
+ "cb913ac958a943aa0f80ab9f40f34be967a78f9c36b7c09638f69dc0b5f566b3": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "if m_[0].any() or m_[-1].any() or m_[:, 0].any() or m_[:, -1].any():",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:classify_mask",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 215,
+  "source_lines": [
+   215
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call m_[-1].any (line 215)"
+ },
  "cba726f51b5d9ec100f8068dde0a699d7a5175542126c7627e1d5f122a0822ff": {
   "category": "reflection",
   "count": 1,
@@ -18564,6 +18998,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task symbol .TASK_CONFIGS (line 83)"
+ },
+ "cc1b65747d513bba5970f9c4e6150d046e2399644ad6fe01ffc91cba4ca03ec4": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "R = int(np.ceil(1.1 * diag)) + 2           # the turned bbox's crop (half <= 0.75 diag) fits, corners included",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 169,
+  "source_lines": [
+   169
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call int (line 169)"
  },
  "cc290b37b7d7c64e2a12fa3caadc3e05528643ef661a53365c27249260a71000": {
   "category": "reflection",
@@ -18830,6 +19278,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "unresolved call json.dumps(body).encode (line 93)"
+ },
+ "cf2a4614390ec4a68012ab2a33d6a441d7b7ffd8b96fbcbe3f1959fbe1625bbe": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "return float(np.asarray(robot, bool)[ring].mean()) if ring.any() else 0.0",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:robot_ring",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 145,
+  "source_lines": [
+   145
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call ring.any (line 145)"
  },
  "cf43f0e9ada89c16bd6e68b5ce83a1a0cc681554fbd0ae2e1d22d0b3f38bfaa1": {
   "category": "unresolved",
@@ -19279,6 +19741,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a string: 'pour_by_language' (line 2)"
  },
+ "d43cdc1dc14b52be583653b25ba361323b63fac8984e74312934113ec75dadeb": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "return np.clip(np.rint(out), 0, 255).astype(np.uint8), mo",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 195,
+  "source_lines": [
+   195
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.clip (line 195)"
+ },
  "d459ebe81802277a0f4747afc4444ba1082ef3d4ddfe67eef6063d5139f8f086": {
   "category": "reflection",
   "count": 1,
@@ -19334,6 +19810,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a comment: 'pick_from_conveyor_by_image' (line 555)"
+ },
+ "d56a6a7765c99714896a60848fffb2c7d78052c71918d571dc6f8297e8468539": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "y_ = np.clip(sy, 0, H - 1)                 # clamped: border-replicated",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 181,
+  "source_lines": [
+   181
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.clip (line 181)"
  },
  "d5ed0fee66c7fb652e0691c5e4936f8483f2ed72da47762c081f15051b4a331f": {
   "category": "task_name",
@@ -19993,6 +20483,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: 'index.json' (line 567)"
  },
+ "db7fcfa50a916a6a2d0da78b96ab2334122a8fa50dc13afe1e07f63cfa9b773d": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "xn, yn = np.rint(sx).astype(int), np.rint(sy).astype(int)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 191,
+  "source_lines": [
+   191
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.rint (line 191)"
+ },
  "db83037ffcbd20aebb37d805c8406c251f5962abb40530afe6aa1b5b54cbfc90": {
   "category": "unresolved",
   "count": 1,
@@ -20385,6 +20889,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: '.deployed.json' (line 286)"
  },
+ "dea8d8ecd41ad68a7cae686569b5c16fa575d1863c64e593725b3da513a06d02": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "m = np.asarray(mask) > 0",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 190,
+  "source_lines": [
+   190
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.asarray (line 190)"
+ },
  "deb07c56b0cbb14ff630ad2f896857ba0f3558746eef459624a508bcb28bae62": {
   "category": "unresolved",
   "count": 1,
@@ -20412,6 +20930,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: 'summary.json' (line 11)"
+ },
+ "def09ade41ab3f15e61934997b7d95046d87ff54870863f4b610cb63093a9026": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "f = im.astype(np.float32)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 187,
+  "source_lines": [
+   187
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call im.astype (line 187)"
  },
  "df00562c8fa028e05aed515f413d080860842c9a9f7eb287b978f9b5d1080b38": {
   "category": "reflection",
@@ -20804,6 +21336,34 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: 'checks__.txt' (line 810)"
+ },
+ "e481aec2f9f0082a80d52156f2814e110dde52c52745b9c9d8c493cd96765006": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "cx, cy = int(round((x0 + x1) / 2)), int(round((y0 + y1) / 2))",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 170,
+  "source_lines": [
+   170
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call round (line 170)"
+ },
+ "e4e681cf76b2b2333bba9632b9d0d4a5e051588ba75f6d487486656e128f079b": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "return float(np.asarray(robot, bool)[ring].mean()) if ring.any() else 0.0",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:robot_ring",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 145,
+  "source_lines": [
+   145
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.asarray (line 145)"
  },
  "e51dfa0321065371b85ff0ead8c26d75b992a51576737a1344cd6c16f6de4e01": {
   "category": "task_name",
@@ -21323,6 +21883,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a comment: 'pour_liquid_into_cup' (line 66)"
  },
+ "eb3f1b06fd005ad228788db0839f7e537cf8319fee9a74065047b46da6c5c01a": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "diag = max(float(np.hypot(x1 - x0 + 1, y1 - y0 + 1)), 8.0)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 168,
+  "source_lines": [
+   168
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call max (line 168)"
+ },
  "eb49a7b1e33ac5ae26b113879c41f90f31f95d764499817cd9f89f665e27102a": {
   "category": "unresolved",
   "count": 1,
@@ -21490,6 +22064,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a comment: 'deposit_coin' (line 1373)"
+ },
+ "ecdd4810469a999e1acaddedfadd2695c50a7be9fed8cdc27dc67c1dbfc4b25c": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "if bb is None or int(m_.sum()) < MIN_PX:",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:classify_mask",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 213,
+  "source_lines": [
+   213
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call m_.sum (line 213)"
  },
  "eceee3203aa32efa01a49499c19f3e1a393d5f063135cb866d9934bdeb6aac8a": {
   "category": "task_name",
@@ -21798,6 +22386,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "data file not in the allowlist: 'aggregate.csv' (line 15)"
+ },
+ "f1871773f8c2fd9b357b0910d6751c981564ed07f8ce0d617ed36a6af9f2e8be": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "im = np.asarray(img)",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 178,
+  "source_lines": [
+   178
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call np.asarray (line 178)"
  },
  "f1bb341d418310b33700abd3488827925cdb2d9742650f0f6de376d9bbc7d641": {
   "category": "task_name",
@@ -22289,6 +22891,20 @@
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "task name in a comment: 'make_kong' (line 286)"
  },
+ "f740aba4c51fda4a13e320c3da51fbe326618fce215431607eb5dd3cd5c29bf0": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "P, n_glyph, margins = np.asarray(r[\"probs\"][0], float), int(r[\"n_glyph\"]), r[\"margins\"]",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:classify_mask",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 233,
+  "source_lines": [
+   233
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call int (line 233)"
+ },
  "f778618250b996b01123189f91693c519b4ba3fb8aa7b1a0ff25d444a6d2363f": {
   "category": "task_name",
   "count": 1,
@@ -22358,6 +22974,20 @@
   ],
   "source_ref": "985d889dbb6d099e38ef477f31fcdfa2b5b5ada1",
   "why": "unresolved call np.asarray (line 98)"
+ },
+ "f7c4c6d30c36f67e08bf8c08c4ac065587a97cb3f9bee0abf10846b38c2b8a4c": {
+  "category": "unresolved",
+  "count": 1,
+  "evidence": "cx, cy = int(round((x0 + x1) / 2)), int(round((y0 + y1) / 2))",
+  "file": "dojo/perception/glyph_read.py",
+  "func": "dojo.perception.glyph_read:turn_upright",
+  "reason": "A1/A2 engine-upgrade detection gain: reproduced with identical source line on frozen previous main 84fb8c6e; pre-existing legacy code, not a new violation.",
+  "source_line": 170,
+  "source_lines": [
+   170
+  ],
+  "source_ref": "84fb8c6e93df69ad59a6223810730b9011e044bd",
+  "why": "unresolved call int (line 170)"
  },
  "f7e8d1287923ffe47bda031fca6a826c9efd6430bedfa370ca0288249416e2b7": {
   "category": "instruction_or_identity",
