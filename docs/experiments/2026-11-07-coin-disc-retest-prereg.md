@@ -386,3 +386,13 @@ estimate was 433 logical calls. Verdict/physics audits made **zero new LLM calls
 **Final disposition:** FAIL / NOT ADOPTED. The once-only re-test is exhausted.
 No candidate field changes: disc_hold_evidence remains off; all other fields
 remain unchanged. No automatic adoption or new dispatch follows.
+
+
+## IDFIX supplement status — v2 re-score blocked
+
+The v1 per-writer harmful/helpful counts above remain the registered evidence.
+V2 harmful/helpful counts and changed-match totals are **unavailable**, not zero:
+the committed ledgers lack the complete frame-zero belief/GT inputs needed for
+one-to-one assignment. The saved replay roots are outside IDFIX's named read
+allowance; see [the exact input limit](../journal/2026-11-08-idfix.md).
+No verdict-flip claim can be made from those ledgers alone. No registered verdict changes.

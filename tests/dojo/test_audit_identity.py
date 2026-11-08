@@ -101,3 +101,65 @@ def test_saved_grasp_close_snapshot_finalizes_when_consume_logging_is_absent(mon
     tr = ai.AuditIdentity(report, frames, 'task', fp, back=0, actions=actions)
     a = tr.resolve(_write(5, .001), frames['5'], np.array([.001, 0, .8]))
     assert a['gt_label'] == 'physical0' and a['identity_source'] == 'grasp_close'
+
+
+def test_v2_label_collision_uses_position_not_name():
+    pytest.importorskip("scipy")
+    f = _frame()
+    rec = {'Rigid': {'block': [{'label': f'physical{i}', 'category_idx': 5,
+                              'default_pos': [x, 0, .8]} for i, x in enumerate((.2, 0.))]}}
+    fp = Footprints(loader=lambda key: np.array([[-.01]*3, [.01]*3]))
+    report = {'records': {'initial': rec}}
+    w = _write(0, .198, 'physical0')
+    old = ai.AuditIdentity(report, {'0': f}, 'unknown', fp)
+    new = ai.AuditIdentityV2(report, {'0': f}, 'unknown', fp)
+    assert old.resolve(w, f, np.array(w['before']))['gt_label'] == 'physical0'
+    match = new.resolve(w, f, np.array(w['before']))
+    assert match['gt_label'] == 'physical1'
+    assert match['identity_rule'] == 'assignment'
+    assert match['instrument_version'] == 'spatial-assignment-v2'
+    assert not match['identity_uncertain']
+    # Moving from .198 to .190 is helpful under v1, harmful under v2.
+    assert abs(.190) < abs(.198)
+    assert abs(.190 - .2) > abs(.198 - .2)
+
+
+def test_v2_ambiguous_assignment_is_flagged():
+    pytest.importorskip("scipy")
+    f = _frame(b=.015)
+    rec = {'Rigid': {'block': [{'label': 'belief0', 'category_idx': 5, 'default_pos': [0, 0, .8]}]}}
+    fp = Footprints(loader=lambda key: np.array([[-.01]*3, [.01]*3]))
+    tr = ai.AuditIdentityV2({'records': {'initial': rec}}, {'0': f}, 'unknown', fp)
+    assert tr.resolve(_write(0, 0), f, np.array([0, 0, .8]))['identity_uncertain']
+
+
+def test_instrument_has_no_controller_imports():
+    import ast
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2] / 'dojo'
+    for folder in ('runtime', 'skills', 'agent', 'bridge'):
+        for path in (root / folder).rglob('*.py'):
+            tree = ast.parse(path.read_text())
+            for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom):
+                    assert 'audit_identity' not in (node.module or '')
+                    assert all('audit_identity' not in a.name for a in node.names)
+                elif isinstance(node, ast.Import):
+                    assert all('audit_identity' not in a.name for a in node.names)
+
+
+def test_v2_first_pick_overrides_seed_and_retry_keeps_identity():
+    pytest.importorskip('scipy')
+    f = _frame()
+    rec = {'Rigid': {'block': [{'label': 'belief0', 'category_idx': 5, 'default_pos': [.2, 0, .8]}]}}
+    events = [{'kind': 'consume', 'skill': 'pick', 'label': 'belief0', 'step': s,
+               'pose7_used': [x, 0, .8, 1, 0, 0, 0], 'key': 'Rigid/block/00005'}
+              for s, x in ((1, 0.), (2, .2))]
+    fp = Footprints(loader=lambda key: np.array([[-.01]*3, [.01]*3]))
+    tr = ai.AuditIdentityV2({'records': {'initial': rec}, 'events': events},
+                            {str(s): f for s in range(3)}, 'unknown', fp)
+    assert tr.resolve(_write(0, .2), f, np.array([.2, 0, .8]))['gt_label'] == 'physical1'
+    for step in (1, 2):
+        match = tr.resolve(_write(step, .2), f, np.array([.2, 0, .8]))
+        assert match['gt_label'] == 'physical0'
+        assert match['identity_rule'] == 'pick'
