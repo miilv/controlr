@@ -1,0 +1,15 @@
+{
+  "parity": true,
+  "compute4": {
+    "v2b/best.pt": "d7b2f167a69584697628ba967c0f82f4ecfacd3152267f12b23644cc46e8ca88",
+    "v2b/classes.json": "900b4967d0ff4353b02efd782c065f556c8cb46289eb31d1e7f2cae56b5b027d",
+    "digit_v2/model.pt": "a9c341e949d08afd806d0118d63b67e109430a918b612dbbddf37231ea8d548b",
+    "kong_v1b/model.pt": "dc35be09bfa6588203983668f0e3bf7b10061b42e824519a3a4126cb978d628e"
+  },
+  "compute6": {
+    "v2b/best.pt": "d7b2f167a69584697628ba967c0f82f4ecfacd3152267f12b23644cc46e8ca88",
+    "v2b/classes.json": "900b4967d0ff4353b02efd782c065f556c8cb46289eb31d1e7f2cae56b5b027d",
+    "digit_v2/model.pt": "a9c341e949d08afd806d0118d63b67e109430a918b612dbbddf37231ea8d548b",
+    "kong_v1b/model.pt": "dc35be09bfa6588203983668f0e3bf7b10061b42e824519a3a4126cb978d628e"
+  }
+}

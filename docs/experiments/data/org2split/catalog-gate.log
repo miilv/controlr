@@ -1,0 +1,6 @@
+catalog_md5 2cd7455cbdce2ab38e4e9d586e28db61 (/home/haptics/dojo-perception-data/catalog)
+known unshipped (not a gap): ['Rigid/broom_shovel/00001', 'Rigid/broom_shovel/00004']
+every candidate asset is in the catalogue
+every slot base has its support frames
+every Articulation candidate has its links.json
+catalog gate OK

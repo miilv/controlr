@@ -1,0 +1,43 @@
+{
+  "utc": "2026-11-08T05:11:12.338767+00:00",
+  "moved_rows": 80,
+  "moved_pairs": 40,
+  "queues": {
+    "c6": {
+      "ready": true,
+      "before_sha256": "ff074a35d2550ba5ec0d1a4fe318d4eb66a6e01dd2c730956e7cf093dfd38503",
+      "after_sha256": "8d435ae651de2ab58ba9c84f99818f3b72b48a341b77daba1f2421f7cccf645a",
+      "before_rows": 147,
+      "after_rows": 67
+    },
+    "c4": {
+      "ready": true,
+      "before_sha256": "16ad83f6287b504d003d7346d27e0be5be3fc67ab857a3499fbe445d4e8bba4d",
+      "after_sha256": "00f2b0596f216fd013d338ec015e0275a260df317794901ab72a91f2d6663ffa",
+      "before_rows": 3,
+      "after_rows": 83
+    }
+  },
+  "both_locks_held": true,
+  "route": "claude/claude-sonnet-5-5",
+  "prereg_commits": [
+    "a43e1154",
+    "002f9426"
+  ],
+  "deploy": "/home/haptics/dojo-integ-c4-83887dae",
+  "catalog_md5": "2cd7455cbdce2ab38e4e9d586e28db61",
+  "kit_env_sha256": "0023b748633125a441b1f4e1059b1675ccbb141faf35e7e0e289661a5a58634a",
+  "physics_kit_sha256": "03a4db8400b66195445548c88a1c8e2212487a3054ac1e1a95a02aa9e6172cd0",
+  "candidate_parity": true,
+  "candidate_diff": {},
+  "source_files": 1808,
+  "freeze_identical": true,
+  "background_files_identical": 96,
+  "inputs_identical": 40,
+  "model_files_identical": 4,
+  "spend_usd": 0,
+  "lane_status": {
+    "heavy1": "exited: SHARED SIDE DOWN at 05:10:16Z; preceding COIN2-CAM row put back",
+    "heavy2": "alive PID 1019925 at 05:11Z"
+  }
+}

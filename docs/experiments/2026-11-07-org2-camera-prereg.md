@@ -145,3 +145,55 @@ whole pairs stay on one box, so it cannot differ within a pair. The overlay is c
 byte-identically from CLASSIFY3 compute4's `meta/kit-env.sh`; its SHA256 is in the receipt.
 The per-row normalized diff records this addition separately from authorized host-path changes.
 No other row change is permitted.
+
+## ORG2SPLIT dispatch receipt — 2026-11-08 05:11:12Z
+
+Amendments `a43e1154` and `002f9426` were on main before queue mutation, well before 07:40Z.
+**80 rows / 40 pairs moved**, exactly [source](data/org2split/rows-source.txt) →
+[target](data/org2split/rows-target.txt); [per-row normalized diffs](data/org2split/row-diff.json)
+are empty, with the separately authorized BASH_ENV addition on both arms. Family names unchanged.
+No start/done entry for any selected row in either compute6 log, rechecked while holding its queue lock.
+
+Deployment `/home/haptics/dojo-integ-c4-83887dae`: 1,808 source files match git archive
+([source parity](data/org2split/source-parity.json)); copied 416a2a03 venv freeze identical;
+imports resolve to the deployment. [Candidate parity](data/org2split/parity.json) true, diff {};
+package versions identical. Both boxes' catalogue gates pass, md5
+`2cd7455cbdce2ab38e4e9d586e28db61`. Compute6 candidate parity also passes with its explicit
+lane background/calibration environment (an initial probe without DOJO_BG_FOLDS had a path-only diff).
+All four model files SHA256-identical ([model parity](data/org2split/model-parity.json)).
+
+All 96 background-folds/calibration files match byte hashes, no exceptions
+([comparison](data/org2split/background-parity.json),
+[compute4](data/org2split/compute4-backgrounds-sha256.json),
+[compute6](data/org2split/compute6-backgrounds-sha256.json)).
+Only the 40 referenced settled layout files were copied from compute6;
+[per-file source/destination SHA256 manifest](data/org2split/inputs-sha256.json) matches.
+Runtime eval reads each settled JSON directly (`dojo.runtime.eval._run`); these records are
+self-contained layouts, with no per-layout companion files loaded from the stream. No run outputs copied.
+compute4's own CLASSIFY3 `simlab.physics.kit` copied to the ORG2 stream's `simlab/kit/` and
+`meta/`: SHA256 `03a4db8400b66195445548c88a1c8e2212487a3054ac1e1a95a02aa9e6172cd0`.
+The CLASSIFY3 operational `kit-env.sh` is copied byte-identically into org2-cam/meta:
+SHA256 `0023b748633125a441b1f4e1059b1675ccbb141faf35e7e0e289661a5a58634a`.
+No environment/secret file was opened.
+
+[Dispatch receipt](data/org2split/dispatch.json), by [move.py](data/org2split/move.py),
+held **both queue2.txt.lock locks simultaneously** through both writes.
+compute6: 147 → 67 rows; compute4: 3 → 83 rows, append after all three remaining COIN2-CAM
+rows, no reordering. Full locked snapshots are saved next to the receipt.
+
+- c6 before SHA256 `ff074a35d2550ba5ec0d1a4fe318d4eb66a6e01dd2c730956e7cf093dfd38503`; after `8d435ae651de2ab58ba9c84f99818f3b72b48a341b77daba1f2421f7cccf645a`.
+- c4 before SHA256 `16ad83f6287b504d003d7346d27e0be5be3fc67ab857a3499fbe445d4e8bba4d`; after `00f2b0596f216fd013d338ec015e0275a260df317794901ab72a91f2d6663ffa`.
+
+Route `AGENTIC_MODEL=claude/claude-sonnet-5-5` verified once on every moved row; actual call-log
+route verification remains part of the episode audit when rows execute. All 80 configs construct.
+Dispatch/deploy model spend **$0**. No lane was started, no running job stopped, no coord access.
+
+**Lane handoff:** heavy1 (pidfile 1019493) is exited; log at 05:10:16Z says
+`SHARED SIDE DOWN before c4b_tttsg_coin2camAr1_100003 (seg glyph glyphk): put back, every lane stops`.
+Heavy2 (pidfile 1019925) is alive at inspection, on COIN2-CAM. Lead must address shared-side
+readiness and owns restarts. Exact lead recipe (N = 1 or 2 as needed):
+
+```bash
+S=$HOME/dojo-integ-c4-state
+LANE_REPO=$HOME/dojo-integ-c4-416a2a03 setsid nohup bash $S/lane2.sh heavyN $HOME/dojo-integ-c4-heavyN.lock >> $S/lane2_heavyN.log 2>&1 < /dev/null &
+```
