@@ -37,7 +37,8 @@ def _import_graph(root):
 
 def _controller_path(graph):
     todo = deque((module, [module]) for module in graph
-                 if module.startswith(('dojo.runtime.', 'dojo.skills.', 'dojo.agent.', 'dojo.bridge.')))
+                 if any(module == base or module.startswith(base + '.')
+                        for base in ('dojo.runtime', 'dojo.skills', 'dojo.agent', 'dojo.bridge')))
     seen = set()
     while todo:
         module, path = todo.popleft()
