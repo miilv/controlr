@@ -1239,3 +1239,17 @@ in a guard's candidate exploration blocks the zero-request parity proof.
 
 Two pitfalls: the eval's per-episode `perception` block misreads numbered series (score series cells from a replay),
 and G3 `--belief-drop` does not fit the ported skills (their picks fail).
+
+The shared audit engine also accepts partner profiles with `dispatch`, `callbacks`,
+`injected`, `gates`, `data_files`, `doc_ok`, aliases and required guard lines.
+`controlr-inference` retains conservative global/all-method inventory traversal;
+partner library profiles use rapid type analysis. Constructor and class-body
+nodes are audited in both. The direct CLI still defaults to `controlr-inference`;
+its JSON includes both reachable node count and function count.
+
+Engine upgrades may expose pre-existing findings. Keep these separately in
+`scripts/legality/detection-gains.json`, with exact source evidence, occurrence
+budgets, previous-main SHA and line evidence from running the upgraded engine on
+that source archive too. This bootstrap evidence is reviewed with the engine
+upgrade; subsequent pins can only shrink. Such pins never exempt clean roots and
+do not change `allowlist.json` or `transition-review.json`.

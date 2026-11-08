@@ -84,7 +84,8 @@ def test_repository_shared_profile_matches_its_frozen_baseline():
     report = inventory(ROOT)
     allowed = json.loads((ROOT / 'scripts/legality/allowlist.json').read_text())
     reviewed = json.loads((ROOT / 'scripts/legality/transition-review.json').read_text())
-    problems = gate(report['findings'], allowed, reviewed=reviewed)
+    gains = json.loads((ROOT / 'scripts/legality/detection-gains.json').read_text())
+    problems = gate(report['findings'], allowed, reviewed=reviewed, detection_gains=gains)
     assert not problems, '\n'.join(problems[:30])
 
 
@@ -212,3 +213,22 @@ def test_general_package_initializer_cannot_inherit_legacy_debt(tmp_path):
     leaked = [r for r in findings if r['func'] == 'dojo.legacy:run' and r['category'] == 'task_name']
     assert leaked and all(r['clean_reachable'] for r in leaked)
     assert gate(leaked, {r['key']: 1 for r in leaked})
+
+
+def test_detection_gains_require_frozen_evidence_and_never_clear_clean_roots():
+    r = {**row(), 'func': 'dojo.old:run', 'evidence': 'call()'}
+    pin = {k: r[k] for k in ('file', 'func', 'category', 'evidence', 'why')}
+    pin.update(count=1, source_ref='a' * 40, source_line=4, reason='Pre-existing detection gain')
+    gains = {'old': pin}
+    assert not gate([r], {}, detection_gains=gains, previous_detection_gains=gains)
+    assert gate([r], {}, detection_gains=gains, previous_detection_gains={})
+    assert gate([r, r], {}, detection_gains=gains)
+    assert gate([{**r, 'evidence': 'changed()'}], {}, detection_gains=gains)
+    assert gate([{**r, 'clean_reachable': True}], {}, detection_gains=gains)
+    assert gate([r], {}, detection_gains={'old': {**pin, 'source_ref': ''}})
+    assert gate([r], {'old': 1}, detection_gains=gains)
+
+
+def test_global_callback_binding_is_not_a_resolved_callable(tmp_path):
+    p = profile(tmp_path, {'pkg/entry.py': 'callback = unknown_factory()\ndef run(x):\n    return callback(x)\n'})
+    assert any(v.why.startswith('unresolved call callback') for v in A.audit_callgraph(profile=p, names=['unused']))
