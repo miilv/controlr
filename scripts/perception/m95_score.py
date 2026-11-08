@@ -24,6 +24,11 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
+# Direct script invocation must also resolve the scorer-only namespace package.
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 SLICE = [(100000, 100009), (100020, 100049)]
 
 
@@ -113,7 +118,8 @@ def cmd_audit(a, *, footprints=None, group_factory=None) -> None:
     ~1 mm). Replays with frames near each write step are needed (``m95_replay --every 4``)."""
     import numpy as np
     from dojo.perception.grasp_metric import Footprints, gt_rows_asset
-    from dojo.perception.audit_identity import AuditIdentity, AuditIdentityV2
+    from dojo.perception.audit_identity import AuditIdentity
+    from scripts.perception.audit_identity_v2 import AuditIdentityV2
     fp = footprints if footprints is not None else Footprints()
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
