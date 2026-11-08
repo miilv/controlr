@@ -334,7 +334,9 @@ def controlr_inference():
     return make()
 
 
-PROFILES = {"controlr-inference": controlr_inference, "controlr-glib": controlr_glib, "controlr-hybrid-agent": controlr_hybrid_agent}
+PROFILES = {"controlr-glib": controlr_glib, "controlr-hybrid-agent": controlr_hybrid_agent}
+if (Path(__file__).parent / "profiles.py").exists():         # Ilia's inventory profile ships in their profiles.py
+    PROFILES["controlr-inference"] = controlr_inference
 
 
 # ---------------------------------------------------------------------------------------------------- index
@@ -774,7 +776,13 @@ def _folded(n) -> str | None:
 
 def scan_strings(nodes, rx: re.Pattern, data_files: dict, precise=False) -> list[str]:
     """Task names, task data paths and unlisted data files in every string of ``nodes`` (docstrings included), and in
-    f-strings / string concatenations folded from their constant parts."""
+    f-strings / string concatenations folded from their constant parts. The literal attribute name of a ``getattr`` /
+    ``setattr`` / ``hasattr`` / ``delattr`` is an identifier, not a path: it is checked for task names, not for
+    task data paths (``getattr(policy, "log", None)`` is no ``log/`` directory)."""
+    nodes = list(nodes)
+    attr_names = {id(n.args[1]) for n in nodes
+                  if isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and len(n.args) >= 2
+                  and n.func.id in ("getattr", "setattr", "hasattr", "delattr")}
     out = []
     for n in nodes:
         texts = []
@@ -793,7 +801,7 @@ def scan_strings(nodes, rx: re.Pattern, data_files: dict, precise=False) -> list
                 return f" (line {line})"
             for match in rx.finditer(t):
                 out.append(f"task name in a string: {match.group(0)!r}" + suffix(match.start()))
-            for match in DATA_PATHS.finditer(t):
+            for match in (() if id(n) in attr_names else DATA_PATHS.finditer(t)):
                 label = match.group(0) if precise else t[:60]
                 out.append(f"task data path: {label!r}" + suffix(match.start()))
             for d in DATA_NAME.finditer(t):
@@ -1164,7 +1172,8 @@ def audit_source(source: str, name: str, profile: Profile | None = None, names=N
 # ---------------------------------------------------------------------------------------------------- CLI
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="transitive legality audit (call graph from entry points)")
-    ap.add_argument("--profile", default="controlr-inference", choices=sorted(PROFILES))
+    ap.add_argument("--profile", default="controlr-inference" if "controlr-inference" in PROFILES else "controlr-glib",
+                    choices=sorted(PROFILES))
     ap.add_argument("--root", action="append", default=[], help="entry point module:qualname (default: the profile's)")
     ap.add_argument("--index", action="append", default=[], help="extra .py files or directories to index")
     ap.add_argument("--tasks", default=None, help="fixture with the public task ids (default: tests/fixtures/...)")

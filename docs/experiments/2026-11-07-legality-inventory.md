@@ -2723,3 +2723,37 @@ Previous main: `84fb8c6e93df69ad59a6223810730b9011e044bd`. Patch `e3a0cb19` was 
 D-C19 reaches the same 45 unresolved-call signals through the newly followed module/getattr edges. Its source line numbers can differ; the updated D-C19 CSV records its exact locations. Both inventories remain conservative reachability reports, not runtime legality certificates.
 
 The ratchet permits this explicitly reviewed bootstrap only when the actual base is frozen `84fb8c6e`; subsequent bases cannot reuse the bootstrap. Existing pins cannot change, and clean roots remain unconditionally blocked. A future engine-upgrade bootstrap requires a separate reviewed source reference and evidence.
+
+## Attribute-name false-positive retirement: partner 04d8aefa
+
+Same-source comparison on frozen main `78fd1051` and D-C19 `127b65c4`: only the engine changes. Main findings fall **31,486 → 31,484**; D-C19 **28,814 → 28,812**. There are **two retired false positives per snapshot**, representing two distinct source call sites (four CSV rows across both snapshots). No findings are added.
+
+| Category | Main before | Main after | D-C19 before | D-C19 after |
+|---|---:|---:|---:|---:|
+| benchmark_composite | 6 | 6 | 6 | 6 |
+| checker_module | 14 | 14 | 14 | 14 |
+| checker_predicate | 2 | 2 | 2 | 2 |
+| checker_provenance | 259 | 259 | 238 | 238 |
+| checker_state | 53 | 53 | 51 | 51 |
+| checker_tolerance | 88 | 88 | 83 | 83 |
+| dynamic_code | 54 | 54 | 48 | 48 |
+| identity_source | 5 | 5 | 5 | 5 |
+| instruction_or_identity | 147 | 147 | 142 | 142 |
+| reflection | 540 | 540 | 506 | 506 |
+| task_data | 125 | 123 | 119 | 117 |
+| task_name | 843 | 843 | 817 | 817 |
+| task_switch | 118 | 118 | 92 | 92 |
+| task_vocabulary | 92 | 92 | 91 | 91 |
+| termination | 3 | 3 | 3 | 3 |
+| unresolved | 29137 | 29137 | 26597 | 26597 |
+
+### Retired signals (complete list)
+
+| Snapshots | Source | Symbol | Retired reason | Exact source |
+|---|---|---|---|---|
+| Main and D-C19 | `dojo/agent/policy.py:66` | `_AgentCtx.log` | `task data path: 'log' (line 66)` | `lg = getattr(self.c, "log", None)` |
+| Main and D-C19 | `dojo/skills/ported/harness_robot.py:336` | `HarnessRobot.__init__` | `task data path: 'log' (line 336)` | `self.log = log or getattr(sk, "log", None) or (lambda *a, **k: None)` |
+
+These literals name attributes, not paths. Only the second argument node of bare getattr/setattr/hasattr/delattr is excluded from DATA_PATHS matching. Task-name matching is retained. Other string nodes, real open/path literals, reflection defaults and assigned values retain path detection. The same-source key-set comparison proves no other existing finding is lost. Added planted tests cover logs/x.json, Traj/episode, default paths and assigned paths under both precise inventory and partner scan modes. All 12 partner-planted tests run without skips.
+
+The two obsolete baseline keys are removed from the legacy allowlist. No baseline grows, no new detection-gain bootstrap is added, and clean-root findings remain zero. The existing detection-gain and transition ledgers are unchanged.
