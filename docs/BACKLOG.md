@@ -638,6 +638,12 @@
   `series_count` doesn't rename them. Check what the checker / twin need there. SAM 3.1 text also undercounts its
   small toys (1-5 masks for 3-9 objects): within 30 / 69 with `sam`. arrange_largest_number's `linked_count` mats are
   not handled at all.
+- [ ] **dojo skills: classify_into_bins_p2 raises `KeyError: '<category>_<idx>_<n>'` at step 0 on some camera beliefs**
+  (CLASSIFY3 camera, fresh layouts: classify 100020 in both arms and 100021 in one, `KeyError: 'garage_15_0'`; the
+  episode then scores 0). It is raised before any placement, in code shared by p2 and `sort_into_containers`, and the
+  trigger is the episode's perception, not a switch. Reproduce on the logged frame-0 record of
+  `compute4:~/dojo-data/integ-c4/runs2/c4b_classifysg_cls3Ar1_100020`: likely a planned or assigned instance name
+  missing from the stage's raw objects. Fix in a new variant or the wrapper, never in the vendored copy.
 - [ ] **dojo eval: the per-episode `perception` block misreads numbered series.** It matches one estimate per config
   label, so with numbered series (`rigid0_0..`) it reports correctly found instances "found: false", and the row's
   `category` becomes `perception_gross` (classify 100005: 6 / 6 instances within 5 mm, 5 reported missed). Score series

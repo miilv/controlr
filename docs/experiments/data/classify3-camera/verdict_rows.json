@@ -1,0 +1,2705 @@
+[
+ {
+  "name": "c4b_classifylangsg_cls3Ar1_100020",
+  "cell": "classifylangsg",
+  "arm": "A",
+  "id": 100020,
+  "task": "classify_objects_by_language",
+  "score": 0.1,
+  "success": false,
+  "steps": 913,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 311.7,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 8,
+   "predicted": 4
+  },
+  "claims": 8,
+  "claims_in": 3,
+  "n_candidates": 5,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 95517,
+   "completion": 6869,
+   "reasoning": 4045,
+   "cache_read": 77166
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Ar1_100021",
+  "cell": "classifylangsg",
+  "arm": "A",
+  "id": 100021,
+  "task": "classify_objects_by_language",
+  "score": 0.0,
+  "success": false,
+  "steps": 267,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 183.1,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 7,
+   "predicted": 2
+  },
+  "claims": 2,
+  "claims_in": 2,
+  "n_candidates": 4,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 4,
+  "tokens": {
+   "prompt": 62676,
+   "completion": 4585,
+   "reasoning": 2385,
+   "cache_read": 46480
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Ar1_100022",
+  "cell": "classifylangsg",
+  "arm": "A",
+  "id": 100022,
+  "task": "classify_objects_by_language",
+  "score": 0.4,
+  "success": false,
+  "steps": 598,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 198.9,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 10,
+   "predicted": 2
+  },
+  "claims": 5,
+  "claims_in": 5,
+  "n_candidates": 3,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 4,
+  "tokens": {
+   "prompt": 62797,
+   "completion": 3885,
+   "reasoning": 1836,
+   "cache_read": 46480
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Ar1_100023",
+  "cell": "classifylangsg",
+  "arm": "A",
+  "id": 100023,
+  "task": "classify_objects_by_language",
+  "score": 0.0,
+  "success": false,
+  "steps": 824,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 278.2,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 13,
+   "predicted": 2
+  },
+  "claims": 7,
+  "claims_in": 2,
+  "n_candidates": 5,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 98377,
+   "completion": 6780,
+   "reasoning": 3979,
+   "cache_read": 76951
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Ar1_100024",
+  "cell": "classifylangsg",
+  "arm": "A",
+  "id": 100024,
+  "task": "classify_objects_by_language",
+  "score": 0.0,
+  "success": false,
+  "steps": 1006,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 265.4,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 9,
+   "predicted": 4
+  },
+  "claims": 9,
+  "claims_in": 2,
+  "n_candidates": 4,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 5,
+  "tokens": {
+   "prompt": 62153,
+   "completion": 3863,
+   "reasoning": 1815,
+   "cache_read": 50649
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Ar1_100025",
+  "cell": "classifylangsg",
+  "arm": "A",
+  "id": 100025,
+  "task": "classify_objects_by_language",
+  "score": 0.0,
+  "success": false,
+  "steps": 562,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 225.3,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 6,
+   "predicted": 4
+  },
+  "claims": 5,
+  "claims_in": 3,
+  "n_candidates": 4,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 77621,
+   "completion": 4022,
+   "reasoning": 1710,
+   "cache_read": 63751
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Ar1_100026",
+  "cell": "classifylangsg",
+  "arm": "A",
+  "id": 100026,
+  "task": "classify_objects_by_language",
+  "score": 0.1,
+  "success": false,
+  "steps": 640,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 244.1,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 4,
+   "predicted": 5
+  },
+  "claims": 6,
+  "claims_in": 3,
+  "n_candidates": 5,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 7,
+  "tokens": {
+   "prompt": 99900,
+   "completion": 5615,
+   "reasoning": 2849,
+   "cache_read": 79809
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Ar1_100027",
+  "cell": "classifylangsg",
+  "arm": "A",
+  "id": 100027,
+  "task": "classify_objects_by_language",
+  "score": 0.0,
+  "success": false,
+  "steps": 524,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 252.0,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 6,
+   "predicted": 3
+  },
+  "claims": 6,
+  "claims_in": 4,
+  "n_candidates": 7,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 7,
+  "tokens": {
+   "prompt": 93911,
+   "completion": 5283,
+   "reasoning": 2759,
+   "cache_read": 81172
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Ar1_100028",
+  "cell": "classifylangsg",
+  "arm": "A",
+  "id": 100028,
+  "task": "classify_objects_by_language",
+  "score": 0.0,
+  "success": false,
+  "steps": 513,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 230.0,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 6,
+   "predicted": 3
+  },
+  "claims": 6,
+  "claims_in": 1,
+  "n_candidates": 5,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 93902,
+   "completion": 4750,
+   "reasoning": 2335,
+   "cache_read": 76905
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Ar1_100029",
+  "cell": "classifylangsg",
+  "arm": "A",
+  "id": 100029,
+  "task": "classify_objects_by_language",
+  "score": 0.1,
+  "success": false,
+  "steps": 492,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 333.5,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 4,
+   "predicted": 5
+  },
+  "claims": 5,
+  "claims_in": 4,
+  "n_candidates": 3,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 4,
+  "tokens": {
+   "prompt": 62052,
+   "completion": 4758,
+   "reasoning": 2346,
+   "cache_read": 46480
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Br1_100020",
+  "cell": "classifylangsg",
+  "arm": "B",
+  "id": 100020,
+  "task": "classify_objects_by_language",
+  "score": 0.0,
+  "success": false,
+  "steps": 478,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 187.9,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 2,
+   "predicted": 3
+  },
+  "claims": 5,
+  "claims_in": 5,
+  "n_candidates": 2,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 7,
+  "tokens": {
+   "prompt": 89710,
+   "completion": 6026,
+   "reasoning": 3531,
+   "cache_read": 77779
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Br1_100021",
+  "cell": "classifylangsg",
+  "arm": "B",
+  "id": 100021,
+  "task": "classify_objects_by_language",
+  "score": 0.0,
+  "success": false,
+  "steps": 266,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 210.8,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 7,
+   "predicted": 2
+  },
+  "claims": 2,
+  "claims_in": 2,
+  "n_candidates": 2,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 98362,
+   "completion": 6519,
+   "reasoning": 3975,
+   "cache_read": 79382
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Br1_100022",
+  "cell": "classifylangsg",
+  "arm": "B",
+  "id": 100022,
+  "task": "classify_objects_by_language",
+  "score": 0.4,
+  "success": false,
+  "steps": 512,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 206.8,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 8,
+   "predicted": 3
+  },
+  "claims": 5,
+  "claims_in": 5,
+  "n_candidates": 4,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 5,
+  "tokens": {
+   "prompt": 62073,
+   "completion": 4159,
+   "reasoning": 2173,
+   "cache_read": 50664
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Br1_100023",
+  "cell": "classifylangsg",
+  "arm": "B",
+  "id": 100023,
+  "task": "classify_objects_by_language",
+  "score": 0.0,
+  "success": false,
+  "steps": 890,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 251.0,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 10,
+   "predicted": 5
+  },
+  "claims": 7,
+  "claims_in": 4,
+  "n_candidates": 5,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 80290,
+   "completion": 4678,
+   "reasoning": 2412,
+   "cache_read": 65285
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Br1_100024",
+  "cell": "classifylangsg",
+  "arm": "B",
+  "id": 100024,
+  "task": "classify_objects_by_language",
+  "score": 0.1,
+  "success": false,
+  "steps": 860,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 246.9,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 6,
+   "predicted": 3
+  },
+  "claims": 8,
+  "claims_in": 3,
+  "n_candidates": 7,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 5,
+  "tokens": {
+   "prompt": 62201,
+   "completion": 3704,
+   "reasoning": 1802,
+   "cache_read": 50679
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Br1_100025",
+  "cell": "classifylangsg",
+  "arm": "B",
+  "id": 100025,
+  "task": "classify_objects_by_language",
+  "score": 0.1,
+  "success": false,
+  "steps": 779,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 253.5,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 6,
+   "predicted": 6
+  },
+  "claims": 7,
+  "claims_in": 4,
+  "n_candidates": 4,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 5,
+  "tokens": {
+   "prompt": 76553,
+   "completion": 4915,
+   "reasoning": 2453,
+   "cache_read": 60763
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Br1_100026",
+  "cell": "classifylangsg",
+  "arm": "B",
+  "id": 100026,
+  "task": "classify_objects_by_language",
+  "score": 0.1,
+  "success": false,
+  "steps": 605,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 300.6,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 9,
+   "predicted": 2
+  },
+  "claims": 5,
+  "claims_in": 5,
+  "n_candidates": 5,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 7,
+  "tokens": {
+   "prompt": 112930,
+   "completion": 5833,
+   "reasoning": 2812,
+   "cache_read": 91931
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Br1_100027",
+  "cell": "classifylangsg",
+  "arm": "B",
+  "id": 100027,
+  "task": "classify_objects_by_language",
+  "score": 0.0,
+  "success": false,
+  "steps": 793,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 274.9,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 8,
+   "predicted": 3
+  },
+  "claims": 5,
+  "claims_in": 4,
+  "n_candidates": 8,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 7,
+  "tokens": {
+   "prompt": 97478,
+   "completion": 6943,
+   "reasoning": 4460,
+   "cache_read": 82072
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Br1_100028",
+  "cell": "classifylangsg",
+  "arm": "B",
+  "id": 100028,
+  "task": "classify_objects_by_language",
+  "score": 0.0,
+  "success": false,
+  "steps": 378,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 215.2,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 7,
+   "predicted": 3
+  },
+  "claims": 5,
+  "claims_in": 3,
+  "n_candidates": 5,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 7,
+  "tokens": {
+   "prompt": 93925,
+   "completion": 5045,
+   "reasoning": 2407,
+   "cache_read": 81180
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifylangsg_cls3Br1_100029",
+  "cell": "classifylangsg",
+  "arm": "B",
+  "id": 100029,
+  "task": "classify_objects_by_language",
+  "score": 0.4,
+  "success": false,
+  "steps": 652,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 219.8,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 8,
+   "predicted": 4
+  },
+  "claims": 6,
+  "claims_in": 5,
+  "n_candidates": 7,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 5,
+  "tokens": {
+   "prompt": 78994,
+   "completion": 4983,
+   "reasoning": 2593,
+   "cache_read": 62609
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Ar1_100020",
+  "cell": "classifysg",
+  "arm": "A",
+  "id": 100020,
+  "task": "classify_objects",
+  "score": 0.0,
+  "success": false,
+  "steps": 43,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 188.4,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 6
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 3,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 95984,
+   "completion": 5192,
+   "reasoning": 2397,
+   "cache_read": 63394
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Ar1_100021",
+  "cell": "classifysg",
+  "arm": "A",
+  "id": 100021,
+  "task": "classify_objects",
+  "score": 0.4,
+  "success": false,
+  "steps": 986,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 310.7,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 5,
+   "predicted": 6
+  },
+  "claims": 7,
+  "claims_in": 3,
+  "n_candidates": 6,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 94503,
+   "completion": 6182,
+   "reasoning": 3431,
+   "cache_read": 76949
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Ar1_100022",
+  "cell": "classifysg",
+  "arm": "A",
+  "id": 100022,
+  "task": "classify_objects",
+  "score": 0.4,
+  "success": false,
+  "steps": 707,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 334.3,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 5,
+   "predicted": 3
+  },
+  "claims": 6,
+  "claims_in": 3,
+  "n_candidates": 5,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 99174,
+   "completion": 7615,
+   "reasoning": 4709,
+   "cache_read": 76924
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Ar1_100023",
+  "cell": "classifysg",
+  "arm": "A",
+  "id": 100023,
+  "task": "classify_objects",
+  "score": 0.4,
+  "success": false,
+  "steps": 993,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 397.2,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 9,
+   "predicted": 5
+  },
+  "claims": 9,
+  "claims_in": 3,
+  "n_candidates": 4,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 3
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 3
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 3
+  },
+  "llm_calls": 9,
+  "tokens": {
+   "prompt": 126670,
+   "completion": 8348,
+   "reasoning": 4881,
+   "cache_read": 102394
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Ar1_100024",
+  "cell": "classifysg",
+  "arm": "A",
+  "id": 100024,
+  "task": "classify_objects",
+  "score": 1.0,
+  "success": true,
+  "steps": 380,
+  "step_lim": 1100,
+  "category": null,
+  "wall_s": 221.0,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "perception": 3,
+   "predicted": 2
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 2,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 2,
+  "tokens": {
+   "prompt": 31838,
+   "completion": 1919,
+   "reasoning": 942,
+   "cache_read": 23430
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Ar1_100025",
+  "cell": "classifysg",
+  "arm": "A",
+  "id": 100025,
+  "task": "classify_objects",
+  "score": 0.15,
+  "success": false,
+  "steps": 384,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 223.6,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 3,
+   "predicted": 2
+  },
+  "claims": 4,
+  "claims_in": 2,
+  "n_candidates": 3,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 5,
+  "tokens": {
+   "prompt": 77537,
+   "completion": 3355,
+   "reasoning": 1619,
+   "cache_read": 60399
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Ar1_100026",
+  "cell": "classifysg",
+  "arm": "A",
+  "id": 100026,
+  "task": "classify_objects",
+  "score": 0.4,
+  "success": false,
+  "steps": 657,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 300.3,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 5,
+   "predicted": 5
+  },
+  "claims": 9,
+  "claims_in": 3,
+  "n_candidates": 3,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 5,
+  "tokens": {
+   "prompt": 62440,
+   "completion": 4297,
+   "reasoning": 2072,
+   "cache_read": 49286
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Ar1_100027",
+  "cell": "classifysg",
+  "arm": "A",
+  "id": 100027,
+  "task": "classify_objects",
+  "score": 0.15,
+  "success": false,
+  "steps": 800,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 490.6,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 17,
+   "predicted": 6
+  },
+  "claims": 8,
+  "claims_in": 6,
+  "n_candidates": 3,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 3
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 3
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 3
+  },
+  "llm_calls": 9,
+  "tokens": {
+   "prompt": 147930,
+   "completion": 10346,
+   "reasoning": 6137,
+   "cache_read": 117873
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Ar1_100028",
+  "cell": "classifysg",
+  "arm": "A",
+  "id": 100028,
+  "task": "classify_objects",
+  "score": 0.0,
+  "success": false,
+  "steps": 831,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 370.4,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 8,
+   "predicted": 4
+  },
+  "claims": 9,
+  "claims_in": 3,
+  "n_candidates": 5,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 96136,
+   "completion": 6938,
+   "reasoning": 4345,
+   "cache_read": 77610
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Ar1_100029",
+  "cell": "classifysg",
+  "arm": "A",
+  "id": 100029,
+  "task": "classify_objects",
+  "score": 0.15,
+  "success": false,
+  "steps": 685,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 272.0,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:classify_into_bins_p2",
+   "finish"
+  ],
+  "ported_skill": "classify_into_bins_p2",
+  "contain": null,
+  "writers": {
+   "perception": 4,
+   "predicted": 5
+  },
+  "claims": 6,
+  "claims_in": 6,
+  "n_candidates": 2,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 93901,
+   "completion": 5935,
+   "reasoning": 3372,
+   "cache_read": 76905
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Br1_100020",
+  "cell": "classifysg",
+  "arm": "B",
+  "id": 100020,
+  "task": "classify_objects",
+  "score": 0.0,
+  "success": false,
+  "steps": 45,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 190.5,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": null,
+  "writers": {
+   "perception": 10
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 6,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 81423,
+   "completion": 4268,
+   "reasoning": 1962,
+   "cache_read": 65133
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Br1_100021",
+  "cell": "classifysg",
+  "arm": "B",
+  "id": 100021,
+  "task": "classify_objects",
+  "score": 0.0,
+  "success": false,
+  "steps": 41,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 205.6,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": null,
+  "writers": {
+   "perception": 4
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 5,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 76789,
+   "completion": 4162,
+   "reasoning": 2233,
+   "cache_read": 64933
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Br1_100022",
+  "cell": "classifysg",
+  "arm": "B",
+  "id": 100022,
+  "task": "classify_objects",
+  "score": 0.4,
+  "success": false,
+  "steps": 703,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 320.6,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 5,
+   "predicted": 3
+  },
+  "claims": 6,
+  "claims_in": 3,
+  "n_candidates": 3,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 7,
+  "tokens": {
+   "prompt": 117130,
+   "completion": 6720,
+   "reasoning": 3518,
+   "cache_read": 93918
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Br1_100023",
+  "cell": "classifysg",
+  "arm": "B",
+  "id": 100023,
+  "task": "classify_objects",
+  "score": 0.4,
+  "success": false,
+  "steps": 943,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 362.4,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 10,
+   "predicted": 5
+  },
+  "claims": 8,
+  "claims_in": 5,
+  "n_candidates": 4,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 3
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 3
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 3
+  },
+  "llm_calls": 8,
+  "tokens": {
+   "prompt": 124516,
+   "completion": 9101,
+   "reasoning": 5702,
+   "cache_read": 97856
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Br1_100024",
+  "cell": "classifysg",
+  "arm": "B",
+  "id": 100024,
+  "task": "classify_objects",
+  "score": 1.0,
+  "success": true,
+  "steps": 380,
+  "step_lim": 1100,
+  "category": null,
+  "wall_s": 176.5,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "perception": 3,
+   "predicted": 2
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 2,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 2,
+  "tokens": {
+   "prompt": 31799,
+   "completion": 1634,
+   "reasoning": 679,
+   "cache_read": 23430
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Br1_100025",
+  "cell": "classifysg",
+  "arm": "B",
+  "id": 100025,
+  "task": "classify_objects",
+  "score": 0.15,
+  "success": false,
+  "steps": 577,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 226.9,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 2,
+   "predicted": 3
+  },
+  "claims": 4,
+  "claims_in": 2,
+  "n_candidates": 3,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 5,
+  "tokens": {
+   "prompt": 75385,
+   "completion": 3633,
+   "reasoning": 1681,
+   "cache_read": 60442
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Br1_100026",
+  "cell": "classifysg",
+  "arm": "B",
+  "id": 100026,
+  "task": "classify_objects",
+  "score": 0.15,
+  "success": false,
+  "steps": 557,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 293.5,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 4,
+   "predicted": 5
+  },
+  "claims": 6,
+  "claims_in": 6,
+  "n_candidates": 2,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 5,
+  "tokens": {
+   "prompt": 78644,
+   "completion": 4884,
+   "reasoning": 2755,
+   "cache_read": 60843
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Br1_100027",
+  "cell": "classifysg",
+  "arm": "B",
+  "id": 100027,
+  "task": "classify_objects",
+  "score": 0.0,
+  "success": false,
+  "steps": 1068,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 387.1,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 16,
+   "predicted": 7
+  },
+  "claims": 9,
+  "claims_in": 7,
+  "n_candidates": 3,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 8,
+  "tokens": {
+   "prompt": 101730,
+   "completion": 5493,
+   "reasoning": 3149,
+   "cache_read": 84990
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Br1_100028",
+  "cell": "classifysg",
+  "arm": "B",
+  "id": 100028,
+  "task": "classify_objects",
+  "score": 0.0,
+  "success": false,
+  "steps": 1031,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 448.1,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 10,
+   "predicted": 4
+  },
+  "claims": 9,
+  "claims_in": 5,
+  "n_candidates": 6,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 7,
+  "tokens": {
+   "prompt": 120685,
+   "completion": 7303,
+   "reasoning": 4035,
+   "cache_read": 95069
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_classifysg_cls3Br1_100029",
+  "cell": "classifysg",
+  "arm": "B",
+  "id": 100029,
+  "task": "classify_objects",
+  "score": 0.4,
+  "success": false,
+  "steps": 714,
+  "step_lim": 1100,
+  "category": "perception_gross",
+  "wall_s": 292.5,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "ported:sort_into_containers",
+   "finish"
+  ],
+  "ported_skill": "sort_into_containers",
+  "contain": "bottom",
+  "writers": {
+   "perception": 4,
+   "predicted": 5
+  },
+  "claims": 6,
+  "claims_in": 6,
+  "n_candidates": 2,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 2
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 2
+  },
+  "llm_calls": 4,
+  "tokens": {
+   "prompt": 61475,
+   "completion": 4024,
+   "reasoning": 2072,
+   "cache_read": 46480
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_stackblockssg_cls3Ar1_100020",
+  "cell": "stackblockssg",
+  "arm": "A",
+  "id": 100020,
+  "task": "stack_blocks",
+  "score": 1.0,
+  "success": true,
+  "steps": 230,
+  "step_lim": 550,
+  "category": null,
+  "wall_s": 131.4,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "pick",
+   "place",
+   "pick",
+   "place",
+   "bank",
+   "pick",
+   "place",
+   "bank",
+   "jobs"
+  ],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "predicted": 3
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 0,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 2,
+  "tokens": {
+   "prompt": 28586,
+   "completion": 1472,
+   "reasoning": 675,
+   "cache_read": 23050
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_stackblockssg_cls3Ar1_100021",
+  "cell": "stackblockssg",
+  "arm": "A",
+  "id": 100021,
+  "task": "stack_blocks",
+  "score": 1.0,
+  "success": true,
+  "steps": 154,
+  "step_lim": 550,
+  "category": null,
+  "wall_s": 85.8,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "pick",
+   "place",
+   "bank",
+   "pick",
+   "place",
+   "bank",
+   "jobs"
+  ],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "predicted": 2
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 0,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 103095,
+   "completion": 4026,
+   "reasoning": 2257,
+   "cache_read": 88842
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_stackblockssg_cls3Ar1_100022",
+  "cell": "stackblockssg",
+  "arm": "A",
+  "id": 100022,
+  "task": "stack_blocks",
+  "score": 1.0,
+  "success": true,
+  "steps": 242,
+  "step_lim": 550,
+  "category": null,
+  "wall_s": 83.0,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "pick",
+   "place",
+   "pick",
+   "place",
+   "bank",
+   "pick",
+   "place",
+   "bank",
+   "jobs"
+  ],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "perception": 1,
+   "predicted": 3
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 0,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 3,
+  "tokens": {
+   "prompt": 43890,
+   "completion": 2539,
+   "reasoning": 1491,
+   "cache_read": 36624
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_stackblockssg_cls3Ar1_100023",
+  "cell": "stackblockssg",
+  "arm": "A",
+  "id": 100023,
+  "task": "stack_blocks",
+  "score": 1.0,
+  "success": true,
+  "steps": 233,
+  "step_lim": 550,
+  "category": null,
+  "wall_s": 108.6,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "pick",
+   "place",
+   "pick",
+   "place",
+   "bank",
+   "pick",
+   "place",
+   "bank",
+   "jobs"
+  ],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "perception": 1,
+   "predicted": 3
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 1,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 92540,
+   "completion": 5217,
+   "reasoning": 3787,
+   "cache_read": 83258
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_stackblockssg_cls3Ar1_100024",
+  "cell": "stackblockssg",
+  "arm": "A",
+  "id": 100024,
+  "task": "stack_blocks",
+  "score": 1.0,
+  "success": true,
+  "steps": 186,
+  "step_lim": 550,
+  "category": null,
+  "wall_s": 76.4,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "root",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "pick",
+   "place",
+   "bank",
+   "pick",
+   "place",
+   "bank",
+   "jobs"
+  ],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "perception": 2,
+   "predicted": 2
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 0,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 2,
+  "tokens": {
+   "prompt": 31672,
+   "completion": 1312,
+   "reasoning": 628,
+   "cache_read": 23430
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_stackblockssg_cls3Br1_100020",
+  "cell": "stackblockssg",
+  "arm": "B",
+  "id": 100020,
+  "task": "stack_blocks",
+  "score": 1.0,
+  "success": true,
+  "steps": 231,
+  "step_lim": 550,
+  "category": null,
+  "wall_s": 90.6,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "pick",
+   "place",
+   "pick",
+   "place",
+   "bank",
+   "pick",
+   "place",
+   "bank",
+   "jobs"
+  ],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "predicted": 2,
+   "perception": 1
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 0,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 5,
+  "tokens": {
+   "prompt": 62067,
+   "completion": 2284,
+   "reasoning": 1194,
+   "cache_read": 55775
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_stackblockssg_cls3Br1_100021",
+  "cell": "stackblockssg",
+  "arm": "B",
+  "id": 100021,
+  "task": "stack_blocks",
+  "score": 1.0,
+  "success": true,
+  "steps": 155,
+  "step_lim": 550,
+  "category": null,
+  "wall_s": 86.4,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "pick",
+   "place",
+   "bank",
+   "pick",
+   "place",
+   "bank",
+   "jobs"
+  ],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "predicted": 2
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 0,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 5,
+  "tokens": {
+   "prompt": 78081,
+   "completion": 4359,
+   "reasoning": 2485,
+   "cache_read": 66178
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_stackblockssg_cls3Br1_100022",
+  "cell": "stackblockssg",
+  "arm": "B",
+  "id": 100022,
+  "task": "stack_blocks",
+  "score": 1.0,
+  "success": true,
+  "steps": 244,
+  "step_lim": 550,
+  "category": null,
+  "wall_s": 92.6,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "pick",
+   "place",
+   "pick",
+   "place",
+   "bank",
+   "pick",
+   "place",
+   "bank",
+   "jobs"
+  ],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "perception": 1,
+   "predicted": 3
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 0,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 6,
+  "tokens": {
+   "prompt": 90794,
+   "completion": 3103,
+   "reasoning": 1622,
+   "cache_read": 82410
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_stackblockssg_cls3Br1_100023",
+  "cell": "stackblockssg",
+  "arm": "B",
+  "id": 100023,
+  "task": "stack_blocks",
+  "score": 1.0,
+  "success": true,
+  "steps": 233,
+  "step_lim": 550,
+  "category": null,
+  "wall_s": 85.0,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "pick",
+   "place",
+   "pick",
+   "place",
+   "bank",
+   "pick",
+   "place",
+   "bank",
+   "jobs"
+  ],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "perception": 1,
+   "predicted": 3
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 1,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 3,
+  "tokens": {
+   "prompt": 44053,
+   "completion": 2717,
+   "reasoning": 1777,
+   "cache_read": 36687
+  },
+  "http_429": 0
+ },
+ {
+  "name": "c4b_stackblockssg_cls3Br1_100024",
+  "cell": "stackblockssg",
+  "arm": "B",
+  "id": 100024,
+  "task": "stack_blocks",
+  "score": 1.0,
+  "success": true,
+  "steps": 201,
+  "step_lim": 550,
+  "category": null,
+  "wall_s": 77.7,
+  "unstable": false,
+  "code": "2f198642",
+  "cfg": {
+   "sort_contain": "bottom",
+   "sort_park": "off",
+   "instance_evidence": "log",
+   "ported_classify": "p2",
+   "preset": "submit_v3"
+  },
+  "cfg_full_sha": "f801dbafd53ae2ffed5d6c15ea32bbf54de1a194476d67a9d919cbabee15ea51",
+  "history": [
+   "pick",
+   "place",
+   "bank",
+   "pick",
+   "place",
+   "bank",
+   "jobs"
+  ],
+  "ported_skill": null,
+  "contain": null,
+  "writers": {
+   "perception": 4,
+   "predicted": 1
+  },
+  "claims": 0,
+  "claims_in": 0,
+  "n_candidates": 0,
+  "call_records": {
+   "calls.jsonl:claude/claude-sonnet-5-5": 1
+  },
+  "transcript_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "report_models": {
+   "claude/claude-sonnet-5-5": 1
+  },
+  "llm_calls": 2,
+  "tokens": {
+   "prompt": 32347,
+   "completion": 1476,
+   "reasoning": 765,
+   "cache_read": 23430
+  },
+  "http_429": 0
+ }
+]
