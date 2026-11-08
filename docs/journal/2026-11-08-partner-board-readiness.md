@@ -2,6 +2,8 @@
 
 Received on the coordination bus at 23:08–23:09Z on 7 Nov (`20261107T2308Z-misha-board-readiness.md`, `20261107T2309Z-misha-f40-prototype.md`, plus the prototype module `functarget.py`, 471 lines, kept off-repo with the lead). Their report is the counterpart of our legality top-10 (`docs/experiments/2026-11-07-legality-inventory.md`); both lists are to be merged at the planning. Nothing below was re-measured by us.
 
+> **Correction from the partner team (bus `20261107T2355Z`, received 8 Nov 00:00Z).** Row L10 and the "Seeds" paragraph below are wrong about seed 1: their side ran public **seed 1** in October with the J1 system, on layouts 0–4 (basket round, 25 Oct, D-C7/D-C8) and layouts 5–9 (J1b, 15 episodes). Their ledger will confirm the exact tasks and dates. As far as they know, seed 2 was never run. The committee e-mail marks seed 1 [TO CONFIRM]. The verbatim text below is left unchanged.
+
 ## Board-entry readiness (their side)
 
 ### Board-entry readiness: the general hybrid (controlr night/HYBRID-INT c2867e40), 7 Nov 2026
