@@ -1610,13 +1610,69 @@
     },
     "play_tic_tac_toe": {
       "dimension": "Long-Horizon",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "8a1eaa4b5cabd30795418b0026099bd7bdfe5ff5bea80353f437ded278aaab41",
+          "official_score": 100.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T234826a879fcZ_play_tic_tac_toe",
+          "steps": 797,
+          "success": true,
+          "task": "play_tic_tac_toe",
+          "wall_s": 196.90623696497642
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "2d59409318bad398347d657399dd574f9a548f9c4378a4c073ab4ca7d6d299b7",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T234826a879fcZ_play_tic_tac_toe",
+          "steps": 795,
+          "success": true,
+          "task": "play_tic_tac_toe",
+          "wall_s": 189.44954825600144
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "a847dd03353d2a090238cc7a5aacba13deab812b501eb0a2e4075235d7628edd",
+          "official_score": 100.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T234826a879fcZ_play_tic_tac_toe",
+          "steps": 826,
+          "success": true,
+          "task": "play_tic_tac_toe",
+          "wall_s": 200.414115917054
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "ba9e2464ad3a1344caa0edeae8975a7a09c484430a9c5e8de92edfaa90f8650e",
+          "official_score": 100.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T234826a879fcZ_play_tic_tac_toe",
+          "steps": 808,
+          "success": true,
+          "task": "play_tic_tac_toe",
+          "wall_s": 194.33548201201484
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "8ec19121637c36d8cc95173ee18abd7de3528e9997cb1159ba00ea44fa41bbd6",
+          "official_score": 100.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261107T234826a879fcZ_play_tic_tac_toe",
+          "steps": 808,
+          "success": true,
+          "task": "play_tic_tac_toe",
+          "wall_s": 195.68067414907273
+        }
+      ],
+      "n": 5,
+      "official_score": 100.0,
+      "score_sd": 0.0,
+      "steps": 4034,
+      "successes": 5,
+      "wall_s": 976.7860572991194,
       "weight": 0.025
     },
     "plug_in_charger": {
