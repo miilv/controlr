@@ -24,8 +24,13 @@
   Results: [experiment report](../experiments/2026-11-08-f-catalogue.md).
 
 **Verdict against the stopping condition: (a).**
-- **Round trip:** 358 frames and 245 tags (every frame tag of every asset), 0 failures, max error 4.4e-16. This holds
-  with two prototype changes:
+- **Round trip:** 245 entries and 358 frames, 0 failures, max error 4.4e-16.
+  - The counting rule: an entry is one (asset, section, tag) of the raw metadata. There are 317; 72 have an empty
+    frame list (garment particle tags), and 245 have at least one frame, typed or not.
+  - The adapter's typed path is 199 entries / 288 frames. The partner's adapter reproduced it with 0 failures after
+    the eight changes.
+
+  The round trip holds with two prototype changes:
   - lever and hinge targets keep their frame orientation;
   - tags keep the file's order.
 
@@ -52,8 +57,19 @@
   - the mesh opening fit for slot widths (frame corners kept beside it).
 - **Q7: `refine_insertion` stays a runtime step.** It is a pair fit, and the bank's own floor is 100.8 mm below its
   frame.
-- **Tags typed null for Codex:** `check`, `checkpoint`, `be_placed`, `coin_insert_center_same_side`,
-  `coin_insert_center_diff_side`. That is 5 tag names, 15 asset tags.
+- **Tags typed null for Codex:** 5 tag names, 36 asset tags:
+
+  | tag | asset tags |
+  |---|---|
+  | `checkpoint` | 24 |
+  | `check` | 5 |
+  | `be_placed` | 5 |
+  | `coin_insert_center_same_side` | 1 |
+  | `coin_insert_center_diff_side` | 1 |
+
+  A further 10 asset tags with frames are null with no matching rule and no task semantics: `GetParentLink` 1,
+  `center` 1, and `bbox_0..7` (8 tags, 32 frames). This corrects an earlier summary of "15 asset tags", which had
+  counted categories.
 
 **Found along the way:**
 - **The partner's adapter needs eight §1 changes,** listed in the report and in BACKLOG P1:

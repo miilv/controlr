@@ -492,9 +492,12 @@ def test_file_json_round_trips(doc):
 
 
 def test_extraction_code_has_no_legality_findings_of_its_own():
-    """The shared engine's per-function scan (task names, task-data paths, result-check provenance, task symbols) over
-    every function of the extraction code finds nothing but unresolved library calls (numpy, builtins). The denied
-    path components live in dojo/legality/roots.py, outside the indexed code."""
+    """The shared engine's per-function scan (task names, task-data paths, result-check provenance, task symbols,
+    unlisted data-file names) over every function of the extraction code finds nothing but unresolved library calls
+    (numpy, builtins). The data names the code may use are declared the way the partner's hybrid profile declares
+    them (``data_files``: name -> reason): the intrinsic asset files it reads, the catalogue index it hashes, and its
+    own outputs. The denied path components live in dojo/legality/roots.py, which, like the rest of the legality
+    tooling, is outside the indexed code by design."""
     import ast
     from dojo.legality import audit as A
     from dojo.legality.profiles import controlr_inference
@@ -502,9 +505,13 @@ def test_extraction_code_has_no_legality_findings_of_its_own():
     files = {"dojo.skills.fcatalogue": REPO / "dojo/skills/fcatalogue.py",
              "scripts.dojo.fcat.check": REPO / "scripts/dojo/fcat/check.py",
              "scripts.dojo.f_catalogue_extract": REPO / "scripts/dojo/f_catalogue_extract.py"}
+    data_files = {**{n: "intrinsic asset file (the extraction's input)" for n in ("metadata.json", "geom.npz")},
+                  "index.json": "the perception catalogue's index: hashed into catalogue_hash, keys checked vs meshes",
+                  **{n: "this tool's own output" for n in ("check.json", "compare.json", ".summary.json",
+                                                            "f-catalogue--.json")}}
     prof = A.Profile(name="fcat", index=list(base.index) + [files["scripts.dojo.f_catalogue_extract"],
                                                              files["scripts.dojo.fcat.check"]], roots=[],
-                     root_dir=REPO, scan_globals=True, report_unresolved=True)
+                     root_dir=REPO, scan_globals=True, report_unresolved=True, data_files=data_files)
     idx = A.Index(prof)
     rx = A.task_re()
     bad = []

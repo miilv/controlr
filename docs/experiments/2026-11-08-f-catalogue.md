@@ -14,8 +14,13 @@ Answers to the spec's §6 questions: [journal 2026-11-08-f-catalogue-answers](..
 changes to the partner's prototype (point 2 below).
 1. **The file covers the whole catalogue and validates clean.** 743 keys are listed and 742 have entries. The one key
    skipped, `Clutter/vehicle/00000`, has no aligned bbox, and the file names it.
-2. **The round trip passes for every frame tag: 358 frames, 245 tags, 0 failures, max error 4.4e-16.** This needs two
-   changes to the partner's prototype, applied in our harness as patch p1:
+2. **The round trip passes for every entry with a frame: 245 entries, 358 frames, 0 failures, max error 4.4e-16.**
+   The counting rule: an entry is one (asset, section, tag) of the raw metadata. There are 317 entries; 72 have an
+   empty frame list (12 garment particle tags x 6 garments), and 245 have at least one frame, typed or not. The
+   adapter's own path takes the 199 typed entries (288 frames), which the partner's adapter, with the eight changes,
+   reproduced with 0 failures. The other 46 entries (70 frames) are typed null and go through the harness's "all"
+   mode under a structural type. This needs two changes to the partner's prototype, applied in our harness as patch
+   p1:
    - lever and hinge targets keep their frame's orientation;
    - tags keep the file's order.
 
@@ -87,7 +92,7 @@ Typed tags (counts per asset tag):
 | peg | 4 |
 | socket | 3 |
 | hook | 2 |
-| null | 118 |
+| null | 118 (72 entries with no frame + 46 with frames: 36 for Codex, 10 with no type rule) |
 
 The types keyhole and rim have no catalogue frames.
 
@@ -104,21 +109,24 @@ the code.
 - **Active frames with no feature word** take the passive type that the catalogue's tags give their owner's category:
   `hammer` → `hammer_slot` → slot.
 
-**Typed null for a Codex ruling (5 tag names, 15 asset tags):**
+**Typed null for a Codex ruling (5 tag names, 36 asset tags).** Counts are (asset, section, tag) entries in the
+file:
 
-| tag | assets | why |
-|---|---|---|
-| `checkpoint` | toaster/00002, car, electric_toothbrush, hammer (active) | names a point where a result is checked |
-| `check` | pen, oil_pen | the same |
-| `be_placed` | factory_bolt/00000-04 | names a goal role |
-| `coin_insert_center_same_side`, `coin_insert_center_diff_side` | coin (active) | "same / different side" of an unstated reference reads as a goal convention; the word `insert` alone would type `slot` |
+| tag | section | asset tags | assets | why |
+|---|---|---|---|---|
+| `checkpoint` | active_functional | 24 | car 8, hammer 8, electric_toothbrush 7, toaster/00002 1 | names a point where a result is checked |
+| `check` | functional | 5 | pen 3, oil_pen 2 | the same |
+| `be_placed` | functional | 5 | factory_bolt/00000-04 | names a goal role |
+| `coin_insert_center_same_side` | active_functional | 1 | coin | "same / different side" of an unstated reference reads as a goal convention; the word `insert` alone would type `slot` |
+| `coin_insert_center_diff_side` | active_functional | 1 | coin | the same |
 
-**Null with no task semantics:**
-- `GetParentLink` (egg_holder): no feature word. Its USD joint is the lid's revolute joint, so it is a hinge candidate
-  if a ruling allows joint-bearing tags without a word.
-- piggy_bank `center`: no feature word.
-- `bbox_0..7` (xylophone bar outlines).
-- 12 garment particle tags: no frame.
+**Null with no type rule and no task semantics (10 asset tags with frames, 34 frames):**
+- `GetParentLink` (egg_holder, 1): no feature word. Its USD joint is the lid's revolute joint, so it is a hinge
+  candidate if a ruling allows joint-bearing tags without a word.
+- piggy_bank `center` (1): no feature word.
+- `bbox_0..7` (xylophone bar outlines): 8 tags on one asset, 32 frames.
+
+**Null without a frame:** the 12 garment particle tags x 6 garments = 72 entries. They are not targets.
 
 **Kind-named tags typed by their feature word, the kind dropped (for transparency):**
 - slot: `toast_slot1` / `toast_slot2` (toaster x4), `hammer_slot` / `pliers_slot` / `tape_measure_slot` /

@@ -13,8 +13,9 @@
   [engine convergence](journal/2026-11-08-audit-engine-converged.md).
 
 - [ ] **F: the partner's adapter needs eight changes to read `f-catalogue/1`.** Our catalogue-wide extraction
-  ([report](experiments/2026-11-08-f-catalogue.md)) passes the round trip at 358 frames / 245 tags / 0 failures only
-  with two prototype changes. The changes for their spec §1:
+  ([report](experiments/2026-11-08-f-catalogue.md)) passes the round trip at 245 entries / 358 frames / 0 failures
+  only with two prototype changes. An entry is one (asset, section, tag) of the raw metadata with at least one frame,
+  typed or not; there are 317 entries, 72 of them empty. The typed path is 199 entries / 288 frames. The changes for their spec §1:
   1. apply the per-(asset, tag) `tag_conv` (57 tags) before `build.conv`; slot / socket now have sign -1;
   2. keep a lever's / hinge's frame orientation (5 tags fail without it; laptop_hinge 18.5 deg);
   3. keep the file's tag order (`from_asset` sorts);
@@ -26,10 +27,11 @@
 
   Hand perception-side slot readers the type-row frame for the 7 overridden slot frames. Pending the founders' 8 Nov
   planning.
-- [ ] **F: Codex ruling on 5 null tag names** (`check`, `checkpoint`, `be_placed`, `coin_insert_center_same_side`,
-  `coin_insert_center_diff_side`; 15 asset tags), plus whether `GetParentLink` (egg_holder; a revolute USD joint, no
-  feature word) may be typed hinge. A ruling is a code change in `dojo/skills/fcatalogue.py` (`CODEX_WORDS`) and a new
-  pinned file.
+- [ ] **F: Codex ruling on 5 null tag names, 36 asset tags:** `checkpoint` 24, `check` 5, `be_placed` 5,
+  `coin_insert_center_same_side` 1, `coin_insert_center_diff_side` 1.
+  - Also: may `GetParentLink` (egg_holder; a revolute USD joint, no feature word) be typed hinge? It is one of 10
+    asset tags with frames that are null with no matching rule (`GetParentLink` 1, `center` 1, `bbox_0..7` 8).
+  - A ruling is a code change in `dojo/skills/fcatalogue.py` (`CODEX_WORDS`) and a new pinned file.
 - [ ] **F: band-sensitive bases and refused openings.**
   - 62 / 480 bases differ by more than 5 mm between the 4 and 8 mm bands, and geometry cannot choose between them. A
     G3 placement check on spent ids would settle it.
