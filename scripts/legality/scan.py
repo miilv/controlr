@@ -122,6 +122,42 @@ def gate(rows, allowlist, previous=None, reviewed=None, previous_reviewed=None, 
     return issues
 
 
+def base_pins(base_ref, root=ROOT):
+    """Load pins in this project's Git prefix; only an absent tree bootstraps."""
+    def git(*args):
+        return subprocess.run(['git', *args], cwd=root, capture_output=True, text=True)
+
+    git_result = git('rev-parse', '--show-prefix')
+    git_result.check_returncode()
+    prefix = git_result.stdout.strip()
+    git_result = git('cat-file', '-e', base_ref + '^{commit}')
+    git_result.check_returncode()
+    if prefix and git('cat-file', '-e', f'{base_ref}:{prefix.rstrip("/")}').returncode:
+        print(f'legality bootstrap: base {base_ref} has no {prefix} tree; '
+              'current findings and pins are still checked', file=sys.stderr)
+        return None, None, None
+    # Root-repository history before the scanner was introduced remains supported.
+    if not prefix and git('cat-file', '-e', f'{base_ref}:scripts/legality/scan.py').returncode:
+        print(f'legality bootstrap: base {base_ref} predates the scanner; '
+              'current findings and pins are still checked', file=sys.stderr)
+        return None, None, None
+    pins = []
+    for name in ('allowlist.json', 'transition-review.json'):
+        old = git('show', f'{base_ref}:{prefix}scripts/legality/{name}')
+        if old.returncode:
+            raise SystemExit(f'base controlr tree exists but its {name} is missing: {old.stderr.strip()}')
+        pins.append(json.loads(old.stdout))
+    prior = git('show', f'{base_ref}:{prefix}scripts/legality/detection-gains.json')
+    if prior.returncode:
+        scanner = git('show', f'{base_ref}:{prefix}scripts/legality/scan.py')
+        if 'detection-gains.json' in scanner.stdout:
+            raise SystemExit('base scanner uses detection gains but its pins are missing')
+        pins.append(None)
+    else:
+        pins.append(json.loads(prior.stdout))
+    return tuple(pins)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--root', type=Path, default=ROOT)
@@ -152,20 +188,7 @@ def main(argv=None):
         gains = json.loads((ROOT / gains_relative).read_text())
         previous = previous_reviewed = previous_gains = None
         if args.base_ref:
-            subprocess.run(['git', 'cat-file', '-e', args.base_ref + '^{commit}'], cwd=ROOT, check=True, capture_output=True)
-            old = subprocess.run(['git', 'show', f'{args.base_ref}:{relative}'], cwd=ROOT, capture_output=True, text=True)
-            if old.returncode == 0:
-                previous = json.loads(old.stdout)
-                old_review = subprocess.run(['git', 'show', f'{args.base_ref}:{reviewed_relative}'], cwd=ROOT, capture_output=True, text=True)
-                if old_review.returncode:
-                    raise SystemExit('base scanner exists but its transition review is missing')
-                previous_reviewed = json.loads(old_review.stdout)
-            elif subprocess.run(['git', 'cat-file', '-e', args.base_ref + ':scripts/legality/scan.py'], cwd=ROOT, capture_output=True).returncode == 0:
-                raise SystemExit('base scanner exists but its allowlist is missing')
-        if args.base_ref:
-            prior = subprocess.run(['git', 'show', f'{args.base_ref}:{gains_relative}'], cwd=ROOT, capture_output=True, text=True)
-            if prior.returncode == 0:
-                previous_gains = json.loads(prior.stdout)
+            previous, previous_reviewed, previous_gains = base_pins(args.base_ref)
         gain_base = subprocess.check_output(['git', 'rev-parse', args.base_ref + '^{commit}'], cwd=ROOT, text=True).strip() if args.base_ref else None
         problems = gate(report['findings'], allowed, previous, reviewed, previous_reviewed,
                         gains, previous_gains, gain_base)

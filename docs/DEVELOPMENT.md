@@ -1268,3 +1268,10 @@ The shared engine registers `controlr-inference` when its adjacent `profiles.py`
 exists and then uses it as the CLI default. A partner tree without that module
 uses `controlr-glib`. This lets both trees use a byte-identical engine while
 preserving their available profiles and defaults.
+
+### Subtree CI
+
+Run controlr checks from its project directory, including after importing it beneath
+another Git root. The legality ratchet resolves base pins through the project's Git
+prefix. A base without that subtree logs a bootstrap and still checks all current
+findings. Missing pins in an existing subtree fail closed.
