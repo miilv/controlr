@@ -1052,13 +1052,69 @@
     },
     "make_kong": {
       "dimension": "Long-Horizon",
-      "episodes": [],
-      "n": 0,
-      "official_score": null,
-      "score_sd": null,
-      "steps": 0,
-      "successes": 0,
-      "wall_s": 0,
+      "episodes": [
+        {
+          "layout_id": 100000,
+          "layout_sha256": "d58c463264ded54101c826d2588551930071e03baa5722f2e99088280125ab48",
+          "official_score": 100.0,
+          "position": 0,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261108T00093123478aZ_make_kong",
+          "steps": 349,
+          "success": true,
+          "task": "make_kong",
+          "wall_s": 61.34097348805517
+        },
+        {
+          "layout_id": 100001,
+          "layout_sha256": "ac9cb15f922fffc1aa4befe3e701714d1914ee2a34c3adbe63f85a8d478afbad",
+          "official_score": 100.0,
+          "position": 1,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261108T00093123478aZ_make_kong",
+          "steps": 328,
+          "success": true,
+          "task": "make_kong",
+          "wall_s": 51.46679735102225
+        },
+        {
+          "layout_id": 100002,
+          "layout_sha256": "4ed625fa2fb6c4c5c1d46e74dc175bbc51565e494908b62874b064618122201c",
+          "official_score": 100.0,
+          "position": 2,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261108T00093123478aZ_make_kong",
+          "steps": 347,
+          "success": true,
+          "task": "make_kong",
+          "wall_s": 54.82093663001433
+        },
+        {
+          "layout_id": 100003,
+          "layout_sha256": "c72486c23bd0543522d0c694fc5c8f0189fa5cde0a95a58c80c3725592e22ac2",
+          "official_score": 100.0,
+          "position": 3,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261108T00093123478aZ_make_kong",
+          "steps": 328,
+          "success": true,
+          "task": "make_kong",
+          "wall_s": 51.95577449200209
+        },
+        {
+          "layout_id": 100004,
+          "layout_sha256": "c4722bc7c04e0aa732c7ba2cbeb02ad26c1a6f4c01fe16820ba49c158daed413",
+          "official_score": 100.0,
+          "position": 4,
+          "run": "/home/robotics/dojo-data/rsi-repro/yardstick/20261108T00093123478aZ_make_kong",
+          "steps": 337,
+          "success": true,
+          "task": "make_kong",
+          "wall_s": 52.97021952690557
+        }
+      ],
+      "n": 5,
+      "official_score": 100.0,
+      "score_sd": 0.0,
+      "steps": 1689,
+      "successes": 5,
+      "wall_s": 272.5547014879994,
       "weight": 0.025
     },
     "make_toast": {
