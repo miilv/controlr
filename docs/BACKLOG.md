@@ -6,6 +6,31 @@
 
 ## P1 — before the next round (carry failures and perception)
 
+- [ ] **F: the partner's adapter needs eight changes to read `f-catalogue/1`.** Our catalogue-wide extraction
+  ([report](experiments/2026-11-08-f-catalogue.md)) passes the round trip at 358 frames / 245 tags / 0 failures only
+  with two prototype changes. The changes for their spec §1:
+  1. apply the per-(asset, tag) `tag_conv` (57 tags) before `build.conv`; slot / socket now have sign -1;
+  2. keep a lever's / hinge's frame orientation (5 tags fail without it; laptop_hinge 18.5 deg);
+  3. keep the file's tag order (`from_asset` sorts);
+  4. build `@top` / `@base` targets from `derived[tag].frame`;
+  5. honour `root_in_asset` (laptops: 77 mm);
+  6. use `joints_by_tag[tag].origin` (laptop_hinge's frame point is 45 mm off its axis);
+  7. take a hole's radius from the derived mesh width, not the raw support radius (15 vs 12.4 mm);
+  8. accept extra keys.
+
+  Hand perception-side slot readers the type-row frame for the 7 overridden slot frames. Pending the founders' 8 Nov
+  planning.
+- [ ] **F: Codex ruling on 5 null tag names** (`check`, `checkpoint`, `be_placed`, `coin_insert_center_same_side`,
+  `coin_insert_center_diff_side`; 15 asset tags), plus whether `GetParentLink` (egg_holder; a revolute USD joint, no
+  feature word) may be typed hinge. A ruling is a code change in `dojo/skills/fcatalogue.py` (`CODEX_WORDS`) and a new
+  pinned file.
+- [ ] **F: band-sensitive bases and refused openings.**
+  - 62 / 480 bases differ by more than 5 mm between the 4 and 8 mm bands, and geometry cannot choose between them. A
+    G3 placement check on spent ids would settle it.
+  - 4 of 14 passive slot tags have no mesh opening fit: the toolbox's pliers / wrench recesses, and toaster/00002 and
+    00004 `toast_slot2`.
+  - toaster/00004's corner frames outline both slots.
+
 - [ ] **RGB-only support/size checks confuse missing geometry with implausible objects.**
   General SAM round 2 has no accepted multiview bounds for 53% of proposals. Standalone
   support loses 11.7pp recall versus raw small prompts; v2b agreement loses 22.5pp.
