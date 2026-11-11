@@ -1,3 +1,9 @@
+# controlr has moved
+
+Development continues in [robot-harness/controlr](https://github.com/msannikov03/robot-harness/tree/main/controlr). This repository is read-only, frozen at `38a9ace4efb72c5673674eda8dff6a9cc053e604`; its full history is preserved by the subtree import. Open changes in robot-harness, following its AGENTS.md.
+
+---
+
 # controlr
 
 A robotics harness built like a coding-agent harness: camera frames + a robot "operating manual"
